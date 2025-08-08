@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import groqRoutes from './routes/craftRoute';
+import groqRoutes from './routes/craft.routes';
 import imageRoutes from './routes/image.routes';
 
 dotenv.config();
