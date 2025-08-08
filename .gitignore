@@ -1,0 +1,69 @@
+# Node modules (all packages)
+**/node_modules/
+
+# Build output (React, React Native, Server)
+**/dist/
+**/build/
+**/android/app/build/
+**/ios/Pods/
+**/ios/build/
+
+# Vite
+**/.vite/
+
+# React Native
+*.keystore
+*.hprof
+*.iml
+*.log
+*.swp
+.expo/
+web-build/
+.env.local
+.env.production
+.env.staging
+
+# React Native cache
+**/.expo/
+**/.expo-shared/
+**/android/.gradle/
+**/android/.idea/
+**/ios/Pods/
+**/ios/Podfile.lock
+
+# Metro
+**/.metro-cache/
+**/metro-cache/
+
+# TypeScript
+**/*.tsbuildinfo
+
+# Logs
+*.log
+yarn-debug.log*
+npm-debug.log*
+
+# Environment files
+**/.env
+**/.env.*.local
+
+# macOS
+.DS_Store
+.Trashes
+
+# VSCode
+.vscode/
+
+# JetBrains (WebStorm, IntelliJ, etc.)
+.idea/
+
+# OS or editor swap files
+*.swp
+*.swo
+*.tmp
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata/
+*.xcodeproj/
