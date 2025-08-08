@@ -1,6 +1,6 @@
 // src/services/groq.service.ts
 
-import { groq } from '../models/groq';
+import { groq } from '../config/groq.config';
 
 /**
  * Generates a sustainable DIY craft project idea based on user-provided recyclable materials.

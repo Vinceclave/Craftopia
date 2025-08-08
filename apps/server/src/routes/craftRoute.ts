@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { getGroqResponse } from '../services/groqService';
+import { getGroqResponse } from '../services/craftService';
 
 const router = express.Router();
 

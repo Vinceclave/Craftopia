@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import groqRoutes from './routes/groqRoute';
+import groqRoutes from './routes/craftRoute';
+import imageRoutes from './routes/image.routes';
 
 dotenv.config();
 
@@ -16,6 +17,8 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.use('/api/groq', groqRoutes);
+app.use('/api/images', imageRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
