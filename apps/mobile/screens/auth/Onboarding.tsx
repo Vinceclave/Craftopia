@@ -123,7 +123,7 @@ const Onboarding = () => {
       <AnimatedPressable
         style={[buttonStyle]}
         className="bg-forest rounded-full py-5 px-8 shadow-lg mt-10 active:opacity-90"
-        onTouchEnd={() => navigation.navigate('Register')}
+        onTouchEnd={() => navigation.navigate('Register' as never)}
       >
         <MotiText
           from={{ opacity: 0, scale: 0.95 }}

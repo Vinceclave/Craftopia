@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generateCraftIdea } from '../controller/craft.controller';
+import { generateCraftIdea } from '../controllers/craft.controller';
 
 const router = Router();
 

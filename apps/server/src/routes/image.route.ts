@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getImageAnalysis } from '../controller/image.controller';
+import { getImageAnalysis } from '../controllers/image.controller';
 
 const router = Router();
 
