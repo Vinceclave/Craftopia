@@ -4,6 +4,7 @@ module.exports = {
     './App.{js,ts,tsx}',
     './components/**/*.{js,ts,tsx}',
     './screens/auth/**/*.{js,ts,tsx}',
+    './screens/home/**/*.{js,ts,tsx}',
     './src/**/*.{js,ts,tsx}', // Add this if your code lives in /src
   ],
   presets: [require('nativewind/preset')],
