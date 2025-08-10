@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { MotiView } from 'moti';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthContext } from 'contexts/AuthContext';
 
 import LoginHeader from 'components/auth/login/LoginHeader';
 import LoginForm from 'components/auth/login/LoginForm';
@@ -13,6 +15,7 @@ interface FormData {
 }
 
 const Login = () => {
+  const { login } = useContext(AuthContext);
   const isFocused = useIsFocused();
   const navigation = useNavigation();
 
@@ -60,9 +63,16 @@ const Login = () => {
         { email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );
-      const token = res.data.token;  // assuming your backend returns { token: "...", user: {...} }
-      console.log(token)
+
+      const token = res.data.token;
+      
+      await login(token)
+      console.log('Token stored successfully');
+
       setLoading(false);
+
+      // Optionally navigate after successful login
+      navigation.navigate('Home' as never);
     } catch (err: any) {
       setLoading(false);
       const message = err.response?.data?.error || err.message || 'Login failed';

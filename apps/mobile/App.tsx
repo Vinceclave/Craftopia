@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import './global.css';
 
 import { AuthProvider, AuthContext } from 'contexts/AuthContext';
-import RootNavigator from './RootNavigator';
+import RootNavigator from './navigations/RootNavigator';
 
 
 export default function App() {
