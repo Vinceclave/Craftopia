@@ -12,7 +12,7 @@ const HomeHeader = () => {
       from={{ opacity: 0, translateY: -12 }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: 'timing', duration: 500, easing: Easing.out(Easing.ease) }}
-      className="mb-6 mt-4"
+      className="px-4 mb-6 mt-4"
       accessible
       accessibilityRole="header"
       accessibilityHint="Displays your name and a motivational tagline"

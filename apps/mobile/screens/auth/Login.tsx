@@ -2,7 +2,6 @@ import React, { useState, useContext } from 'react';
 import { MotiView } from 'moti';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from 'contexts/AuthContext';
 
 import LoginHeader from 'components/auth/login/LoginHeader';
@@ -59,7 +58,7 @@ const Login = () => {
       const { email, password } = form;
 
       const res = await axios.post(
-        'http://192.168.1.8:3000/auth/login',
+        'http://192.168.1.9:3000/auth/login',
         { email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -67,12 +66,10 @@ const Login = () => {
       const token = res.data.token;
       
       await login(token)
-      console.log('Token stored successfully');
+      console.log(res.data)
+      console.log('Token stored successfully', token);
 
       setLoading(false);
-
-      // Optionally navigate after successful login
-      navigation.navigate('Home' as never);
     } catch (err: any) {
       setLoading(false);
       const message = err.response?.data?.error || err.message || 'Login failed';

@@ -16,7 +16,7 @@ const Accomplishments = () => {
       from={{ opacity: 0, translateY: 20 }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: 'timing', duration: 500 }}
-      className="mb-8"
+      className="pl-4 mb-8"
     >
       <ScrollView
         horizontal

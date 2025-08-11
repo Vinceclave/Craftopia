@@ -30,6 +30,7 @@ const ActivityItem = ({ item, index }) => (
       borderLeftColor: '#4CAF50',
       flexDirection: 'row',
       alignItems: 'center',
+      marginBottom: 10,
     }}
     accessible
     accessibilityLabel={`${item.title}. ${item.description}. Date: ${item.date}`}
@@ -61,7 +62,7 @@ const ActivityItem = ({ item, index }) => (
 
 const RecentActivity = () => {
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 8, paddingHorizontal: 20 }}>
       <Text
         accessible
         accessibilityRole="header"
@@ -80,6 +81,7 @@ const RecentActivity = () => {
         renderItem={({ item, index }) => <ActivityItem item={item} index={index} />}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        scrollEnabled={false} // so it doesn't scroll independently inside Home
       />
     </View>
   );

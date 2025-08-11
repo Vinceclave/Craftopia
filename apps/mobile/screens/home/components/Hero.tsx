@@ -13,7 +13,7 @@ const Hero = () => {
       from={{ opacity: 0, translateY: 20 }}
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ type: 'timing', duration: 500 }}
-      className="rounded-3xl overflow-hidden shadow-lg mb-6"
+      className="px-4 rounded-3xl overflow-hidden shadow-lg mb-6"
     >
       <LinearGradient
         colors={['#A7F3D0', '#6EE7B7']}

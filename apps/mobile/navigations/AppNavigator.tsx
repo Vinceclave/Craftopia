@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MotiView } from 'moti';
 import { Home, User, Hammer, Newspaper, Leaf } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from 'screens/home/Home';
 import Profile from 'screens/profile/profile';
@@ -32,6 +33,8 @@ const AnimatedIcon = ({ focused, children }: { focused: boolean; children: React
 };
 
 const AppNavigator = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -74,7 +77,7 @@ const AppNavigator = () => {
         tabBarInactiveTintColor: '#BABABA', // lightgray
         tabBarStyle: {
           height: 80,
-          position: 'absolute',
+          marginBottom: -12 + insets.bottom, // use safe area bottom inset
           bottom: 16,
           left: 16,
           right: 16,

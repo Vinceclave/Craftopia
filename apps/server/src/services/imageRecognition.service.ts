@@ -1,47 +1,26 @@
-// src/utils/analyzeImage.ts
-import axios from "axios";
+import { imagePrompts } from "../ai/prompts";
 import { groq } from "../config/groq.config";
 
-/**
- * Downloads the image and re-uploads it to a smaller, faster CDN
- * to avoid Groq timeout issues.
- */
-const fetchAndOptimizeImage = async (imageUrl: string): Promise<string> => {
+
+export const analyzeImageBuffer = async (imageBuffer: Buffer) => {
   try {
-    // Download the image as a buffer
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    // Convert buffer to base64
+    const base64Image = `data:image/jpeg;base64,${imageBuffer.toString("base64")}`;
 
-    // Convert to base64 so we can send directly to Groq
-    const base64Image = `data:image/jpeg;base64,${Buffer.from(
-      response.data
-    ).toString("base64")}`;
-
-    return base64Image;
-  } catch (err) {
-    console.error("❌ Failed to fetch/convert image:", err);
-    throw new Error("Could not download/convert the image");
-  }
-};
-
-export const analyzeImage = async (imageUrl: string) => {
-  try {
-    // Convert to Base64 (avoids Groq fetching slow/large URLs)
-    const imageData = await fetchAndOptimizeImage(imageUrl);
-
-    // Call Groq API
+    // Call Groq API with base64 image
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: "Describe the contents of this image in detail." },
-            { type: "image_url", image_url: { url: imageData } },
+            { type: "text", text: imagePrompts.classifyMaterial },
+            { type: "image_url", image_url: { url: base64Image } }, // Groq expects image_url object with url being base64 string too
           ],
         },
       ],
-      model: "meta-llama/llama-4-scout-17b-16e-instruct", // ✅ Vision model
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       temperature: 0.7,
-      max_completion_tokens: 512,
+      max_completion_tokens: 128,
       top_p: 1,
       stream: false,
     });

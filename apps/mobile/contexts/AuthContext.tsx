@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (authToken: string) => {
     try {
-      const res = await axios.get('http://192.168.1.8:3000/user/profile', {
+      const res = await axios.get('http://192.168.1.9:3000/user/profile', {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       setUser(res.data);

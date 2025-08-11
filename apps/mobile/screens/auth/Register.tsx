@@ -128,7 +128,7 @@ const Register = () => {
       const { username, email, password } = form;
 
       const res = await axios.post(
-        'http://192.168.1.8:3000/auth/register',
+        'http://192.168.1.9:3000/auth/register',
         { username, email, password },
         { headers: { 'Content-Type': 'application/json' } }
       );
