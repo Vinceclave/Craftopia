@@ -12,7 +12,7 @@ export function generateVerificationToken () {
 
 export const createRefreshToken =  async (userId: number, hoursValid = 24 * 7) => {
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() * 1000 * 60 * 60 * hoursValid);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * hoursValid);
 
     await prisma.refreshToken.create({
         data: {

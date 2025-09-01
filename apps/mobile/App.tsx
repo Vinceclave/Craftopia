@@ -1,13 +1,26 @@
-import { StatusBar } from 'expo-status-bar';
-import { View, Text } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import * as Google from "expo-auth-session/providers/google";
+import { useEffect } from "react";
+import { Button } from "react-native";
 
 export default function App() {
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: "282411662669-0jsh8pum8c628chps3h48anoglda3v50.apps.googleusercontent.com",
+    webClientId: "282411662669-aoa9sq25ln442176soaih4tuoodmel9p.apps.googleusercontent.com",
+  });
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { authentication } = response;
+      console.log("Google token:", authentication?.idToken);
+      // Send authentication.idToken to backend
+    }
+  }, [response]);
+
   return (
-    <View className="flex-1 justify-center items-center bg-background">
-      <Text className="text-primary font-inter text-xl">
-        Hello, Craftopia!
-      </Text>
-    </View>
+    <Button
+      disabled={!request}
+      title="Login with Google"
+      onPress={() => promptAsync()}
+    />
   );
 }
