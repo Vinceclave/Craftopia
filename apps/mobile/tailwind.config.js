@@ -1,11 +1,17 @@
-/** @type {import('tailwindcss').Config} */
+/** tailwind.config.js */
 module.exports = {
-  content: [
-    "./App.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}"
-  ],
+  content: ["./App.{js,ts,tsx}", "./**/*.{js,ts,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: "#4F46E5",
+        secondary: "#FBBF24",
+        background: "#F3F4F6",
+      },
+      fontFamily: {
+        inter: ["Inter_400Regular", "Inter_700Bold"],
+      },
+    },
   },
   plugins: [],
 };
