@@ -1,0 +1,63 @@
+// ---------- GENERATOR ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- DATASOURCE ----------
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- MODELS ----------
+model User {
+  id                Int                 @id @default(autoincrement())
+  username          String              @unique
+  email             String              @unique
+  password_hash     String?             // optional for OAuth
+  role              UserRole            @default(USER)
+  is_email_verified Boolean             @default(false)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  google_id         String?             @unique
+
+  profile           UserProfile?
+  refreshTokens     RefreshToken[]
+  verificationTokens VerificationToken[]
+}
+
+model UserProfile {
+  user_id   Int     @id
+  fullname  String?
+  avatar_url        String?
+  bio       String?
+
+  user      User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  token_id    Int      @id @default(autoincrement())
+  user_id     Int
+  token_hash  String   @unique
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token_hash String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// ---------- ENUMS ----------
+enum UserRole {
+  USER
+  ADMIN
+}
