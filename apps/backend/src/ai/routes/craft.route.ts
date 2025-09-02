@@ -1,8 +1,7 @@
-import { Router } from 'express';
-import { generateCrafts } from '@/ai/controllers/craft.controller';
+// src/routes/craft.route.ts
+import { Router } from "express";
+import { generateCraftController } from "../controllers/craft.controller";
 
 const router = Router();
-
-router.post('/generate', generateCrafts)
-
+router.post("/generate", generateCraftController);
 export default router;
