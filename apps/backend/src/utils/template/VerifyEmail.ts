@@ -16,14 +16,7 @@ export function verificationEmailTemplate(username: string, verificationUrl: str
           <strong>${token}</strong>
         </div>
       </div>
-      
-      <div style="margin: 20px 0; padding: 20px; background-color: #ecfdf5; border-radius: 8px;">
-        <h3 style="color: #374151; margin-top: 0;">💻 For Web Users:</h3>
-        <a href="${verificationUrl}" style="display:inline-block; margin-top:10px; background:#2563eb; color:#fff; padding:12px 20px; border-radius:6px; text-decoration:none;">
-          Click to Verify Email
-        </a>
-      </div>
-      
+
       <p style="font-size:12px; color:#6b7280; margin-top: 30px;">
         If you didn't request this verification, you can safely ignore this email.<br>
         This verification link will expire in 24 hours.

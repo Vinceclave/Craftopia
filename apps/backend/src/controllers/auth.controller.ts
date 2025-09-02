@@ -41,23 +41,18 @@ export const verifyEmail = async (req: Request, res: Response) => {
   const token = req.query.token;
 
   if (!token || typeof token !== "string") {
-    return res.status(400).send(
-      generateTailwindContent("❌ Verification Failed", "Invalid token.", "bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100", "text-red-500")
-    );
+    return res.status(400).json({ error: "Invalid token." });
   }
 
   try {
     await authService.verifyEmailToken(token);
 
-    return res.send(
-      generateTailwindContent("✅ Email Verified", "Your email has been successfully verified.", "bg-gradient-to-br from-green-100 via-blue-100 to-indigo-100", "text-green-600")
-    );
+    return res.status(200).json({ message: "Email verified successfully." });
   } catch (err: any) {
-    return res.status(400).send(
-      generateTailwindContent("❌ Verification Failed", err.message || "Token invalid or expired", "bg-gradient-to-br from-purple-100 via-pink-100 to-yellow-100", "text-red-500")
-    );
+    return res.status(400).json({ error: err.message || "Token invalid or expired" });
   }
 };
+
 // New mobile Google authentication handler
 export const googleMobileAuth = async (req: Request, res: Response) => {
   try {

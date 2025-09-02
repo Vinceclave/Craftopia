@@ -26,8 +26,9 @@ export const VerifyEmailScreen = () => {
 
     setIsLoading(true);
     try {
-      await authService.verifyEmail(token.trim());
-      Alert.alert('Success!', 'Email verified successfully.', [
+      // Call JSON-based backend
+      const response = await authService.verifyEmail(token.trim());
+      Alert.alert('Success!', response.message, [
         { text: 'Go to Login', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error: any) {
