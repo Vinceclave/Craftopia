@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import passport from '@/config/passport';
 // Routes
 import authRoutes from '@/routes/auth.route';
+import craftRoutes from '@/ai/routes/craft.route';
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +41,7 @@ app.get('/health', (req, res) => {
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+app.use('/ai/', craftRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
