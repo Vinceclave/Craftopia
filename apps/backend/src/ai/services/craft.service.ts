@@ -1,27 +1,35 @@
-import { groq } from "../config/groq-cloud";
+import { groq } from '../config/groq-cloud';
+import { CraftProject, RecyclableItem } from '../types';
 
-
-export interface CraftProject {
-  title: string;
-  description: string;
-  steps: string[];
-  materialsUser: string[];
-}
-
-export async function generateCraftFromItems(items: { name: string }[]): Promise<CraftProject> {
-  const recyclableMaterials = items.map(i => i.name).join(", ");
+export async function generateCraftProject(items: RecyclableItem[]): Promise<CraftProject> {
+  const materials = items.map(item => `${item.quantity}x ${item.name}`).join(', ');
 
   const response = await groq.chat.completions.create({
     model: "moonshotai/kimi-k2-instruct",
     messages: [
       {
         role: "system",
-        content: "You are an AI that creates craft projects from recyclable materials."
+        content: `Create DIY craft projects from recyclable materials.
+
+Requirements:
+- Use only the provided materials
+- Include clear step-by-step instructions
+- Specify difficulty level and time needed
+- Make it practical and safe
+
+Return JSON format:
+{
+  "title": "Project Name",
+  "description": "Brief description",
+  "materials": ["material1", "material2"],
+  "steps": ["step1", "step2"],
+  "difficulty": "Easy|Medium|Hard",
+  "timeMinutes": 30
+}`
       },
       {
         role: "user",
-        content: `Create a craft project using the following recyclable materials: ${recyclableMaterials}.
-Return JSON with title, description, step-by-step instructions (steps), and a list of materials the user will need (materialsUser).`
+        content: `Create a craft project using: ${materials}`
       }
     ],
     response_format: {
@@ -33,11 +41,12 @@ Return JSON with title, description, step-by-step instructions (steps), and a li
           properties: {
             title: { type: "string" },
             description: { type: "string" },
+            materials: { type: "array", items: { type: "string" } },
             steps: { type: "array", items: { type: "string" } },
-            materialsUser: { type: "array", items: { type: "string" } }
+            difficulty: { type: "string", enum: ["Easy", "Medium", "Hard"] },
+            timeMinutes: { type: "number" }
           },
-          required: ["title", "description", "steps", "materialsUser"],
-          additionalProperties: false
+          required: ["title", "description", "materials", "steps", "difficulty", "timeMinutes"]
         }
       }
     }

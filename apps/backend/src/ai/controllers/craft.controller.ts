@@ -1,25 +1,24 @@
 import { Request, Response } from "express";
-import { generateCraftFromItems } from "../services/craft.service";
+import { generateCraftProject } from "../services/craft.service";
 
-export async function createCraftFromRecyclables(req: Request, res: Response) {
+export async function createCraft(req: Request, res: Response) {
   const { items } = req.body;
 
   if (!items || !Array.isArray(items)) {
-    return res.status(400).json({ error: "Materials array is required" }); // This triggers if body is missing or invalid
+    return res.status(400).json({ error: "items array is required" });
   }
 
-  const recyclableItems = items.filter(i => i.recyclable);
+  const recyclableItems = items.filter(item => item.recyclable);
 
   if (recyclableItems.length === 0) {
-    return res.status(200).json({ message: "No recyclable items to generate craft.", craft: null });
+    return res.status(400).json({ error: "No recyclable items provided" });
   }
 
-
   try {
-    const craftProject = await generateCraftFromItems(recyclableItems);
-    res.json({ craft: craftProject });
+    const craft = await generateCraftProject(recyclableItems);
+    res.json({ craft });
   } catch (error) {
-    console.error("Error generating craft:", error);
-    res.status(500).json({ error: "Failed to generate craft" });
+    console.error("Error creating craft:", error);
+    res.status(500).json({ error: "Failed to create craft project" });
   }
 }
