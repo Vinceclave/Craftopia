@@ -1,49 +1,48 @@
-// src/services/craft.service.ts
-import { groq } from "../config/groq";
-import { AICraftRequest, AICraftResponse } from "../types/craft.types";
+import { groq } from "../config/groq-cloud";
 
-export const generateCraftIdeas = async (data: AICraftRequest): Promise<AICraftResponse> => {
-  const prompt = `
-    Generate craft ideas using these materials: ${data.materials.join(", ")}.
-    Include title, description, type, and step-by-step instructions.
-    Follow this JSON format:
-    { "suggestions": [ { "title": "", "description": "", "steps": [], "materialsUsed": [], "type": "" } ] }
-  `;
+
+export interface CraftProject {
+  title: string;
+  description: string;
+  steps: string[];
+  materialsUser: string[];
+}
+
+export async function generateCraftFromItems(items: { name: string }[]): Promise<CraftProject> {
+  const recyclableMaterials = items.map(i => i.name).join(", ");
 
   const response = await groq.chat.completions.create({
     model: "moonshotai/kimi-k2-instruct",
     messages: [
-      { role: "system", content: "You are an AI craft generator." },
-      { role: "user", content: prompt }
+      {
+        role: "system",
+        content: "You are an AI that creates craft projects from recyclable materials."
+      },
+      {
+        role: "user",
+        content: `Create a craft project using the following recyclable materials: ${recyclableMaterials}.
+Return JSON with title, description, step-by-step instructions (steps), and a list of materials the user will need (materialsUser).`
+      }
     ],
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "craft_generation",
+        name: "craft_project",
         schema: {
           type: "object",
           properties: {
-            suggestions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  steps: { type: "array", items: { type: "string" } },
-                  materialsUsed: { type: "array", items: { type: "string" } },
-                  type: { type: "string" }
-                },
-                required: ["title", "description", "steps", "materialsUsed", "type"]
-              }
-            }
+            title: { type: "string" },
+            description: { type: "string" },
+            steps: { type: "array", items: { type: "string" } },
+            materialsUser: { type: "array", items: { type: "string" } }
           },
-          required: ["suggestions"],
+          required: ["title", "description", "steps", "materialsUser"],
           additionalProperties: false
         }
       }
     }
   });
 
-  return JSON.parse(response.choices[0].message.content || "{}") as AICraftResponse;
-};
+  const content = response.choices[0]?.message?.content ?? "{}";
+  return JSON.parse(content) as CraftProject;
+}

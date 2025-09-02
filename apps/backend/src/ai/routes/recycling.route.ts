@@ -1,7 +1,8 @@
-// src/routes/recycling.route.ts
 import { Router } from "express";
-import { detectRecyclingController } from "../controllers/recyling.controller";
+import { analyzeRecycling } from "../controllers/recycling.controller";
 
 const router = Router();
-router.post("/detect", detectRecyclingController);
+
+router.post("/analyze", analyzeRecycling);
+
 export default router;
