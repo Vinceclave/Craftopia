@@ -1,3 +1,4 @@
+// apps/mobile/src/components/auth/AuthForm.tsx
 import React from 'react';
 import { View } from 'react-native';
 import { TextInputField } from '../common/TextInputField';
@@ -11,17 +12,17 @@ export interface AuthField {
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
 }
 
-interface AuthFormProps {
+interface AuthFormProps<T extends Record<string, string> = Record<string, string>> {
   fields: AuthField[];
-  values: Record<string, string>;
-  errors?: Record<string, string>;
+  values: T;
+  errors?: Partial<Record<keyof T, string>>;
   onChange: (name: string, value: string) => void;
   onSubmit: () => void;
   submitTitle: string;
   loading?: boolean;
 }
 
-export const AuthForm: React.FC<AuthFormProps> = ({
+export const AuthForm = <T extends Record<string, string>>({
   fields,
   values,
   errors = {},
@@ -29,7 +30,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onSubmit,
   submitTitle,
   loading = false,
-}) => {
+}: AuthFormProps<T>) => {
   return (
     <View>
       {fields.map((field) => (
@@ -39,9 +40,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           placeholder={field.placeholder}
           secureTextEntry={field.secure}
           keyboardType={field.keyboardType}
-          value={values[field.name]}
+          value={values[field.name] || ''}
           onChangeText={(text) => onChange(field.name, text)}
-          error={errors[field.name]}
+          error={errors[field.name as keyof T]}
         />
       ))}
 

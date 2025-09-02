@@ -4,11 +4,16 @@ import { User } from '@prisma/client';
 import { signToken } from './jwt';
 import { create } from 'domain';
 
-export function generateVerificationToken () {
+export function generateVerificationTokenSecure() {
     const token = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex'); // hashed
-    return {token, tokenHash };
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    
+    return { 
+        token,      // Send this in email
+        tokenHash   // Store this in database
+    };
 }
+
 
 export const createRefreshToken =  async (userId: number, hoursValid = 24 * 7) => {
     const token = crypto.randomBytes(32).toString('hex');

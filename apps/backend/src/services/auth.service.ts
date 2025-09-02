@@ -2,11 +2,10 @@
 import { User } from '@prisma/client';
 import * as UserService from './user.service';
 import { hashPassword, comparePassword } from '@/utils/hash';
-import { signToken } from '@/utils/jwt';
 import { sendVerificationEmail } from '@/utils/email';
 import { prisma } from '@/config/prisma';
 import crypto from 'crypto';
-import { generateTokens, refreshJWT, generateVerificationToken } from '@/utils/token';
+import { generateTokens, refreshJWT, generateVerificationTokenSecure } from '@/utils/token';
 import { OAuth2Client } from 'google-auth-library';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -29,7 +28,7 @@ export const register = async (
   });
 
   if (password_hash) {
-    const { token, tokenHash } = generateVerificationToken();
+    const { token, tokenHash } = generateVerificationTokenSecure();
     await prisma.verificationToken.create({
       data: {
         user_id: newUser.id,
@@ -69,13 +68,28 @@ export const login = async (
 };
 
 export const verifyEmailToken = async (token: string) => {
+  console.log('🔍 Received token:', token);
+  
+  // Hash the received token to match what's stored in database
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  console.log('🔍 Looking for hash:', tokenHash);
+  
   const record = await prisma.verificationToken.findUnique({
-    where: { token_hash: token },
+    where: { token_hash: tokenHash }, // Use the hashed version
   });
 
-  if (!record) throw new Error('Token invalid or expired');
-  if (record.expires_at < new Date()) throw new Error('Token expired');
+  if (!record) {
+    console.log('🔍 Token not found in database');
+    throw new Error('Token invalid or expired');
+  }
+  
+  if (record.expires_at < new Date()) {
+    console.log('🔍 Token is expired');
+    throw new Error('Token expired');
+  }
 
+  console.log('🔍 Token is valid, verifying user...');
+  
   await prisma.user.update({
     where: { id: record.user_id },
     data: { is_email_verified: true },
@@ -85,6 +99,7 @@ export const verifyEmailToken = async (token: string) => {
     where: { id: record.id },
   });
 
+  console.log('🔍 Email verified successfully!');
   return { message: 'Email verified successfully!' };
 };
 
