@@ -1,4 +1,3 @@
-// apps/mobile/src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, RegisterRequest, LoginRequest } from '../config/api';
 import { authService } from '../services/auth.service';
@@ -20,10 +19,9 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Only for initial auth check
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check if user is already authenticated on app start
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -33,7 +31,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = await authService.getToken();
       if (token) {
         setIsAuthenticated(true);
-        // In production, you might want to validate the token with your backend
+        console.log('Auth check: Token found, user is authenticated');
+      } else {
+        console.log('Auth check: No token found');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -43,32 +43,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const register = async (userData: RegisterRequest) => {
-    setIsLoading(true);
     try {
+      console.log('Starting registration with data:', userData);
       await authService.register(userData);
-      // Registration successful - user needs to verify email
+      console.log('Registration successful, awaiting email verification');
     } catch (error: any) {
+      console.error('Registration error:', error);
       throw new Error(error.message || 'Registration failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const login = async (credentials: LoginRequest) => {
-    setIsLoading(true);
     try {
       const response = await authService.login(credentials);
-      
-      // Save tokens
       await authService.saveTokens(response.token, response.refreshToken);
-      
-      // Update state
       setUser(response.user);
       setIsAuthenticated(true);
+      console.log('Login successful, user:', response.user);
     } catch (error: any) {
+      console.error('Login error:', error);
       throw new Error(error.message || 'Login failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -77,6 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await authService.clearTokens();
       setUser(null);
       setIsAuthenticated(false);
+      console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
     }

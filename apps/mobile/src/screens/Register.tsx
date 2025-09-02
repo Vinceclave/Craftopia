@@ -1,4 +1,3 @@
-// apps/mobile/src/screens/Register.tsx
 import React, { useState } from 'react';
 import { SafeAreaView, Text, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -27,7 +26,7 @@ export const RegisterScreen = () => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -35,7 +34,12 @@ export const RegisterScreen = () => {
     { name: 'username', label: 'Username', placeholder: 'Enter your username' },
     { name: 'email', label: 'Email', placeholder: 'Enter your email', keyboardType: 'email-address' },
     { name: 'password', label: 'Password', placeholder: 'Enter your password', secure: true },
-    { name: 'confirmPassword', label: 'Confirm Password', placeholder: 'Confirm your password', secure: true },
+    {
+      name: 'confirmPassword',
+      label: 'Confirm Password',
+      placeholder: 'Confirm your password',
+      secure: true,
+    },
   ];
 
   const validateForm = (): boolean => {
@@ -51,15 +55,16 @@ export const RegisterScreen = () => {
     else if (values.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
     if (!values.confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm your password';
-    else if (values.password !== values.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    else if (values.password !== values.confirmPassword)
+      newErrors.confirmPassword = 'Passwords do not match';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleChange = (name: string, value: string) => {
-    setValues(prev => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormErrors]) setErrors(prev => ({ ...prev, [name]: undefined }));
+    setValues((prev) => ({ ...prev, [name]: value }));
+    if (errors[name as keyof FormErrors]) setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
   const handleSubmit = async () => {
@@ -67,11 +72,16 @@ export const RegisterScreen = () => {
 
     try {
       const { confirmPassword, ...registerData } = values;
-      await register(registerData); // Call your backend
-
-      // Navigate directly to VerifyEmail screen
-      navigation.navigate('VerifyEmail', { email: values.email });
+      console.log('RegisterScreen: Calling register with data:', registerData);
+      await register(registerData);
+      console.log('RegisterScreen: Resetting navigation to VerifyEmail with email:', values.email);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'VerifyEmail', params: { email: values.email } }],
+      });
+      console.log('RegisterScreen: Navigation reset complete');
     } catch (error: any) {
+      console.error('RegisterScreen: Registration failed:', error);
       Alert.alert('Registration Failed', error.message || 'Something went wrong');
     }
   };
