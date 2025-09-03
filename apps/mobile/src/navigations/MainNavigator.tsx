@@ -1,15 +1,10 @@
-import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { HomeScreen } from '~/screens/Home';
+import { NavigationContainer } from "@react-navigation/native";
+import TabNavigator from "./TabNavigator";
 
-export type MainStackParamList = {
-  Home: undefined;
-};
-
-const Stack = createNativeStackNavigator<MainStackParamList>();
-
-export const MainNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Home" component={HomeScreen} />
-  </Stack.Navigator>
-);
+export default function MainNavigator() {
+  return (
+    <NavigationContainer>
+      <TabNavigator />
+    </NavigationContainer>
+  );
+}
