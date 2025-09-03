@@ -8,7 +8,9 @@ const Stack = createNativeStackNavigator<EcoQuestStackParamList>();
 
 export function EcoQuestStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="EcoQuest" component={EcoQuestScreen} />
       {/* <Stack.Screen name="QuestDetails" component={QuestDetailsScreen} /> */}
     </Stack.Navigator>

@@ -9,7 +9,9 @@ const Stack = createNativeStackNavigator<CraftStackParamList>();
 
 export function CraftStack() {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="Craft" component={CraftScreen} />
       {/* <Stack.Screen name="CraftDetails" component={CraftDetailsScreen} />
       <Stack.Screen name="CraftEditor" component={CraftEditorScreen} /> */}

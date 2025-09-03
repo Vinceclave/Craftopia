@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
-import { MainNavigator } from './MainNavigator';
+import MainNavigator from './MainNavigator';
 
 export const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
