@@ -1,5 +1,7 @@
+
+// apps/mobile/src/components/common/Button.tsx
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, TouchableOpacityProps, ViewStyle } from 'react-native';
 
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -15,27 +17,83 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   ...props
 }) => {
-  let bgColor = 'bg-blue-600';
-  let textColor = 'text-white';
-  let border = '';
+  const getButtonStyles = (): ViewStyle => {
+    const baseStyles: ViewStyle = {
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      marginBottom: 12,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: fullWidth ? '100%' : undefined,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    };
 
-  if (variant === 'secondary') bgColor = 'bg-green-600';
-  if (variant === 'outline') {
-    bgColor = 'bg-transparent';
-    textColor = 'text-blue-600';
-    border = 'border border-blue-600';
-  }
+    switch (variant) {
+      case 'primary':
+        return {
+          ...baseStyles,
+          backgroundColor: '#FF6700',
+          shadowColor: '#FF6700',
+        };
+      case 'secondary':
+        return {
+          ...baseStyles,
+          backgroundColor: '#00A896',
+          shadowColor: '#00A896',
+        };
+      case 'outline':
+        return {
+          ...baseStyles,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderColor: '#004E98',
+          shadowOpacity: 0.08,
+          shadowColor: '#000',
+        };
+      default:
+        return baseStyles;
+    }
+  };
+
+  const getTextColor = () => {
+    switch (variant) {
+      case 'primary':
+      case 'secondary':
+        return '#FFFFFF';
+      case 'outline':
+        return '#004E98';
+      default:
+        return '#FFFFFF';
+    }
+  };
 
   return (
     <TouchableOpacity
-      className={`${bgColor} ${border} ${fullWidth ? 'w-full' : ''} rounded-lg py-3 mb-4 flex-row justify-center items-center`}
-      disabled={loading}
+      style={[
+        getButtonStyles(),
+        { opacity: loading || props.disabled ? 0.7 : 1 }
+      ]}
+      disabled={loading || props.disabled}
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color="#FFFFFF" size="small" />
       ) : (
-        <Text className={`${textColor} text-center font-semibold`}>{title}</Text>
+        <Text 
+          style={{ 
+            color: getTextColor(),
+            fontSize: 16,
+            fontWeight: '700',
+            textAlign: 'center'
+          }}
+        >
+          {title}
+        </Text>
       )}
     </TouchableOpacity>
   );

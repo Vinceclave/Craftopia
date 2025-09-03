@@ -45,7 +45,7 @@ export const AuthForm = <T extends Record<string, string>>({
           error={errors[field.name as keyof T]}
         />
       ))}
-
+      
       <Button title={submitTitle} onPress={onSubmit} loading={loading} />
     </View>
   );

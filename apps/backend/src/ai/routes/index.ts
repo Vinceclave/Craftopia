@@ -1,17 +1,22 @@
+// apps/backend/src/ai/routes/index.ts - Updated with authentication
 import { Router } from "express";
 import { analyzeImage } from "../controllers/recycling.controller";
 import { createCraft } from "../controllers/craft.controller";
-import { analyzeAndCraft } from "../controllers/analyze.controller";
+import { analyzeAndCraft, testImageDetection } from "../controllers/analyze.controller";
+import { authenticateToken } from "@/middlewares/auth.middleware";
+import { validateImageUpload } from "@/middlewares/validation.middleware";
 
 const router = Router();
 
-// Analyze image for recyclable materials
-router.post("/analyze", analyzeImage);
+// Public routes (no authentication required)
+router.post("/test-detection", validateImageUpload, testImageDetection);
 
-// Generate craft from materials
-router.post("/craft", createCraft);
+// Protected routes (authentication required)
+router.post("/analyze", authenticateToken, validateImageUpload, analyzeImage);
+router.post("/craft", authenticateToken, createCraft);
+router.post("/analyze-and-craft", authenticateToken, validateImageUpload, analyzeAndCraft);
 
-// Analyze image and generate craft in one step
-router.post("/analyze-and-craft", analyzeAndCraft);
+// Optional auth routes (works with or without authentication)
+// router.post("/public-analyze", optionalAuth, validateImageUpload, analyzeImage);
 
 export default router;

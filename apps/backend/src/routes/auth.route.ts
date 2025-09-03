@@ -1,31 +1,17 @@
-// apps/backend/src/routes/auth.route.ts - Updated with mobile Google auth
+// apps/backend/src/routes/auth.route.ts - Updated with validation middleware
 import { Router } from "express";
-import { register, login, verifyEmail, googleMobileAuth } from "@/controllers/auth.controller";
-import passport from '@/config/passport';
+import { register, login, verifyEmail, refreshToken } from "@/controllers/auth.controller";
+import { 
+  validateRegistration, 
+  validateLogin, 
+  validateRefreshToken 
+} from "@/middlewares/validation.middleware";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", validateRegistration, register);
+router.post("/login", validateLogin, login);
 router.get("/verify-email", verifyEmail);
+router.post("/refresh-token", validateRefreshToken, refreshToken);
 
-// Mobile Google authentication endpoint
-router.post("/google/mobile", googleMobileAuth);
-
-// Web Google OAuth (existing)
-router.get(
-  '/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-router.get(
-  '/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
-  (req, res) => {
-    // @ts-ignore
-    const { token, user } = req.user;
-    res.json({ token, user });
-  }
-);
-
-export default router;  
+export default router;

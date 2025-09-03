@@ -28,15 +28,6 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-const generateTailwindContent = (title: string, message: string, bgGradient: string, textColor: string) => `
-  <div class="flex items-center justify-center min-h-screen ${bgGradient}">
-    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
-      <h1 class="text-4xl font-extrabold ${textColor} mb-4"2>${title}</h1>
-      <p class="text-gray-700 text-lg">${message}</p>
-    </div>
-  </div>
-`;
-
 export const verifyEmail = async (req: Request, res: Response) => {
   const token = req.query.token;
 
@@ -53,19 +44,19 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 };
 
-// New mobile Google authentication handler
-export const googleMobileAuth = async (req: Request, res: Response) => {
+// New refresh token endpoint
+export const refreshToken = async (req: Request, res: Response) => {
   try {
-    const { token } = req.body;
+    const { refreshToken } = req.body;
     
-    if (!token) {
-      return res.status(400).json({ error: 'Google ID token is required' });
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
     }
 
-    const result = await authService.authenticateWithGoogleToken(token);
+    const result = await authService.refreshAccessToken(refreshToken);
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Google mobile auth error:', error);
-    return res.status(400).json({ error: error.message || 'Google authentication failed' });
+    console.error('Refresh token error:', error);
+    return res.status(401).json({ error: error.message || 'Invalid refresh token' });
   }
 };

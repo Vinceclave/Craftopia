@@ -1,5 +1,6 @@
+// apps/mobile/src/screens/Register.tsx
 import React, { useState } from 'react';
-import { SafeAreaView, Text, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView, Text, TouchableOpacity, Alert, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigations/AuthNavigator';
@@ -87,28 +88,97 @@ export const RegisterScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold text-center mb-6">Create Account</Text>
+    <SafeAreaView className="flex-1 justify-center" style={{ backgroundColor: '#F0F0F0' }}>
+      {/* Floating Background Shapes */}
+      <View className="absolute inset-0 overflow-hidden">
+        <View 
+          className="absolute -top-32 -right-32 w-64 h-64 rounded-full opacity-4" 
+          style={{ backgroundColor: '#7C9885' }} 
+        />
+        <View 
+          className="absolute top-96 -left-24 w-48 h-48 rounded-full opacity-3" 
+          style={{ backgroundColor: '#FF6700' }} 
+        />
+      </View>
 
-      <AuthForm
-        fields={fields}
-        values={values}
-        errors={errors}
-        onChange={handleChange}
-        onSubmit={handleSubmit}
-        submitTitle="Register"
-        loading={isLoading}
-      />
+      <View className="px-8 relative z-10">
+        {/* Header */}
+        <View className="items-center mb-12">
+          <View className="flex-row items-center mb-4">
+            <View 
+              className="w-3 h-3 rounded-full mr-4"
+              style={{ backgroundColor: '#7C9885' }}
+            />
+            <Text className="text-lg font-semibold tracking-wider uppercase" style={{ color: '#333333' }}>
+              Join EcoCraft
+            </Text>
+          </View>
+          <Text className="text-5xl font-black text-center leading-tight" style={{ color: '#004E98' }}>
+            Create Account
+          </Text>
+          <Text className="text-lg font-medium text-center mt-4" style={{ color: '#333333' }}>
+            Start your sustainable crafting journey
+          </Text>
+        </View>
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Login')}
-        className="mt-4"
-        disabled={isLoading}
-      >
-        <Text className="text-gray-600 text-center">
-          Already have an account? <Text className="text-blue-600 font-semibold">Login</Text>
-        </Text>
-      </TouchableOpacity>
+        {/* Auth Form */}
+        <View className="mb-8">
+          <AuthForm
+            fields={fields}
+            values={values}
+            errors={errors}
+            onChange={handleChange}
+            onSubmit={handleSubmit}
+            submitTitle="Create Account"
+            loading={isLoading}
+          />
+        </View>
+
+        {/* Login Link */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Login')}
+          className="mb-8"
+          disabled={isLoading}
+        >
+          <Text className="text-center text-base font-medium" style={{ color: '#333333' }}>
+            Already have an account?{' '}
+            <Text className="font-bold" style={{ color: '#00A896' }}>
+              Sign In
+            </Text>
+          </Text>
+        </TouchableOpacity>
+
+        {/* Terms & Privacy Notice */}
+        <View 
+          className="p-6 rounded-2xl relative overflow-hidden"
+          style={{ 
+            backgroundColor: '#7C988515',
+            borderWidth: 1,
+            borderColor: '#7C988525'
+          }}
+        >
+          <View 
+            className="absolute top-0 left-0 right-0 h-1"
+            style={{ backgroundColor: '#7C9885' }}
+          />
+          <View className="flex-row items-start">
+            <View 
+              className="w-10 h-10 rounded-xl items-center justify-center mr-4"
+              style={{ backgroundColor: '#7C988520' }}
+            >
+              <Text className="text-lg">🌱</Text>
+            </View>
+            <View className="flex-1">
+              <Text className="font-bold text-base mb-2" style={{ color: '#004E98' }}>
+                Welcome to our eco-community!
+              </Text>
+              <Text className="font-medium leading-relaxed" style={{ color: '#333333' }}>
+                By creating an account, you agree to our Terms of Service and Privacy Policy. Let's build a sustainable future together!
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </SafeAreaView>
   );
 };

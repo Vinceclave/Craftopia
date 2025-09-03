@@ -89,34 +89,60 @@ export const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold text-center mb-6">Welcome Back</Text>
+    <SafeAreaView className="flex-1 bg-white">
+      {/* Subtle Background Elements */}
+      <View className="absolute inset-0 overflow-hidden">
+        <View className="absolute w-80 h-80 rounded-full bg-gray-50 opacity-60 -top-40 -right-40" />
+        <View className="absolute w-60 h-60 rounded-full bg-blue-50 opacity-40 -bottom-30 -left-30" />
+      </View>
 
-      <AuthForm 
-        fields={fields} 
-        values={values} 
-        errors={errors}
-        onChange={handleChange} 
-        onSubmit={handleSubmit} 
-        submitTitle="Login"
-        loading={isLoading}
-      />
+      <View className="flex-1 justify-center px-6 relative z-10">
+        {/* Minimal Header */}
+        <View className="mb-12">
+          <Text className="text-2xl font-semibold text-gray-900 mb-2">
+            Welcome back
+          </Text>
+          <Text className="text-gray-600">
+            Sign in to your account
+          </Text>
+        </View>
 
-      <TouchableOpacity 
-        onPress={() => navigation.navigate('Register')} 
-        className="mt-4"
-        disabled={isLoading}
-      >
-        <Text className="text-gray-600 text-center">
-          Don't have an account? <Text className="text-blue-600 font-semibold">Sign Up</Text>
-        </Text>
-      </TouchableOpacity>
+        {/* Auth Form */}
+        <View className="mb-8">
+          <AuthForm 
+            fields={fields} 
+            values={values} 
+            errors={errors}
+            onChange={handleChange} 
+            onSubmit={handleSubmit} 
+            submitTitle="Sign in"
+            loading={isLoading}
+          />
+        </View>
 
-      {/* Email verification help */}
-      <View className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <Text className="text-blue-800 text-sm text-center">
-          💡 Can't log in? Make sure you've verified your email address first.
-        </Text>
+        {/* Sign Up Link */}
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Register')} 
+          className="mb-8"
+          disabled={isLoading}
+        >
+          <Text className="text-center text-gray-600">
+            Don't have an account?{' '}
+            <Text className="font-medium text-blue-600">
+              Sign up
+            </Text>
+          </Text>
+        </TouchableOpacity>
+
+        {/* Clean Help Section */}
+        <View className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-600">
+          <Text className="font-medium text-gray-900 mb-1">
+            Need help?
+          </Text>
+          <Text className="text-sm text-gray-600 leading-relaxed">
+            Make sure you've verified your email address. Check your inbox for the verification link.
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
