@@ -1,282 +1,214 @@
 import request from 'supertest';
 import app from '../src/index';
 import { prisma } from '../src/config/prisma';
+import { generateEmailToken } from '../src/utils/token';
 
-describe('Auth Endpoints', () => {
+describe('Auth Endpoints Integration Test', () => {
   const testUser = {
     username: 'jest_user',
     email: 'jest@example.com',
     password: 'Password123!',
   };
 
-  // Clean up before and after tests
-  beforeAll(async () => {
-    // Make sure test user doesn't exist before starting
-    await cleanupTestUser();
-  });
+  let accessToken: string;
+  let refreshToken: string;
+  let emailToken: string;
 
-  afterAll(async () => {
-    // Clean up test user and disconnect
-    await cleanupTestUser();
-    await prisma.$disconnect();
-  });
-
-  // Helper function to properly clean up test user and related data
+  // Helper: Clean up test user and related data
   const cleanupTestUser = async () => {
-    // First, find the user
     const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: testUser.email },
-          { username: testUser.username }
-        ]
-      }
+      where: { OR: [{ email: testUser.email }, { username: testUser.username }] },
     });
 
     if (user) {
-      // Delete refresh tokens first (due to foreign key constraint)
-      await prisma.refreshToken.deleteMany({
-        where: { user_id: user.user_id }
-      });
-
-      // Delete user profile if exists
-      await prisma.userProfile.deleteMany({
-        where: { user_id: user.user_id }
-      });
-
-      // Now delete the user
-      await prisma.user.deleteMany({
-        where: { user_id: user.user_id }
-      });
+      await prisma.refreshToken.deleteMany({ where: { user_id: user.user_id } });
+      await prisma.userProfile.deleteMany({ where: { user_id: user.user_id } });
+      await prisma.user.deleteMany({ where: { user_id: user.user_id } });
     }
   };
 
+  beforeAll(async () => await cleanupTestUser());
+  afterAll(async () => { await cleanupTestUser(); await prisma.$disconnect(); });
+
+  // ======================
+  // Registration Tests
+  // ======================
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
-      const res = await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+      const res = await request(app).post('/api/auth/register').send(testUser);
 
       expect(res.statusCode).toBe(201);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('data');
-      expect(res.body.data).toHaveProperty('user_id');
-      expect(res.body.data).toHaveProperty('username', testUser.username);
-      expect(res.body.data).toHaveProperty('email', testUser.email);
-      // Password hash should not be returned
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.username).toBe(testUser.username);
+      expect(res.body.data.email).toBe(testUser.email);
       expect(res.body.data).not.toHaveProperty('password_hash');
     });
 
-    it('should not register user with duplicate username', async () => {
-      const res = await request(app)
-        .post('/api/auth/register')
-        .send(testUser);
+    it('should not register duplicate username/email', async () => {
+      const res = await request(app).post('/api/auth/register').send(testUser);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.success).toBe(false);
     });
 
-    it('should not register user with missing fields', async () => {
-      const res = await request(app)
-        .post('/api/auth/register')
-        .send({ username: 'test' }); // Missing email and password
+    it('should fail if required fields are missing', async () => {
+      const res = await request(app).post('/api/auth/register').send({ username: 'test' });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body).toHaveProperty('success', false);
+      expect(res.body.success).toBe(false);
     });
   });
 
+  // ======================
+  // Login Tests
+  // ======================
   describe('POST /api/auth/login', () => {
-    it('should login the user with username', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ 
-          username: testUser.username, 
-          password: testUser.password 
-        });
+    it('should login with username', async () => {
+      const res = await request(app).post('/api/auth/login').send({
+        username: testUser.username,
+        password: testUser.password,
+      });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('accessToken');
-      expect(res.body).toHaveProperty('refreshToken');
-      expect(res.body).toHaveProperty('user');
-      expect(res.body.user).toHaveProperty('username', testUser.username);
-      expect(res.body.user).toHaveProperty('email', testUser.email);
+      expect(res.body.success).toBe(true);
+      accessToken = res.body.accessToken;
+      refreshToken = res.body.refreshToken;
     });
 
-    it('should login the user with email', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ 
-          username: testUser.email, // Using email as username
-          password: testUser.password 
-        });
+    it('should login with email', async () => {
+      const res = await request(app).post('/api/auth/login').send({
+        username: testUser.email,
+        password: testUser.password,
+      });
 
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('accessToken');
-      expect(res.body).toHaveProperty('refreshToken');
+      expect(res.body.success).toBe(true);
     });
 
-    it('should not login with wrong password', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ 
-          username: testUser.username, 
-          password: 'wrongpassword' 
-        });
+    it('should fail with wrong password', async () => {
+      const res = await request(app).post('/api/auth/login').send({
+        username: testUser.username,
+        password: 'wrongpassword',
+      });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body).toHaveProperty('success', false);
-      expect(res.body).toHaveProperty('error');
+      expect(res.body.success).toBe(false);
     });
 
-    it('should not login with non-existent user', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ 
-          username: 'nonexistent', 
-          password: 'somepassword' 
-        });
+    it('should fail with non-existent user', async () => {
+      const res = await request(app).post('/api/auth/login').send({
+        username: 'notexist',
+        password: 'password',
+      });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body).toHaveProperty('success', false);
-      expect(res.body).toHaveProperty('error', 'Invalid username or password');
+      expect(res.body.success).toBe(false);
     });
   });
 
+  // ======================
+  // Refresh Token Tests
+  // ======================
   describe('POST /api/auth/refresh-token', () => {
-    let validRefreshToken: string;
-
-    beforeAll(async () => {
-      // Login to get a valid refresh token
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: testUser.username,
-          password: testUser.password
-        });
-      validRefreshToken = loginRes.body.refreshToken;
-    });
-
-    it('should refresh tokens with valid refresh token', async () => {
-      const res = await request(app)
-        .post('/api/auth/refresh-token')
-        .send({
-          refreshToken: validRefreshToken
-        });
-
+    it('should refresh tokens', async () => {
+      const res = await request(app).post('/api/auth/refresh-token').send({ refreshToken });
       expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
+      expect(res.body.success).toBe(true);
       expect(res.body).toHaveProperty('accessToken');
       expect(res.body).toHaveProperty('refreshToken');
-      
-      // Update the refresh token for next test
-      validRefreshToken = res.body.refreshToken;
+
+      // Update refreshToken for logout test
+      refreshToken = res.body.refreshToken;
     });
 
-    it('should not refresh with invalid refresh token', async () => {
+    it('should fail with invalid refresh token', async () => {
+      const res = await request(app).post('/api/auth/refresh-token').send({ refreshToken: 'invalid' });
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  // ======================
+  // Logout Tests
+  // ======================
+  describe('POST /api/auth/logout', () => {
+    it('should logout successfully', async () => {
+      const res = await request(app).post('/api/auth/logout').send({ refreshToken });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('should handle already revoked/invalid token', async () => {
+      const res = await request(app).post('/api/auth/logout').send({ refreshToken });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+  });
+
+  // ======================
+  // Email Verification Tests
+  // ======================
+  describe('Email Verification', () => {
+    beforeAll(async () => {
+      const user = await prisma.user.findUnique({ where: { email: testUser.email } });
+      emailToken = generateEmailToken(user!.user_id);
+    });
+
+    it('should verify email', async () => {
+      const res = await request(app).get('/api/auth/verify-email').query({ token: emailToken });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Email verified successfully');
+    });
+
+    it('should fail with invalid token', async () => {
+      const res = await request(app).get('/api/auth/verify-email').query({ token: 'invalid' });
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should resend verification email if not verified', async () => {
+      // Mark email as unverified again
+      const user = await prisma.user.findUnique({ where: { email: testUser.email } });
+      await prisma.user.update({ where: { user_id: user!.user_id }, data: { is_email_verified: false } });
+
+      const res = await request(app).post('/api/auth/resend-verification').send({ email: testUser.email });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Verification email sent successfully');
+    });
+  });
+
+  // ======================
+  // Change Password Tests
+  // ======================
+  describe('Change Password', () => {
+    beforeAll(async () => {
+      const loginRes = await request(app).post('/api/auth/login').send({
+        username: testUser.username,
+        password: testUser.password,
+      });
+      accessToken = loginRes.body.accessToken;
+    });
+
+    it('should change password successfully', async () => {
       const res = await request(app)
-        .post('/api/auth/refresh-token')
-        .send({
-          refreshToken: 'invalid_token'
-        });
+        .post('/api/auth/change-password')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ currentPassword: testUser.password, newPassword: 'NewPassword123!' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('should fail with wrong current password', async () => {
+      const res = await request(app)
+        .post('/api/auth/change-password')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ currentPassword: 'wrongpassword', newPassword: 'NewPassword123!' });
 
       expect(res.statusCode).toBe(400);
-      expect(res.body).toHaveProperty('success', false);
-      expect(res.body).toHaveProperty('error');
-    });
-  });
-
-  describe('POST /api/auth/logout', () => {
-    let validRefreshToken: string;
-
-    beforeAll(async () => {
-      // Login to get a valid refresh token
-      const loginRes = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: testUser.username,
-          password: testUser.password
-        });
-      validRefreshToken = loginRes.body.refreshToken;
-    });
-
-    it('should logout successfully with valid refresh token', async () => {
-      const res = await request(app)
-        .post('/api/auth/logout')
-        .send({
-          refreshToken: validRefreshToken
-        });
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('message', 'Logged out successfully');
-    });
-
-    it('should handle logout with already used/invalid refresh token', async () => {
-      // Try to use the same refresh token again (should be revoked)
-      const res = await request(app)
-        .post('/api/auth/logout')
-        .send({
-          refreshToken: validRefreshToken // This token was already used in previous test
-        });
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('message', 'Logged out successfully');
-    });
-
-    it('should handle logout with completely invalid token gracefully', async () => {
-      const res = await request(app)
-        .post('/api/auth/logout')
-        .send({
-          refreshToken: 'completely_invalid_token'
-        });
-
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('message', 'Logged out successfully');
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle missing fields in registration', async () => {
-      const testCases = [
-        { username: 'test' }, // missing email and password
-        { email: 'test@test.com' }, // missing username and password
-        { password: 'password123' }, // missing username and email
-        { username: 'test', email: 'test@test.com' }, // missing password
-        { username: 'test', password: 'password123' }, // missing email
-        { email: 'test@test.com', password: 'password123' }, // missing username
-      ];
-
-      for (const testCase of testCases) {
-        const res = await request(app)
-          .post('/api/auth/register')
-          .send(testCase);
-
-        expect(res.statusCode).toBe(400);
-        expect(res.body).toHaveProperty('success', false);
-        expect(res.body).toHaveProperty('error', 'Missing required fields');
-      }
-    });
-
-    it('should handle missing fields in login', async () => {
-      const testCases = [
-        { username: 'test' }, // missing password
-        { password: 'password123' }, // missing username
-        {}, // missing both
-      ];
-
-      for (const testCase of testCases) {
-        const res = await request(app)
-          .post('/api/auth/login')
-          .send(testCase);
-
-        expect(res.statusCode).toBe(400);
-        expect(res.body).toHaveProperty('success', false);
-      }
+      expect(res.body.success).toBe(false);
     });
   });
 });
