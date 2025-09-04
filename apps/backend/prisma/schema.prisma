@@ -94,6 +94,7 @@ model RefreshToken {
 
   user User @relation(fields: [user_id], references: [user_id])
 }
+  
 
 // ==========================
 // MODULE 2: AI GENERATOR

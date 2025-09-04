@@ -1,5 +1,4 @@
 import { prisma } from "../config/prisma";
-
 import { hashToken, compareToken } from "../utils/hash";
 import { addDays } from 'date-fns';
 
@@ -16,17 +15,37 @@ export const createRefreshToken = async (userId: number, rawToken: string) => {
     });
 };
 
-
 export const verifyRefreshToken = async (rawToken: string) => {
-    const tokens = await prisma.refreshToken.findMany();
+    if (!rawToken) return null;
+    
+    const tokens = await prisma.refreshToken.findMany({
+        where: {
+            expires_at: {
+                gt: new Date() // Only get non-expired tokens
+            }
+        }
+    });
 
     for (const t of tokens) {
         const match = await compareToken(rawToken, t.token_hash);
-        if (match && t.expires_at > new Date()) return t;
+        if (match) return t;
     }
     return null;
 }
 
-export const revokeRefreshToken = async (tokenId: number) => {
-    await prisma.refreshToken.delete({ where: { token_id: tokenId }});
+export const revokeRefreshToken = async (tokenIdOrRawToken: number | string) => {
+    if (typeof tokenIdOrRawToken === 'number') {
+        // Revoke by token ID
+        await prisma.refreshToken.delete({ 
+            where: { token_id: tokenIdOrRawToken }
+        });
+    } else {
+        // Revoke by raw token (for logout)
+        const storedToken = await verifyRefreshToken(tokenIdOrRawToken);
+        if (storedToken) {
+            await prisma.refreshToken.delete({ 
+                where: { token_id: storedToken.token_id }
+            });
+        }
+    }
 }

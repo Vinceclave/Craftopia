@@ -30,3 +30,14 @@ export const findUserByUsernameOrEmail = async (
         },
     });
 };
+
+
+export const markedUserAsVerified = async (
+    userId: number
+) => {
+    const user = await prisma.user.update({
+        where: { user_id: userId},
+        data: { is_email_verified: true }, 
+    })
+
+}
