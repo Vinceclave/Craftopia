@@ -1,62 +1,80 @@
-// apps/mobile/src/components/common/TextInputField.tsx
-import React from 'react';
-import { TextInput, TextInputProps, View, Text, ViewStyle, TextStyle } from 'react-native';
+// TextInputField.tsx
+import React, { useState, forwardRef } from 'react';
+import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 
-interface TextInputFieldProps extends TextInputProps {
+interface InputProps extends TextInputProps {
   label?: string;
+  secure?: boolean;
   error?: string;
+  nextInputRef?: React.RefObject<TextInput | null>;
+  isLastInput?: boolean;
+  onSubmit?: () => void;
 }
 
-export const TextInputField: React.FC<TextInputFieldProps> = ({
-  label,
-  error,
-  style,
-  ...props
-}) => {
-  const containerStyle: ViewStyle = {
-    marginBottom: 16,
-  };
+const Input = forwardRef<TextInput, InputProps>(
+  ({ label, secure, error, nextInputRef, isLastInput, onSubmit, ...props }, ref) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
 
-  const labelStyle: TextStyle = {
-    color: '#004E98',
-    marginBottom: 6,
-    fontSize: 14,
-    fontWeight: '600',
-  };
+    return (
+      <View className="mb-4">
+        {label && (
+          <Text className="text-craftopia-text-secondary text-sm mb-2 font-medium">
+            {label}
+          </Text>
+        )}
 
-  const inputStyle: ViewStyle = {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: error ? '#FF6700' : 'rgba(0, 0, 0, 0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#004E98',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  };
+        <View
+          className={`bg-craftopia-surface rounded-xl px-4 py-4 flex-row items-center border-2 ${
+            error 
+              ? 'border-craftopia-energy' 
+              : isFocused 
+                ? 'border-craftopia-digital' 
+                : 'border-craftopia-accent'
+          } shadow-sm`}
+        >
+          <TextInput
+            ref={ref}
+            className="flex-1 text-craftopia-text-primary text-base"
+            placeholderTextColor="#9CA3AF"
+            secureTextEntry={secure && !showPassword}
+            returnKeyType={isLastInput ? 'done' : 'next'}
+            blurOnSubmit={isLastInput}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onSubmitEditing={() => {
+              if (isLastInput && onSubmit) {
+                onSubmit();
+              } else if (nextInputRef?.current) {
+                nextInputRef.current.focus();
+              }
+            }}
+            {...props}
+          />
 
-  const errorStyle: TextStyle = {
-    color: '#FF6700',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  };
+          {secure && (
+            <TouchableOpacity 
+              onPress={() => setShowPassword(!showPassword)}
+              className="ml-2 p-1"
+            >
+              {showPassword ? (
+                <EyeOff size={22} color="#6B7280" />
+              ) : (
+                <Eye size={22} color="#6B7280" />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
 
-  return (
-    <View style={containerStyle}>
-      {label && <Text style={labelStyle}>{label}</Text>}
-      <TextInput
-        style={[inputStyle, style]}
-        placeholderTextColor="#333333"
-        {...props}
-      />
-      {error && <Text style={errorStyle}>{error}</Text>}
-    </View>
-  );
-};
+        {error && (
+          <Text className="text-craftopia-energy text-sm mt-2">
+            {error}
+          </Text>
+        )}
+      </View>
+    );
+  }
+);
+
+export default Input;

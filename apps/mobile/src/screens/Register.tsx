@@ -1,184 +1,160 @@
-// apps/mobile/src/screens/Register.tsx
-import React, { useState } from 'react';
-import { SafeAreaView, Text, TouchableOpacity, Alert, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigations/AuthNavigator';
-import { AuthForm, AuthField } from '../components/auth/AuthForm';
-import { useAuth } from '../context/AuthContext';
+// RegisterScreen.tsx
+import React, { useState, useRef } from 'react';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AuthLayout from '~/components/auth/AuthLayout';
+import Button from '~/components/common/Button';
+import Input from '~/components/common/TextInputField';
 
-type RegisterScreenProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
-
-interface FormValues {
-  [key: string]: string;
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
-
-type FormErrors = Partial<Record<keyof FormValues, string>>;
-
-export const RegisterScreen = () => {
-  const navigation = useNavigation<RegisterScreenProp>();
-  const { register, isLoading } = useAuth();
-
-  const [values, setValues] = useState<FormValues>({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+const RegisterScreen: React.FC = () => {
+  const [username, setUsername] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errors, setErrors] = useState({ 
+    username: '', 
+    email: '', 
+    password: '', 
+    confirmPassword: '' 
   });
-  const [errors, setErrors] = useState<FormErrors>({});
 
-  const fields: AuthField[] = [
-    { name: 'username', label: 'Username', placeholder: 'Enter your username' },
-    { name: 'email', label: 'Email', placeholder: 'Enter your email', keyboardType: 'email-address' },
-    { name: 'password', label: 'Password', placeholder: 'Enter your password', secure: true },
-    {
-      name: 'confirmPassword',
-      label: 'Confirm Password',
-      placeholder: 'Confirm your password',
-      secure: true,
-    },
-  ];
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
+  const validateInputs = (): boolean => {
+    const newErrors = { username: '', email: '', password: '', confirmPassword: '' };
+    let isValid = true;
 
-    if (!values.username.trim()) newErrors.username = 'Username is required';
-    else if (values.username.length < 3) newErrors.username = 'Username must be at least 3 characters';
+    if (!username.trim()) {
+      newErrors.username = 'Username is required';
+      isValid = false;
+    } else if (username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+      isValid = false;
+    }
 
-    if (!values.email.trim()) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(values.email)) newErrors.email = 'Please enter a valid email';
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email';
+      isValid = false;
+    }
 
-    if (!values.password.trim()) newErrors.password = 'Password is required';
-    else if (values.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    if (!password.trim()) {
+      newErrors.password = 'Password is required';
+      isValid = false;
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+      isValid = false;
+    }
 
-    if (!values.confirmPassword.trim()) newErrors.confirmPassword = 'Please confirm your password';
-    else if (values.password !== values.confirmPassword)
+    if (!confirmPassword.trim()) {
+      newErrors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return isValid;
   };
 
-  const handleChange = (name: string, value: string) => {
-    setValues((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormErrors]) setErrors((prev) => ({ ...prev, [name]: undefined }));
-  };
+  const handleRegister = (): void => {
+    if (!validateInputs()) return;
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    try {
-      const { confirmPassword, ...registerData } = values;
-      console.log('RegisterScreen: Calling register with data:', registerData);
-      await register(registerData);
-      console.log('RegisterScreen: Resetting navigation to VerifyEmail with email:', values.email);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'VerifyEmail', params: { email: values.email } }],
-      });
-      console.log('RegisterScreen: Navigation reset complete');
-    } catch (error: any) {
-      console.error('RegisterScreen: Registration failed:', error);
-      Alert.alert('Registration Failed', error.message || 'Something went wrong');
-    }
+    setLoading(true);
+    setErrors({ username: '', email: '', password: '', confirmPassword: '' });
+    
+    // Your registration logic here
+    setTimeout(() => {
+      setLoading(false);
+      console.log('Register:', username, email, password);
+    }, 2000);
   };
 
   return (
-    <SafeAreaView className="flex-1 justify-center" style={{ backgroundColor: '#F0F0F0' }}>
-      {/* Floating Background Shapes */}
-      <View className="absolute inset-0 overflow-hidden">
-        <View 
-          className="absolute -top-32 -right-32 w-64 h-64 rounded-full opacity-4" 
-          style={{ backgroundColor: '#7C9885' }} 
+    <AuthLayout title="Create Account" subtitle="Join us to start your journey">
+      <View>
+        <Input
+          label="Username"
+          placeholder="Enter your username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+          autoComplete="username"
+          nextInputRef={emailRef}
+          error={errors.username}
         />
-        <View 
-          className="absolute top-96 -left-24 w-48 h-48 rounded-full opacity-3" 
-          style={{ backgroundColor: '#FF6700' }} 
+
+        <Input
+          ref={emailRef}
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          nextInputRef={passwordRef}
+          error={errors.email}
         />
-      </View>
 
-      <View className="px-8 relative z-10">
-        {/* Header */}
-        <View className="items-center mb-12">
-          <View className="flex-row items-center mb-4">
-            <View 
-              className="w-3 h-3 rounded-full mr-4"
-              style={{ backgroundColor: '#7C9885' }}
-            />
-            <Text className="text-lg font-semibold tracking-wider uppercase" style={{ color: '#333333' }}>
-              Join EcoCraft
-            </Text>
-          </View>
-          <Text className="text-5xl font-black text-center leading-tight" style={{ color: '#004E98' }}>
-            Create Account
-          </Text>
-          <Text className="text-lg font-medium text-center mt-4" style={{ color: '#333333' }}>
-            Start your sustainable crafting journey
-          </Text>
-        </View>
+        <Input
+          ref={passwordRef}
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secure
+          nextInputRef={confirmPasswordRef}
+          error={errors.password}
+        />
 
-        {/* Auth Form */}
-        <View className="mb-8">
-          <AuthForm
-            fields={fields}
-            values={values}
-            errors={errors}
-            onChange={handleChange}
-            onSubmit={handleSubmit}
-            submitTitle="Create Account"
-            loading={isLoading}
+        <Input
+          ref={confirmPasswordRef}
+          label="Confirm Password"
+          placeholder="Confirm your password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secure
+          isLastInput
+          onSubmit={handleRegister}
+          error={errors.confirmPassword}
+        />
+
+        <View className="mt-6">
+          <Button
+            title="Create Account"
+            onPress={handleRegister}
+            loading={loading}
+            disabled={!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()}
           />
         </View>
 
-        {/* Login Link */}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Login')}
-          className="mb-8"
-          disabled={isLoading}
-        >
-          <Text className="text-center text-base font-medium" style={{ color: '#333333' }}>
-            Already have an account?{' '}
-            <Text className="font-bold" style={{ color: '#00A896' }}>
-              Sign In
+        <View className="mt-8 items-center">
+          <View className="flex-row items-center">
+            <Text className="text-craftopia-text-secondary text-base">
+              Already have an account?{' '}
             </Text>
-          </Text>
-        </TouchableOpacity>
-
-        {/* Terms & Privacy Notice */}
-        <View 
-          className="p-6 rounded-2xl relative overflow-hidden"
-          style={{ 
-            backgroundColor: '#7C988515',
-            borderWidth: 1,
-            borderColor: '#7C988525'
-          }}
-        >
-          <View 
-            className="absolute top-0 left-0 right-0 h-1"
-            style={{ backgroundColor: '#7C9885' }}
-          />
-          <View className="flex-row items-start">
-            <View 
-              className="w-10 h-10 rounded-xl items-center justify-center mr-4"
-              style={{ backgroundColor: '#7C988520' }}
-            >
-              <Text className="text-lg">🌱</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="font-bold text-base mb-2" style={{ color: '#004E98' }}>
-                Welcome to our eco-community!
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text className="text-craftopia-digital text-base font-semibold">
+                Sign In
               </Text>
-              <Text className="font-medium leading-relaxed" style={{ color: '#333333' }}>
-                By creating an account, you agree to our Terms of Service and Privacy Policy. Let's build a sustainable future together!
-              </Text>
-            </View>
+            </TouchableOpacity>
           </View>
+          
+          <TouchableOpacity className="mt-4" activeOpacity={0.7}>
+            <Text className="text-craftopia-spark text-sm">
+              Need Help?
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
+
+export default RegisterScreen;

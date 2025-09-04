@@ -1,149 +1,112 @@
-// apps/mobile/src/screens/Login.tsx
-import React, { useState } from 'react';
-import { SafeAreaView, Text, TouchableOpacity, Alert, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigations/AuthNavigator';
-import { AuthForm, AuthField } from '~/components/auth/AuthForm';
-import { useAuth } from '~/context/AuthContext';
+// LoginScreen.tsx
+import React, { useState, useRef } from 'react';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AuthLayout from '~/components/auth/AuthLayout';
+import Button from '~/components/common/Button';
+import Input from '~/components/common/TextInputField';
 
-type LoginScreenProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+const LoginScreen: React.FC = () => {
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errors, setErrors] = useState({ email: '', password: '' });
 
-interface FormValues {
-  [key: string]: string;
-  email: string;
-  password: string;
-}
+  const passwordRef = useRef<TextInput>(null);
 
-type FormErrors = Partial<Record<keyof FormValues, string>>;
+  const validateInputs = (): boolean => {
+    const newErrors = { email: '', password: '' };
+    let isValid = true;
 
-export const LoginScreen = () => {
-  const navigation = useNavigation<LoginScreenProp>();
-  const { login, isLoading } = useAuth();
-  
-  const [values, setValues] = useState<FormValues>({ email: '', password: '' });
-  const [errors, setErrors] = useState<FormErrors>({});
-
-  const fields: AuthField[] = [
-    { name: 'email', label: 'Email', placeholder: 'Enter your email', keyboardType: 'email-address' },
-    { name: 'password', label: 'Password', placeholder: 'Enter your password', secure: true },
-  ];
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    if (!values.email.trim()) {
+    if (!email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(values.email)) {
+      isValid = false;
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Please enter a valid email';
+      isValid = false;
     }
 
-    if (!values.password.trim()) {
+    if (!password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (values.password.length < 6) {
+      isValid = false;
+    } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+      isValid = false;
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return isValid;
   };
 
-  const handleChange = (name: string, value: string) => {
-    setValues(prev => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
+  const handleLogin = (): void => {
+    if (!validateInputs()) return;
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    try {
-      await login(values);
-      // Success is handled by the AuthProvider and navigation will happen automatically
-    } catch (error: any) {
-      const errorMessage = error.message;
-      
-      // Check if it's an email verification error
-      if (errorMessage.includes('verify your email') || errorMessage.includes('email not verified')) {
-        Alert.alert(
-          'Email Not Verified',
-          'Please check your email and click the verification link before logging in.',
-          [
-            { text: 'Resend Email', onPress: () => handleResendVerification() },
-            { text: 'OK', style: 'default' }
-          ]
-        );
-      } else {
-        Alert.alert('Login Failed', errorMessage);
-      }
-    }
-  };
-
-  const handleResendVerification = () => {
-    Alert.alert(
-      'Resend Verification',
-      'To resend the verification email, please register again or contact support.',
-      [{ text: 'OK' }]
-    );
+    setLoading(true);
+    setErrors({ email: '', password: '' });
+    
+    // Your login logic here
+    setTimeout(() => {
+      setLoading(false);
+      console.log('Login:', email, password);
+    }, 2000);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Subtle Background Elements */}
-      <View className="absolute inset-0 overflow-hidden">
-        <View className="absolute w-80 h-80 rounded-full bg-gray-50 opacity-60 -top-40 -right-40" />
-        <View className="absolute w-60 h-60 rounded-full bg-blue-50 opacity-40 -bottom-30 -left-30" />
-      </View>
+    <AuthLayout title="Welcome Back" subtitle="Sign in to continue">
+      <View>
+        <Input
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          nextInputRef={passwordRef}
+          error={errors.email}
+        />
 
-      <View className="flex-1 justify-center px-6 relative z-10">
-        {/* Minimal Header */}
-        <View className="mb-12">
-          <Text className="text-2xl font-semibold text-gray-900 mb-2">
-            Welcome back
-          </Text>
-          <Text className="text-gray-600">
-            Sign in to your account
-          </Text>
-        </View>
+        <Input
+          ref={passwordRef}
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secure
+          isLastInput
+          onSubmit={handleLogin}
+          error={errors.password}
+        />
 
-        {/* Auth Form */}
-        <View className="mb-8">
-          <AuthForm 
-            fields={fields} 
-            values={values} 
-            errors={errors}
-            onChange={handleChange} 
-            onSubmit={handleSubmit} 
-            submitTitle="Sign in"
-            loading={isLoading}
+        <View className="mt-6">
+          <Button
+            title="Sign In"
+            onPress={handleLogin}
+            loading={loading}
+            disabled={!email.trim() || !password.trim()}
           />
         </View>
 
-        {/* Sign Up Link */}
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('Register')} 
-          className="mb-8"
-          disabled={isLoading}
-        >
-          <Text className="text-center text-gray-600">
-            Don't have an account?{' '}
-            <Text className="font-medium text-blue-600">
-              Sign up
+        <View className="mt-8 items-center">
+          <View className="flex-row items-center">
+            <Text className="text-craftopia-text-secondary text-base">
+              Don't have an account?{' '}
             </Text>
-          </Text>
-        </TouchableOpacity>
-
-        {/* Clean Help Section */}
-        <View className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-600">
-          <Text className="font-medium text-gray-900 mb-1">
-            Need help?
-          </Text>
-          <Text className="text-sm text-gray-600 leading-relaxed">
-            Make sure you've verified your email address. Check your inbox for the verification link.
-          </Text>
+            <TouchableOpacity activeOpacity={0.7}>
+              <Text className="text-craftopia-digital text-base font-semibold">
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity className="mt-4" activeOpacity={0.7}>
+            <Text className="text-craftopia-spark text-sm">
+              Forgot Password?
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </AuthLayout>
   );
 };
+
+export default LoginScreen;
