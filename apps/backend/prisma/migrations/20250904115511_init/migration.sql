@@ -15,7 +15,7 @@ CREATE TYPE "public"."ChallengeStatus" AS ENUM ('in_progress', 'completed');
 
 -- CreateTable
 CREATE TABLE "public"."User" (
-    "user_id" TEXT NOT NULL,
+    "user_id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE "public"."User" (
 
 -- CreateTable
 CREATE TABLE "public"."UserProfile" (
-    "user_id" TEXT NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "bio" TEXT,
     "profile_picture_url" TEXT,
     "points" INTEGER NOT NULL DEFAULT 0,
@@ -41,8 +41,8 @@ CREATE TABLE "public"."UserProfile" (
 
 -- CreateTable
 CREATE TABLE "public"."RefreshToken" (
-    "token_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "token_id" SERIAL NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "token_hash" TEXT NOT NULL,
     "expires_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -52,8 +52,8 @@ CREATE TABLE "public"."RefreshToken" (
 
 -- CreateTable
 CREATE TABLE "public"."CraftIdea" (
-    "idea_id" TEXT NOT NULL,
-    "generated_by_user_id" TEXT,
+    "idea_id" SERIAL NOT NULL,
+    "generated_by_user_id" INTEGER,
     "idea_json" JSONB NOT NULL,
     "recycled_materials" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -64,8 +64,8 @@ CREATE TABLE "public"."CraftIdea" (
 
 -- CreateTable
 CREATE TABLE "public"."ChatbotConversation" (
-    "conversation_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "conversation_id" SERIAL NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "title" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -75,8 +75,8 @@ CREATE TABLE "public"."ChatbotConversation" (
 
 -- CreateTable
 CREATE TABLE "public"."ChatbotMessage" (
-    "message_id" TEXT NOT NULL,
-    "conversation_id" TEXT NOT NULL,
+    "message_id" SERIAL NOT NULL,
+    "conversation_id" INTEGER NOT NULL,
     "sender" "public"."MessageSender" NOT NULL,
     "content" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,8 +86,8 @@ CREATE TABLE "public"."ChatbotMessage" (
 
 -- CreateTable
 CREATE TABLE "public"."Post" (
-    "post_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "post_id" SERIAL NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "content" TEXT NOT NULL,
     "image_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -99,9 +99,9 @@ CREATE TABLE "public"."Post" (
 
 -- CreateTable
 CREATE TABLE "public"."Comment" (
-    "comment_id" TEXT NOT NULL,
-    "post_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "comment_id" SERIAL NOT NULL,
+    "post_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "content" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -112,9 +112,9 @@ CREATE TABLE "public"."Comment" (
 
 -- CreateTable
 CREATE TABLE "public"."Like" (
-    "like_id" TEXT NOT NULL,
-    "post_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
+    "like_id" SERIAL NOT NULL,
+    "post_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
 
@@ -123,12 +123,12 @@ CREATE TABLE "public"."Like" (
 
 -- CreateTable
 CREATE TABLE "public"."EcoChallenge" (
-    "challenge_id" TEXT NOT NULL,
+    "challenge_id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "points_reward" INTEGER NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
-    "created_by_admin_id" TEXT,
+    "created_by_admin_id" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
@@ -138,9 +138,9 @@ CREATE TABLE "public"."EcoChallenge" (
 
 -- CreateTable
 CREATE TABLE "public"."UserChallenge" (
-    "user_challenge_id" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
-    "challenge_id" TEXT NOT NULL,
+    "user_challenge_id" SERIAL NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "challenge_id" INTEGER NOT NULL,
     "status" "public"."ChallengeStatus" NOT NULL DEFAULT 'in_progress',
     "completed_at" TIMESTAMP(3),
     "deleted_at" TIMESTAMP(3),
@@ -150,14 +150,14 @@ CREATE TABLE "public"."UserChallenge" (
 
 -- CreateTable
 CREATE TABLE "public"."Report" (
-    "report_id" TEXT NOT NULL,
-    "reporter_id" TEXT NOT NULL,
-    "reported_post_id" TEXT,
-    "reported_comment_id" TEXT,
+    "report_id" SERIAL NOT NULL,
+    "reporter_id" INTEGER NOT NULL,
+    "reported_post_id" INTEGER,
+    "reported_comment_id" INTEGER,
     "reason" TEXT NOT NULL,
     "status" "public"."ReportStatus" NOT NULL DEFAULT 'pending',
     "moderator_notes" TEXT,
-    "resolved_by_admin_id" TEXT,
+    "resolved_by_admin_id" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "resolved_at" TIMESTAMP(3),
 
@@ -166,8 +166,8 @@ CREATE TABLE "public"."Report" (
 
 -- CreateTable
 CREATE TABLE "public"."Announcement" (
-    "announcement_id" TEXT NOT NULL,
-    "admin_id" TEXT,
+    "announcement_id" SERIAL NOT NULL,
+    "admin_id" INTEGER,
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
@@ -180,11 +180,11 @@ CREATE TABLE "public"."Announcement" (
 
 -- CreateTable
 CREATE TABLE "public"."ModerationLog" (
-    "log_id" TEXT NOT NULL,
-    "admin_id" TEXT,
+    "log_id" SERIAL NOT NULL,
+    "admin_id" INTEGER,
     "action" "public"."ModerationAction" NOT NULL,
     "target_id" TEXT NOT NULL,
-    "target_user_id" TEXT,
+    "target_user_id" INTEGER,
     "reason" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
