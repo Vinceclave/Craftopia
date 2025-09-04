@@ -1,52 +1,53 @@
-// LoginScreen.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
+import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
+import debounce from 'lodash.debounce';
+
+type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [errors, setErrors] = useState({ email: '', password: '' });
+  const navigation = useNavigation<LoginNavProp>();
+
+  const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
+  const [errors, setErrors] = useState<LoginFormErrors>({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
 
-  const validateInputs = (): boolean => {
-    const newErrors = { email: '', password: '' };
-    let isValid = true;
+  // debounced validator
+  const debouncedValidate = useCallback(
+    debounce((values: LoginFormValues) => {
+      setErrors(validateLogin(values));
+    }, 400), // 400ms delay
+    []
+  );
 
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email';
-      isValid = false;
-    }
-
-    if (!password.trim()) {
-      newErrors.password = 'Password is required';
-      isValid = false;
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
+  const updateForm = (field: keyof LoginFormValues, value: string) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
+    debouncedValidate(updated);
   };
 
-  const handleLogin = (): void => {
-    if (!validateInputs()) return;
+  const handleLogin = () => {
+    const validationErrors = validateLogin(form);
+
+    if (Object.values(validationErrors).some((err) => err)) {
+      setErrors(validationErrors);
+      return;
+    }
 
     setLoading(true);
     setErrors({ email: '', password: '' });
-    
-    // Your login logic here
+
     setTimeout(() => {
       setLoading(false);
-      console.log('Login:', email, password);
+      console.log('Login:', form);
     }, 2000);
   };
 
@@ -56,8 +57,8 @@ const LoginScreen: React.FC = () => {
         <Input
           label="Email"
           placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
+          value={form.email}
+          onChangeText={(text) => updateForm('email', text)}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -69,8 +70,8 @@ const LoginScreen: React.FC = () => {
           ref={passwordRef}
           label="Password"
           placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
+          value={form.password}
+          onChangeText={(text) => updateForm('password', text)}
           secure
           isLastInput
           onSubmit={handleLogin}
@@ -82,7 +83,7 @@ const LoginScreen: React.FC = () => {
             title="Sign In"
             onPress={handleLogin}
             loading={loading}
-            disabled={!email.trim() || !password.trim()}
+            disabled={!form.email.trim() || !form.password.trim()}
           />
         </View>
 
@@ -91,7 +92,7 @@ const LoginScreen: React.FC = () => {
             <Text className="text-craftopia-text-secondary text-base">
               Don't have an account?{' '}
             </Text>
-            <TouchableOpacity activeOpacity={0.7}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
               <Text className="text-craftopia-digital text-base font-semibold">
                 Sign Up
               </Text>

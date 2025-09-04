@@ -18,7 +18,7 @@ const Button: React.FC<ButtonProps> = ({
   variant = 'primary' 
 }) => {
   const getButtonStyles = () => {
-    const baseStyles = 'rounded-lg py-4 px-6 items-center';
+    const baseStyles = 'rounded-xl py-4 px-6 items-center shadow-sm';
     
     if (disabled || loading) {
       return `${baseStyles} opacity-50`;
@@ -28,7 +28,7 @@ const Button: React.FC<ButtonProps> = ({
       case 'secondary':
         return `${baseStyles} bg-craftopia-digital`;
       case 'outline':
-        return `${baseStyles} bg-transparent border border-craftopia-neural`;
+        return `${baseStyles} bg-transparent border-2 border-craftopia-neural`;
       default:
         return `${baseStyles} bg-craftopia-neural`;
     }

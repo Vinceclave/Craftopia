@@ -1,61 +1,255 @@
-// ---------- GENERATOR ----------
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
-// ---------- DATASOURCE ----------
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ---------- MODELS ----------
-model User {
-  id                Int                 @id @default(autoincrement())
-  username          String              @unique
-  email             String              @unique
-  password_hash     String?             // optional for OAuth
-  role              UserRole            @default(USER)
-  is_email_verified Boolean             @default(false)
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
+// ==========================
+// ENUMS
+// ==========================
+enum UserRole {
+  user
+  admin
+}
 
-  profile           UserProfile?
-  refreshTokens     RefreshToken[]
-  verificationTokens VerificationToken[]
+enum ReportStatus {
+  pending
+  in_review
+  resolved
+}
+
+enum ModerationAction {
+  warn_user
+  ban_user
+  delete_post
+  delete_comment
+}
+
+enum MessageSender {
+  user
+  ai
+}
+
+enum ChallengeStatus {
+  in_progress
+  completed
+}
+
+// ==========================
+// MODULE 1: USER MANAGEMENT
+// ==========================
+model User {
+  user_id           String   @id @default(cuid())
+  username          String   @unique
+  email             String   @unique
+  password_hash     String
+  role              UserRole @default(user)
+  is_email_verified Boolean  @default(false)
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  profile              UserProfile?
+  refreshTokens        RefreshToken[]
+  craftIdeas           CraftIdea[]
+  chatbotConversations ChatbotConversation[]
+  posts                Post[]
+  comments             Comment[]
+  likes                Like[]
+  userChallenges       UserChallenge[]
+  reportsFiled         Report[] @relation("reporter")
+  reportsResolved      Report[] @relation("resolver")
+  announcements        Announcement[]
+  createdChallenges    EcoChallenge[]
+  moderationLogs       ModerationLog[] @relation("ModerationByAdmin")
+  moderationTargets    ModerationLog[] @relation("ModerationTargetUser")
 }
 
 model UserProfile {
-  user_id   Int     @id
-  fullname  String?
-  avatar_url        String?
-  bio       String?
+  user_id             String @id
+  bio                 String?
+  profile_picture_url String?
+  points              Int    @default(0)
+  home_dashboard_layout Json?
 
-  user      User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [user_id])
 }
 
 model RefreshToken {
-  token_id    Int      @id @default(autoincrement())
-  user_id     Int
-  token_hash  String   @unique
-  expires_at  DateTime
-  created_at  DateTime @default(now())
-
-  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
+  token_id   String   @id @default(cuid())
+  user_id    String
   token_hash String   @unique
   expires_at DateTime
   created_at DateTime @default(now())
 
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [user_id])
 }
 
-// ---------- ENUMS ----------
-enum UserRole {
-  USER
-  ADMIN
+// ==========================
+// MODULE 2: AI GENERATOR
+// ==========================
+model CraftIdea {
+  idea_id              String   @id @default(cuid())
+  generated_by_user_id String?
+  idea_json            Json
+  recycled_materials   Json?
+  created_at           DateTime @default(now())
+  deleted_at           DateTime?
+
+  generated_by_user User? @relation(fields: [generated_by_user_id], references: [user_id])
+}
+
+model ChatbotConversation {
+  conversation_id String              @id @default(cuid())
+  user_id         String
+  title           String?
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @default(now())
+
+  user     User                 @relation(fields: [user_id], references: [user_id])
+  messages ChatbotMessage[]
+}
+
+model ChatbotMessage {
+  message_id      String             @id @default(cuid())
+  conversation_id String
+  sender          MessageSender
+  content         String
+  created_at      DateTime @default(now())
+
+  conversation ChatbotConversation @relation(fields: [conversation_id], references: [conversation_id])
+}
+
+// ==========================
+// MODULE 3: COMMUNITY HUB
+// ==========================
+model Post {
+  post_id    String   @id @default(cuid())
+  user_id    String
+  content    String
+  image_url  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  deleted_at DateTime?
+
+  user     User      @relation(fields: [user_id], references: [user_id])
+  comments Comment[]
+  likes    Like[]
+  reports  Report[]
+}
+
+model Comment {
+  comment_id String   @id @default(cuid())
+  post_id    String
+  user_id    String
+  content    String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  deleted_at DateTime?
+
+  post    Post     @relation(fields: [post_id], references: [post_id])
+  user    User     @relation(fields: [user_id], references: [user_id])
+  reports Report[]
+}
+
+model Like {
+  like_id String @id @default(cuid())
+  post_id String
+  user_id String
+  created_at DateTime @default(now())
+  deleted_at DateTime?
+
+  post Post @relation(fields: [post_id], references: [post_id])
+  user User @relation(fields: [user_id], references: [user_id])
+
+  @@unique([post_id, user_id])
+}
+
+// ==========================
+// MODULE 4: GAMIFICATION
+// ==========================
+model EcoChallenge {
+  challenge_id       String   @id @default(cuid())
+  title              String
+  description        String
+  points_reward      Int
+  is_active          Boolean  @default(true)
+  created_by_admin_id String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now())
+  deleted_at         DateTime?
+
+  created_by_admin User? @relation(fields: [created_by_admin_id], references: [user_id])
+  participants     UserChallenge[]
+}
+
+model UserChallenge {
+  user_challenge_id String         @id @default(cuid())
+  user_id           String
+  challenge_id      String
+  status            ChallengeStatus @default(in_progress)
+  completed_at      DateTime?
+  deleted_at        DateTime?
+
+  user      User         @relation(fields: [user_id], references: [user_id])
+  challenge EcoChallenge @relation(fields: [challenge_id], references: [challenge_id])
+
+  @@unique([user_id, challenge_id])
+}
+
+// ==========================
+// MODULE 5: ADMIN
+// ==========================
+model Report {
+  report_id            String       @id @default(cuid())
+  reporter_id          String
+  reported_post_id     String?
+  reported_comment_id  String?
+  reason               String
+  status               ReportStatus @default(pending)
+  moderator_notes      String?
+  resolved_by_admin_id String?
+  created_at           DateTime @default(now())
+  resolved_at          DateTime?
+  
+  reporter          User     @relation("reporter", fields: [reporter_id], references: [user_id])
+  reported_post     Post?    @relation(fields: [reported_post_id], references: [post_id])
+  reported_comment  Comment? @relation(fields: [reported_comment_id], references: [comment_id])
+  resolver          User?    @relation("resolver", fields: [resolved_by_admin_id], references: [user_id])
+}
+
+model Announcement {
+  announcement_id String   @id @default(cuid())
+  admin_id        String?
+  title           String
+  content         String
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  expires_at      DateTime?
+  deleted_at      DateTime?
+
+  admin User? @relation(fields: [admin_id], references: [user_id])
+}
+
+model ModerationLog {
+  log_id         String           @id @default(cuid())
+  admin_id       String?
+  action         ModerationAction
+  target_id      String
+  target_user_id String?
+  reason         String?
+  created_at     DateTime         @default(now())
+
+  admin       User? @relation("ModerationByAdmin", fields: [admin_id], references: [user_id])
+  target_user User? @relation("ModerationTargetUser", fields: [target_user_id], references: [user_id])
 }

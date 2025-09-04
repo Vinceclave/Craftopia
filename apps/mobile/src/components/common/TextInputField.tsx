@@ -18,7 +18,7 @@ const Input = forwardRef<TextInput, InputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className="mb-4">
+      <View className="relative mb-4">
         {label && (
           <Text className="text-craftopia-text-secondary text-sm mb-2 font-medium">
             {label}
@@ -26,7 +26,7 @@ const Input = forwardRef<TextInput, InputProps>(
         )}
 
         <View
-          className={`bg-craftopia-surface rounded-xl px-4 py-4 flex-row items-center border-2 ${
+          className={`bg-craftopia-surface rounded-xl px-4 py-2 flex-row items-center border-2 ${
             error 
               ? 'border-craftopia-energy' 
               : isFocused 
@@ -68,7 +68,7 @@ const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {error && (
-          <Text className="text-craftopia-energy text-sm mt-2">
+          <Text className="absolute -top-2 right-0 text-craftopia-energy text-sm mt-2">
             {error}
           </Text>
         )}

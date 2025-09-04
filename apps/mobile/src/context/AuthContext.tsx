@@ -5,7 +5,7 @@ import { authService } from '../services/auth.service';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
+  isAuthenticated: boolean; 
   login: (credentials: LoginRequest) => Promise<void>;
   register: (userData: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;

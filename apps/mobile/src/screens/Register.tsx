@@ -1,88 +1,86 @@
-// RegisterScreen.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
+import {
+  validateRegister,
+  RegisterFormValues,
+  RegisterFormErrors,
+} from '~/utils/validator';
+import debounce from 'lodash.debounce';
+
+type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const RegisterScreen: React.FC = () => {
-  const [username, setUsername] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [errors, setErrors] = useState({ 
-    username: '', 
-    email: '', 
-    password: '', 
-    confirmPassword: '' 
+  const navigation = useNavigation<RegisterNavProp>();
+
+  const [form, setForm] = useState<RegisterFormValues>({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
+
+  const [errors, setErrors] = useState<RegisterFormErrors>({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const [loading, setLoading] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  const validateInputs = (): boolean => {
-    const newErrors = { username: '', email: '', password: '', confirmPassword: '' };
-    let isValid = true;
+  // debounce validation to avoid firing on every keystroke
+  const debouncedValidate = useCallback(
+    debounce((values: RegisterFormValues) => {
+      setErrors(validateRegister(values));
+    }, 400),
+    []
+  );
 
-    if (!username.trim()) {
-      newErrors.username = 'Username is required';
-      isValid = false;
-    } else if (username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
-      isValid = false;
-    }
-
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email';
-      isValid = false;
-    }
-
-    if (!password.trim()) {
-      newErrors.password = 'Password is required';
-      isValid = false;
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-      isValid = false;
-    }
-
-    if (!confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Please confirm your password';
-      isValid = false;
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
+  const updateForm = (field: keyof RegisterFormValues, value: string) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
+    debouncedValidate(updated);
   };
 
-  const handleRegister = (): void => {
-    if (!validateInputs()) return;
+  const handleRegister = () => {
+    const validationErrors = validateRegister(form);
+
+    if (Object.values(validationErrors).some((err) => err)) {
+      setErrors(validationErrors);
+      return;
+    }
 
     setLoading(true);
     setErrors({ username: '', email: '', password: '', confirmPassword: '' });
-    
-    // Your registration logic here
+
+    // your register logic here
     setTimeout(() => {
       setLoading(false);
-      console.log('Register:', username, email, password);
+      console.log('Register:', form);
     }, 2000);
   };
 
   return (
-    <AuthLayout title="Create Account" subtitle="Join us to start your journey">
+    <AuthLayout
+      title="Create Account"
+      subtitle="Join our creative community and start building amazing projects"
+    >
       <View>
         <Input
           label="Username"
-          placeholder="Enter your username"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="Choose a username"
+          value={form.username}
+          onChangeText={(text) => updateForm('username', text)}
           autoCapitalize="none"
           autoComplete="username"
           nextInputRef={emailRef}
@@ -91,10 +89,10 @@ const RegisterScreen: React.FC = () => {
 
         <Input
           ref={emailRef}
-          label="Email"
+          label="Email Address"
           placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
+          value={form.email}
+          onChangeText={(text) => updateForm('email', text)}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -105,9 +103,9 @@ const RegisterScreen: React.FC = () => {
         <Input
           ref={passwordRef}
           label="Password"
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
+          placeholder="Create a password"
+          value={form.password}
+          onChangeText={(text) => updateForm('password', text)}
           secure
           nextInputRef={confirmPasswordRef}
           error={errors.password}
@@ -117,8 +115,8 @@ const RegisterScreen: React.FC = () => {
           ref={confirmPasswordRef}
           label="Confirm Password"
           placeholder="Confirm your password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          value={form.confirmPassword}
+          onChangeText={(text) => updateForm('confirmPassword', text)}
           secure
           isLastInput
           onSubmit={handleRegister}
@@ -130,24 +128,32 @@ const RegisterScreen: React.FC = () => {
             title="Create Account"
             onPress={handleRegister}
             loading={loading}
-            disabled={!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()}
+            disabled={
+              !form.username.trim() ||
+              !form.email.trim() ||
+              !form.password.trim() ||
+              !form.confirmPassword.trim()
+            }
           />
         </View>
 
-        <View className="mt-8 items-center">
+        <View className="mt-8 items-center space-y-4">
           <View className="flex-row items-center">
             <Text className="text-craftopia-text-secondary text-base">
               Already have an account?{' '}
             </Text>
-            <TouchableOpacity activeOpacity={0.7}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('Login')}
+            >
               <Text className="text-craftopia-digital text-base font-semibold">
                 Sign In
               </Text>
             </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity className="mt-4" activeOpacity={0.7}>
-            <Text className="text-craftopia-spark text-sm">
+
+          <TouchableOpacity activeOpacity={0.7}>
+            <Text className="text-craftopia-spark text-sm font-medium">
               Need Help?
             </Text>
           </TouchableOpacity>

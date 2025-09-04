@@ -11,11 +11,19 @@ interface AuthLayoutProps {
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ title, subtitle, children }) => {
   return (
-    <SafeAreaView className="flex-1 bg-craftopia-light ">
-      <ScrollView className="flex-1 px-5 py-6 pb-20 ">
+    <SafeAreaView className="flex-1 bg-craftopia-light">
+      <ScrollView
+        className="flex-1 px-6 py-8"
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} // 👈 centers vertically
+        showsVerticalScrollIndicator={false}
+      >
         <View className="mb-8">
-          <Text className="text-3xl font-bold text-craftopia-text-primary mb-2">{title}</Text>
-          <Text className="text-craftopia-text-secondary text-base">{subtitle}</Text>
+          <Text className="text-3xl font-bold text-craftopia-text-primary mb-3 text-start">
+            {title}
+          </Text>
+          <Text className="text-craftopia-text-secondary text-base leading-relaxed text-start">
+            {subtitle}
+          </Text>
         </View>
         {children}
       </ScrollView>
