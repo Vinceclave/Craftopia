@@ -63,7 +63,6 @@ enum MaterialType {
   mixed
 }
 
-
 // ==========================
 // MODULE 1: USER MANAGEMENT
 // ==========================
@@ -92,6 +91,7 @@ model User {
   createdChallenges    EcoChallenge[]
   moderationLogs       ModerationLog[] @relation("ModerationByAdmin")
   moderationTargets    ModerationLog[] @relation("ModerationTargetUser")
+  verifiedChallenges   UserChallenge[] @relation("VerifiedBy")
 }
 
 model UserProfile {
@@ -113,7 +113,6 @@ model RefreshToken {
 
   user User @relation(fields: [user_id], references: [user_id])
 }
-  
 
 // ==========================
 // MODULE 2: AI GENERATOR
@@ -216,17 +215,22 @@ model EcoChallenge {
 }
 
 model UserChallenge {
-  user_challenge_id Int             @id @default(autoincrement())
-  user_id           Int
-  challenge_id      Int
-  status            ChallengeStatus @default(in_progress)
-  proof_url         String?
-  verified          Boolean         @default(false)
-  completed_at      DateTime?
-  deleted_at        DateTime?
+  user_challenge_id     Int             @id @default(autoincrement())
+  user_id               Int
+  challenge_id          Int
+  status                ChallengeStatus @default(in_progress)
+  proof_url             String?
+  completed_at          DateTime?
+  verified_at           DateTime?
+  verified_by_admin_id  Int?
+  points_awarded        Int             @default(0)
+  admin_notes           String?
+  created_at            DateTime        @default(now())
+  deleted_at            DateTime?
 
-  user      User         @relation(fields: [user_id], references: [user_id])
-  challenge EcoChallenge @relation(fields: [challenge_id], references: [challenge_id])
+  user        User         @relation(fields: [user_id], references: [user_id])
+  challenge   EcoChallenge @relation(fields: [challenge_id], references: [challenge_id])
+  verified_by User?        @relation("VerifiedBy", fields: [verified_by_admin_id], references: [user_id])
 
   @@unique([user_id, challenge_id])
 }
@@ -234,23 +238,23 @@ model UserChallenge {
 // ==========================
 // MODULE 5: ADMIN
 // ==========================
-model Report {
-  report_id            Int          @id @default(autoincrement())
-  reporter_id          Int
-  reported_post_id     Int?
-  reported_comment_id  Int?
-  reason               String
-  status               ReportStatus @default(pending)
-  moderator_notes      String?
-  resolved_by_admin_id Int?
-  created_at           DateTime     @default(now())
-  resolved_at          DateTime?
-  
-  reporter          User     @relation("reporter", fields: [reporter_id], references: [user_id])
-  reported_post     Post?    @relation(fields: [reported_post_id], references: [post_id])
-  reported_comment  Comment? @relation(fields: [reported_comment_id], references: [comment_id])
-  resolver          User?    @relation("resolver", fields: [resolved_by_admin_id], references: [user_id])
-}
+  model Report {
+    report_id            Int          @id @default(autoincrement())
+    reporter_id          Int
+    reported_post_id     Int?
+    reported_comment_id  Int?
+    reason               String
+    status               ReportStatus @default(pending)
+    moderator_notes      String?
+    resolved_by_admin_id Int?
+    created_at           DateTime     @default(now())
+    resolved_at          DateTime?
+    
+    reporter          User     @relation("reporter", fields: [reporter_id], references: [user_id])
+    reported_post     Post?    @relation(fields: [reported_post_id], references: [post_id])
+    reported_comment  Comment? @relation(fields: [reported_comment_id], references: [comment_id])
+    resolver          User?    @relation("resolver", fields: [resolved_by_admin_id], references: [user_id])
+  }
 
 model Announcement {
   announcement_id Int      @id @default(autoincrement())
@@ -276,4 +280,4 @@ model ModerationLog {
 
   admin       User? @relation("ModerationByAdmin", fields: [admin_id], references: [user_id])
   target_user User? @relation("ModerationTargetUser", fields: [target_user_id], references: [user_id])
-}		
+}

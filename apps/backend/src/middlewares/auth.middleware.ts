@@ -1,6 +1,6 @@
-// middlewares/auth.middleware.ts (Updated)
+// 1. Fix apps/backend/src/middlewares/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken, type AccessTokenPayload } from "../utils/token";
+import { verifyAccessToken } from "../utils/token";
 import { sendError } from "../utils/response";
 
 export interface AuthRequest extends Request {
@@ -9,22 +9,29 @@ export interface AuthRequest extends Request {
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return sendError(res, 'No token provided', 401);
     }
 
-    const payload: AccessTokenPayload | null = verifyAccessToken(token);
-    if (!payload) {
+    const token = authHeader.replace('Bearer ', '');
+    const payload = verifyAccessToken(token);
+    
+    if (!payload || typeof payload === 'string') {
       return sendError(res, 'Invalid or expired token', 401);
     }
 
+    // Type assertion since we know the structure from our token generation
+    const typedPayload = payload as { userId: number; role?: string };
+    
     req.user = { 
-      userId: payload.userId, 
-      role: payload.role || 'user' 
+      userId: typedPayload.userId, 
+      role: typedPayload.role || 'user' 
     };
+    
     next();
   } catch (error) {
-    sendError(res, 'Invalid token', 401);
+    console.error('Auth middleware error:', error);
+    return sendError(res, 'Invalid token', 401);
   }
 };

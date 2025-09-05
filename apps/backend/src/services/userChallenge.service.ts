@@ -1,6 +1,6 @@
 import prisma from "../config/prisma";
 import { ChallengeStatus } from "../generated/prisma";
-import { AppError } from "../utils/errors";
+import { AppError } from "../utils/error"; // Fixed import path
 
 export const joinChallenge = async (user_id: number, challenge_id: number) => {
   if (!user_id || user_id <= 0) {
@@ -81,10 +81,6 @@ export const completeChallenge = async (userChallengeId: number, userId: number,
     throw new AppError('Challenge is already marked as completed', 400);
   }
 
-  if (userChallenge.status === ChallengeStatus.verified) {
-    throw new AppError('Challenge is already verified', 400);
-  }
-
   if (userChallenge.status === ChallengeStatus.rejected) {
     throw new AppError('This challenge was rejected. Please start a new attempt.', 400);
   }
@@ -138,7 +134,7 @@ export const verifyChallenge = async (
     throw new AppError('Challenge must be completed before verification', 400);
   }
 
-  const newStatus = approved ? ChallengeStatus.verified : ChallengeStatus.rejected;
+  const newStatus = approved ? ChallengeStatus.completed : ChallengeStatus.rejected;
   const pointsToAward = approved ? userChallenge.challenge.points_reward : 0;
 
   // Use transaction to update challenge and user points atomically
@@ -217,7 +213,7 @@ export const getUserChallenges = async (user_id: number, status?: ChallengeStatu
 
 export const getChallengeLeaderboard = async (challengeId?: number, limit: number = 10) => {
   const where: any = {
-    status: ChallengeStatus.verified,
+    status: ChallengeStatus.completed,
     deleted_at: null
   };
 

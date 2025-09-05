@@ -5,6 +5,8 @@ import craftRoutes from './craft.route';
 import challengeRoutes from './challenge.route';
 import userChallengeRoutes from './userChallenge.route';
 import moderationRoutes from './moderation.route';
+import announcementRoutes from './announcement.route'; // ADD THIS
+import reportRoutes from './report.route'; // ADD THIS
 
 const router = Router();
 
@@ -17,6 +19,8 @@ router.use('/crafts', craftRoutes);
 router.use('/challenges', challengeRoutes);
 router.use('/user-challenges', userChallengeRoutes);
 router.use('/moderation', moderationRoutes);
+router.use('/announcements', announcementRoutes); // ADD THIS
+router.use('/reports', reportRoutes); // ADD THIS
 
 // Health check
 router.get('/health', (req, res) => {
