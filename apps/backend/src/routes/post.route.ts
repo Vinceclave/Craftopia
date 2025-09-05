@@ -1,22 +1,24 @@
 import { Router } from 'express';
 import * as postController from '../controllers/post.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { requireAuth } from '../middlewares/rolebase.middleware';
+import { validate } from '../utils/validation';
+import { createPostSchema, createCommentSchema, reactionSchema } from '../schemas/post.schema';
 
 const router = Router();
 
 // POSTS
-router.post('/', authMiddleware, postController.createPost);
-router.get('/', authMiddleware, postController.getPosts);
-router.get('/:postId', authMiddleware, postController.getPostById);
-router.delete('/:postId', authMiddleware, postController.deletePost);
+router.post('/', requireAuth, validate(createPostSchema), postController.createPost);
+router.get('/', requireAuth, postController.getPosts);
+router.get('/:postId', requireAuth, postController.getPostById);
+router.delete('/:postId', requireAuth, postController.deletePost);
 
 // COMMENTS
-router.post('/comment', authMiddleware, postController.addComment);
-router.get('/:postId/comments', authMiddleware, postController.getCommentsByPost);
-router.delete('/comment/:commentId', authMiddleware, postController.deleteComment);
+router.post('/comment', requireAuth, validate(createCommentSchema), postController.addComment);
+router.get('/:postId/comments', requireAuth, postController.getCommentsByPost);
+router.delete('/comment/:commentId', requireAuth, postController.deleteComment);
 
-// REACTIONS (LIKE/UNLIKE TOGGLE)
-router.post('/:postId/reaction/toggle', authMiddleware, postController.handlePostReactionToggle);
-router.get('/:postId/reaction/count', authMiddleware, postController.getPostReactionCount);
+// REACTIONS
+router.post('/:postId/reaction/toggle', requireAuth, postController.handlePostReactionToggle);
+router.get('/:postId/reaction/count', requireAuth, postController.getPostReactionCount);
 
 export default router;

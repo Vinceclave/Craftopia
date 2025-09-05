@@ -1,65 +1,64 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import * as userChallengeService from "../services/userChallenge.service";
 import { ChallengeStatus } from "../generated/prisma";
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
+import { AuthRequest } from '../middlewares/auth.middleware';
 
-// Join a challenge
-export const joinChallenge = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { user_id, challenge_id } = req.body;
+export const joinChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { challenge_id } = req.body;
+  const userChallenge = await userChallengeService.joinChallenge(req.user!.userId, challenge_id);
+  sendSuccess(res, userChallenge, 'Successfully joined challenge', 201);
+});
 
-    if (!user_id || !challenge_id) {
-      return res.status(400).json({ success: false, error: "user_id and challenge_id are required" });
-    }
+export const completeChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userChallengeId = Number(req.params.userChallengeId);
+  const { proof_url } = req.body;
+  
+  const updated = await userChallengeService.completeChallenge(
+    userChallengeId, 
+    req.user!.userId,
+    proof_url
+  );
+  
+  sendSuccess(res, updated, 'Challenge marked as completed. Awaiting admin verification.');
+});
 
-    const userChallenge = await userChallengeService.joinChallenge(user_id, challenge_id);
+export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userChallengeId = Number(req.params.userChallengeId);
+  const { approved = true, notes } = req.body;
+  
+  const updated = await userChallengeService.verifyChallenge(
+    userChallengeId, 
+    req.user!.userId,
+    approved,
+    notes
+  );
+  
+  const message = approved ? 'Challenge verified and points awarded' : 'Challenge rejected';
+  sendSuccess(res, updated, message);
+});
 
-    res.status(201).json({ success: true, data: userChallenge });
-  } catch (err) {
-    next(err);
-  }
-};
+export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = Number(req.params.userId) || req.user!.userId;
+  const status = req.query.status as ChallengeStatus;
+  
+  const challenges = await userChallengeService.getUserChallenges(userId, status);
+  sendSuccess(res, challenges, 'User challenges retrieved successfully');
+});
 
-// Complete a challenge
-export const completeChallenge = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { userChallengeId } = req.params;
+export const getChallengeLeaderboard = asyncHandler(async (req: Request, res: Response) => {
+  const challengeId = req.query.challengeId ? Number(req.query.challengeId) : undefined;
+  const limit = req.query.limit ? Number(req.query.limit) : 10;
+  
+  const leaderboard = await userChallengeService.getChallengeLeaderboard(challengeId, limit);
+  sendSuccess(res, leaderboard, 'Leaderboard retrieved successfully');
+});
 
-    const updated = await userChallengeService.updateUserChallengeStatus(
-      Number(userChallengeId),
-      ChallengeStatus.completed
-    );
-
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Verify a challenge
-export const verifyChallenge = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { userChallengeId } = req.params;
-
-    const updated = await userChallengeService.updateUserChallengeStatus(
-      Number(userChallengeId),
-      ChallengeStatus.completed
-    );
-
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Get all challenges for a user
-export const getUserChallenges = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { userId } = req.params;
-
-    const challenges = await userChallengeService.getUserChallenges(Number(userId));
-
-    res.json({ success: true, data: challenges });
-  } catch (err) {
-    next(err);
-  }
-};
+export const getPendingVerifications = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  
+  const result = await userChallengeService.getPendingVerifications(page, limit);
+  sendPaginatedSuccess(res, result.data, result.meta, 'Pending verifications retrieved successfully');
+});

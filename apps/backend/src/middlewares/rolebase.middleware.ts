@@ -1,13 +1,21 @@
-import { Response, Request, NextFunction } from 'express';
-import { AuthRequest } from './auth.middleware';
+import { Response, NextFunction } from 'express';
+import { authMiddleware, AuthRequest } from './auth.middleware';
+import { sendError } from '../utils/response';
 
-export const roleBaseMiddleware = (roles: 'user' | 'admin') => {
-     return (req: AuthRequest, res: Response, next: NextFunction) => {
-        if (!req.user) 
-            return res.status(401).json({ success: false, error: 'Unauthorized' });
-        
-        if (!roles.includes(req.user.role)) 
-            return res.status(403).json({ success: false, error: 'Forbidden' });
-        next();
-     }
-}
+export const requireRole = (allowedRoles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return sendError(res, 'Unauthorized', 401);
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return sendError(res, 'Forbidden - insufficient permissions', 403);
+    }
+    
+    next();
+  };
+};
+
+export const requireAuth = authMiddleware;
+export const requireAdmin = [authMiddleware, requireRole(['admin'])];
+export const requireUser = [authMiddleware, requireRole(['user', 'admin'])];

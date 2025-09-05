@@ -1,14 +1,13 @@
-// routes/moderation.route.ts
 import { Router } from "express";
 import * as moderationController from "../controllers/moderation.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireAdmin } from "../middlewares/rolebase.middleware";
+import { validate } from "../utils/validation";
+import { createModerationLogSchema } from "../schemas/moderation.schema";
 
 const router = Router();
 
-// Only admins can log moderation actions
-router.post("/", authMiddleware, moderationController.createLog);
-
-// Admins can fetch all moderation logs
-router.get("/", authMiddleware, moderationController.getLogs);
+router.post('/', requireAdmin, validate(createModerationLogSchema), moderationController.createLog);
+router.get('/', requireAdmin, moderationController.getLogs);
+router.get('/:logId', requireAdmin, moderationController.getLogById);
 
 export default router;

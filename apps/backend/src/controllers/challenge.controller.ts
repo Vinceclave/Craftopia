@@ -1,45 +1,35 @@
-// controllers/challenge.controller.ts
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import * as challengeService from "../services/challenge.service";
-import { MaterialType } from "../generated/prisma";
+import { asyncHandler } from '../utils/asyncHandler';
+import { sendPaginatedSuccess, sendSuccess } from '../utils/response';
+import { AuthRequest } from '../middlewares/auth.middleware';
 
-// Manual challenge creation
-export const createChallenge = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { title, description, points_reward, material_type, created_by_admin_id } = req.body;
+export const createChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { title, description, points_reward, material_type } = req.body;
+  const challenge = await challengeService.createChallenge({
+    title,
+    description,
+    points_reward,
+    material_type,
+    created_by_admin_id: req.user!.userId
+  });
+  sendSuccess(res, challenge, 'Challenge created successfully', 201);
+});
 
-    // Validate material_type against enum
-    if (!Object.values(MaterialType).includes(material_type as MaterialType)) {
-      return res.status(400).json({
-        success: false,
-        error: `Invalid material type. Allowed values: ${Object.values(MaterialType).join(', ')}`
-      });
-    }
+export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const challenge = await challengeService.generateAndSaveChallenge(req.user!.userId);
+  sendSuccess(res, challenge, 'Challenge generated successfully', 201);
+});
 
-    const challenge = await challengeService.createChallenge({
-      title,
-      description,
-      points_reward,
-      material_type,
-      created_by_admin_id
-    });
+export const getAllChallenges = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const result = await challengeService.getAllChallenges(page, limit);
+  sendPaginatedSuccess(res, result.data, result.meta, 'Challenges retrieved successfully');
+});
 
-    res.status(201).json({
-      success: true,
-      data: challenge
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// AI generate challenge
-export const generateChallenge = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { adminId } = req.body;
-    const challenge = await challengeService.generateAndSaveChallenge(adminId);
-    res.json({ success: true, data: challenge });
-  } catch (err) {
-    next(err);
-  }
-};
+export const getChallengeById = asyncHandler(async (req: Request, res: Response) => {
+  const challengeId = Number(req.params.challengeId);
+  const challenge = await challengeService.getChallengeById(challengeId);
+  sendSuccess(res, challenge, 'Challenge retrieved successfully');
+});

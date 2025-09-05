@@ -1,32 +1,34 @@
 import jwt from 'jsonwebtoken';
+import { config } from '../config';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-const JWT_EXPIRES_IN = '15m'; // Access token expiry
+export interface AccessTokenPayload {
+  userId: number;
+  role?: string;
+}
 
-export const generateAccessToken = (payload: object) => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-};
-
+export const generateAccessToken = (payload: AccessTokenPayload): string => {
+  return jwt.sign(payload, config.jwt.secret, { expiresIn: config.jwt.accessTokenExpiry });
+}
 export const generateEmailToken = (userId: number) => {
-    return jwt.sign(
-        { userId, type: 'email_verification' }, // must match verification check
-        JWT_SECRET,
-        { expiresIn: '1d' } // 24 hours
-    );
+  return jwt.sign(
+    { userId, type: 'email_verification' },
+    config.jwt.secret,
+    { expiresIn: config.jwt.emailTokenExpiry }
+  );
 };
 
 export const verifyAccessToken = (token: string) => {
-    try {
-        return jwt.verify(token, JWT_SECRET);
-    } catch {
-        return null;
-    }
+  try {
+    return jwt.verify(token, config.jwt.secret);
+  } catch {
+    return null;
+  }
 };
 
 export const verifyEmailToken = (token: string) => {
-    try {
-        return jwt.verify(token, JWT_SECRET) as any;
-    } catch {
-        return null;
-    }
+  try {
+    return jwt.verify(token, config.jwt.secret) as any;
+  } catch {
+    return null;
+  }
 };

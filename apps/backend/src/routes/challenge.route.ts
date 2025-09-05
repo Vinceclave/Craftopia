@@ -1,13 +1,14 @@
-// routes/challenge.routes.ts
 import { Router } from "express";
 import * as challengeController from "../controllers/challenge.controller";
+import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
+import { validate } from "../utils/validation";
+import { createChallengeSchema } from "../schemas/challenge.schema";
 
 const router = Router();
 
-// Manual challenge creation
-router.post("/", challengeController.createChallenge);
-
-// AI generated challenge
-router.post("/generate", challengeController.generateChallenge);
+router.post('/', requireAdmin, validate(createChallengeSchema), challengeController.createChallenge);
+router.post('/generate', requireAdmin, challengeController.generateChallenge);
+router.get('/', requireAuth, challengeController.getAllChallenges);
+router.get('/:challengeId', requireAuth, challengeController.getChallengeById);
 
 export default router;

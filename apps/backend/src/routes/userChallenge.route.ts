@@ -1,20 +1,27 @@
-// routes/userChallenge.routes.ts
 import { Router } from "express";
 import * as userChallengeController from "../controllers/userChallenge.controller";
-import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
+import { validate, validateQuery } from "../utils/validation";
+import { 
+  joinChallengeSchema, 
+  completeChallengeSchema,
+  verifyChallengeSchema,
+  getUserChallengesQuerySchema,
+  leaderboardQuerySchema
+} from "../schemas/userChallenge.schema";
 
 const router = Router();
 
-// User joins a challenge
-router.post("/join", authMiddleware, userChallengeController.joinChallenge);
+// User actions
+router.post('/join', requireAuth, validate(joinChallengeSchema), userChallengeController.joinChallenge);
+router.post('/:userChallengeId/complete', requireAuth, validate(completeChallengeSchema), userChallengeController.completeChallenge);
 
-// User completes challenge
-router.post("/:userChallengeId/complete", authMiddleware, userChallengeController.completeChallenge);
+// Admin actions
+router.post('/:userChallengeId/verify', requireAdmin, validate(verifyChallengeSchema), userChallengeController.verifyChallenge);
+router.get('/pending-verifications', requireAdmin, userChallengeController.getPendingVerifications);
 
-// Admin/AI verifies challenge
-router.post("/:userChallengeId/verify", authMiddleware, userChallengeController.verifyChallenge);
-
-// Get all user challenges
-router.get("/user/:userId", authMiddleware, userChallengeController.getUserChallenges);
+// Public/User queries
+router.get('/user/:userId?', requireAuth, validateQuery(getUserChallengesQuerySchema), userChallengeController.getUserChallenges);
+router.get('/leaderboard', requireAuth, validateQuery(leaderboardQuerySchema), userChallengeController.getChallengeLeaderboard);
 
 export default router;

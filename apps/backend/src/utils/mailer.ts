@@ -1,23 +1,21 @@
 import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
+import { config } from '../config';
+import { AppError } from './error';
 
-dotenv.config();
-
-// Create transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for 587
+  host: config.email.host,
+  port: config.email.port,
+  secure: config.email.port === 465,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: config.email.user,
+    pass: config.email.pass,
   },
   tls: {
-    rejectUnauthorized: false, // optional for local/dev testing
+    rejectUnauthorized: false,
   },
 });
 
-// Optional: verify connection
+// Verify connection on startup
 transporter.verify((err, success) => {
   if (err) console.error('SMTP connection error:', err);
   else console.log('SMTP ready to send messages');
@@ -26,7 +24,7 @@ transporter.verify((err, success) => {
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
     const info = await transporter.sendMail({
-      from: `"Craftopia" <${process.env.SMTP_USER}>`,
+      from: `"Craftopia" <${config.email.user}>`,
       to,
       subject,
       html,
@@ -35,6 +33,6 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
     return { success: true, messageId: info.messageId };
   } catch (err) {
     console.error('Error sending email:', err);
-    return { success: false, error: err };
+    throw new AppError('Failed to send email', 500);
   }
 };

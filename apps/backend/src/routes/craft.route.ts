@@ -1,26 +1,18 @@
+// routes/craft.route.ts (Updated)
 import { Router } from 'express';
-import * as craftController from '../controllers/craft.controller'
-import { authMiddleware } from '../middlewares/auth.middleware';
+import * as craftController from '../controllers/craft.controller';
+import { requireAuth } from '../middlewares/rolebase.middleware';
+import { validate, validateQuery } from '../utils/validation';
+import { createCraftIdeaSchema, getCraftIdeasSchema } from '../schemas/craft.schema';
 
 const router = Router();
 
-// Create a new craft idea
-router.post('/', authMiddleware, craftController.createCraftIdea);
-
-// Get all craft ideas (with pagination, filtering, search)
-router.get('/', authMiddleware, craftController.getCraftIdeas);
-
-// Get craft idea by ID
-router.get('/:idea_id', authMiddleware, craftController.getCraftIdeaById);
-
-// Get all craft ideas by user
-router.get('/user/:user_id', authMiddleware, craftController.getCraftIdeasByUser);
-
-// Delete craft idea (soft delete)
-router.delete('/:idea_id', authMiddleware, craftController.deleteCraftIdea);
-
-// Optional stats routes
-router.get('/stats/count', authMiddleware, craftController.countCraftIdeas);
-router.get('/stats/recent', authMiddleware, craftController.getRecentCraftIdeas);
+router.post('/', requireAuth, validate(createCraftIdeaSchema), craftController.createCraftIdea);
+router.get('/', requireAuth, validateQuery(getCraftIdeasSchema), craftController.getCraftIdeas);
+router.get('/stats/count', requireAuth, craftController.countCraftIdeas);
+router.get('/stats/recent', requireAuth, craftController.getRecentCraftIdeas);
+router.get('/user/:user_id', requireAuth, craftController.getCraftIdeasByUser);
+router.get('/:idea_id', requireAuth, craftController.getCraftIdeaById);
+router.delete('/:idea_id', requireAuth, craftController.deleteCraftIdea);
 
 export default router;

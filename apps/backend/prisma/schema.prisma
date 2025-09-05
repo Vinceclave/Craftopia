@@ -276,4 +276,4 @@ model ModerationLog {
 
   admin       User? @relation("ModerationByAdmin", fields: [admin_id], references: [user_id])
   target_user User? @relation("ModerationTargetUser", fields: [target_user_id], references: [user_id])
-}
+}		
