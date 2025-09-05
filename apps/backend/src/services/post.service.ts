@@ -1,15 +1,19 @@
 import prisma from "../config/prisma";
 
-export const createPost = async (data: {
-  userId: number;
+export const createPost = async ({
+  user_id,
+  content,
+  imageUrl,
+}: {
+  user_id: number;
   content: string;
   imageUrl?: string;
 }) => {
   return await prisma.post.create({
     data: {
-      user_id: data.userId,
-      content: data.content,
-      image_url: data.imageUrl,
+      user_id,           // must be a valid user_id
+      content,
+      image_url: imageUrl || null,
     },
   });
 };

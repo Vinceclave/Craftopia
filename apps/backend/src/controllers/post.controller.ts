@@ -3,8 +3,8 @@ import * as postService from '../services/post.service';
 
 export const createPost = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { userId, content, imageUrl } = req.body;
-    const post = await postService.createPost({ userId, content, imageUrl });
+    const { user_id, content, imageUrl } = req.body;
+    const post = await postService.createPost({ user_id, content, imageUrl });
     res.status(201).json({ success: true, data: post });
   } catch (error: any) {
     next(error);

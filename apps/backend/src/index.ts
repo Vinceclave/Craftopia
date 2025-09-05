@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import authRoutes from './routes/auth.route';
 import craftRoutes from './routes/craft.route';
-import postRoutes from './routes/post.route'
-import challengeRoutes from './routes/challenge.route'
-import userChallengeRoutes from './routes/userChallenge.route'
+import postRoutes from './routes/post.route';
+import challengeRoutes from './routes/challenge.route';
+import userChallengeRoutes from './routes/userChallenge.route';
+import moderationRoutes from './routes/moderation.route';
 import { errorHandler } from './middlewares/error.middleware';
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use('/api/crafts', craftRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/ecochallenges', challengeRoutes);   
 app.use('/api/user-challenges', userChallengeRoutes); 
+app.use('/api/moderation', moderationRoutes); 
 
 // 404 handler
 app.use((req, res) => {

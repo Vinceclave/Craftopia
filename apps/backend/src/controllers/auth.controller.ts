@@ -11,9 +11,9 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ success: false, error: 'Username and password required' });
-        const result = await authService.login(username, password);
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ success: false, error: 'Username and password required' });
+        const result = await authService.login(email, password);
         res.status(200).json({ success: true, ...result });
     } catch (err) { next(err); }
 };
