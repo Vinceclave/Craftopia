@@ -42,8 +42,27 @@ enum MessageSender {
 
 enum ChallengeStatus {
   in_progress
+  pending_verification
   completed
+  rejected
 }
+
+enum ChallengeSource {
+  admin
+  ai
+}
+
+enum MaterialType {
+  plastic
+  paper
+  glass
+  metal
+  electronics
+  organic
+  textile
+  mixed
+}
+
 
 // ==========================
 // MODULE 1: USER MANAGEMENT
@@ -180,14 +199,16 @@ model Like {
 // MODULE 4: GAMIFICATION
 // ==========================
 model EcoChallenge {
-  challenge_id        Int      @id @default(autoincrement())
+  challenge_id        Int              @id @default(autoincrement())
   title               String
   description         String
   points_reward       Int
-  is_active           Boolean  @default(true)
+  is_active           Boolean          @default(true)
+  source              ChallengeSource  @default(admin) // admin | ai
+  material_type       MaterialType     // 👈 ensures challenge is tied to recycling
   created_by_admin_id Int?
-  created_at          DateTime @default(now())
-  updated_at          DateTime @default(now())
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @default(now())
   deleted_at          DateTime?
 
   created_by_admin User?           @relation(fields: [created_by_admin_id], references: [user_id])
@@ -199,6 +220,8 @@ model UserChallenge {
   user_id           Int
   challenge_id      Int
   status            ChallengeStatus @default(in_progress)
+  proof_url         String?
+  verified          Boolean         @default(false)
   completed_at      DateTime?
   deleted_at        DateTime?
 

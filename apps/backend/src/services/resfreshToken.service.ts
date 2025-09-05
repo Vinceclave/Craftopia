@@ -1,4 +1,4 @@
-import { prisma } from "../config/prisma";
+import prisma from "../config/prisma";
 import { hashToken, compareToken } from "../utils/hash";
 import { addDays } from 'date-fns';
 

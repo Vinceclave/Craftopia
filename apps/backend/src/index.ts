@@ -2,6 +2,10 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import authRoutes from './routes/auth.route';
+import craftRoutes from './routes/craft.route';
+import postRoutes from './routes/post.route'
+import challengeRoutes from './routes/challenge.route'
+import userChallengeRoutes from './routes/userChallenge.route'
 import { errorHandler } from './middlewares/error.middleware';
 
 dotenv.config();
@@ -14,10 +18,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/crafts', craftRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/ecochallenges', challengeRoutes);   
+app.use('/api/user-challenges', userChallengeRoutes); 
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({
+  res.status(404).json({  
     success: false,
     message: 'Route not found'
   });

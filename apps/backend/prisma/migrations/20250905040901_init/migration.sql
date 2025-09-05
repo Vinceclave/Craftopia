@@ -11,7 +11,13 @@ CREATE TYPE "public"."ModerationAction" AS ENUM ('warn_user', 'ban_user', 'delet
 CREATE TYPE "public"."MessageSender" AS ENUM ('user', 'ai');
 
 -- CreateEnum
-CREATE TYPE "public"."ChallengeStatus" AS ENUM ('in_progress', 'completed');
+CREATE TYPE "public"."ChallengeStatus" AS ENUM ('in_progress', 'pending_verification', 'completed', 'rejected');
+
+-- CreateEnum
+CREATE TYPE "public"."ChallengeSource" AS ENUM ('admin', 'ai');
+
+-- CreateEnum
+CREATE TYPE "public"."MaterialType" AS ENUM ('plastic', 'paper', 'glass', 'metal', 'electronics', 'organic', 'textile', 'mixed');
 
 -- CreateTable
 CREATE TABLE "public"."User" (
@@ -128,6 +134,8 @@ CREATE TABLE "public"."EcoChallenge" (
     "description" TEXT NOT NULL,
     "points_reward" INTEGER NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "source" "public"."ChallengeSource" NOT NULL DEFAULT 'admin',
+    "material_type" "public"."MaterialType" NOT NULL,
     "created_by_admin_id" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -142,6 +150,8 @@ CREATE TABLE "public"."UserChallenge" (
     "user_id" INTEGER NOT NULL,
     "challenge_id" INTEGER NOT NULL,
     "status" "public"."ChallengeStatus" NOT NULL DEFAULT 'in_progress',
+    "proof_url" TEXT,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
     "completed_at" TIMESTAMP(3),
     "deleted_at" TIMESTAMP(3),
 
