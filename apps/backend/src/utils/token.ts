@@ -1,7 +1,4 @@
-// Fix for apps/backend/src/utils/token.ts
-
-import jwt from 'jsonwebtoken';
-import { config } from '../config';
+import * as jwt from 'jsonwebtoken';
 
 export interface AccessTokenPayload {
   userId: number;
@@ -13,85 +10,68 @@ export interface EmailTokenPayload {
   type: string;
 }
 
+// Get JWT secret from environment with fallback
+const getJWTSecret = (): string => process.env.JWT_SECRET || 'craftopia-fallback-secret-dev-only';
+
+// Use `StringValue` from jsonwebtoken types
+type JWTExpiresIn = jwt.SignOptions['expiresIn'];
+
 export const generateAccessToken = (payload: AccessTokenPayload): string => {
-  // Ensure secret is a string and not undefined
-  const secret = config.jwt.secret;
-  if (!secret) {
-    throw new Error('JWT secret is not configured');
-  }
-  
-  return jwt.sign(payload, secret, { 
-    expiresIn: config.jwt.accessTokenExpiry 
-  });
+  const secret = getJWTSecret();
+  const expiresIn: JWTExpiresIn = (process.env.JWT_EXPIRES_IN as JWTExpiresIn) || '15m';
+
+  const tokenPayload = {
+    userId: payload.userId,
+    role: payload.role || 'user',
+  };
+
+  return jwt.sign(tokenPayload, secret, { expiresIn });
 };
 
 export const generateEmailToken = (userId: number): string => {
-  const secret = config.jwt.secret;
-  if (!secret) {
-    throw new Error('JWT secret is not configured');
-  }
-  
-  return jwt.sign(
-    { userId, type: 'email_verification' },
-    secret,
-    { expiresIn: config.jwt.emailTokenExpiry }
-  );
+  const secret = getJWTSecret();
+  const expiresIn: JWTExpiresIn = '24h';
+
+  const tokenPayload = {
+    userId,
+    type: 'email_verification',
+  };
+
+  return jwt.sign(tokenPayload, secret, { expiresIn });
 };
 
 export const verifyAccessToken = (token: string): AccessTokenPayload | null => {
   try {
-    const secret = config.jwt.secret;
-    if (!secret) {
-      throw new Error('JWT secret is not configured');
+    const secret = getJWTSecret();
+    const decoded = jwt.verify(token, secret) as jwt.JwtPayload;
+
+    if (decoded && typeof decoded === 'object' && 'userId' in decoded) {
+      return {
+        userId: decoded.userId as number,
+        role: (decoded.role as string) || 'user',
+      };
     }
-    
-    const decoded = jwt.verify(token, secret);
-    
-    // Type guard to ensure we have the right structure
-    if (typeof decoded === 'object' && decoded !== null && 'userId' in decoded) {
-      return decoded as AccessTokenPayload;
-    }
-    
+
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
 
 export const verifyEmailToken = (token: string): EmailTokenPayload | null => {
   try {
-    const secret = config.jwt.secret;
-    if (!secret) {
-      throw new Error('JWT secret is not configured');
+    const secret = getJWTSecret();
+    const decoded = jwt.verify(token, secret) as jwt.JwtPayload;
+
+    if (decoded && typeof decoded === 'object' && 'userId' in decoded && 'type' in decoded) {
+      return {
+        userId: decoded.userId as number,
+        type: decoded.type as string,
+      };
     }
-    
-    const decoded = jwt.verify(token, secret);
-    
-    // Type guard to ensure we have the right structure
-    if (typeof decoded === 'object' && decoded !== null && 'userId' in decoded && 'type' in decoded) {
-      return decoded as EmailTokenPayload;
-    }
-    
+
     return null;
-  } catch (error) {
+  } catch {
     return null;
   }
-};
-
-// Alternative implementation if you're still having issues:
-export const generateAccessTokenAlt = (payload: AccessTokenPayload): string => {
-  const secret = process.env.JWT_SECRET || 'fallback-secret';
-  const expiresIn = process.env.JWT_EXPIRES_IN || '15m';
-  
-  return jwt.sign(payload, secret, { expiresIn });
-};
-
-export const generateEmailTokenAlt = (userId: number): string => {
-  const secret = process.env.JWT_SECRET || 'fallback-secret';
-  
-  return jwt.sign(
-    { userId, type: 'email_verification' },
-    secret,
-    { expiresIn: '24h' }
-  );
 };

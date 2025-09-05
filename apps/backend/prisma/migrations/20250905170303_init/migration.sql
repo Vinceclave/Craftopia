@@ -151,8 +151,12 @@ CREATE TABLE "public"."UserChallenge" (
     "challenge_id" INTEGER NOT NULL,
     "status" "public"."ChallengeStatus" NOT NULL DEFAULT 'in_progress',
     "proof_url" TEXT,
-    "verified" BOOLEAN NOT NULL DEFAULT false,
     "completed_at" TIMESTAMP(3),
+    "verified_at" TIMESTAMP(3),
+    "verified_by_admin_id" INTEGER,
+    "points_awarded" INTEGER NOT NULL DEFAULT 0,
+    "admin_notes" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "UserChallenge_pkey" PRIMARY KEY ("user_challenge_id")
@@ -254,6 +258,9 @@ ALTER TABLE "public"."UserChallenge" ADD CONSTRAINT "UserChallenge_user_id_fkey"
 
 -- AddForeignKey
 ALTER TABLE "public"."UserChallenge" ADD CONSTRAINT "UserChallenge_challenge_id_fkey" FOREIGN KEY ("challenge_id") REFERENCES "public"."EcoChallenge"("challenge_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."UserChallenge" ADD CONSTRAINT "UserChallenge_verified_by_admin_id_fkey" FOREIGN KEY ("verified_by_admin_id") REFERENCES "public"."User"("user_id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Report" ADD CONSTRAINT "Report_reporter_id_fkey" FOREIGN KEY ("reporter_id") REFERENCES "public"."User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;

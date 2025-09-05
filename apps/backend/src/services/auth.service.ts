@@ -110,7 +110,7 @@ export const logout = async (rawRefreshToken?: string) => {
 
 const sendVerificationEmail = async (user: { user_id: number; email: string }) => {
   const token = generateEmailToken(user.user_id);
-  const url = `${config.frontend.url}/api/auth/verify-email?token=${token}`;
+  const url = `${config.frontend.url}/api/v1/auth/verify-email?token=${token}`;
   const userName = user.email.split('@')[0];
 
   const html = `
