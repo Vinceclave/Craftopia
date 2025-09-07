@@ -7,6 +7,7 @@ import userChallengeRoutes from './userChallenge.route';
 import moderationRoutes from './moderation.route';
 import announcementRoutes from './announcement.route'; // ADD THIS
 import reportRoutes from './report.route'; // ADD THIS
+import aiRoutes from '../ai/routes/ai.route';
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.use('/user-challenges', userChallengeRoutes);
 router.use('/moderation', moderationRoutes);
 router.use('/announcements', announcementRoutes); // ADD THIS
 router.use('/reports', reportRoutes); // ADD THIS
+router.use('/ai', aiRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

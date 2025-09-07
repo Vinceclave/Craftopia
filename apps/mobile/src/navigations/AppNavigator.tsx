@@ -5,17 +5,17 @@ import { AuthNavigator } from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  // const { isAuthenticated, isLoading } = useAuth();
+  const isAuthenticated = true;
+  // console.log('AppNavigator: isLoading=', isLoading, 'isAuthenticated=', isAuthenticated);
 
-  console.log('AppNavigator: isLoading=', isLoading, 'isAuthenticated=', isAuthenticated);
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <ActivityIndicator size="large" color="#3B82F6" />
-      </View>
-    );
-  }
+  //  if (isLoading) {
+  //   return (
+  //     <View className="flex-1 justify-center items-center bg-white">
+  //       <ActivityIndicator size="large" color="#3B82F6" />
+  //     </View>
+  //   );
+  //  }
 
   return isAuthenticated ? <MainNavigator /> : <AuthNavigator />;
 };

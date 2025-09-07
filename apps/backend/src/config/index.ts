@@ -2,6 +2,10 @@
 
 export const config = {
   port: Number(process.env.PORT) || 3001,
+
+  ai: {
+    apiKey: process.env.GOOGLE_API_KEY || '',
+  },
   
   jwt: {
     secret: process.env.JWT_SECRET || 'craftopia-fallback-secret-dev-only',

@@ -128,26 +128,26 @@ model CraftIdea {
   generated_by_user User? @relation(fields: [generated_by_user_id], references: [user_id])
 }
 
-model ChatbotConversation {
-  conversation_id Int      @id @default(autoincrement())
-  user_id         Int
-  title           String?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now())
+  model ChatbotConversation {
+    conversation_id Int      @id @default(autoincrement())
+    user_id         Int
+    title           String?
+    created_at      DateTime @default(now())
+    updated_at      DateTime @default(now())
 
-  user     User               @relation(fields: [user_id], references: [user_id])
-  messages ChatbotMessage[]
-}
+    user     User               @relation(fields: [user_id], references: [user_id])
+    messages ChatbotMessage[]
+  }
 
-model ChatbotMessage {
-  message_id      Int           @id @default(autoincrement())
-  conversation_id Int
-  sender          MessageSender
-  content         String
-  created_at      DateTime      @default(now())
+  model ChatbotMessage {
+    message_id      Int           @id @default(autoincrement())
+    conversation_id Int
+    sender          MessageSender
+    content         String
+    created_at      DateTime      @default(now())
 
-  conversation ChatbotConversation @relation(fields: [conversation_id], references: [conversation_id])
-}
+    conversation ChatbotConversation @relation(fields: [conversation_id], references: [conversation_id])
+  }
 
 // ==========================
 // MODULE 3: COMMUNITY HUB
