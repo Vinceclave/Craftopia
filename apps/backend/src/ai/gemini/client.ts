@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { config }from './index';
+import { config } from '../../config';
 
 export const ai = new GoogleGenAI({
   apiKey: config.ai.apiKey,
