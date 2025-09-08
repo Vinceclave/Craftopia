@@ -9,7 +9,7 @@ import announcementRoutes from './announcement.route'; // ADD THIS
 import reportRoutes from './report.route'; // ADD THIS
 import aiRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
-import imageRoutes from '../ai/routes/image.route';
+import imageRoutes from '../ai/routes/image.route'
 
 const router = Router();
 
