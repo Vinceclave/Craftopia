@@ -10,4 +10,5 @@ export const challengePrompt = `Generate a recycling challenge as JSON:
 
 Focus on actionable sustainability tasks. Examples:
 - "Plastic Bottle Upcycle" / "Transform 5 bottles into planters"
-- "Glass Jar Revival" / "Repurpose 3 jars for food storage"`;
+- "Glass Jar Revival" / "Repurpose 3 jars for food storage"
+`;

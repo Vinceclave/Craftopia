@@ -11,6 +11,7 @@ import {
 import { createRefreshToken, revokeRefreshToken, verifyRefreshToken } from './resfreshToken.service';
 import { AppError } from '../utils/error';
 import { config } from '../config';
+import prisma from '../config/prisma';
 
 export const register = async (username: string, email: string, password: string) => {
   if (!username?.trim() || !email?.trim() || !password?.trim()) {
@@ -107,6 +108,120 @@ export const logout = async (rawRefreshToken?: string) => {
     await revokeRefreshToken(storedToken.token_id);
   }
 };
+
+export const changePassword = async (userId: number, currentPassword: string, newPassword: string) => {
+  if (!currentPassword?.trim() || !newPassword?.trim()) {
+    throw new AppError('Current password and new password are required', 400);
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError('New password must be at least 6 characters long', 400);
+  }
+
+  const user = await userService.findUserById(userId);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const isCurrentPasswordValid = await comparePassword(currentPassword, user.password_hash);
+  if (!isCurrentPasswordValid) {
+    throw new AppError('Current password is incorrect', 400);
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+  
+  return await prisma.user.update({
+    where: { user_id: userId },
+    data: { password_hash: newPasswordHash },
+    select: { user_id: true, username: true, email: true }
+  });
+};
+
+export const forgotPassword = async (email: string) => {
+  if (!email?.trim()) {
+    throw new AppError('Email is required', 400);
+  }
+
+  const user = await userService.findUserByUsernameOrEmail(email);
+  if (!user) {
+    // Don't reveal if email exists or not
+    return { message: 'If the email exists, password reset instructions have been sent' };
+  }
+
+  const resetToken = generateEmailToken(user.user_id);
+  
+  // Send password reset email
+  await sendPasswordResetEmail({ user_id: user.user_id, email: user.email }, resetToken);
+  
+  return { message: 'Password reset instructions sent to your email' };
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  if (!token?.trim() || !newPassword?.trim()) {
+    throw new AppError('Token and new password are required', 400);
+  }
+
+  if (newPassword.length < 6) {
+    throw new AppError('Password must be at least 6 characters long', 400);
+  }
+
+  const payload = verifyEmailToken(token);
+  if (!payload || payload.type !== 'email_verification') {
+    throw new AppError('Invalid or expired reset token', 400);
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+  
+  return await prisma.user.update({
+    where: { user_id: payload.userId },
+    data: { password_hash: newPasswordHash },
+    select: { user_id: true, username: true, email: true }
+  });
+};
+
+// Helper function for password reset email
+const sendPasswordResetEmail = async (user: { user_id: number; email: string }, token: string) => {
+  const url = `${config.frontend.url}/api/v1/auth/reset-password?token=${token}`;
+  const userName = user.email.split('@')[0];
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>Password Reset - Craftopia</title>
+    </head>
+    <body style="font-family: Inter, sans-serif; background-color: #F9FAFB; padding: 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; padding: 40px; border: 1px solid #F3F4F6;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
+          <div style="font-size: 24px; font-weight: 800; color: #6D28D9; margin-bottom: 5px;">CRAFTOPIA</div>
+          <div style="font-size: 14px; color: #6B7280;">Password Reset Request</div>
+        </div>
+        
+        <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 15px;">Reset Your Password</h1>
+        
+        <p style="color: #6B7280; margin-bottom: 20px;">
+          Hello <span style="color: #0891B2; font-weight: 500;">${userName}</span>,
+        </p>
+        
+        <p style="color: #6B7280; margin-bottom: 20px;">
+          We received a request to reset your password. Click the button below to create a new password:
+        </p>
+        
+        <a href="${url}" style="display: inline-block; background-color: #6D28D9; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin-bottom: 25px;">Reset Password</a>
+        
+        <p style="color: #6B7280; font-size: 14px; margin-bottom: 0;">
+          This link expires in <span style="color: #DC2626; font-weight: 500;">24 hours</span>. 
+          If you didn't request this reset, please ignore this email.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(user.email, 'Reset Your Craftopia Password', html);
+};
+
 
 const sendVerificationEmail = async (user: { user_id: number; email: string }) => {
   const token = generateEmailToken(user.user_id);

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as authService from '../services/auth.service';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess } from '../utils/response';
+import { AuthRequest } from "../middlewares/auth.middleware";
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
@@ -36,4 +37,22 @@ export const requestEmailVerification = asyncHandler(async (req: Request, res: R
   const { email } = req.body;
   const result = await authService.resendVerificationEmail(email);
   sendSuccess(res, result, 'Verification email sent successfully');
+});
+
+export const changePassword = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { currentPassword, newPassword } = req.body;
+  await authService.changePassword(req.user!.userId, currentPassword, newPassword);
+  sendSuccess(res, null, 'Password changed successfully');
+});
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { email } = req.body;
+  const result = await authService.forgotPassword(email);
+  sendSuccess(res, result, 'Password reset instructions sent');
+});
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+  await authService.resetPassword(token, newPassword);
+  sendSuccess(res, null, 'Password reset successfully');
 });

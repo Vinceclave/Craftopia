@@ -10,6 +10,7 @@ import reportRoutes from './report.route'; // ADD THIS
 import aiRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import imageRoutes from '../ai/routes/image.route'
+import userRoutes from './user.route';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 
 // Protected routes
+router.use('/users', userRoutes);
 router.use('/posts', postRoutes);
 router.use('/crafts', craftRoutes);
 router.use('/challenges', challengeRoutes);

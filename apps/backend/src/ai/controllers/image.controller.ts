@@ -1,7 +1,6 @@
 import { asyncHandler } from "../../utils/asyncHandler";
 import { Request, Response } from "express";
 import { sendError, sendSuccess } from "../../utils/response";
-import { AppError } from "../../utils/error";
 import { recognizeImage } from "../services/image.service";
 
 export const imageRecognition = asyncHandler(
