@@ -1,7 +1,6 @@
 import { MailOpen } from 'lucide-react-native'
 import React, { useState } from 'react'
-import { Text, View, Alert } from 'react-native'
-import { ScrollView } from 'react-native-gesture-handler'
+import { Text, View, Alert, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigations/AuthNavigator';
@@ -78,10 +77,13 @@ export const VerifyEmailScreen = () => {
   }
 };
 
-
   return (
     <SafeAreaView className="flex-1 bg-craftopia-light">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-6">
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        className="px-6"
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="flex-1 justify-center">
           <View className="items-center mb-4">
             <MailOpen size={64} color="#4A90E2" strokeWidth={2.5} /> 
@@ -126,7 +128,7 @@ export const VerifyEmailScreen = () => {
             // ❌ Email input + resend button
             <>
               <Text className="text-craftopia-text-secondary text-center text-base mb-4">
-                Didn’t get the verification email? Enter your email to request another link.
+                Didn't get the verification email? Enter your email to request another link.
               </Text>
 
               <Input

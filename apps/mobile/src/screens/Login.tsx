@@ -117,18 +117,17 @@ const LoginScreen: React.FC = () => {
         </View>
 
         <View className="mt-8 items-center">
-         <View className="flex-row items-center mb-4">
-          <Text className="text-craftopia-text-secondary text-base">
-            Don't have an account?{' '}
-            <Text 
-              className="text-craftopia-digital text-base font-semibold"
-              onPress={() => navigation.navigate('Register')}
-            >
-              Sign Up
+          <View className="flex-row items-center mb-4">
+            <Text className="text-craftopia-text-secondary text-base">
+              Don't have an account?{' '}
+              <Text 
+                className="text-craftopia-digital text-base font-semibold"
+                onPress={() => navigation.navigate('Register')}
+              >
+                Sign Up
+              </Text>
             </Text>
-          </Text>
-        </View>
-
+          </View>
           
           <TouchableOpacity 
             className="mt-2" 

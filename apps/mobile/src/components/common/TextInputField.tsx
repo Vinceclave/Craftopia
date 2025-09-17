@@ -33,6 +33,7 @@ const Input = forwardRef<TextInput, InputProps>(
                 ? 'border-craftopia-digital' 
                 : 'border-craftopia-accent'
           } shadow-sm`}
+          style={{ pointerEvents: 'auto' }} // Use style instead of props
         >
           <TextInput
             ref={ref}
@@ -57,6 +58,7 @@ const Input = forwardRef<TextInput, InputProps>(
             <TouchableOpacity 
               onPress={() => setShowPassword(!showPassword)}
               className="ml-2 p-1"
+              style={{ pointerEvents: 'auto' }} // Use style instead of props
             >
               {showPassword ? (
                 <EyeOff size={22} color="#6B7280" />
@@ -68,7 +70,7 @@ const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {error && (
-          <Text className="absolute -top-2 right-0 text-craftopia-energy text-sm mt-2">
+          <Text className="text-craftopia-energy text-sm mt-2">
             {error}
           </Text>
         )}
@@ -76,5 +78,7 @@ const Input = forwardRef<TextInput, InputProps>(
     );
   }
 );
+
+Input.displayName = 'Input';
 
 export default Input;
