@@ -1,4 +1,4 @@
-// Button.tsx
+// apps/mobile/src/components/common/Button.tsx
 import React from 'react';
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 
@@ -58,3 +58,5 @@ const Button: React.FC<ButtonProps> = ({
 };
 
 export default Button;
+// Add named export for better compatibility
+export { Button };

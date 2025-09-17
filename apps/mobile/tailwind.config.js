@@ -1,10 +1,9 @@
+// apps/mobile/tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./App.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./apps/mobile/**/*.{js,jsx,ts,tsx}",
-    "./apps/mobile/src/**/*.{js,jsx,ts,tsx}"
+    "./src/**/*.{js,jsx,ts,tsx}"
   ],
   presets: [require("nativewind/preset")],
   theme: {
@@ -27,6 +26,4 @@ module.exports = {
     }
   },
   plugins: [],
-  // Fix the dark mode configuration
-  darkMode: 'class', // Change from 'media' to 'class'
-}
+};
