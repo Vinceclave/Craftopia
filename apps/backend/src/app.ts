@@ -19,7 +19,13 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.frontend.url,
+  
+  origin: [
+    'http://localhost:3001',
+    'http://localhost:8081',
+    'http://192.168.1.6:3001', // your LAN IP if testing from device
+    // config.frontend.url
+  ],
   credentials: true
 }));
 

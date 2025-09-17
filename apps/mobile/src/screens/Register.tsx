@@ -1,11 +1,13 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+// apps/mobile/src/screens/Register.tsx
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
+import { useAuth } from '~/context/AuthContext';
 import {
   validateRegister,
   RegisterFormValues,
@@ -13,10 +15,11 @@ import {
 } from '~/utils/validator';
 import debounce from 'lodash.debounce';
 
-type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterNavProp>();
+  const { register, error, clearError } = useAuth();
 
   const [form, setForm] = useState<RegisterFormValues>({
     username: '',
@@ -38,7 +41,18 @@ const RegisterScreen: React.FC = () => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  // debounce validation to avoid firing on every keystroke
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  // Show auth errors
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Registration Failed', error, [{ text: 'OK' }]);
+    }
+  }, [error]);
+
   const debouncedValidate = useCallback(
     debounce((values: RegisterFormValues) => {
       setErrors(validateRegister(values));
@@ -52,23 +66,37 @@ const RegisterScreen: React.FC = () => {
     debouncedValidate(updated);
   };
 
-  const handleRegister = () => {
-    const validationErrors = validateRegister(form);
+const handleRegister = async () => {
+  const validationErrors = validateRegister(form);
 
-    if (Object.values(validationErrors).some((err) => err)) {
-      setErrors(validationErrors);
-      return;
-    }
+  if (Object.values(validationErrors).some((err) => err)) {
+    setErrors(validationErrors);
+    return;
+  }
 
-    setLoading(true);
-    setErrors({ username: '', email: '', password: '', confirmPassword: '' });
+  setLoading(true);
+  clearError();
 
-    // your register logic here
-    setTimeout(() => {
-      setLoading(false);
-      console.log('Register:', form);
-    }, 2000);
-  };
+  await register({
+    username: form.username.trim(),
+    email: form.email.trim(),
+    password: form.password,
+  });
+
+  // ✅ Only navigate if there’s no error in context
+  if (!error) {
+    navigation.navigate('VerifyEmail', { email: form.email.trim() });
+  }
+
+  setLoading(false);
+};
+
+
+  const isFormValid = form.username.trim() && 
+                    form.email.trim() && 
+                    form.password.trim() && 
+                    form.confirmPassword.trim() &&
+                    !Object.values(errors).some(err => err);
 
   return (
     <AuthLayout
@@ -128,12 +156,7 @@ const RegisterScreen: React.FC = () => {
             title="Create Account"
             onPress={handleRegister}
             loading={loading}
-            disabled={
-              !form.username.trim() ||
-              !form.email.trim() ||
-              !form.password.trim() ||
-              !form.confirmPassword.trim()
-            }
+            disabled={!isFormValid || loading}
           />
         </View>
 
@@ -145,6 +168,7 @@ const RegisterScreen: React.FC = () => {
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Login')}
+              disabled={loading}
             >
               <Text className="text-craftopia-digital text-base font-semibold">
                 Sign In
@@ -152,11 +176,9 @@ const RegisterScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity activeOpacity={0.7}>
-            <Text className="text-craftopia-spark text-sm font-medium">
-              Need Help?
-            </Text>
-          </TouchableOpacity>
+          <Text className="text-craftopia-text-secondary text-sm text-center leading-relaxed">
+            By creating an account, you agree to our Terms of Service and Privacy Policy
+          </Text>
         </View>
       </View>
     </AuthLayout>

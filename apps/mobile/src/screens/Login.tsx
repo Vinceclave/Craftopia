@@ -1,18 +1,21 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+// apps/mobile/src/screens/Login.tsx
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
+import { useAuth } from '~/context/AuthContext';
 import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
 import debounce from 'lodash.debounce';
 
-type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
+type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginNavProp>();
+  const { login, error, clearError } = useAuth();
 
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<LoginFormErrors>({ email: '', password: '' });
@@ -20,11 +23,22 @@ const LoginScreen: React.FC = () => {
 
   const passwordRef = useRef<TextInput>(null);
 
-  // debounced validator
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError(); 
+  }, [clearError]);
+
+  // Show auth errors
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Login Failed', error, [{ text: 'OK' }]);
+    }
+  }, [error]);
+
   const debouncedValidate = useCallback(
     debounce((values: LoginFormValues) => {
       setErrors(validateLogin(values));
-    }, 400), // 400ms delay
+    }, 400),
     []
   );
 
@@ -34,7 +48,7 @@ const LoginScreen: React.FC = () => {
     debouncedValidate(updated);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const validationErrors = validateLogin(form);
 
     if (Object.values(validationErrors).some((err) => err)) {
@@ -43,16 +57,31 @@ const LoginScreen: React.FC = () => {
     }
 
     setLoading(true);
-    setErrors({ email: '', password: '' });
+    clearError();
 
-    setTimeout(() => {
+    try {
+      await login({
+        email: form.email.trim(),
+        password: form.password,
+      });
+      
+      // Navigation will be handled automatically by AuthContext/AppNavigator
+      console.log('Login successful, navigation handled by context');
+      
+    } catch (error) {
+      // Error is handled by useAuth context
+      console.log('Login error handled by context');
+    } finally {
       setLoading(false);
-      console.log('Login:', form);
-    }, 2000);
+    }
   };
 
+  const isFormValid = form.email.trim() && 
+                     form.password.trim() &&
+                     !Object.values(errors).some(err => err);
+
   return (
-    <AuthLayout title="Welcome Back" subtitle="Sign in to continue">
+    <AuthLayout title="Welcome Back" subtitle="Sign in to continue your creative journey">
       <View>
         <Input
           label="Email"
@@ -83,25 +112,42 @@ const LoginScreen: React.FC = () => {
             title="Sign In"
             onPress={handleLogin}
             loading={loading}
-            disabled={!form.email.trim() || !form.password.trim()}
+            disabled={!isFormValid || loading}
           />
         </View>
 
         <View className="mt-8 items-center">
-          <View className="flex-row items-center">
-            <Text className="text-craftopia-text-secondary text-base">
-              Don't have an account?{' '}
+         <View className="flex-row items-center mb-4">
+          <Text className="text-craftopia-text-secondary text-base">
+            Don't have an account?{' '}
+            <Text 
+              className="text-craftopia-digital text-base font-semibold"
+              onPress={() => navigation.navigate('Register')}
+            >
+              Sign Up
             </Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Register')}>
-              <Text className="text-craftopia-digital text-base font-semibold">
-                Sign Up
-              </Text>
-            </TouchableOpacity>
-          </View>
+          </Text>
+        </View>
+
           
-          <TouchableOpacity className="mt-4" activeOpacity={0.7}>
+          <TouchableOpacity 
+            className="mt-2" 
+            activeOpacity={0.7}
+            disabled={loading}
+          >
             <Text className="text-craftopia-spark text-sm">
               Forgot Password?
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            className="mt-4" 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('VerifyEmail', {})}
+            disabled={loading}
+          >
+            <Text className="text-craftopia-spark text-sm">
+              Need to verify your email?
             </Text>
           </TouchableOpacity>
         </View>

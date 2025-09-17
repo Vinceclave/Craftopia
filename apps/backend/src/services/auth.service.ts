@@ -296,6 +296,8 @@ export const resendVerificationEmail = async (email: string) => {
   }
 
   const user = await userService.findUserByUsernameOrEmail(email);
+  console.log(user)
+
   if (!user) {
     throw new AppError('User not found', 404);
   }
