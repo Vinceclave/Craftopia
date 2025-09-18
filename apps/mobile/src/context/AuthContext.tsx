@@ -17,7 +17,7 @@ interface AuthContextType {
   error: string | null;
 
   register: (credentials: RegisterRequest) => Promise<void>;
-  login: (credentials: LoginRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<User | void>;
   logout: () => Promise<void>;
   clearError: () => void;
   refreshAuth: () => Promise<void>;
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = await authService.getToken();
       if (token) {
         try {
-          const userData = await authService.getCurrentUser(); // you'll need this in auth.service.ts
+          const userData = await authService.getCurrentUser();
           setUser(userData);
           setIsAuthenticated(true);
           console.log('Auth check: User authenticated', userData.username);
@@ -91,31 +91,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-
   const login = async (credentials: LoginRequest) => {
-    try {
-      setError(null);
-      console.log('Starting login...');
+  try {
+    setError(null);
+    console.log('Starting login...');
 
-      const response = await authService.login(credentials);
-      console.log(response)
-      // Save tokens
-      await authService.saveTokens(response.accessToken, response.refreshToken);
-
-      // Update state
-      setUser(response.user);
-      setIsAuthenticated(true);
-
-      console.log('Login successful:', response.user.username);
-    } catch (error: any) {
-      console.error('Login error:', error);
-      const errorMessage =
-        error.message || 'Login failed. Please check your credentials.';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+    const response = await authService.login(credentials);
+    
+    // ✅ Check if email is verified BEFORE saving tokens
+    if (!response.user.is_email_verified) {
+      // Don't save tokens or update state
+      throw new Error('EMAIL_NOT_VERIFIED:' + credentials.email);
     }
-  };
 
+    // Save tokens only if verified
+    await authService.saveTokens(response.accessToken, response.refreshToken);
+    setUser(response.user);
+    setIsAuthenticated(true);
+
+    console.log('Login successful:', response.user.username);
+  } catch (error: any) {
+    console.error('Login error:', error);
+    const errorMessage = error.message || 'Login failed. Please check your credentials.';
+    setError(errorMessage);
+    throw error; // Re-throw so the component can handle it
+  }
+};
   const logout = async () => {
     try {
       await authService.clearTokens();

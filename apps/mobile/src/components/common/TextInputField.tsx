@@ -70,7 +70,7 @@ const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {error && (
-          <Text className="text-craftopia-energy text-sm mt-2">
+          <Text className="absolute -top-2 right-0 text-craftopia-energy text-sm mt-2">
             {error}
           </Text>
         )}

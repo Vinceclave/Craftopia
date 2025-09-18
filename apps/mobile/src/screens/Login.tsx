@@ -64,12 +64,25 @@ const LoginScreen: React.FC = () => {
         email: form.email.trim(),
         password: form.password,
       });
-      
-      // Navigation will be handled automatically by AuthContext/AppNavigator
-      console.log('Login successful, navigation handled by context');
-      
-    } catch (error) {
-      // Error is handled by useAuth context
+
+      // ❌ This won't work because login() doesn't return user
+      // const loggedInUser = await login(...);
+
+    } catch (err: any) {
+      // Check if error is specifically about email verification
+      if (err.message && err.message.includes('email not verified')) {
+        Alert.alert(
+          'Email Not Verified',
+          'Please verify your email before signing in.',
+          [
+            { 
+              text: 'Verify Now', 
+              onPress: () => navigation.navigate('VerifyEmail', { email: form.email.trim() })
+            },
+            { text: 'Cancel', style: 'cancel' }
+          ]
+        );
+      }
       console.log('Login error handled by context');
     } finally {
       setLoading(false);
@@ -132,6 +145,7 @@ const LoginScreen: React.FC = () => {
           <TouchableOpacity 
             className="mt-2" 
             activeOpacity={0.7}
+            onPress={() => navigation.navigate('ForgotPassword')}
             disabled={loading}
           >
             <Text className="text-craftopia-spark text-sm">

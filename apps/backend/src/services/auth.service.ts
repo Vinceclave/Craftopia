@@ -34,7 +34,6 @@ export const register = async (username: string, email: string, password: string
   const { password_hash: _, ...safeUser } = user;
   return safeUser;
 };
-
 export const login = async (email: string, password: string) => {
   if (!email?.trim() || !password?.trim()) {
     throw new AppError('Email and password are required', 400);
@@ -48,6 +47,11 @@ export const login = async (email: string, password: string) => {
   const isValid = await comparePassword(password, user.password_hash);
   if (!isValid) {
     throw new AppError('Invalid email or password', 401);
+  }
+
+  // 🚫 Block login if email is not verified
+  if (!user.is_email_verified) {
+    throw new AppError('Please verify your email before logging in.', 403);
   }
 
   // Create properly typed payload
@@ -72,6 +76,7 @@ export const login = async (email: string, password: string) => {
     }
   };
 };
+
 
 export const refreshTokens = async (rawRefreshToken: string) => {
   if (!rawRefreshToken?.trim()) {
