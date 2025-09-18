@@ -6,10 +6,10 @@ import RegisterScreen from '~/screens/Register';
 import ForgotPassword from '~/screens/auth/ForgotPassword';
 
 export type AuthStackParamList = {
-  Login: { email?: string } | undefined;
+  Login: undefined;
   Register: undefined;
-  VerifyEmail: { email?: string };
   ForgotPassword: undefined;
+  VerifyEmail: { email?: string }; // <-- This is required
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();

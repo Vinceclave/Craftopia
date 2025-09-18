@@ -1,9 +1,9 @@
-// apps/mobile/src/screens/Login.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
+
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
@@ -24,12 +24,10 @@ const LoginScreen: React.FC = () => {
 
   const passwordRef = useRef<TextInput>(null);
 
-  // Clear auth errors when component mounts
   useEffect(() => {
-    clearError(); 
+    clearError();
   }, [clearError]);
 
-  // Show auth errors
   useEffect(() => {
     if (error) {
       Alert.alert('Login Failed', error, [{ text: 'OK' }]);
@@ -51,7 +49,6 @@ const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     const validationErrors = validateLogin(form);
-
     if (Object.values(validationErrors).some((err) => err)) {
       setErrors(validationErrors);
       return;
@@ -61,32 +58,36 @@ const LoginScreen: React.FC = () => {
     clearError();
 
     try {
-      await login({
+      const user = await login({
         email: form.email.trim(),
         password: form.password,
       });
-      
-      console.log('Login successful');
+
+      // ✅ FIXED: Use camelCase for isEmailVerified
+      if (user && !user.is_email_verified) {
+        await authService.requestEmailVerification(form.email.trim());
+         Alert.alert('Verification Email Sent', 'Please check your inbox.');
+         navigation.navigate('VerifyEmail', { email: form.email.trim() });
+      }
+
+      console.log('Login successful:', user?.username);
+      // TODO: Navigate to home or dashboard
+      // navigation.replace('Home');
 
     } catch (err: any) {
       console.log('Login failed:', err.message);
-      
-      // Simple check: if error mentions email verification, redirect
-      if (err.message && err.message.toLowerCase().includes('verify')) {
-        authService.requestEmailVerification(form.email.trim())
-        navigation.navigate('VerifyEmail', { email: form.email.trim() });
-        return;
+      if (err.message && !err.message.toLowerCase().includes('verify')) {
+        Alert.alert('Login Failed', err.message);
       }
-      
-      // Otherwise, error will be shown by context
     } finally {
       setLoading(false);
     }
   };
 
-  const isFormValid = form.email.trim() && 
-                     form.password.trim() &&
-                     !Object.values(errors).some(err => err);
+  const isFormValid =
+    form.email.trim() &&
+    form.password.trim() &&
+    !Object.values(errors).some((err) => err);
 
   return (
     <AuthLayout title="Welcome Back" subtitle="Sign in to continue your creative journey">
@@ -128,7 +129,7 @@ const LoginScreen: React.FC = () => {
           <View className="flex-row items-center mb-4">
             <Text className="text-craftopia-text-secondary text-base">
               Don't have an account?{' '}
-              <Text 
+              <Text
                 className="text-craftopia-digital text-base font-semibold"
                 onPress={() => navigation.navigate('Register')}
               >
@@ -136,27 +137,25 @@ const LoginScreen: React.FC = () => {
               </Text>
             </Text>
           </View>
-          
-          <TouchableOpacity 
-            className="mt-2" 
+
+          <TouchableOpacity
+            className="mt-2"
             activeOpacity={0.7}
             onPress={() => navigation.navigate('ForgotPassword')}
             disabled={loading}
           >
-            <Text className="text-craftopia-spark text-sm">
-              Forgot Password?
-            </Text>
+            <Text className="text-craftopia-spark text-sm">Forgot Password?</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            className="mt-4" 
+
+          <TouchableOpacity
+            className="mt-4"
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('VerifyEmail', {})}
+            onPress={() =>
+              navigation.navigate('VerifyEmail', form.email.trim() ? { email: form.email.trim() } : {})
+            }
             disabled={loading}
           >
-            <Text className="text-craftopia-spark text-sm">
-              Need to verify your email?
-            </Text>
+            <Text className="text-craftopia-spark text-sm">Need to verify your email?</Text>
           </TouchableOpacity>
         </View>
       </View>

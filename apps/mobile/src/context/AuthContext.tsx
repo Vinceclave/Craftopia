@@ -1,11 +1,4 @@
-// apps/mobile/src/context/AuthContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { User, LoginRequest, RegisterRequest } from '../config/api';
 import { authService } from '../services/auth.service';
@@ -42,28 +35,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const clearError = () => setError(null);
 
   const checkAuthStatus = async () => {
+    setIsLoading(true);
     try {
       const token = await authService.getToken();
       if (token) {
         try {
           const userData = await authService.getCurrentUser();
-          setUser(userData);
-          setIsAuthenticated(true);
-          console.log('Auth check: User authenticated', userData.username);
+          if (userData && userData.is_email_verified) {
+            setUser(userData);
+            setIsAuthenticated(true);
+            console.log('Auth check: User authenticated', userData.username);
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+            console.warn('User not authenticated or email not verified');
+          }
         } catch (tokenError) {
           console.warn('Token invalid, clearing auth:', tokenError);
           await authService.clearTokens();
-          setIsAuthenticated(false);
           setUser(null);
+          setIsAuthenticated(false);
         }
       } else {
-        setIsAuthenticated(false);
         setUser(null);
+        setIsAuthenticated(false);
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setIsAuthenticated(false);
+    } catch (err) {
+      console.error('Auth check failed:', err);
       setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
@@ -72,51 +72,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterRequest) => {
     try {
       setError(null);
-      console.log('Starting registration...');
-      
       const response = await authService.register(userData);
-      console.log(response);
+      console.log('Registration response:', response);
 
       Alert.alert(
         'Registration Successful! 🎉',
         'Please check your email for a verification link to complete your account setup.',
         [{ text: 'OK' }]
       );
-
-      console.log('Registration successful, awaiting email verification');
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const errorMessage = error.message || 'Registration failed. Please try again.';
-      setError(errorMessage);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
     }
   };
 
   const login = async (credentials: LoginRequest) => {
     try {
       setError(null);
-      console.log('Starting login...');
 
       const response = await authService.login(credentials);
-      
-      // If user is not verified, throw simple error
-      if (!response.user.is_email_verified) {
-        throw new Error('Please verify your email first');
+      const { user: loggedInUser, accessToken, refreshToken } = response;
+
+      if (!loggedInUser) {
+        throw new Error("Login response does not include user data.");
       }
 
-      // Save tokens and login user
-      await authService.saveTokens(response.accessToken, response.refreshToken);
-      setUser(response.user);
-      setIsAuthenticated(true);
+      console.log("Login processed:", loggedInUser.username);
+      console.log("Full user data:", loggedInUser);
 
-      console.log('Login successful:', response.user.username);
-      return response.user;
-      
-    } catch (error: any) {
-      console.error('Login error:', error);
-      setError(error.message || 'Login failed');
-      throw error;
+      // Ensure you're using the correct property name from the API
+      const isVerified = !!loggedInUser?.isEmailVerified;
+      console.log("Email verified:", loggedInUser?.isEmailVerified); // Debugging email verification status
+
+      setUser(loggedInUser);
+      setIsAuthenticated(isVerified);
+
+      if (isVerified) {
+        await authService.saveTokens(accessToken, refreshToken);
+      } else {
+        Alert.alert(
+          'Email Not Verified',
+          'Please verify your email before continuing.',
+          [{ text: 'OK' }]
+        );
+      }
+
+      return loggedInUser;
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Login failed');
+      throw err;
     }
   };
+
 
   const logout = async () => {
     try {
@@ -125,32 +133,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAuthenticated(false);
       setError(null);
       console.log('Logout successful');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (err) {
+      console.error('Logout error:', err);
       setUser(null);
       setIsAuthenticated(false);
     }
   };
 
   const refreshAuth = async () => {
-    setIsLoading(true);
     await checkAuthStatus();
   };
 
-  const contextValue: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated,
-    error,
-    register,
-    login,
-    logout,
-    clearError,
-    refreshAuth,
-  };
-
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        isAuthenticated,
+        error,
+        register,
+        login,
+        logout,
+        clearError,
+        refreshAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -158,8 +165,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

@@ -8,6 +8,7 @@ import MainNavigator from './MainNavigator';
 export const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log(isAuthenticated)
   // Show loading spinner while checking authentication status
   if (isLoading) {
     return (
