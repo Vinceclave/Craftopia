@@ -10,6 +10,7 @@ import Input from '~/components/common/TextInputField';
 import { useAuth } from '~/context/AuthContext';
 import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
 import debounce from 'lodash.debounce';
+import { authService } from '~/services/auth.service';
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -64,26 +65,20 @@ const LoginScreen: React.FC = () => {
         email: form.email.trim(),
         password: form.password,
       });
-
-      // ❌ This won't work because login() doesn't return user
-      // const loggedInUser = await login(...);
+      
+      console.log('Login successful');
 
     } catch (err: any) {
-      // Check if error is specifically about email verification
-      if (err.message && err.message.includes('email not verified')) {
-        Alert.alert(
-          'Email Not Verified',
-          'Please verify your email before signing in.',
-          [
-            { 
-              text: 'Verify Now', 
-              onPress: () => navigation.navigate('VerifyEmail', { email: form.email.trim() })
-            },
-            { text: 'Cancel', style: 'cancel' }
-          ]
-        );
+      console.log('Login failed:', err.message);
+      
+      // Simple check: if error mentions email verification, redirect
+      if (err.message && err.message.toLowerCase().includes('verify')) {
+        authService.requestEmailVerification(form.email.trim())
+        navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        return;
       }
-      console.log('Login error handled by context');
+      
+      // Otherwise, error will be shown by context
     } finally {
       setLoading(false);
     }
