@@ -41,10 +41,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
         try {
           const userData = await authService.getCurrentUser();
-          if (userData && userData.is_email_verified) {
-            setUser(userData);
+          const normalizedUser = {
+            ...userData,
+            isEmailVerified: userData?.isEmailVerified ?? userData?.is_email_verified,
+          };
+
+          if (normalizedUser && normalizedUser.isEmailVerified) {
+            setUser(normalizedUser);
             setIsAuthenticated(true);
-            console.log('Auth check: User authenticated', userData.username);
+            console.log('Auth check: User authenticated', normalizedUser.username);
           } else {
             setUser(null);
             setIsAuthenticated(false);
@@ -76,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response);
 
       Alert.alert(
-        'Registration Successful! 🎉',
+        'Registration Successful 🎉',
         'Please check your email for a verification link to complete your account setup.',
         [{ text: 'OK' }]
       );
@@ -94,37 +99,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { user: loggedInUser, accessToken, refreshToken } = response;
 
       if (!loggedInUser) {
-        throw new Error("Login response does not include user data.");
+        throw new Error('Login response does not include user data.');
       }
 
-      console.log("Login processed:", loggedInUser.username);
-      console.log("Full user data:", loggedInUser);
+      // normalize API field
+      const normalizedUser = {
+        ...loggedInUser,
+        isEmailVerified: loggedInUser?.isEmailVerified ?? loggedInUser?.is_email_verified,
+      };
 
-      // Ensure you're using the correct property name from the API
-      const isVerified = !!loggedInUser?.isEmailVerified;
-      console.log("Email verified:", loggedInUser?.isEmailVerified); // Debugging email verification status
+      console.log('Login processed:', normalizedUser.username);
+      console.log('Email verified:', normalizedUser.isEmailVerified);
 
-      setUser(loggedInUser);
-      setIsAuthenticated(isVerified);
+      setUser(normalizedUser);
+      setIsAuthenticated(!!normalizedUser.isEmailVerified);
 
-      if (isVerified) {
+      if (normalizedUser.isEmailVerified) {
         await authService.saveTokens(accessToken, refreshToken);
-      } else {
-        Alert.alert(
-          'Email Not Verified',
-          'Please verify your email before continuing.',
-          [{ text: 'OK' }]
-        );
       }
 
-      return loggedInUser;
+      return normalizedUser;
     } catch (err: any) {
+      // detect verification error fast
+      if (err.message?.toLowerCase().includes('verify your email')) {
+        return { isEmailVerified: false } as User; // fake user for LoginScreen
+      }
+
       console.error('Login error:', err);
       setError(err.message || 'Login failed');
       throw err;
     }
   };
-
 
   const logout = async () => {
     try {

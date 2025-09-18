@@ -63,20 +63,18 @@ const LoginScreen: React.FC = () => {
         password: form.password,
       });
 
-      // ✅ FIXED: Use camelCase for isEmailVerified
-      if (user && !user.is_email_verified) {
+      if (user && !user.isEmailVerified) {
         await authService.requestEmailVerification(form.email.trim());
-         Alert.alert('Verification Email Sent', 'Please check your inbox.');
-         navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        Alert.alert('Verification Email Sent', 'Please check your inbox.');
+        navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        return;
       }
 
-      console.log('Login successful:', user?.username);
-      // TODO: Navigate to home or dashboard
-      // navigation.replace('Home');
-
+      if (user) {
+        console.log('Login successful:', user.username);
+      }
     } catch (err: any) {
-      console.log('Login failed:', err.message);
-      if (err.message && !err.message.toLowerCase().includes('verify')) {
+      if (!err.message?.toLowerCase().includes('verify')) {
         Alert.alert('Login Failed', err.message);
       }
     } finally {
@@ -126,16 +124,16 @@ const LoginScreen: React.FC = () => {
         </View>
 
         <View className="mt-8 items-center">
+          {/* ✅ Fix nested Text issue */}
           <View className="flex-row items-center mb-4">
             <Text className="text-craftopia-text-secondary text-base">
-              Don't have an account?{' '}
-              <Text
-                className="text-craftopia-digital text-base font-semibold"
-                onPress={() => navigation.navigate('Register')}
-              >
+              Don’t have an account?
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text className="text-craftopia-digital text-base font-semibold ml-1">
                 Sign Up
               </Text>
-            </Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -145,17 +143,6 @@ const LoginScreen: React.FC = () => {
             disabled={loading}
           >
             <Text className="text-craftopia-spark text-sm">Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="mt-4"
-            activeOpacity={0.7}
-            onPress={() =>
-              navigation.navigate('VerifyEmail', form.email.trim() ? { email: form.email.trim() } : {})
-            }
-            disabled={loading}
-          >
-            <Text className="text-craftopia-spark text-sm">Need to verify your email?</Text>
           </TouchableOpacity>
         </View>
       </View>

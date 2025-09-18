@@ -8,8 +8,12 @@ import {
   Bookmark, Clock, Zap, Badge, Crown, Medal, CheckCircle, Lock,
   Palette, Moon, Globe, Smartphone, Mail, Eye, Volume2
 } from 'lucide-react-native';
+import { useAuth } from '../context/AuthContext';
+
 
 export const ProfileScreen = () => {
+  const { user, logout } = useAuth();
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [publicProfile, setPublicProfile] = useState(true);
@@ -125,7 +129,7 @@ export const ProfileScreen = () => {
                 </Text>
               </View>
               <Text className="text-4xl font-black tracking-tight" style={{ color: '#004E98' }}>
-                {userProfile.name}
+                {user?.username}
               </Text>
             </View>
             
@@ -535,6 +539,7 @@ export const ProfileScreen = () => {
 
           {/* Sign Out Button */}
           <TouchableOpacity 
+            onPress={logout}
             className="flex-row items-center justify-center py-4 rounded-2xl mb-6"
             style={{ 
               backgroundColor: '#FF670015',

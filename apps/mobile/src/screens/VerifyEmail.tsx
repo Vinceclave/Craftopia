@@ -24,7 +24,7 @@ export const VerifyEmailScreen = () => {
   // ✅ Explicit control for flow
   const [showTokenInput, setShowTokenInput] = useState(!!route.params?.email);
 
- const handleVerifyToken = async () => {
+  const handleVerifyToken = async () => {
     if (!token.trim()) {
       Alert.alert('Error', 'Please enter the verification token from your email');
       return;
@@ -33,15 +33,17 @@ export const VerifyEmailScreen = () => {
     setIsLoading(true);
     try {
       await authService.verifyEmail(token.trim());
-      
-      Alert.alert(
-        'Email Verified! ✅', 
-        'Your email has been successfully verified. You can now sign in to your account.',
-        [{ text: 'Sign In', onPress: () => navigation.navigate('Login') }]
-      );
+
+      Alert.alert('Email Verified! ✅', 'Redirecting you to login...');
+
+      // ✅ Auto redirect (clear stack so they can't go back to Verify screen)
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
     } catch (error: any) {
       Alert.alert(
-        'Verification Failed', 
+        'Verification Failed',
         error.message || 'The verification token is invalid or has expired. Please try again or request a new verification email.',
         [{ text: 'OK' }]
       );
@@ -51,42 +53,41 @@ export const VerifyEmailScreen = () => {
   };
 
   const handleResendVerification = async () => {
-  if (!email?.trim()) {
-    Alert.alert('Error', 'No email address found. Please go back and register again.');
-    return;
-  }
+    if (!email?.trim()) {
+      Alert.alert('Error', 'No email address found. Please go back and register again.');
+      return;
+    }
 
-  setIsResending(true);
-  try {
-    await authService.requestEmailVerification(email.trim());
+    setIsResending(true);
+    try {
+      await authService.requestEmailVerification(email.trim());
 
-    Alert.alert(
-      'Verification Email Sent! 📧',
-      'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
-      [{ text: 'OK', onPress: () => setShowTokenInput(true) }] // ✅ switch to token input after success
-    );
-    console.log(showTokenInput)
-  } catch (error: any) {
-    Alert.alert(
-      'Failed to Resend',
-      error.message || 'Something went wrong while sending the verification email.',
-      [{ text: 'OK' }]
-    );
-  } finally {
-    setIsResending(false);
-  }
-};
+      Alert.alert(
+        'Verification Email Sent! 📧',
+        'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
+        [{ text: 'OK', onPress: () => setShowTokenInput(true) }]
+      );
+    } catch (error: any) {
+      Alert.alert(
+        'Failed to Resend',
+        error.message || 'Something went wrong while sending the verification email.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-craftopia-light">
-      <ScrollView 
-        contentContainerStyle={{ flexGrow: 1 }} 
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
         className="px-6"
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 justify-center">
           <View className="items-center mb-4">
-            <MailOpen size={64} color="#4A90E2" strokeWidth={2.5} /> 
+            <MailOpen size={64} color="#4A90E2" strokeWidth={2.5} />
             <Text className="text-xl font-black text-craftopia-text-primary text-center mt-4 mb-3">
               Verify your email
             </Text>
@@ -142,10 +143,10 @@ export const VerifyEmailScreen = () => {
               />
 
               <View className="mt-6">
-                <Button 
-                  title="Resend Verification Link" 
-                  onPress={handleResendVerification} 
-                  loading={isResending} 
+                <Button
+                  title="Resend Verification Link"
+                  onPress={handleResendVerification}
+                  loading={isResending}
                 />
               </View>
             </>

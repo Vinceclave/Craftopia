@@ -9,6 +9,7 @@ import Input from '~/components/common/TextInputField'
 import AuthLayout from '~/components/auth/AuthLayout'
 import { AuthStackParamList } from '~/navigations/AuthNavigator'
 import { validateForgotPassword, ForgotPasswordFormErrors } from '../../utils/validator'
+import { authService } from '~/services/auth.service'
 
 type ForgotPasswordNavProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>
 
@@ -36,16 +37,24 @@ const ForgotPassword = () => {
     setErrors((prev) => ({ ...prev, ...validationErrors }))
   }
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     const validationErrors = validateForgotPassword(form, step)
     setErrors(validationErrors)
 
     if (step === 'email' && !validationErrors.email) {
+      const res = await authService.forgotPassword(form.email.trim());
+
+      console.log(res);
+
       setStep('token')
     } else if (step === 'token' && !validationErrors.token) {
       setStep('password')
     } else if (step === 'password' && !validationErrors.password) {
       console.log('✅ Reset password with:', form)
+
+      const res = await authService.resetPassword(form.token, form.password);
+      console.log(res)
+
       navigation.navigate('Login')
     }
   }, [form, step, navigation])

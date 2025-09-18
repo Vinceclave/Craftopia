@@ -173,6 +173,34 @@ class AuthService {
   return { message: response.message || 'Verification email sent' };
 }
 
+async forgotPassword(email: string) {
+  console.log('Forgot password for:', email);
+
+  const response = await this.makeRequest<{message?: string}>(
+    API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+    {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }
+  );
+
+  return { message: response.message || 'Forgot Password'}
+}
+
+
+async resetPassword(token: string, newPassword: string) {
+  console.log('Resetting password');
+
+  const response = await this.makeRequest<{message?: string}>(
+    API_ENDPOINTS.AUTH.RESET_PASSWORD,
+    {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword}),
+    }
+  )
+
+  return { message: response.message || 'Reset Password' };
+}
 
   async saveTokens(token: string, refreshToken: string): Promise<void> {
     try {
