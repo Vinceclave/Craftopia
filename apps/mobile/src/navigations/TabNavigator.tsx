@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useNavigation, NavigationState } from "@react-navigation/native";
 import type { RootTabParamList } from "./types";
 
 import { Home, List, Hammer, Leaf, User } from "lucide-react-native";
@@ -91,6 +92,30 @@ const AnimatedTabIcon = ({ focused, children, color }) => {
 };
 
 export default function TabNavigator() {
+  const [tabBarVisible, setTabBarVisible] = useState(true);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state', (e) => {
+      // Function to recursively find the current screen name
+      const getCurrentScreenName = (state: NavigationState | undefined): string => {
+        if (!state) return '';
+        
+        const route = state.routes[state.index];
+        if (route.state) {
+          return getCurrentScreenName(route.state);
+        }
+        return route.name;
+      };
+
+      const currentScreenName = getCurrentScreenName(e.data.state);
+      const hideOnScreens = ['EditProfile']; // Only hide on EditProfile
+      setTabBarVisible(!hideOnScreens.includes(currentScreenName));
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -114,6 +139,8 @@ export default function TabNavigator() {
           shadowOpacity: 0.08,
           shadowRadius: 12,
           elevation: 8,
+          // Animate tab bar visibility
+          display: tabBarVisible ? 'flex' : 'none',
         },
         tabBarLabelStyle: {
           fontSize: 10,

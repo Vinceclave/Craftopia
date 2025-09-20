@@ -89,7 +89,7 @@ export function EditProfileScreen() {
       <ScrollView
         className="flex-1 -mt-7 relative z-10"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         {/* Header */}
         <View className="px-6 pt-12 pb-8">
