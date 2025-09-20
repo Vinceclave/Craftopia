@@ -95,10 +95,11 @@ model User {
 }
 
 model UserProfile {
-  user_id               Int    @id
+  user_id               Int     @id
+  full_name             String?       // <-- added field
   bio                   String?
   profile_picture_url   String?
-  points                Int    @default(0)
+  points                Int     @default(0)
   home_dashboard_layout Json?
 
   user User @relation(fields: [user_id], references: [user_id])

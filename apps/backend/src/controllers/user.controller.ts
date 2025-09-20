@@ -5,6 +5,7 @@ import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const getProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
+  console.log(req.user);
   const userId = req.user!.userId;
   const profile = await userService.getUserProfile(userId);
   sendSuccess(res, profile, 'Profile retrieved successfully');
@@ -12,9 +13,10 @@ export const getProfile = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const updateProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
-  const { bio, profile_picture_url, home_dashboard_layout } = req.body;
+  const { full_name, bio, profile_picture_url, home_dashboard_layout } = req.body;
   
   const profile = await userService.updateUserProfile(userId, {
+    full_name,
     bio,
     profile_picture_url,
     home_dashboard_layout

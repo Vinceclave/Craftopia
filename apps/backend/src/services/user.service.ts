@@ -81,6 +81,7 @@ export const getUserProfile = async (userId: number) => {
 export const updateUserProfile = async (
   userId: number, 
   data: {
+    full_name?: string;
     bio?: string;
     profile_picture_url?: string;
     home_dashboard_layout?: object | null; 
@@ -94,14 +95,16 @@ export const updateUserProfile = async (
     where: { user_id: userId },
     create: {
       user_id: userId,
+      full_name: data.full_name || null, // <-- use data.full_name
       bio: data.bio?.trim() || null,
       profile_picture_url: data.profile_picture_url || null,
       home_dashboard_layout: (data.home_dashboard_layout ?? null) as any, 
     },
     update: {
-      bio: data.bio?.trim() || null,
-      profile_picture_url: data.profile_picture_url || null,
-      home_dashboard_layout: (data.home_dashboard_layout ?? null) as any, 
+      full_name: data.full_name || undefined, // <-- use data.full_name
+      bio: data.bio?.trim() || undefined,
+      profile_picture_url: data.profile_picture_url || undefined,
+      home_dashboard_layout: (data.home_dashboard_layout ?? undefined) as any, 
     },
     include: {
       user: {
@@ -110,6 +113,7 @@ export const updateUserProfile = async (
     }
   });
 };
+
 
 
 export const getPublicUserProfile = async (userId: number) => {
