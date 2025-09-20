@@ -71,6 +71,16 @@ export const API_ENDPOINTS = {
 };
 
 // Types
+export interface UserProfile {
+  user_id: number;
+  bio?: string;
+  profile_picture_url?: string;
+  points: number;
+  home_dashboard_layout?: object;
+  full_name?: string;
+  location?: string;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -78,14 +88,31 @@ export interface User {
   is_email_verified: boolean;
   role: 'user' | 'admin';
   created_at: string;
+  
+  // Add profile data
+  profile?: UserProfile;
+  
+  // Keep for backward compatibility
+  isEmailVerified?: boolean;
 }
 
-export interface UserProfile {
+// If you're getting the user profile from getCurrentUser, the response looks like this:
+export interface UserProfileResponse {
   user_id: number;
-  bio?: string;
-  profile_picture_url?: string;
-  points: number;
-  home_dashboard_layout?: object;
+  username: string;
+  email: string;
+  role: string;
+  is_email_verified: boolean;
+  created_at: string;
+  profile?: {
+    user_id: number;
+    full_name?: string;
+    bio?: string;
+    profile_picture_url?: string;
+    points: number;
+    home_dashboard_layout?: object;
+    location?: string;
+  };
 }
 
 export interface AuthResponse {

@@ -1,6 +1,6 @@
-// apps/mobile/src/screens/Register.tsx
+// apps/mobile/src/screens/Register.tsx - Updated
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
@@ -8,6 +8,7 @@ import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
 import Input from '~/components/common/TextInputField';
 import { useAuth } from '~/context/AuthContext';
+import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
 import {
   validateRegister,
   RegisterFormValues,
@@ -20,6 +21,7 @@ type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterNavProp>();
   const { register, error, clearError } = useAuth();
+  const { success, error: showError } = useAlert(); // 👈 Add this
 
   const [form, setForm] = useState<RegisterFormValues>({
     username: '',
@@ -41,17 +43,15 @@ const RegisterScreen: React.FC = () => {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  // Clear auth errors when component mounts
   useEffect(() => {
     clearError();
   }, [clearError]);
 
-  // Show auth errors
   useEffect(() => {
     if (error) {
-      Alert.alert('Registration Failed', error, [{ text: 'OK' }]);
+      showError('Registration Failed', error); // 👈 Replace Alert.alert
     }
-  }, [error]);
+  }, [error, showError]);
 
   const debouncedValidate = useCallback(
     debounce((values: RegisterFormValues) => {
@@ -66,31 +66,35 @@ const RegisterScreen: React.FC = () => {
     debouncedValidate(updated);
   };
 
-const handleRegister = async () => {
-  const validationErrors = validateRegister(form);
+  const handleRegister = async () => {
+    const validationErrors = validateRegister(form);
 
-  if (Object.values(validationErrors).some((err) => err)) {
-    setErrors(validationErrors);
-    return;
-  }
+    if (Object.values(validationErrors).some((err) => err)) {
+      setErrors(validationErrors);
+      return;
+    }
 
-  setLoading(true);
-  clearError();
+    setLoading(true);
+    clearError();
 
-  await register({
-    username: form.username.trim(),
-    email: form.email.trim(),
-    password: form.password,
-  });
+    try {
+      await register({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
 
-  // ✅ Only navigate if there’s no error in context
-  if (!error) {
-    navigation.navigate('VerifyEmail', { email: form.email.trim() });
-  }
-
-  setLoading(false);
-};
-
+      // ✅ Show success modal and navigate
+      success('Registration Successful 🎉', 'Please verify your email.', () => {
+        navigation.navigate('VerifyEmail', { email: form.email.trim() });
+      });
+    } catch (err: any) {
+      // Error is already handled in useEffect above
+      console.log('Registration failed:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isFormValid = form.username.trim() && 
                     form.email.trim() && 

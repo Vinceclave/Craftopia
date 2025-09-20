@@ -4,6 +4,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigations/AppNavigator';
+import { ModalProvider } from '~/context/modalContext';
 
 // Remove this line - not needed for React Native
 import './global.css';
@@ -11,9 +12,11 @@ import './global.css';
 export default function App() {
   return (
     <NavigationContainer>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
+      <ModalProvider>
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
+      </ModalProvider>
     </NavigationContainer>
   );
 }

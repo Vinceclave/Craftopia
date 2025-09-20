@@ -25,7 +25,9 @@ interface UserProfile {
 export const ProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
   const { user } = useAuth(); // Get user from context - no loading needed!
-  
+
+  console.log(user)
+
   // Create profile data directly from auth user - instant display
   const userProfile: UserProfile = {
     username: user?.username || 'Username',

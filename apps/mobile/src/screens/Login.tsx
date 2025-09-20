@@ -1,5 +1,6 @@
+// apps/mobile/src/screens/Login.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
@@ -11,12 +12,14 @@ import { useAuth } from '~/context/AuthContext';
 import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
 import debounce from 'lodash.debounce';
 import { authService } from '~/services/auth.service';
+import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginNavProp>();
   const { login, error, clearError } = useAuth();
+  const { alert, error: showError } = useAlert(); // 👈 Add this
 
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<LoginFormErrors>({ email: '', password: '' });
@@ -30,9 +33,9 @@ const LoginScreen: React.FC = () => {
 
   useEffect(() => {
     if (error) {
-      Alert.alert('Login Failed', error, [{ text: 'OK' }]);
+      showError('Login Failed', error); // 👈 Replace Alert.alert
     }
-  }, [error]);
+  }, [error, showError]);
 
   const debouncedValidate = useCallback(
     debounce((values: LoginFormValues) => {
@@ -65,8 +68,10 @@ const LoginScreen: React.FC = () => {
 
       if (user && !user.isEmailVerified) {
         await authService.requestEmailVerification(form.email.trim());
-        Alert.alert('Verification Email Sent', 'Please check your inbox.');
-        navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        // 👈 Replace Alert.alert with custom modal
+        alert('Verification Email Sent', 'Please check your inbox.', () => {
+          navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        });
         return;
       }
 
@@ -75,7 +80,7 @@ const LoginScreen: React.FC = () => {
       }
     } catch (err: any) {
       if (!err.message?.toLowerCase().includes('verify')) {
-        Alert.alert('Login Failed', err.message);
+        showError('Login Failed', err.message); // 👈 Replace Alert.alert
       }
     } finally {
       setLoading(false);
@@ -124,10 +129,9 @@ const LoginScreen: React.FC = () => {
         </View>
 
         <View className="mt-8 items-center">
-          {/* ✅ Fix nested Text issue */}
           <View className="flex-row items-center mb-4">
             <Text className="text-craftopia-text-secondary text-base">
-              Don’t have an account?
+              Don't have an account?
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
               <Text className="text-craftopia-digital text-base font-semibold ml-1">
@@ -150,4 +154,4 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-export default LoginScreen;
+export default LoginScreen; 

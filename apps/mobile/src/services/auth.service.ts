@@ -6,6 +6,8 @@ import {
   RegisterRequest,
   LoginRequest,
   User,
+  UserProfile,
+  UserProfileResponse,
 } from '../config/api';
 import { apiService } from './base.service';
 
@@ -44,12 +46,34 @@ class AuthService {
     }
   }
 
-  async getCurrentUser(): Promise<User> {
-    const response = await apiService.request<{ data: User }>(
+   async getCurrentUser(): Promise<UserProfileResponse> {
+    console.log('🔄 Fetching current user from API...');
+    const response = await apiService.request<{ data: UserProfileResponse }>(
       API_ENDPOINTS.USER.PROFILE,
       { method: 'GET' }
     );
-    return response.data;
+    
+    console.log('📦 Raw API response:', JSON.stringify(response, null, 2));
+    
+    // The response should include both user data AND profile data
+    const userData = response.data;
+    
+    // If the profile doesn't exist, create a default one
+    if (!userData.profile) {
+      console.log('⚠️ No profile found, creating default profile');
+      userData.profile = {
+        user_id: userData.user_id,
+        full_name: '',
+        bio: '',
+        profile_picture_url: '',
+        points: 0,
+        home_dashboard_layout: null,
+        location: '',
+      };
+    }
+    
+    console.log('✅ Processed user data:', JSON.stringify(userData, null, 2));
+    return userData;
   }
 
   async verifyEmail(token: string): Promise<{ message: string }> {

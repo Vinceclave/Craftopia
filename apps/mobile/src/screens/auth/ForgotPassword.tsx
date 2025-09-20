@@ -10,11 +10,13 @@ import AuthLayout from '~/components/auth/AuthLayout'
 import { AuthStackParamList } from '~/navigations/AuthNavigator'
 import { validateForgotPassword, ForgotPasswordFormErrors } from '../../utils/validator'
 import { authService } from '~/services/auth.service'
+import { useAlert } from '~/hooks/useAlert'; 
 
 type ForgotPasswordNavProp = NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>
 
 const ForgotPassword = () => {
   const navigation = useNavigation<ForgotPasswordNavProp>()
+  const { success } = useAlert();
 
   const [step, setStep] = useState<'email' | 'token' | 'password'>('email')
   const [form, setForm] = useState({
@@ -55,9 +57,11 @@ const ForgotPassword = () => {
       const res = await authService.resetPassword(form.token, form.password);
       console.log(res)
 
-      navigation.navigate('Login')
+      success('Password Reset', 'Your password has been reset successfully!', () => {
+        navigation.navigate('Login');
+      });
     }
-  }, [form, step, navigation])
+  }, [form, step, navigation, success])
 
   const handleBack = () => {
     if (step === 'password') setStep('token')

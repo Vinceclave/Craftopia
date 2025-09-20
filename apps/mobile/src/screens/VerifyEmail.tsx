@@ -8,6 +8,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Input from '~/components/common/TextInputField'
 import Button from '~/components/common/Button'
 import { authService } from '../services/auth.service';
+import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
 
 type VerifyEmailScreenProp = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
 type VerifyEmailRouteProp = RouteProp<AuthStackParamList, 'VerifyEmail'>;
@@ -15,6 +16,7 @@ type VerifyEmailRouteProp = RouteProp<AuthStackParamList, 'VerifyEmail'>;
 export const VerifyEmailScreen = () => {
   const navigation = useNavigation<VerifyEmailScreenProp>();
   const route = useRoute<VerifyEmailRouteProp>();
+  const { alert, success, error } = useAlert(); // 👈 Add this
 
   const [email, setEmail] = useState(route.params?.email || '');
   const [token, setToken] = useState('');
@@ -26,7 +28,7 @@ export const VerifyEmailScreen = () => {
 
   const handleVerifyToken = async () => {
     if (!token.trim()) {
-      Alert.alert('Error', 'Please enter the verification token from your email');
+        error('Error', 'Please enter the verification token from your email'); // 👈 Replace Alert.alert
       return;
     }
 
@@ -34,18 +36,16 @@ export const VerifyEmailScreen = () => {
     try {
       await authService.verifyEmail(token.trim());
 
-      Alert.alert('Email Verified! ✅', 'Redirecting you to login...');
-
-      // ✅ Auto redirect (clear stack so they can't go back to Verify screen)
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
+      success('Email Verified! ✅', 'Redirecting you to login...', () => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
       });
     } catch (error: any) {
-      Alert.alert(
+      error(
         'Verification Failed',
-        error.message || 'The verification token is invalid or has expired. Please try again or request a new verification email.',
-        [{ text: 'OK' }]
+        error.message || 'The verification token is invalid or has expired. Please try again or request a new verification email.'
       );
     } finally {
       setIsLoading(false);
@@ -54,7 +54,7 @@ export const VerifyEmailScreen = () => {
 
   const handleResendVerification = async () => {
     if (!email?.trim()) {
-      Alert.alert('Error', 'No email address found. Please go back and register again.');
+      error('Error', 'No email address found. Please go back and register again.');
       return;
     }
 
@@ -62,16 +62,15 @@ export const VerifyEmailScreen = () => {
     try {
       await authService.requestEmailVerification(email.trim());
 
-      Alert.alert(
+      success(
         'Verification Email Sent! 📧',
         'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
-        [{ text: 'OK', onPress: () => setShowTokenInput(true) }]
+        () => setShowTokenInput(true)
       );
     } catch (error: any) {
-      Alert.alert(
+      error(
         'Failed to Resend',
-        error.message || 'Something went wrong while sending the verification email.',
-        [{ text: 'OK' }]
+        error.message || 'Something went wrong while sending the verification email.'
       );
     } finally {
       setIsResending(false);

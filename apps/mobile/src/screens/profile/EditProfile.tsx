@@ -7,6 +7,7 @@ import Input from "~/components/common/TextInputField";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";
+import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
 
 interface UserProfile {
   name?: string;
@@ -20,6 +21,7 @@ interface UserProfile {
 export function EditProfileScreen() {
   const navigation = useNavigation();
   const { user, setUser } = useAuth();
+  const { success, error } = useAlert(); // 👈 Add this
   const [loading, setLoading] = useState(false);
 
   const [profile, setProfile] = useState<UserProfile>({
@@ -43,9 +45,10 @@ export function EditProfileScreen() {
       // Send PUT request to update profile
       const updatedData = await apiService.request('/api/v1/users/profile', {
         method: 'PUT',
-        data: payload,
+        // data: payload,
       });
 
+      console.log(updatedData)
       // Update AuthContext.user immediately
       if (setUser && user) {
         setUser({
@@ -60,19 +63,12 @@ export function EditProfileScreen() {
       }
 
       // Show alert, navigate after user taps OK
-      Alert.alert(
-        'Success',
-        'Profile updated successfully! ✅',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(), // navigate after alert
-          },
-        ]
-      );
+      success('Success', 'Profile updated successfully! ✅', () => {
+        navigation.goBack();
+      });
     } catch (error: any) {
       console.error('Failed to update profile:', error.message);
-      Alert.alert('Error', error.message || 'Something went wrong.');
+      error('Error', error.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -91,10 +87,9 @@ export function EditProfileScreen() {
       </View>
 
       <ScrollView
-        className="flex-1 relative z-10"
+        className="flex-1 -mt-7 relative z-10"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
-        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View className="px-6 pt-12 pb-8">
