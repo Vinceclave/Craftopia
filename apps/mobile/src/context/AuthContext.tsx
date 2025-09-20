@@ -1,3 +1,4 @@
+// AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { User, LoginRequest, RegisterRequest } from '../config/api';
@@ -5,6 +6,7 @@ import { authService } from '../services/auth.service';
 
 interface AuthContextType {
   user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>; // <-- expose setUser
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
@@ -39,25 +41,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = await authService.getToken();
       if (token) {
-        try {
-          const userData = await authService.getCurrentUser();
-          const normalizedUser = {
-            ...userData,
-            isEmailVerified: userData?.isEmailVerified ?? userData?.is_email_verified,
-          };
-
-          if (normalizedUser && normalizedUser.isEmailVerified) {
-            setUser(normalizedUser);
-            setIsAuthenticated(true);
-            console.log('Auth check: User authenticated', normalizedUser.username);
-          } else {
-            setUser(null);
-            setIsAuthenticated(false);
-            console.warn('User not authenticated or email not verified');
-          }
-        } catch (tokenError) {
-          console.warn('Token invalid, clearing auth:', tokenError);
-          await authService.clearTokens();
+        const userData = await authService.getCurrentUser();
+        const normalizedUser = {
+          ...userData,
+          isEmailVerified: userData?.isEmailVerified ?? userData?.is_email_verified,
+        };
+        if (normalizedUser && normalizedUser.isEmailVerified) {
+          setUser(normalizedUser);
+          setIsAuthenticated(true);
+        } else {
           setUser(null);
           setIsAuthenticated(false);
         }
@@ -78,38 +70,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       const response = await authService.register(userData);
-      console.log('Registration response:', response);
-
-      Alert.alert(
-        'Registration Successful 🎉',
-        'Please check your email for a verification link to complete your account setup.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Registration Successful 🎉', 'Please verify your email.', [{ text: 'OK' }]);
     } catch (err: any) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Registration failed. Please try again.');
+      setError(err.message || 'Registration failed.');
     }
   };
 
   const login = async (credentials: LoginRequest) => {
     try {
       setError(null);
-
       const response = await authService.login(credentials);
       const { user: loggedInUser, accessToken, refreshToken } = response;
 
-      if (!loggedInUser) {
-        throw new Error('Login response does not include user data.');
-      }
+      if (!loggedInUser) throw new Error('Login response missing user data.');
 
-      // normalize API field
       const normalizedUser = {
         ...loggedInUser,
         isEmailVerified: loggedInUser?.isEmailVerified ?? loggedInUser?.is_email_verified,
       };
-
-      console.log('Login processed:', normalizedUser.username);
-      console.log('Email verified:', normalizedUser.isEmailVerified);
 
       setUser(normalizedUser);
       setIsAuthenticated(!!normalizedUser.isEmailVerified);
@@ -120,12 +98,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return normalizedUser;
     } catch (err: any) {
-      // detect verification error fast
-      if (err.message?.toLowerCase().includes('verify your email')) {
-        return { isEmailVerified: false } as User; // fake user for LoginScreen
-      }
-
-      console.error('Login error:', err);
       setError(err.message || 'Login failed');
       throw err;
     }
@@ -137,7 +109,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
       setError(null);
-      console.log('Logout successful');
     } catch (err) {
       console.error('Logout error:', err);
       setUser(null);
@@ -153,6 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        setUser, // <-- expose here
         isLoading,
         isAuthenticated,
         error,
@@ -168,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
+// Hook
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within an AuthProvider');

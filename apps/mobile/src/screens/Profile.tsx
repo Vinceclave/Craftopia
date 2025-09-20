@@ -5,6 +5,7 @@ import { authService } from '~/services/auth.service';
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { ProfileStackParamList } from "../navigations/types";
+import { useAuth } from '~/context/AuthContext';
 
 interface UserProfile {
   username?: string;
@@ -23,47 +24,23 @@ interface UserProfile {
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user: any = await authService.getCurrentUser();
-
-        const profile: UserProfile = {
-          username: user.username,
-          name: user.profile?.full_name || user.username,
-          email: user.email,
-          avatar: user.profile?.profile_picture_url || '🧑‍🎨',
-          verified: user.is_email_verified,
-          joinDate: user.created_at ? new Date(user.created_at).toDateString() : 'Unknown',
-          bio: user.profile?.bio || 'This user has not set a bio yet.',
-          level: 1,
-          title: 'Maker',
-          totalPoints: user.profile?.points || 0,
-          nextLevelPoints: 1000,
-          location: user.profile?.location || 'Unknown',
-        };
-
-        setUserProfile(profile);
-      } catch (error) {
-        console.error('Failed to load user profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, []);
-
-  if (loading || !userProfile) {
-    return (
-      <SafeAreaView className="flex-1 justify-center items-center">
-        <Text>Loading profile...</Text>
-      </SafeAreaView>
-    );
-  }
+  const { user } = useAuth(); // Get user from context - no loading needed!
+  
+  // Create profile data directly from auth user - instant display
+  const userProfile: UserProfile = {
+    username: user?.username || 'Username',
+    name: user?.profile?.full_name || user?.username || 'User Name',
+    email: user?.email || 'email@example.com',
+    avatar: user?.profile?.profile_picture_url || '🧑‍🎨',
+    verified: user?.is_email_verified || false,
+    joinDate: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown',
+    bio: user?.profile?.bio || 'This user has not set a bio yet.',
+    level: Math.floor((user?.profile?.points || 0) / 100) + 1, // Simple level calculation
+    title: 'Maker',
+    totalPoints: user?.profile?.points || 0,
+    nextLevelPoints: (Math.floor((user?.profile?.points || 0) / 100) + 1) * 100,
+    location: user?.profile?.location || 'Unknown',
+  };
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: '#F0F0F0' }}>
@@ -186,7 +163,7 @@ export const ProfileScreen = () => {
                     )}
                   </View>
                   <Text className="text-base font-semibold mb-1" style={{ color: '#00A896' }}>
-                    {userProfile.username}
+                    @{userProfile.username}
                   </Text>
                   <View 
                     className="px-3 py-1 rounded-xl self-start"
