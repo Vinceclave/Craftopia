@@ -45,36 +45,43 @@ class AuthService {
       }
     }
   }
+async getCurrentUser(token: string): Promise<UserProfileResponse> {
+  console.log('🔄 Fetching current user from API...');
 
-   async getCurrentUser(): Promise<UserProfileResponse> {
-    console.log('🔄 Fetching current user from API...');
-    const response = await apiService.request<{ data: UserProfileResponse }>(
-      API_ENDPOINTS.USER.PROFILE,
-      { method: 'GET' }
-    );
-    
-    console.log('📦 Raw API response:', JSON.stringify(response, null, 2));
-    
-    // The response should include both user data AND profile data
-    const userData = response.data;
-    
-    // If the profile doesn't exist, create a default one
-    if (!userData.profile) {
-      console.log('⚠️ No profile found, creating default profile');
-      userData.profile = {
-        user_id: userData.user_id,
-        full_name: '',
-        bio: '',
-        profile_picture_url: '',
-        points: 0,
-        home_dashboard_layout: null,
-        location: '',
-      };
+  // Get the stored token
+  const response = await apiService.request<{ data: UserProfileResponse }>(
+    API_ENDPOINTS.USER.PROFILE,
+    {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`, // add authorization header
+        'Content-Type': 'application/json',
+      },
     }
-    
-    console.log('✅ Processed user data:', JSON.stringify(userData, null, 2));
-    return userData;
+  );
+
+  console.log('📦 Raw API response:', JSON.stringify(response, null, 2));
+
+  // The response should include both user data AND profile data
+  const userData = response.data;
+
+  // If the profile doesn't exist, create a default one
+  if (!userData.profile) {
+    console.log('⚠️ No profile found, creating default profile');
+    userData.profile = {
+      user_id: userData.user_id,
+      full_name: '',
+      bio: '',
+      profile_picture_url: '',
+      points: 0,
+      home_dashboard_layout: null as any,
+      location: '',
+    };
   }
+
+  console.log('✅ Processed user data:', JSON.stringify(userData, null, 2));
+  return userData;
+}
 
   async verifyEmail(token: string): Promise<{ message: string }> {
     const response = await apiService.request<{ data: { message: string } }>(
@@ -85,15 +92,20 @@ class AuthService {
   }
 
   async requestEmailVerification(email: string) {
-    const response = await apiService.request<{ message?: string }>(
-      API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
-      {
-        method: 'POST',
-        data: { email },
-      }
-    );
-    return { message: response.message || 'Verification email sent' };
-  }
+  const token = await this.getToken(); // only if API requires auth
+  const response = await apiService.request<{ message?: string }>(
+    API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
+    {
+      method: 'POST',
+      data: { email },
+      headers: token
+        ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        : { 'Content-Type': 'application/json' },
+    }
+  );
+  return { message: response.data.message || 'Verification email sent' };
+}
+
 
   async forgotPassword(email: string) {
     const response = await apiService.request<{ message?: string }>(

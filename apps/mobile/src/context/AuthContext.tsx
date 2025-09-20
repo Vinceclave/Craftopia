@@ -1,6 +1,6 @@
-// apps/mobile/src/context/AuthContext.tsx - FIXED WITH PROPER PROFILE STRUCTURE
+// apps/mobile/src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginRequest, RegisterRequest } from '../config/api';
+import { User, LoginRequest, RegisterRequest, UserProfileResponse } from '../config/api';
 import { authService } from '../services/auth.service';
 
 interface AuthContextType {
@@ -10,7 +10,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   error: string | null;
   register: (credentials: RegisterRequest) => Promise<void>;
-  login: (credentials: LoginRequest) => Promise<User | void>;
+  login: (credentials: LoginRequest) => Promise<User>;
   logout: () => Promise<void>;
   clearError: () => void;
   refreshAuth: () => Promise<void>;
@@ -21,6 +21,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+// Helper to normalize API user profile to User type
+const normalizeUser = (data: UserProfileResponse): User => ({
+  id: data.user_id,
+  username: data.username,
+  email: data.email,
+  role: data.role as 'user' | 'admin',
+  created_at: data.created_at,
+  is_email_verified: data.is_email_verified,
+  isEmailVerified: data.is_email_verified,
+  profile: data.profile,
+});
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,11 +41,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAuthStatus();  
-    console.log(user)
+    checkAuthStatus();
   }, []);
-
-  console.log(user)
 
   const clearError = () => setError(null);
 
@@ -41,42 +51,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const token = await authService.getToken();
       if (token) {
-        // getCurrentUser returns the full user profile structure
-        const userProfile = await authService.getCurrentUser();
+        const currentUser = await authService.getCurrentUser(token);
+        const normalizedUser = normalizeUser(currentUser);
 
-        console.log(userProfile)
-        
-        // Transform the profile structure to match our User interface
-        const normalizedUser = {
-          id: userProfile.user_id,
-          username: userProfile.username,
-          email: userProfile.email,
-          role: userProfile.role,
-          created_at: userProfile.created_at,
-          is_email_verified: userProfile.is_email_verified,
-          // Add the profile data
-          profile: userProfile.profile ? {
-            user_id: userProfile.profile.user_id,
-            bio: userProfile.profile.bio,
-            profile_picture_url: userProfile.profile.profile_picture_url,
-            points: userProfile.profile.points,
-            home_dashboard_layout: userProfile.profile.home_dashboard_layout,
-            full_name: userProfile.profile.full_name,
-            location: userProfile.profile.location,
-          } : undefined,
-          // Keep the isEmailVerified for backward compatibility
-          isEmailVerified: userProfile.is_email_verified,
-        };
-
-        console.log(normalizedUser)
-
-        if (normalizedUser && normalizedUser.is_email_verified) {
-          setUser(normalizedUser);
-          setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
+        setUser(normalizedUser);
+        setIsAuthenticated(normalizedUser.is_email_verified);
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -93,8 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterRequest) => {
     try {
       setError(null);
-      const response = await authService.register(userData);
-      // Don't show modal here - let the screen handle it
+      await authService.register(userData);
     } catch (err: any) {
       setError(err.message || 'Registration failed.');
       throw err;
@@ -105,20 +83,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
       const response = await authService.login(credentials);
-      const { user: loggedInUser, accessToken, refreshToken } = response;
+      const { accessToken, refreshToken } = response;
 
-      if (!loggedInUser) throw new Error('Login response missing user data.');
+      if (!accessToken) throw new Error('Login failed, no access token returned');
 
-      // Transform login response to match our User interface
-      const normalizedUser = {
-        ...loggedInUser,
-        isEmailVerified: loggedInUser?.isEmailVerified ?? loggedInUser?.is_email_verified,
-      };
+      const currentUser = await authService.getCurrentUser(accessToken);
+      const normalizedUser = normalizeUser(currentUser);
 
       setUser(normalizedUser);
-      setIsAuthenticated(!!normalizedUser.isEmailVerified);
+      setIsAuthenticated(normalizedUser.is_email_verified);
 
-      if (normalizedUser.isEmailVerified) {
+      if (normalizedUser.is_email_verified) {
         await authService.saveTokens(accessToken, refreshToken);
       }
 
