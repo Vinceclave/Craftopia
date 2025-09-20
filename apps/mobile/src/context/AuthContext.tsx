@@ -1,4 +1,3 @@
-// apps/mobile/src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginRequest, RegisterRequest, UserProfileResponse } from '../config/api';
 import { authService } from '../services/auth.service';
@@ -22,7 +21,6 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Helper to normalize API user profile to User type
 const normalizeUser = (data: UserProfileResponse): User => ({
   id: data.user_id,
   username: data.username,
@@ -53,14 +51,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
         const currentUser = await authService.getCurrentUser(token);
         const normalizedUser = normalizeUser(currentUser);
-
         setUser(normalizedUser);
         setIsAuthenticated(normalizedUser.is_email_verified);
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Auth check failed:', err);
       setUser(null);
       setIsAuthenticated(false);
@@ -84,7 +81,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       const response = await authService.login(credentials);
       const { accessToken, refreshToken } = response;
-
       if (!accessToken) throw new Error('Login failed, no access token returned');
 
       const currentUser = await authService.getCurrentUser(accessToken);
@@ -106,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await authService.clearTokens();
+      await authService.logout();
       setUser(null);
       setIsAuthenticated(false);
       setError(null);
@@ -117,9 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshAuth = async () => {
-    await checkAuthStatus();
-  };
+  const refreshAuth = async () => await checkAuthStatus();
 
   return (
     <AuthContext.Provider

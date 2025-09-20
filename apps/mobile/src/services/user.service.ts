@@ -55,17 +55,6 @@ interface PaginatedResponse<T> {
 
 class UserService {
   /**
-   * Get current user profile
-   */
-  async getUserProfile(): Promise<UserProfile> {
-    const response = await apiService.request<{ data: UserProfile }>(
-      API_ENDPOINTS.USER.PROFILE,
-      { method: 'GET' }
-    );
-    return response.data;
-  }
-
-  /**
    * Update user profile
    */
   async updateProfile(updates: UpdateProfileData): Promise<UserProfile> {

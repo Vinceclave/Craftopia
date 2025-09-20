@@ -40,6 +40,14 @@ enum MessageSender {
   ai
 }
 
+enum Category {
+  Social
+  Tutorial
+  Challenge
+  Marketplace
+  Other
+}
+
 enum ChallengeStatus {
   in_progress
   pending_verification
@@ -156,8 +164,12 @@ model CraftIdea {
 model Post {
   post_id    Int      @id @default(autoincrement())
   user_id    Int
+  title       String
   content    String
   image_url  String?
+  tags        String[]      // materials, techniques, etc.
+  category    Category
+  featured    Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
   deleted_at DateTime?

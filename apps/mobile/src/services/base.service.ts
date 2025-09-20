@@ -16,7 +16,7 @@ class ApiService {
     this.axios = axios.create({
       baseURL: API_BASE_URL,
       headers: DEFAULT_HEADERS,
-      timeout: 10000,
+      timeout: 30000,
     });
 
     // Attach access token

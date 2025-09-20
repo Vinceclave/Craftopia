@@ -5,11 +5,15 @@ import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const createPost = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { content, imageUrl } = req.body;
-  const post = await postService.createPost({ 
-    user_id: req.user!.userId, 
-    content, 
-    imageUrl 
+  const { title, content, imageUrl, tags, category, featured, points } = req.body;
+  const post = await postService.createPost({
+    user_id: req.user!.userId,
+    title,
+    content,
+    imageUrl,
+    tags,
+    category,
+    featured,
   });
   sendSuccess(res, post, 'Post created successfully', 201);
 });
@@ -35,11 +39,7 @@ export const deletePost = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const addComment = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { postId, content } = req.body;
-  const comment = await postService.addComment({ 
-    postId, 
-    userId: req.user!.userId, 
-    content 
-  });
+  const comment = await postService.addComment({ postId, userId: req.user!.userId, content });
   sendSuccess(res, comment, 'Comment added successfully', 201);
 });
 

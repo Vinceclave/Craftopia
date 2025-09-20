@@ -42,11 +42,8 @@ export const VerifyEmailScreen = () => {
           routes: [{ name: 'Login' }],
         });
       });
-    } catch (error: any) {
-      error(
-        'Verification Failed',
-        error.message || 'The verification token is invalid or has expired. Please try again or request a new verification email.'
-      );
+    } catch (err: any) {
+      error('Verification Failed', err.message || 'Invalid or expired token.');
     } finally {
       setIsLoading(false);
     }
@@ -67,11 +64,8 @@ export const VerifyEmailScreen = () => {
         'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
         () => setShowTokenInput(true)
       );
-    } catch (error: any) {
-      error(
-        'Failed to Resend',
-        error.message || 'Something went wrong while sending the verification email.'
-      );
+    } catch (err: any) {
+      error('Verification Failed', err.message || 'Invalid or expired token.');
     } finally {
       setIsResending(false);
     }

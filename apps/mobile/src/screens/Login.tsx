@@ -67,11 +67,7 @@ const LoginScreen: React.FC = () => {
       });
 
       if (user && !user.isEmailVerified) {
-        await authService.requestEmailVerification(form.email.trim());
-        // 👈 Replace Alert.alert with custom modal
-        alert('Verification Email Sent', 'Please check your inbox.', () => {
-          navigation.navigate('VerifyEmail', { email: form.email.trim() });
-        });
+       
         return;
       }
 
@@ -80,7 +76,11 @@ const LoginScreen: React.FC = () => {
       }
     } catch (err: any) {
       if (!err.message?.toLowerCase().includes('verify')) {
-        showError('Login Failed', err.message); // 👈 Replace Alert.alert
+         await authService.requestEmailVerification(form.email.trim());
+        // 👈 Replace Alert.alert with custom modal
+        alert('Verification Email Sent', 'Please check your inbox.', () => {
+          navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        });
       }
     } finally {
       setLoading(false);

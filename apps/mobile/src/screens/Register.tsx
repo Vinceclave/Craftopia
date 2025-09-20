@@ -68,7 +68,6 @@ const RegisterScreen: React.FC = () => {
 
   const handleRegister = async () => {
     const validationErrors = validateRegister(form);
-
     if (Object.values(validationErrors).some((err) => err)) {
       setErrors(validationErrors);
       return;
@@ -84,12 +83,10 @@ const RegisterScreen: React.FC = () => {
         password: form.password,
       });
 
-      // ✅ Show success modal and navigate
       success('Registration Successful 🎉', 'Please verify your email.', () => {
         navigation.navigate('VerifyEmail', { email: form.email.trim() });
       });
     } catch (err: any) {
-      // Error is already handled in useEffect above
       console.log('Registration failed:', err.message);
     } finally {
       setLoading(false);
