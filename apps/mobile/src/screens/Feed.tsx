@@ -1,286 +1,304 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, 
-  Alert, ActivityIndicator, RefreshControl 
-} from 'react-native';
-import { Search, FilterIcon, Plus, Camera, Heart, MessageCircle, Share2 } from 'lucide-react-native';
-import { apiService } from '~/services/base.service';
+import { FilterIcon, FireExtinguisher, LayoutGrid, PlusIcon, Search, Star, TrendingUp, Zap, ChevronUp } from 'lucide-react-native'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { Text, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import Button from '~/components/common/Button'
+import { Input } from '~/components/common/TextInputField'
+import { Post } from '~/components/feed/Post'
+import { SectionHeader } from '~/components/feed/SectionHeader'
+import { TrendingTagItem } from '~/components/feed/TrendingTagItem'
+import type { PostProps } from '~/components/feed/Post'
+import { postService } from '~/services/post.service'
+// import { apiService } from '~/services/api.service' // Uncomment if you have this service
 
-interface Post {
-  post_id: number;
-  user_id: number;
-  title: string;
-  content: string;
-  image_url: string;
-  category: string;
-  tags: string[];
-  featured: boolean;
-  commentCount: number;
-  likeCount: number;
-  isLiked?: boolean;
-  created_at: string;
-  updated_at: string;
-  deleted_at?: string | null;
-  user: {
-    user_id: number;
-    username: string;
-  };
+const tabs = [
+  { key: 'all', label: 'All', icon: LayoutGrid, subtitle: 'Everything' },
+  { key: 'trending', label: 'Trending', icon: TrendingUp, subtitle: 'Hot topics' },
+  { key: 'popular', label: 'Popular', icon: FireExtinguisher, subtitle: 'Most liked' },
+  { key: 'rising', label: 'Rising', icon: Zap, subtitle: 'Fast growing' },
+  { key: 'featured', label: 'Featured', icon: Star, subtitle: "Editor's picks" },
+]
+
+const trendingTags = [
+  { tag: 'react-native', count: 128, growth: 45 },
+  { tag: 'typescript', count: 95, growth: 32 },
+  { tag: 'design', count: 87, growth: 28 },
+  { tag: 'tutorial', count: 76, growth: 15 },
+  { tag: 'mobile', count: 64, growth: 22 },
+]
+
+// Helper functions (you may want to move these to utils)
+const showError = (title: string, message: string) => {
+  console.error(`${title}: ${message}`)
+  // Replace with your error handling (toast, alert, etc.)
+}
+
+const alert = (title: string, message: string, callback?: () => void) => {
+  console.log(`${title}: ${message}`)
+  callback?.()
+  // Replace with your alert implementation
 }
 
 export const FeedScreen = () => {
-  const [posts, setPosts] = useState<Post[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [reactingPostId, setReactingPostId] = useState<number | null>(null);
+  const [active, setActive] = useState<'all' | 'trending' | 'popular' | 'rising' | 'featured'>('all')
+  const [refreshing, setRefreshing] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [loadingMore, setLoadingMore] = useState<boolean>(false)
+  const [hasMore, setHasMore] = useState<boolean>(true)
+  const [page, setPage] = useState<number>(1)
+  const [posts, setPosts] = useState<PostProps[]>([])
+  const [isCreating, setIsCreating] = useState<boolean>(false)
+  const [showScrollToTop, setShowScrollToTop] = useState<boolean>(false)
+  const scrollViewRef = useRef<ScrollView>(null)
 
-  // Fetch posts from API
-  const fetchPosts = async () => {
+  const fetchPosts = async (pageNumber: number, isRefresh: boolean = false) => {
     try {
-      const response = await apiService.request('api/v1/posts/');
-      setPosts(response.data);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      Alert.alert('Error', 'Failed to load posts');
+      if (isRefresh) {
+        setRefreshing(true)
+        setError(null)
+      } else if (pageNumber > 1) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+        setError(null)
+      }
+
+      const response = await postService.getPosts(pageNumber)
+      const newPosts: PostProps[] = response?.data ?? []
+      
+      if (isRefresh || pageNumber === 1) {
+        setPosts(newPosts)
+        setPage(1)
+      } else {
+        setPosts((prev) => [...prev, ...newPosts])
+      }
+
+      if (response.meta) {
+        setHasMore(response.meta.hasNext)
+      } else {
+        setHasMore(newPosts.length === 10)
+      }
+
+      if (!isRefresh && pageNumber > 1) {
+        setPage(pageNumber)
+      }
+
+    } catch (error: any) {
+      console.error("Error fetching posts:", error?.message || error)
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to load posts"
+      setError(errorMessage)
+      
+      if (!isRefresh && pageNumber === 1) {
+        showError('Network Error', errorMessage)
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
     }
-  };
+  }
+
+  const handleRefresh = useCallback(() => {
+    fetchPosts(1, true)
+  }, [])
+
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore && !loading) {
+      fetchPosts(page + 1)
+    }
+  }, [page, loadingMore, hasMore, loading])
+
+  const handleScroll = ({ nativeEvent }: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+    const paddingToBottom = 100
+    
+    // Show/hide scroll to top button
+    setShowScrollToTop(contentOffset.y > 500)
+    
+    // Load more when near bottom
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+      handleLoadMore()
+    }
+  }
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true })
+  }
+
+  const handleCreatePost = async () => {
+    setIsCreating(true)
+    try {
+      const newPost = {
+        title: 'Quick Share',
+        content: `Shared at ${new Date().toLocaleTimeString()}`,
+        tags: ['quick', 'share'],
+        category: 'Social',
+        featured: false,
+      }
+
+      // Uncomment when you have apiService
+      // await apiService.request('api/v1/posts/', {
+      //   method: 'POST',
+      //   data: newPost,
+      // })
+
+      console.log('Creating post:', newPost) // Temporary log
+
+      alert('Success!', 'Post created successfully', () => {
+        handleRefresh()
+      })
+    } catch (error: any) {
+      showError('Failed to Create Post', error?.message || 'Something went wrong')
+    } finally {
+      setIsCreating(false)
+    }
+  }
 
   useEffect(() => {
-    fetchPosts(); // initial fetch
+    fetchPosts(1)
+  }, [])
 
-    // Polling every 10 seconds to refresh feed
-    const interval = setInterval(() => {
-      fetchPosts();
-    }, 10000);
+  useEffect(() => {
+    console.log('Posts updated:', posts)
+  }, [posts])
 
-    return () => clearInterval(interval); // cleanup
-  }, []);
-
-  // Pull-to-refresh
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchPosts();
-  };
-
-  // Create post
-  const handleCreate = async () => {
-    setIsCreating(true);
-    try {
-      await apiService.request('api/v1/posts/', {
-        method: 'POST',
-        data: {
-          title: 'My First Post',
-          content: 'This is a test post',
-          imageUrl: 'https://example.com/image.png',
-          tags: ['test', 'post'],
-          category: 'Social',
-          featured: true,
-        },
-      });
-      Alert.alert('Success', 'Post created successfully!');
-      fetchPosts(); // refresh after creation
-    } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to create post');
-    } finally {
-      setIsCreating(false);
+  const renderContent = () => {
+    if (loading && posts.length === 0) {
+      return (
+        <View className="flex-1 justify-center items-center py-20">
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text className="text-gray-500 mt-4">Loading posts...</Text>
+        </View>
+      )
     }
-  };
 
-  // Toggle like/unlike
-  const toggleReaction = async (postId: number) => {
-    if (reactingPostId === postId) return;
-    setReactingPostId(postId);
-
-    try {
-      const response = await apiService.request(`api/v1/posts/${postId}/reaction/toggle`, { method: 'POST' });
-
-      // Update local post immediately
-      setPosts(prevPosts =>
-        prevPosts?.map(post =>
-          post.post_id === postId
-            ? { ...post, likeCount: response.data.likeCount, isLiked: response.data.isLiked }
-            : post
-        ) || null
-      );
-    } catch (error: any) {
-      console.error('Toggle reaction error:', error.message);
-      Alert.alert('Error', 'Failed to toggle reaction');
-    } finally {
-      setReactingPostId(null);
+    if (error && posts.length === 0) {
+      return (
+        <View className="flex-1 justify-center items-center py-20">
+          <Text className="text-red-500 text-center px-4">{error}</Text>
+          <Button
+            title="Retry"
+            onPress={() => fetchPosts(1)}
+            className="mt-4 bg-blue-600"
+          />
+        </View>
+      )
     }
-  };
 
-  // Convert timestamp to "time ago"
-  const timeAgo = (dateString: string) => {
-    const now = new Date();
-    const postDate = new Date(dateString);
-    const diffInHours = Math.floor((now.getTime() - postDate.getTime()) / (1000 * 60 * 60));
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
-  };
-
+    return (
+      <View className="px-4 pb-20">
+        {posts.length > 0 ? (
+          <>
+            {posts.map(post => <Post key={post.post_id} {...post} />)}
+            
+            {loadingMore && (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color="#2563EB" />
+                <Text className="text-gray-500 mt-2 text-sm">Loading more...</Text>
+              </View>
+            )}
+            
+            {!hasMore && (
+              <Text className="text-gray-400 text-center py-8 text-sm">
+                You've reached the end — no more posts!
+              </Text>
+            )}
+          </>
+        ) : (
+          <Text className="text-gray-400 text-center py-12">No posts yet — start exploring!</Text>
+        )}
+      </View>
+    )
+  }
+  
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 relative">
-      {/* Floating Background Shapes */}
-      <View className="absolute inset-0 overflow-hidden">
-        <View className="absolute -top-20 -right-20 w-40 h-40 rounded-full bg-emerald-400 opacity-10" />
-        <View className="absolute top-64 -left-16 w-32 h-32 rounded-full bg-teal-500 opacity-8" />
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-white">
+      {/* Header */}
+      <View className="flex-row justify-between items-center px-4 pt-6 pb-4">
+        <View>
+          <Text className="text-2xl font-bold text-gray-900">Feed</Text>
+          <Text className="text-sm text-gray-600">Discover & Share</Text>
+        </View>
+        <Button
+          title=''
+          iconOnly
+          leftIcon={<FilterIcon size={18} color="#fff" />}
+          className="bg-gray-900 w-9 h-9 rounded-full"
+          onPress={() => {}}
+        />
       </View>
 
-      <ScrollView
-        className="px-6 pt-12 min-h-screen"
+      {/* Search */}
+      <View className="px-4 mb-4">
+        <Input placeholder="Search" leftIcon={<Search size={18} color="#9CA3AF" />} />
+      </View>
+
+      <ScrollView 
+        ref={scrollViewRef}
+        className="flex-1" 
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#2563EB']}
+            tintColor="#2563EB"
+          />
+        }
       >
-        {/* Header */}
-        <View className="flex-row items-center justify-between mb-8">
-          <View>
-            <Text className="text-sm font-semibold uppercase text-gray-700">Community Feed</Text>
-            <Text className="text-3xl font-black text-blue-900 mt-1">Discover & Share</Text>
-          </View>
-          <View className="flex-row space-x-3">
-            <TouchableOpacity className="w-12 h-12 bg-white rounded-xl items-center justify-center border border-gray-200 shadow-sm">
-              <Search size={20} color="#1E40AF" />
-            </TouchableOpacity>
-            <TouchableOpacity className="w-12 h-12 bg-white rounded-xl items-center justify-center border border-gray-200 shadow-sm">
-              <FilterIcon size={20} color="#1E40AF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* Tabs */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 mb-6">
+          {tabs.map(({ key, label, icon: Icon, subtitle }) => (
+            <SectionHeader
+              key={key}
+              title={label}
+              subtitle={subtitle}
+              icon={<Icon size={18} color={active === key ? '#2563EB' : '#6B7280'} />}
+              isActive={active === key}
+              onPress={() => setActive(key as any)}
+            />
+          ))}
+        </ScrollView>
 
-        {/* Posts */}
-        {loading ? (
-          <View className="flex-1 items-center justify-center py-20">
-            <ActivityIndicator size="large" color="#1E40AF" />
-            <Text className="text-gray-500 mt-4">Loading posts...</Text>
-          </View>
-        ) : posts && posts.length > 0 ? (
-          <View className="flex-1 gap-4 space-y-4">
-            {posts.map((post) => (
-              <View key={post.post_id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Post Header */}
-                <View className="flex-row items-center p-4 pb-3">
-                  <Image
-                    source={{ uri: `https://i.pravatar.cc/40?u=${post.user.user_id}` }}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <View className="flex-1 ml-3">
-                    <Text className="font-semibold text-gray-900">{post.user.username}</Text>
-                    <Text className="text-sm text-gray-500">{timeAgo(post.created_at)}</Text>
-                  </View>
-                  {post.featured && (
-                    <View className="bg-yellow-100 px-2 py-1 rounded-md">
-                      <Text className="text-xs font-medium text-yellow-700">FEATURED</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Post Content */}
-                <View className="px-4 pb-3">
-                  <Text className="font-semibold text-gray-900 text-lg mb-2">{post.title}</Text>
-                  <Text className="text-gray-700 leading-5">{post.content}</Text>
-                  {post.tags.length > 0 && (
-                    <View className="flex-row flex-wrap mt-3 gap-2">
-                      {post.tags.map((tag, idx) => (
-                        <View key={tag + idx} className="bg-blue-50 px-2 py-1 rounded-md">
-                          <Text className="text-xs font-medium text-blue-700">#{tag}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {/* Post Image */}
-                {post.image_url ? (
-                  <Image
-                    source={{ uri: post.image_url }}
-                    className="w-full h-48"
-                    style={{ resizeMode: 'cover' }}
-                  />
-                ) : (
-                  <View className="w-full h-32 bg-gray-100 items-center justify-center">
-                    <Camera size={24} color="#9CA3AF" />
-                  </View>
-                )}
-
-                {/* Post Actions */}
-                <View className="flex-row items-center justify-between p-4">
-                  <View className="flex-row space-x-4">
-                    <TouchableOpacity
-                      className="flex-row items-center space-x-1"
-                      onPress={() => toggleReaction(post.post_id)}
-                      disabled={reactingPostId === post.post_id}
-                    >
-                      <Heart size={20} color={post.isLiked ? 'red' : '#6B7280'} />
-                      <Text className="text-sm font-medium text-gray-600">{post.likeCount}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity className="flex-row items-center space-x-1">
-                      <MessageCircle size={20} color="#6B7280" />
-                      <Text className="text-sm font-medium text-gray-600">{post.commentCount}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TouchableOpacity>
-                    <Share2 size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View className="flex-1 items-center justify-center py-20">
-            <View className="bg-white rounded-3xl p-8 max-w-sm border border-gray-100">
-              <View className="items-center">
-                <View className="w-16 h-16 bg-blue-50 rounded-2xl items-center justify-center mb-4">
-                  <Camera stroke="#1E40AF" width={28} height={28} />
-                </View>
-                <Text className="text-xl font-bold text-blue-900 mb-2">No Posts Yet</Text>
-                <Text className="text-gray-500 text-center leading-6">
-                  Be the first to share something amazing with the community!
-                </Text>
-              </View>
-            </View>
+        {/* Trending Tags */}
+        {active === 'trending' && (
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-gray-900 px-4 mb-3">Trending Tags</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4">
+              {trendingTags.map(tag => (
+                <TrendingTagItem key={tag.tag} {...tag} />
+              ))}
+            </ScrollView>
           </View>
         )}
+
+        {/* Posts Content */}
+        {renderContent()}
       </ScrollView>
 
-      {/* Floating Create Post Button */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 100,
-          right: 24,
-          zIndex: 1000,
-        }}
-      >
-        <TouchableOpacity
-          onPress={handleCreate}
-          disabled={isCreating}
-          style={{
-            width: 64,
-            height: 64,
-            backgroundColor: '#2563EB',
-            borderRadius: 32,
-            alignItems: 'center',
-            justifyContent: 'center',
-            shadowColor: '#1E40AF',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          {isCreating ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Plus size={28} color="white" strokeWidth={2.5} />
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* Scroll to Top Button */}
+      {showScrollToTop && (
+        <Button
+          title=''
+          iconOnly
+          leftIcon={<ChevronUp size={20} color="#fff" />}
+          className="absolute bottom-4 right-5 bg-gray-800 w-12 h-12 rounded-full shadow-lg opacity-80"
+          onPress={scrollToTop}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      <Button
+        title=''
+        iconOnly
+        loading={isCreating}
+        leftIcon={!isCreating ? <PlusIcon size={22} color="#fff" /> : undefined}
+        className="absolute bottom-24 right-5 bg-blue-600 w-14 h-14 rounded-full shadow-lg"
+        onPress={handleCreatePost}
+      />
     </SafeAreaView>
-  );
-};
+  )
+}

@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
 import Button from '~/components/common/Button';
-import Input from '~/components/common/TextInputField';
+import { Input } from '~/components/common/TextInputField';
 import { useAuth } from '~/context/AuthContext';
 import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
 import {

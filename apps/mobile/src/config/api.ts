@@ -1,13 +1,13 @@
 // apps/mobile/src/config/api.ts
 export const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.1.11:3001' // Replace with YOUR computer's IP address
+  ? 'http://192.168.1.12:3001' // Replace with YOUR computer's IP address
   : 'https://your-production-api.com';
 
 export const API_ENDPOINTS = {
   AUTH: {
     REGISTER: `${API_BASE_URL}/api/v1/auth/register`,
     LOGIN: `${API_BASE_URL}/api/v1/auth/login`,
-    LOGOUT: `${API_BASE_URL}/api/ v1/auth/logout`,
+    LOGOUT: `${API_BASE_URL}/api/v1/auth/logout`, // FIXED: removed extra space
     REFRESH_TOKEN: `${API_BASE_URL}/api/v1/auth/refresh-token`,
     VERIFY_EMAIL: `${API_BASE_URL}/api/v1/auth/verify-email`,
     RESEND_VERIFICATION: `${API_BASE_URL}/api/v1/auth/resend-verification`,

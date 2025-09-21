@@ -10,34 +10,46 @@ interface InputProps extends TextInputProps {
   nextInputRef?: React.RefObject<TextInput | null>;
   isLastInput?: boolean;
   onSubmit?: () => void;
+  leftIcon?: React.ReactNode;
+  containerClassName?: string;
 }
 
-const Input = forwardRef<TextInput, InputProps>(
-  ({ label, secure, error, nextInputRef, isLastInput, onSubmit, ...props }, ref) => {
+export const Input = forwardRef<TextInput, InputProps>(
+  ({ 
+    label, 
+    secure, 
+    error, 
+    nextInputRef, 
+    isLastInput, 
+    onSubmit, 
+    leftIcon, 
+    containerClassName = '', 
+    ...props 
+  }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className="relative mb-4">
+      <View className={`relative mb-4 ${containerClassName}`}>
         {label && (
-          <Text className="text-craftopia-text-secondary text-sm mb-2 font-medium">
+          <Text className="text-gray-600 text-sm mb-2 font-medium">
             {label}
           </Text>
         )}
 
-        <View
-          className={`bg-craftopia-surface rounded-xl px-4 py-2 flex-row items-center border-2 ${
+        <View className={`bg-gray-50 rounded-lg px-3 py-2 flex-row items-center border ${
             error 
-              ? 'border-craftopia-energy' 
+              ? 'border-red-400' 
               : isFocused 
-                ? 'border-craftopia-digital' 
-                : 'border-craftopia-accent'
-          } shadow-sm`}
-          style={{ pointerEvents: 'auto' }} // Use style instead of props
-        >
+                ? 'border-gray-300' 
+                : 'border-gray-100'
+          }`}>
+          
+          {leftIcon && <View className="mr-2">{leftIcon}</View>}
+
           <TextInput
             ref={ref}
-            className="flex-1 text-craftopia-text-primary text-base"
+            className="flex-1 text-gray-900 text-sm"
             placeholderTextColor="#9CA3AF"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
@@ -58,19 +70,18 @@ const Input = forwardRef<TextInput, InputProps>(
             <TouchableOpacity 
               onPress={() => setShowPassword(!showPassword)}
               className="ml-2 p-1"
-              style={{ pointerEvents: 'auto' }} // Use style instead of props
             >
               {showPassword ? (
-                <EyeOff size={22} color="#6B7280" />
+                <EyeOff size={18} color="#6B7280" />
               ) : (
-                <Eye size={22} color="#6B7280" />
+                <Eye size={18} color="#6B7280" />
               )}
             </TouchableOpacity>
           )}
         </View>
 
         {error && (
-          <Text className="absolute -top-2 right-0 text-craftopia-energy text-sm mt-2">
+          <Text className="text-red-500 text-sm mt-1">
             {error}
           </Text>
         )}
@@ -78,7 +89,3 @@ const Input = forwardRef<TextInput, InputProps>(
     );
   }
 );
-
-Input.displayName = 'Input';
-
-export default Input;

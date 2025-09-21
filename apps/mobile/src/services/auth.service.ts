@@ -1,3 +1,4 @@
+// apps/mobile/src/services/auth.service.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   API_ENDPOINTS,
@@ -40,6 +41,47 @@ class AuthService {
       }
     }
     await this.clearTokens();
+  }
+
+  // ADD MISSING refreshToken method
+  async refreshToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this._performTokenRefresh();
+    
+    try {
+      const newToken = await this.refreshPromise;
+      return newToken;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  private async _performTokenRefresh(): Promise<string | null> {
+    try {
+      const refreshToken = await this.getRefreshToken();
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await apiService.request<{ data: { accessToken: string } }>(
+        API_ENDPOINTS.AUTH.REFRESH_TOKEN,
+        {
+          method: 'POST',
+          data: { refreshToken },
+        }
+      );
+
+      const newAccessToken = response.data.accessToken;
+      await AsyncStorage.setItem('access_token', newAccessToken);
+      return newAccessToken;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      await this.clearTokens();
+      return null;
+    }
   }
 
   async getCurrentUser(token?: string): Promise<UserProfileResponse> {

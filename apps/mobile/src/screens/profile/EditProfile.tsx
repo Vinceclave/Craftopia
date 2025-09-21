@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, Camera, User, Mail, MapPin, FileText, Edit3 } from "lucide-react-native";
 import Button from '~/components/common/Button';
-import Input from "~/components/common/TextInputField";
+import { Input } from "~/components/common/TextInputField";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";

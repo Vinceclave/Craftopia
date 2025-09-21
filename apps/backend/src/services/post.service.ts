@@ -42,9 +42,9 @@ export const createPost = async ({
   });
 };
 
-export const getPosts = async (page = 1, limit = 10) => {
+export const getPosts = async (page = 1, limit = 5) => {
   if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 10;
+  if (limit < 1 || limit > 100) limit = 5;
 
   const skip = (page - 1) * limit;
 

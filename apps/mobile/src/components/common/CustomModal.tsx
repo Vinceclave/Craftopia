@@ -1,13 +1,27 @@
+// apps/mobile/src/context/ModalContext.tsx
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
 import { CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react-native';
-import type { ModalConfig } from '~/context/modalContext';
 
-interface CustomModalProps {
-  config: ModalConfig;
-  onClose: () => void;
+// FIXED: Export the interface
+export interface ModalConfig {
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'success' | 'error' | 'warning' | 'info';
 }
 
-export const CustomModal: React.FC<CustomModalProps> = ({ config, onClose }) => {
+interface ModalContextType {
+  showModal: (config: ModalConfig) => void;
+  hideModal: () => void;
+}
+
+const ModalContext = createContext<ModalContextType | undefined>(undefined);
+
+const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ config, onClose }) => {
   const getIcon = () => {
     switch (config.type) {
       case 'success': return <CheckCircle size={32} color="#7C9885" />;
@@ -72,7 +86,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({ config, onClose }) => 
             {config.onConfirm && (
               <TouchableOpacity
                 onPress={handleConfirm}
-                className="bg-blue-600 rounded-xl py-4 items-center"
+                className="rounded-xl py-4 items-center"
                 style={{ backgroundColor: '#004E98' }}
               >
                 <Text className="text-white font-bold text-lg">
@@ -95,7 +109,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({ config, onClose }) => 
             {!config.onConfirm && !config.onCancel && (
               <TouchableOpacity
                 onPress={onClose}
-                className="bg-blue-600 rounded-xl py-4 items-center"
+                className="rounded-xl py-4 items-center"
                 style={{ backgroundColor: '#004E98' }}
               >
                 <Text className="text-white font-bold text-lg">OK</Text>
@@ -106,4 +120,31 @@ export const CustomModal: React.FC<CustomModalProps> = ({ config, onClose }) => 
       </View>
     </Modal>
   );
+};
+
+export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [modal, setModal] = useState<ModalConfig | null>(null);
+
+  const showModal = (config: ModalConfig) => {
+    setModal(config);
+  };
+
+  const hideModal = () => {
+    setModal(null);
+  };
+
+  return (
+    <ModalContext.Provider value={{ showModal, hideModal }}>
+      {children}
+      {modal && <CustomModal config={modal} onClose={hideModal} />}
+    </ModalContext.Provider>
+  );
+};
+
+export const useModal = () => {
+  const context = useContext(ModalContext);
+  if (!context) {
+    throw new Error('useModal must be used within ModalProvider');
+  }
+  return context;
 };
