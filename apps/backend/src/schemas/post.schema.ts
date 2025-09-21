@@ -12,7 +12,7 @@ export const createPostSchema = Joi.object({
       'string.empty': 'Post content cannot be empty',
       'string.max': 'Post content cannot exceed 1000 characters'
     }),
-  imageUrl: Joi.string().uri().optional(),
+  imageUrl: Joi.string().uri().allow(null, ''),
   tags: Joi.array().items(Joi.string().trim()).optional(),
   category: Joi.string().valid('Social', 'Tutorial', 'Challenge', 'Marketplace', 'Other').required(),
   featured: Joi.boolean().optional()

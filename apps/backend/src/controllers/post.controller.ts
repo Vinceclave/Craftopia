@@ -6,7 +6,7 @@ import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const createPost = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { title, content, imageUrl, tags, category, featured, points } = req.body;
+  const { title, content, imageUrl, tags, category, featured } = req.body;
   const post = await postService.createPost({
     user_id: req.user!.userId,
     title,

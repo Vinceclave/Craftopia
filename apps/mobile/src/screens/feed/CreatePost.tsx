@@ -1,163 +1,184 @@
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { Camera, Heart, ChevronLeft } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useRef, useState } from 'react'
+import { ScrollView, View, Text, TouchableOpacity, Image } from 'react-native'
+import { Input } from '~/components/common/TextInputField'
+import Button from '~/components/common/Button'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Image as ImageIcon, X, ArrowLeft } from 'lucide-react-native'
+import { useNavigation } from '@react-navigation/native'
+import { postService } from '~/services/post.service'
+
+interface CreatePostProps {
+  title: string
+  content: string
+  imageUrl?: string | null
+  tags: string[]
+  category: string
+}
 
 export const CreatePostScreen = () => {
-  const navigation = useNavigation();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Eco');
+  const navigate = useNavigation()
 
-  const handleSubmit = () => {
-    console.log({ title, description, category });
-    // Call API here
-  };
+  const [formData, setFormData] = useState<CreatePostProps>({
+    title: '',
+    content: '',
+    imageUrl: 'https://example.com/image.png',
+    tags: [],
+    category: '',
+  })
+
+  const refs = {
+    content: useRef(null),
+    title: useRef(null),
+    tags: useRef(null),
+    category: useRef(null),
+    image: useRef(null),
+  }
+
+  const handleChange = (field: keyof CreatePostProps, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: field === 'tags' 
+        ? value.split(',').map(t => t.trim()).filter(Boolean) 
+        : value,
+    }))
+  }
+
+  const handleSubmit = async () => {
+    // Prepare payload for backend
+    const payload: CreatePostProps = {
+      title: formData.title.trim(),
+      content: formData.content.trim(),
+      imageUrl: formData.imageUrl?.trim() || null, // convert empty string to null
+      tags: formData.tags.map(tag => tag.trim()).filter(Boolean),
+      category: formData.category.trim() || 'Other', // default to 'Other' if empty
+    }
+
+    try {
+      const res = await postService.createPost(payload)
+      console.log('Post created:', res.data)
+      // Optionally reset form or navigate back
+      navigate.goBack()
+    } catch (err) {
+      console.error('Failed to create post:', err)
+    }
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F0F0F0' }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Back Button */}
-        <TouchableOpacity
-          style={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: 'white',
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            zIndex: 10,
-          }}
-          onPress={() => navigation.goBack()}
-        >
-          <ChevronLeft size={24} color="#004E98" />
-        </TouchableOpacity>
-
-        {/* Scrollable Form */}
-        <ScrollView
-          contentContainerStyle={{ padding: 20, paddingTop: 60, paddingBottom: 120 }}
-        >
-          <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#004E98', marginBottom: 20 }}>
-            Create Post
-          </Text>
-
-          {/* Title */}
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 }}>Title</Text>
-          <TextInput
-            placeholder="Enter post title"
-            value={title}
-            onChangeText={setTitle}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 16,
-              color: '#004E98',
-              marginBottom: 16,
-            }}
-          />
-
-          {/* Description */}
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 }}>Description</Text>
-          <TextInput
-            placeholder="Write something..."
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={4}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 16,
-              color: '#004E98',
-              textAlignVertical: 'top',
-              marginBottom: 16,
-            }}
-          />
-
-          {/* Add Image */}
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 4,
-            }}
-          >
-            <Camera size={20} color="#FF6700" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#004E98', marginLeft: 8 }}>
-              Add Image
-            </Text>
-          </TouchableOpacity>
-
-          {/* Category */}
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 }}>Category</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            {['Eco', 'Craft', 'Social'].map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setCategory(cat)}
-                style={{
-                  paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  borderRadius: 20,
-                  backgroundColor: category === cat ? '#FF6700' : '#fff',
-                  borderWidth: 1,
-                  borderColor: category === cat ? '#FF6700' : '#ccc',
-                }}
-              >
-                <Text style={{ color: category === cat ? '#fff' : '#004E98', fontWeight: '600' }}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <SafeAreaView className="flex-1 bg-gray-50">
+      {/* Header */}
+      <View className="bg-white px-6 py-4 border-b border-gray-100">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity 
+              className="mr-3 p-1"
+              onPress={() => navigate.goBack()}
+            >
+              <ArrowLeft size={24} color="#374151" />
+            </TouchableOpacity>
+            <Text className="text-xl font-bold text-gray-900">Create Post</Text>
           </View>
-        </ScrollView>
+          <TouchableOpacity 
+            onPress={handleSubmit}
+            className="bg-blue-500 px-4 py-2 rounded-full"
+          >
+            <Text className="text-white font-semibold">Share</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-        {/* Floating Submit Button */}
-        <TouchableOpacity
-          onPress={handleSubmit}
-          style={{
-            position: 'absolute',
-            bottom: 24,
-            left: 20,
-            right: 20,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#FF6700',
-            borderRadius: 24,
-            paddingVertical: 14,
-            shadowColor: '#FF6700',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
-            shadowRadius: 12,
-            zIndex: 10,
-          }}
-        >
-          <Heart size={20} color="#fff" />
-          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, marginLeft: 8 }}>
-            Create Post
-          </Text>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Main Post Content */}
+        <View className="bg-white mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Content Input */}
+          <View className="p-4">
+            <Input
+              placeholder="What's on your mind?"
+              value={formData.content}
+              onChangeText={value => handleChange('content', value)}
+              ref={refs.content}
+              nextInputRef={refs.title}
+              containerClassName="mb-0"
+              style={{ fontSize: 16, lineHeight: 22 }}
+            />
+          </View>
+
+          {/* Image Section */}
+          {formData.imageUrl ? (
+            <View className="relative">
+              <Image 
+                source={{ uri: formData.imageUrl }} 
+                className="w-full h-64"
+                resizeMode="cover"
+              />
+              <TouchableOpacity 
+                className="absolute top-3 right-3 bg-black/50 rounded-full p-2"
+                onPress={() => handleChange('imageUrl', '')}
+              >
+                <X size={18} color="white" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              className="mx-4 mb-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl p-6 items-center"
+              activeOpacity={0.7}
+              onPress={() => {
+                // TODO: Add image picker if desired
+              }}
+            >
+              <ImageIcon size={32} color="#9CA3AF" />
+              <Text className="text-gray-500 mt-2 font-medium">Add Photo</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Image URL Input */}
+          <View className="px-4 pb-4">
+            <Input
+              placeholder="Paste image URL (optional)"
+              value={formData.imageUrl || ''}
+              onChangeText={value => handleChange('imageUrl', value)}
+              ref={refs.image}
+              nextInputRef={refs.title}
+              containerClassName="mb-0"
+            />
+          </View>
+        </View>
+
+        {/* Post Details */}
+        <View className="bg-white mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 p-4">
+          <Text className="text-lg font-semibold text-gray-900 mb-4">Post Details</Text>
+          
+          <Input
+            label="Title"
+            placeholder="Give your post a catchy title"
+            value={formData.title}
+            onChangeText={value => handleChange('title', value)}
+            ref={refs.title}
+            nextInputRef={refs.tags}
+            containerClassName="mb-3"
+          />
+
+          <Input
+            label="Tags"
+            placeholder="#nature #photography #sunset"
+            value={formData.tags.join(', ')}
+            onChangeText={value => handleChange('tags', value)}
+            ref={refs.tags}
+            nextInputRef={refs.category}
+            containerClassName="mb-3"
+          />
+
+          <Input
+            label="Category"
+            placeholder="Select or enter category"
+            value={formData.category}
+            onChangeText={value => handleChange('category', value)}
+            ref={refs.category}
+            isLastInput
+            onSubmit={handleSubmit}
+            containerClassName="mb-0"
+          />
+        </View>
+      </ScrollView>
     </SafeAreaView>
-  );
-};
+  )
+}

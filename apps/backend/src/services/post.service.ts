@@ -9,7 +9,6 @@ export const createPost = async ({
   tags,
   category,
   featured,
-  points,
 }: {
   user_id: number;
   title: string;

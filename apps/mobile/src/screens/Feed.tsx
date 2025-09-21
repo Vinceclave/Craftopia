@@ -7,8 +7,12 @@ import { Post } from '~/components/feed/Post'
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem'
 import type { PostProps } from '~/components/feed/Post'
 import { postService } from '~/services/post.service'
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { FeedStackParamList } from '~/navigations/types'
+import { useNavigation } from '@react-navigation/native'
 
 type FeedType = 'all' | 'trending' | 'popular' | 'featured'
+
 
 const FEED_TABS = [
   { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
@@ -18,6 +22,7 @@ const FEED_TABS = [
 ]
 
 export const FeedScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const [activeTab, setActiveTab] = useState<FeedType>('all')
   const [posts, setPosts] = useState<PostProps[]>([])
   const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([])
@@ -294,24 +299,25 @@ export const FeedScreen = () => {
   }
 
   const handleCreate = async () => {
-    try {
-      const res = await postService.createPost({
-        title: "My First Post",
-        content: "This is a test post",
-        imageUrl: "https://example.com/image.png",
-        tags: ["test", "post"],
-        category: "Social",
-        featured: true
-      })
-      console.log(res.data)
-      handleRefresh()
-    } catch (err) {
-      console.error('Failed to create post:', err)
-    }
+    navigation.navigate('Create');
+    // try {
+    //   const res = await postService.createPost({
+    //     title: "My First Post",
+    //     content: "This is a test post",
+    //     imageUrl: "https://example.com/image.png",
+    //     tags: ["test", "post"],
+    //     category: "Social",
+    //     featured: true
+    //   })
+    //   console.log(res.data)
+    //   handleRefresh()
+    // } catch (err) {
+    //   console.error('Failed to create post:', err)
+    // }
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       {/* Header */}
       <View className="bg-white px-4 pt-4 pb-2 border-b border-gray-100">
         <View className="flex-row justify-between items-center mb-4">
