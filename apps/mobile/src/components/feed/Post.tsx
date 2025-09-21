@@ -21,6 +21,7 @@ export interface PostProps {
     user_id: number
     username: string
   }
+  onToggleReaction?: () => void // ✅ new prop
 }
 
 export const Post: React.FC<PostProps> = ({
@@ -34,6 +35,7 @@ export const Post: React.FC<PostProps> = ({
   isLiked,
   user,
   created_at,
+  onToggleReaction, // ✅ receive callback
 }) => {
   return (
     <View className="bg-white border-b border-gray-100 pb-4 mb-4">
@@ -47,9 +49,7 @@ export const Post: React.FC<PostProps> = ({
           <Text className="font-medium text-gray-900 text-sm">{user.username}</Text>
           <Text className="text-xs text-gray-500">2h ago</Text>
         </View>
-        {featured && (
-          <View className="w-2 h-2 bg-blue-500 rounded-full" />
-        )}
+        {featured && <View className="w-2 h-2 bg-blue-500 rounded-full" />}
       </View>
 
       {/* Post Content */}
@@ -67,7 +67,7 @@ export const Post: React.FC<PostProps> = ({
         />
       )}
 
-      {/* Tags - only show first 3 */}
+      {/* Tags */}
       {tags.length > 0 && (
         <View className="flex-row mb-3">
           {tags.slice(0, 3).map((tag, idx) => (
@@ -81,10 +81,13 @@ export const Post: React.FC<PostProps> = ({
       {/* Post Actions */}
       <View className="flex-row items-center justify-between">
         <View className="flex-row space-x-6">
-          <TouchableOpacity className="flex-row items-center">
-            <Heart 
-              size={18} 
-              color={isLiked ? '#EF4444' : '#9CA3AF'} 
+          <TouchableOpacity
+            className="flex-row items-center"
+            onPress={onToggleReaction} // ✅ call toggle handler
+          >
+            <Heart
+              size={18}
+              color={isLiked ? '#EF4444' : '#9CA3AF'}
               fill={isLiked ? '#EF4444' : 'none'}
             />
             <Text className="text-sm text-gray-500 ml-1">{likeCount}</Text>

@@ -50,6 +50,7 @@ export const API_ENDPOINTS = {
   },
   POSTS: {
     LIST: `${API_BASE_URL}/api/v1/posts`,
+    TRENDING: `${API_BASE_URL}/api/v1/posts/trending`,
     CREATE: `${API_BASE_URL}/api/v1/posts`,
     BY_ID: (id: string) => `${API_BASE_URL}/api/v1/posts/${id}`,
     DELETE: (id: string) => `${API_BASE_URL}/api/v1/posts/${id}`,

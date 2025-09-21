@@ -19,11 +19,22 @@ export const createPost = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 export const getPosts = asyncHandler(async (req: Request, res: Response) => {
+  const feedTypeQuery = req.query.feedType;
+  const feedType = 
+  typeof feedTypeQuery === 'string' && 
+  ['all', 'trending', 'popular', 'rising', 'featured'].includes(feedTypeQuery)
+    ? (feedTypeQuery as 'all' | 'trending' | 'popular' | 'rising' | 'featured')
+    : undefined;
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
-  const result = await postService.getPosts(page, limit);
+  const result = await postService.getPosts(feedType, page, limit);
   sendPaginatedSuccess(res, result.data, result.meta, 'Posts retrieved successfully');
 });
+
+export const getTrendingTags = asyncHandler(async (req: Request, res: Response) => {
+  const tags = await postService.getTrendingTags();
+  sendSuccess(res, tags, 'Tags retrieved successfully' )
+})
 
 export const getPostById = asyncHandler(async (req: Request, res: Response) => {
   const postId = Number(req.params.postId);

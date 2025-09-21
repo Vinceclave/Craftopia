@@ -42,25 +42,60 @@ export const createPost = async ({
   });
 };
 
-export const getPosts = async (page = 1, limit = 5) => {
+export const getPosts = async (
+  feedType?: 'all' | 'trending' | 'popular' | 'rising' | 'featured',
+  page = 1,
+  limit = 5
+) => {
   if (page < 1) page = 1;
   if (limit < 1 || limit > 100) limit = 5;
 
   const skip = (page - 1) * limit;
 
+  // define dynamic filters & sorting
+  let where: any = { deleted_at: null };
+  let orderBy: any = { created_at: 'desc' };
+
+  switch (feedType) {
+    case 'trending':
+      // posts with most comments in last X days
+      orderBy = { comments: { _count: 'desc' } };
+      break;
+
+    case 'popular':
+      // posts with most likes overall
+      orderBy = { likes: { _count: 'desc' } };
+      break;
+
+    case 'rising':
+      // posts created recently with good engagement
+      where.created_at = { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }; // last 24h
+      orderBy = { likes: { _count: 'desc' } };
+      break;
+
+    case 'featured':
+      where.featured = true;
+      break;
+
+    case 'all':
+    default:
+      orderBy = { created_at: 'desc' };
+      break;
+  }
+
   const [posts, total] = await Promise.all([
     prisma.post.findMany({
-      where: { deleted_at: null },
+      where,
       skip,
       take: limit,
-      orderBy: { created_at: 'desc' },
+      orderBy,
       include: {
         user: { select: { user_id: true, username: true } },
         comments: { where: { deleted_at: null }, select: { comment_id: true } },
         likes: { where: { deleted_at: null }, select: { like_id: true } },
       },
     }),
-    prisma.post.count({ where: { deleted_at: null } })
+    prisma.post.count({ where })
   ]);
 
   return {
@@ -79,6 +114,31 @@ export const getPosts = async (page = 1, limit = 5) => {
     }
   };
 };
+
+export const getTrendingTags = async () => {
+  // Fetch all posts (or limit to last N days for trending)
+  const posts = await prisma.post.findMany({
+    where: { deleted_at: null },
+    select: { tags: true },
+  })
+
+  // Flatten tags and count occurrences
+  const tagCounts: Record<string, number> = {}
+  posts.forEach(post => {
+    post.tags.forEach(tag => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1
+    })
+  })
+
+  // Convert to array and sort by count descending
+  const trendingTags = Object.entries(tagCounts)
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10) // top 10 tags
+
+  return trendingTags
+}
+
 
 export const getPostById = async (postId: number) => {
   if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);

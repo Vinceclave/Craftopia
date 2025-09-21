@@ -9,6 +9,7 @@ const router = Router();
 // POSTS
 router.post('/', requireAuth, validate(createPostSchema), postController.createPost);
 router.get('/', requireAuth, postController.getPosts);
+router.get('/trending', requireAuth, postController.getTrendingTags);
 router.get('/:postId', requireAuth, postController.getPostById);
 router.delete('/:postId', requireAuth, postController.deletePost);
 

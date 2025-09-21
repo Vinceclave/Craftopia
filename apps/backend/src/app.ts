@@ -21,6 +21,7 @@ app.use(helmet());
 app.use(cors({
   
   origin: [
+    'https://www.google.com',
     'http://localhost:3001',
     'http://localhost:8081',
     'http://192.168.1.6:3001', // your LAN IP if testing from device

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigations/AuthNavigator';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import Input from '~/components/common/TextInputField'
+import { Input } from '~/components/common/TextInputField'
 import Button from '~/components/common/Button'
 import { authService } from '../services/auth.service';
 import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
