@@ -45,7 +45,8 @@ export const createPost = async ({
 export const getPosts = async (
   feedType?: 'all' | 'trending' | 'popular' | 'featured',
   page = 1,
-  limit = 10
+  limit = 10,
+  userId?: number // Add userId parameter to check user's reactions
 ) => {
   if (page < 1) page = 1;
   if (limit < 1 || limit > 100) limit = 10;
@@ -58,14 +59,11 @@ export const getPosts = async (
 
   switch (feedType) {
     case 'all':
-      // Show ALL posts chronologically (newest first)
       where = { deleted_at: null };
       orderBy = { created_at: 'desc' };
       break;
 
     case 'trending':
-      // Posts with most engagement (tags, comments, likes combined)
-      // Calculate trending score based on engagement
       orderBy = [
         { likes: { _count: 'desc' } },
         { comments: { _count: 'desc' } },
@@ -74,7 +72,6 @@ export const getPosts = async (
       break;
 
     case 'popular':
-      // Posts with most likes overall (all time popular)
       orderBy = [
         { likes: { _count: 'desc' } },
         { created_at: 'desc' }
@@ -82,13 +79,11 @@ export const getPosts = async (
       break;
 
     case 'featured':
-      // Show ALL featured posts
       where.featured = true;
       orderBy = { created_at: 'desc' };
       break;
 
     default:
-      // Default to all posts
       orderBy = { created_at: 'desc' };
       break;
   }
@@ -119,20 +114,22 @@ export const getPosts = async (
     prisma.post.count({ where })
   ]);
 
-  // Transform the data to match frontend expectations
+  // Transform the data to include user's reaction status
   const transformedPosts = posts.map(post => {
-    // Calculate trending score based on tags, comments, and likes
-    const tagScore = post.tags.length * 1; // 1 point per tag
-    const commentScore = post.comments.length * 2; // 2 points per comment
-    const likeScore = post.likes.length * 1; // 1 point per like
+    const tagScore = post.tags.length * 1;
+    const commentScore = post.comments.length * 2;
+    const likeScore = post.likes.length * 1;
     const trendingScore = tagScore + commentScore + likeScore;
+
+    // Check if current user has liked this post
+    const isLiked = userId ? post.likes.some(like => like.user_id === userId) : false;
 
     return {
       ...post,
       commentCount: post.comments.length,
       likeCount: post.likes.length,
-      trendingScore, // Add trending score for sorting
-      isLiked: false, // You'll need to check this based on current user
+      trendingScore,
+      isLiked, // Include user's reaction status
       comments: undefined, // Remove to reduce payload
       likes: undefined, // Remove to reduce payload
     };
@@ -141,11 +138,9 @@ export const getPosts = async (
   // For trending, sort by trending score after fetching
   if (feedType === 'trending') {
     transformedPosts.sort((a, b) => {
-      // Primary sort: trending score (higher is better)
       if (b.trendingScore !== a.trendingScore) {
         return b.trendingScore - a.trendingScore;
       }
-      // Secondary sort: newer posts first
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }
@@ -266,17 +261,60 @@ export const togglePostReaction = async (postId: number, userId: number) => {
   const post = await prisma.post.findFirst({ where: { post_id: postId, deleted_at: null } });
   if (!post) throw new AppError('Post not found', 404);
 
-  const existing = await prisma.like.findFirst({ where: { post_id: postId, user_id: userId } });
-
-  if (!existing) return prisma.like.create({ data: { post_id: postId, user_id: userId } });
-
-  return prisma.like.update({
-    where: { like_id: existing.like_id },
-    data: { deleted_at: existing.deleted_at ? null : new Date() }
+  // Check if user already has a reaction
+  const existing = await prisma.like.findFirst({ 
+    where: { post_id: postId, user_id: userId } 
   });
+
+  let reactionResult;
+  
+  if (!existing) {
+    // Create new like
+    reactionResult = await prisma.like.create({ 
+      data: { post_id: postId, user_id: userId } 
+    });
+  } else {
+    // Toggle existing like (soft delete/restore)
+    reactionResult = await prisma.like.update({
+      where: { like_id: existing.like_id },
+      data: { deleted_at: existing.deleted_at ? null : new Date() }
+    });
+  }
+
+  // Get updated like count and user's current reaction status
+  const [likeCount, userReaction] = await Promise.all([
+    prisma.like.count({ where: { post_id: postId, deleted_at: null } }),
+    prisma.like.findFirst({ 
+      where: { post_id: postId, user_id: userId, deleted_at: null } 
+    })
+  ]);
+
+  // Return consistent response format
+  return {
+    isLiked: !!userReaction, // true if user has active like
+    likeCount: likeCount,
+    postId: postId,
+    userId: userId,
+    reactionId: reactionResult.like_id
+  };
 };
 
 export const countReactions = async (postId: number) => {
   if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
   return prisma.like.count({ where: { post_id: postId, deleted_at: null } });
+};
+
+// NEW: Get user's reaction status for a post
+export const getUserReactionStatus = async (postId: number, userId: number) => {
+  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
+  
+  const reaction = await prisma.like.findFirst({
+    where: { 
+      post_id: postId, 
+      user_id: userId, 
+      deleted_at: null 
+    }
+  });
+  
+  return !!reaction;
 };

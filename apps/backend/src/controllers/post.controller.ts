@@ -1,3 +1,4 @@
+// apps/backend/src/controllers/post.controller.ts - FIXED VERSION
 import { Request, Response } from 'express';
 import * as postService from '../services/post.service';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -18,8 +19,8 @@ export const createPost = asyncHandler(async (req: AuthRequest, res: Response) =
   sendSuccess(res, post, 'Post created successfully', 201);
 });
 
-export const getPosts = asyncHandler(async (req: Request, res: Response) => {
-  // Extract feedType from query parameters
+// UPDATED: Include user ID for reaction status
+export const getPosts = asyncHandler(async (req: AuthRequest, res: Response) => {
   const feedTypeQuery = req.query.feedType;
   const feedType = 
     typeof feedTypeQuery === 'string' && 
@@ -29,8 +30,9 @@ export const getPosts = asyncHandler(async (req: Request, res: Response) => {
 
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
+  const userId = req.user?.userId; // Get current user ID for reaction status
   
-  const result = await postService.getPosts(feedType, page, limit);
+  const result = await postService.getPosts(feedType, page, limit, userId);
   sendPaginatedSuccess(res, result.data, result.meta, 'Posts retrieved successfully');
 });
 
@@ -69,18 +71,24 @@ export const deleteComment = asyncHandler(async (req: AuthRequest, res: Response
   sendSuccess(res, comment, 'Comment deleted successfully');
 });
 
+// FIXED: Enhanced toggle reaction with consistent response
 export const handlePostReactionToggle = asyncHandler(async (req: AuthRequest, res: Response) => {
   const postId = Number(req.params.postId);
   const userId = req.user!.userId;
   
-  const reaction = await postService.togglePostReaction(postId, userId);
+  console.log('🔵 Backend Controller: Toggle reaction - PostID:', postId, 'UserID:', userId);
   
-  // Return the updated like count and status
-  const likeCount = await postService.countReactions(postId);
+  // Use the enhanced toggle method that returns consistent data
+  const reactionData = await postService.togglePostReaction(postId, userId);
   
-  sendSuccess(res, { 
-    isLiked: reaction.deleted_at === null,
-    likeCount: likeCount
+  console.log('🔵 Backend Controller: Reaction data:', reactionData);
+  
+  // Send consistent response format
+  sendSuccess(res, {
+    isLiked: reactionData.isLiked,
+    likeCount: reactionData.likeCount,
+    postId: reactionData.postId,
+    userId: reactionData.userId
   }, 'Reaction toggled successfully');
 });
 
@@ -88,4 +96,12 @@ export const getPostReactionCount = asyncHandler(async (req: Request, res: Respo
   const postId = Number(req.params.postId);
   const total = await postService.countReactions(postId);
   sendSuccess(res, { total }, 'Reaction count retrieved successfully');
+});
+
+// NEW: Get user's reaction status for a specific post
+export const getUserReactionStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const postId = Number(req.params.postId);
+  const userId = req.user!.userId;
+  const isLiked = await postService.getUserReactionStatus(postId, userId);
+  sendSuccess(res, { isLiked, postId, userId }, 'User reaction status retrieved successfully');
 });

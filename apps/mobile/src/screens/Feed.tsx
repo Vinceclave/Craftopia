@@ -1,5 +1,5 @@
-// Fixed Feed.tsx - Remove functions from useEffect dependencies
-import React, { useEffect, useState, useCallback } from 'react'
+// Fixed Feed.tsx - Improved toggle reaction handling
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Text, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus } from 'lucide-react-native'
@@ -27,8 +27,11 @@ export const FeedScreen = () => {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  
+  // Track pending reactions to prevent duplicate requests
+  const pendingReactions = useRef<Set<number>>(new Set())
 
-  // Fetch posts - Remove posts from dependencies to prevent infinite loop
+  // Fetch posts
   const fetchPosts = useCallback(async (pageNumber = 1, isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true)
@@ -40,14 +43,12 @@ export const FeedScreen = () => {
       const fetchedPosts: PostProps[] = response?.data || []
 
       if (isRefresh || pageNumber === 1) {
-        // Use functional update to access current posts without adding to dependencies
         setPosts(prevPosts => {
           const existingPostsMap = new Map(prevPosts.map(post => [post.post_id, post]))
           
           return fetchedPosts.map(post => {
             const existingPost = existingPostsMap.get(post.post_id)
             
-            // If we have an existing post, preserve client-side state
             if (existingPost) {
               return {
                 ...post,
@@ -56,7 +57,6 @@ export const FeedScreen = () => {
               }
             }
             
-            // For new posts, use server data
             return post
           })
         })
@@ -79,7 +79,7 @@ export const FeedScreen = () => {
       setRefreshing(false)
       setLoadingMore(false)
     }
-  }, [activeTab]) // Only activeTab as dependency
+  }, [activeTab])
 
   // Fetch trending tags
   const fetchTrendingTags = useCallback(async () => {
@@ -88,6 +88,95 @@ export const FeedScreen = () => {
       setTrendingTags(response?.data || [])
     } catch (err) {
       console.error('Error fetching trending tags:', err)
+    }
+  }, [])
+
+  // FIXED: Improved toggle reaction with proper state management
+  const handleToggleReaction = useCallback(async (postId: number) => {
+    // Prevent duplicate requests
+    if (pendingReactions.current.has(postId)) {
+      console.log('⚠️ Reaction already pending for post:', postId)
+      return
+    }
+
+    // Add to pending set
+    pendingReactions.current.add(postId)
+
+    // Get current post state for rollback
+    let originalPost: PostProps | undefined
+    setPosts(prevPosts => {
+      originalPost = prevPosts.find(p => p.post_id === postId)
+      
+      // Optimistic update
+      return prevPosts.map(post =>
+        post.post_id === postId
+          ? { 
+              ...post, 
+              isLiked: !post.isLiked, 
+              likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 
+            }
+          : post
+      )
+    })
+
+    try {
+      console.log('🔵 Frontend: Toggling reaction for post:', postId)
+      
+      // Call API
+      const response = await postService.toggleReaction(postId.toString())
+      console.log('🔵 Frontend: API Response:', response)
+
+      // Handle different response structures
+      const responseData = response?.data || response
+      const isLiked = responseData?.isLiked
+      const likeCount = responseData?.likeCount
+
+      if (typeof isLiked === 'boolean' && typeof likeCount === 'number') {
+        // Update with server response
+        setPosts(currentPosts =>
+          currentPosts.map(post =>
+            post.post_id === postId
+              ? { ...post, isLiked, likeCount }
+              : post
+          )
+        )
+        console.log('✅ Updated post with server data:', { postId, isLiked, likeCount })
+      } else {
+        // If no proper response, fetch the current count from server
+        console.log('⚠️ Invalid response format, fetching count...')
+        const countResponse = await postService.getReactionCount(postId.toString())
+        const serverCount = countResponse?.data?.total || 0
+        
+        setPosts(currentPosts =>
+          currentPosts.map(post => {
+            if (post.post_id === postId) {
+              // Determine isLiked based on optimistic update
+              const wasLiked = originalPost?.isLiked || false
+              return { ...post, isLiked: !wasLiked, likeCount: serverCount }
+            }
+            return post
+          })
+        )
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to toggle reaction:', error)
+      
+      // Rollback optimistic update
+      if (originalPost) {
+        setPosts(currentPosts =>
+          currentPosts.map(post =>
+            post.post_id === postId
+              ? { ...post, isLiked: originalPost!.isLiked, likeCount: originalPost!.likeCount }
+              : post
+          )
+        )
+      }
+      
+      // Show user-friendly error
+      console.log('Failed to update reaction. Please try again.')
+    } finally {
+      // Remove from pending set
+      pendingReactions.current.delete(postId)
     }
   }, [])
 
@@ -113,56 +202,12 @@ export const FeedScreen = () => {
     }
   }, [handleLoadMore])
 
-  // Toggle reaction - Use functional update to avoid stale closure
-  const handleToggleReaction = useCallback(async (postId: number) => {
-    // Optimistic update using functional update
-    setPosts(prevPosts => {
-      const updatedPosts = prevPosts.map(post =>
-        post.post_id === postId
-          ? { ...post, isLiked: !post.isLiked, likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 }
-          : post
-      )
-      
-      // Store previous state for potential rollback
-      const prevPost = prevPosts.find(p => p.post_id === postId)
-      if (prevPost) {
-        // Call API with previous state stored in closure
-        postService.toggleReaction(postId.toString())
-          .then(response => {
-            if (response?.data) {
-              setPosts(currentPosts =>
-                currentPosts.map(post =>
-                  post.post_id === postId
-                    ? { ...post, isLiked: response.data.isLiked, likeCount: response.data.likeCount }
-                    : post
-                )
-              )
-            }
-          })
-          .catch(err => {
-            // Revert on error
-            setPosts(currentPosts =>
-              currentPosts.map(post =>
-                post.post_id === postId
-                  ? { ...post, isLiked: prevPost.isLiked, likeCount: prevPost.likeCount }
-                  : post
-              )
-            )
-            console.error('Failed to toggle reaction:', err)
-          })
-      }
-      
-      return updatedPosts
-    })
-  }, [])
-
-  // Effect for tab changes - REMOVE fetchPosts and fetchTrendingTags from dependencies
+  // Effect for tab changes
   useEffect(() => {
     setPosts([])
     setPage(1)
     setHasMore(true)
     
-    // Call functions directly instead of adding them to dependencies
     const loadTabData = async () => {
       await fetchPosts(1)
       if (activeTab === 'trending') {
@@ -171,9 +216,8 @@ export const FeedScreen = () => {
     }
     
     loadTabData()
-  }, [activeTab]) // Only activeTab as dependency
+  }, [activeTab])
 
-  // Rest of your component remains the same...
   const renderTab = useCallback((tab: typeof FEED_TABS[0]) => {
     const isActive = activeTab === tab.key
     const IconComponent = tab.icon

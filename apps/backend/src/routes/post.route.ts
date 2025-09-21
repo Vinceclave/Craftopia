@@ -1,3 +1,4 @@
+// apps/backend/src/routes/post.route.ts - UPDATED WITH NEW ENDPOINTS
 import { Router } from 'express';
 import * as postController from '../controllers/post.controller';
 import { requireAuth } from '../middlewares/rolebase.middleware';
@@ -21,5 +22,7 @@ router.delete('/comment/:commentId', requireAuth, postController.deleteComment);
 // REACTIONS
 router.post('/:postId/reaction/toggle', requireAuth, postController.handlePostReactionToggle);
 router.get('/:postId/reaction/count', requireAuth, postController.getPostReactionCount);
+// NEW: Get user's reaction status for a specific post
+router.get('/:postId/reaction/status', requireAuth, postController.getUserReactionStatus);
 
 export default router;
