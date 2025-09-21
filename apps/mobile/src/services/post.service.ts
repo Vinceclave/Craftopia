@@ -9,11 +9,18 @@ class PostService {
         })
     }
 
-    async createPost(payload: { content: string, imageUrl: string }): Promise<any> {
-        return apiService.request(API_ENDPOINTS.POSTS.CREATE, {
-            method: 'POST',
-            data: payload,
-        })
+    async createPost(payload: {
+        title: string;
+        content: string;
+        imageUrl: string;
+        tags?: string[];
+        category?: string;
+        featured?: boolean;
+    }): Promise<any> {
+    return apiService.request(API_ENDPOINTS.POSTS.CREATE, {
+        method: 'POST',
+        data: payload,
+    });
     }
 
     async getTrendingTags(): Promise<any> {
@@ -22,10 +29,15 @@ class PostService {
         })
     }
 
-    async toggleReaction(postId: string): Promise<any> {
-        return apiService.request(API_ENDPOINTS.POSTS.TOGGLE_REACTION(postId), {
-        method: "POST", // assuming toggling a reaction is a POST action
+   async toggleReaction(postId: string): Promise<any> {
+        console.log('🔵 Frontend: Calling toggleReaction for postId:', postId);
+        
+        const response = await apiService.request(API_ENDPOINTS.POSTS.TOGGLE_REACTION(postId), {
+            method: "POST",
         });
+        
+        console.log('🔵 Frontend: Toggle response:', response);
+        return response;
     }
 }
 

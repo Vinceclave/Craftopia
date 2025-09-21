@@ -43,42 +43,52 @@ export const createPost = async ({
 };
 
 export const getPosts = async (
-  feedType?: 'all' | 'trending' | 'popular' | 'rising' | 'featured',
+  feedType?: 'all' | 'trending' | 'popular' | 'featured',
   page = 1,
-  limit = 5
+  limit = 10
 ) => {
   if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 5;
+  if (limit < 1 || limit > 100) limit = 10;
 
   const skip = (page - 1) * limit;
 
-  // define dynamic filters & sorting
+  // Define dynamic filters & sorting based on feedType
   let where: any = { deleted_at: null };
   let orderBy: any = { created_at: 'desc' };
 
   switch (feedType) {
+    case 'all':
+      // Show ALL posts chronologically (newest first)
+      where = { deleted_at: null };
+      orderBy = { created_at: 'desc' };
+      break;
+
     case 'trending':
-      // posts with most comments in last X days
-      orderBy = { comments: { _count: 'desc' } };
+      // Posts with most engagement (tags, comments, likes combined)
+      // Calculate trending score based on engagement
+      orderBy = [
+        { likes: { _count: 'desc' } },
+        { comments: { _count: 'desc' } },
+        { created_at: 'desc' }
+      ];
       break;
 
     case 'popular':
-      // posts with most likes overall
-      orderBy = { likes: { _count: 'desc' } };
-      break;
-
-    case 'rising':
-      // posts created recently with good engagement
-      where.created_at = { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }; // last 24h
-      orderBy = { likes: { _count: 'desc' } };
+      // Posts with most likes overall (all time popular)
+      orderBy = [
+        { likes: { _count: 'desc' } },
+        { created_at: 'desc' }
+      ];
       break;
 
     case 'featured':
+      // Show ALL featured posts
       where.featured = true;
+      orderBy = { created_at: 'desc' };
       break;
 
-    case 'all':
     default:
+      // Default to all posts
       orderBy = { created_at: 'desc' };
       break;
   }
@@ -90,22 +100,58 @@ export const getPosts = async (
       take: limit,
       orderBy,
       include: {
-        user: { select: { user_id: true, username: true } },
-        comments: { where: { deleted_at: null }, select: { comment_id: true } },
-        likes: { where: { deleted_at: null }, select: { like_id: true } },
+        user: { 
+          select: { 
+            user_id: true, 
+            username: true 
+          } 
+        },
+        comments: { 
+          where: { deleted_at: null }, 
+          select: { comment_id: true } 
+        },
+        likes: { 
+          where: { deleted_at: null }, 
+          select: { like_id: true, user_id: true } 
+        },
       },
     }),
     prisma.post.count({ where })
   ]);
 
-  return {
-    data: posts.map(post => ({
+  // Transform the data to match frontend expectations
+  const transformedPosts = posts.map(post => {
+    // Calculate trending score based on tags, comments, and likes
+    const tagScore = post.tags.length * 1; // 1 point per tag
+    const commentScore = post.comments.length * 2; // 2 points per comment
+    const likeScore = post.likes.length * 1; // 1 point per like
+    const trendingScore = tagScore + commentScore + likeScore;
+
+    return {
       ...post,
       commentCount: post.comments.length,
       likeCount: post.likes.length,
-      comments: undefined,
-      likes: undefined,
-    })),
+      trendingScore, // Add trending score for sorting
+      isLiked: false, // You'll need to check this based on current user
+      comments: undefined, // Remove to reduce payload
+      likes: undefined, // Remove to reduce payload
+    };
+  });
+
+  // For trending, sort by trending score after fetching
+  if (feedType === 'trending') {
+    transformedPosts.sort((a, b) => {
+      // Primary sort: trending score (higher is better)
+      if (b.trendingScore !== a.trendingScore) {
+        return b.trendingScore - a.trendingScore;
+      }
+      // Secondary sort: newer posts first
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
+
+  return {
+    data: transformedPosts,
     meta: {
       total,
       page,

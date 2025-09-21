@@ -1,4 +1,5 @@
-import React from 'react'
+// apps/mobile/src/components/feed/Post.tsx - FIXED VERSION
+import React, { memo } from 'react'
 import { View, Text, TouchableOpacity, Image } from 'react-native'
 import { Heart, MessageCircle, Share2 } from 'lucide-react-native'
 
@@ -21,10 +22,10 @@ export interface PostProps {
     user_id: number
     username: string
   }
-  onToggleReaction?: () => void // ✅ new prop
+  onToggleReaction?: () => void
 }
 
-export const Post: React.FC<PostProps> = ({
+const PostComponent: React.FC<PostProps> = ({
   title,
   content,
   image_url,
@@ -34,11 +35,10 @@ export const Post: React.FC<PostProps> = ({
   likeCount,
   isLiked,
   user,
-  created_at,
-  onToggleReaction, // ✅ receive callback
+  onToggleReaction,
 }) => {
   return (
-    <View className="bg-white border-b border-gray-100 pb-4 mb-4">
+    <View className="bg-white border-b border-gray-100 pb-4 mb-4 px-4">
       {/* Post Header */}
       <View className="flex-row items-center mb-3">
         <Image
@@ -83,7 +83,7 @@ export const Post: React.FC<PostProps> = ({
         <View className="flex-row space-x-6">
           <TouchableOpacity
             className="flex-row items-center"
-            onPress={onToggleReaction} // ✅ call toggle handler
+            onPress={onToggleReaction}
           >
             <Heart
               size={18}
@@ -104,3 +104,6 @@ export const Post: React.FC<PostProps> = ({
     </View>
   )
 }
+
+// ✅ Named export to match the import
+export const Post = memo(PostComponent)

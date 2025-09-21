@@ -19,14 +19,17 @@ export const createPost = asyncHandler(async (req: AuthRequest, res: Response) =
 });
 
 export const getPosts = asyncHandler(async (req: Request, res: Response) => {
+  // Extract feedType from query parameters
   const feedTypeQuery = req.query.feedType;
   const feedType = 
-  typeof feedTypeQuery === 'string' && 
-  ['all', 'trending', 'popular', 'rising', 'featured'].includes(feedTypeQuery)
-    ? (feedTypeQuery as 'all' | 'trending' | 'popular' | 'rising' | 'featured')
-    : undefined;
+    typeof feedTypeQuery === 'string' && 
+    ['all', 'trending', 'popular', 'featured'].includes(feedTypeQuery)
+      ? (feedTypeQuery as 'all' | 'trending' | 'popular' | 'featured')
+      : 'all'; // Default to 'all' if not provided or invalid
+
   const page = Number(req.query.page) || 1;
   const limit = Number(req.query.limit) || 10;
+  
   const result = await postService.getPosts(feedType, page, limit);
   sendPaginatedSuccess(res, result.data, result.meta, 'Posts retrieved successfully');
 });
@@ -68,8 +71,17 @@ export const deleteComment = asyncHandler(async (req: AuthRequest, res: Response
 
 export const handlePostReactionToggle = asyncHandler(async (req: AuthRequest, res: Response) => {
   const postId = Number(req.params.postId);
-  const reaction = await postService.togglePostReaction(postId, req.user!.userId);
-  sendSuccess(res, reaction, 'Reaction toggled successfully');
+  const userId = req.user!.userId;
+  
+  const reaction = await postService.togglePostReaction(postId, userId);
+  
+  // Return the updated like count and status
+  const likeCount = await postService.countReactions(postId);
+  
+  sendSuccess(res, { 
+    isLiked: reaction.deleted_at === null,
+    likeCount: likeCount
+  }, 'Reaction toggled successfully');
 });
 
 export const getPostReactionCount = asyncHandler(async (req: Request, res: Response) => {
