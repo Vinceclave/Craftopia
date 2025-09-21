@@ -1,4 +1,4 @@
-// apps/mobile/src/services/api.service.ts
+// apps/mobile/src/services/base.service.ts - SIMPLE FIX
 import axios, {
   AxiosInstance,
   AxiosRequestConfig,
@@ -7,7 +7,6 @@ import axios, {
 } from 'axios';
 import { API_BASE_URL, DEFAULT_HEADERS, HTTP_STATUS } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from './auth.service';
 
 class ApiService {
   private axios: AxiosInstance;
@@ -31,7 +30,7 @@ class ApiService {
       return config;
     });
 
-    // Refresh token on 401
+    // 🔧 FIXED: Simple refresh token logic
     this.axios.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -42,16 +41,35 @@ class ApiService {
           !originalRequest._retry
         ) {
           originalRequest._retry = true;
+          
           try {
-            const newToken = await authService.refreshToken();
+            // 🔧 Direct refresh call without circular import
+            const refreshToken = await AsyncStorage.getItem('refresh_token');
+            if (!refreshToken) throw new Error('No refresh token');
+
+            // 🔧 Use direct fetch to avoid interceptor loops
+            const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh-token`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken }),
+            });
+
+            if (!response.ok) throw new Error('Refresh failed');
+
+            const data = await response.json();
+            
+            // 🔧 Try different response structures
+            const newToken = data.data?.accessToken || data.accessToken;
+            
             if (newToken) {
               await AsyncStorage.setItem('access_token', newToken);
-              (originalRequest.headers as AxiosRequestHeaders).Authorization =
-                `Bearer ${newToken}`;
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
               return this.axios(originalRequest);
             }
-          } catch {
-            await authService.clearTokens();
+          } catch (refreshError) {
+            // 🔧 Clear tokens and let user re-login
+            await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
+            console.log('Token refresh failed, please login again');
           }
         }
 

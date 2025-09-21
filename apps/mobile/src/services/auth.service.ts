@@ -1,18 +1,16 @@
-// apps/mobile/src/services/auth.service.ts
+// apps/mobile/src/services/auth.service.ts - SIMPLE FIX
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   API_ENDPOINTS,
   AuthResponse,
   RegisterRequest,
   LoginRequest,
-  User,
   UserProfileResponse,
+  User,
 } from '../config/api';
 import { apiService } from './base.service';
 
 class AuthService {
-  private refreshPromise: Promise<string> | null = null;
-
   async register(payload: RegisterRequest): Promise<{ user: Partial<User> }> {
     return apiService.request(API_ENDPOINTS.AUTH.REGISTER, {
       method: 'POST',
@@ -43,46 +41,7 @@ class AuthService {
     await this.clearTokens();
   }
 
-  // ADD MISSING refreshToken method
-  async refreshToken(): Promise<string | null> {
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    this.refreshPromise = this._performTokenRefresh();
-    
-    try {
-      const newToken = await this.refreshPromise;
-      return newToken;
-    } finally {
-      this.refreshPromise = null;
-    }
-  }
-
-  private async _performTokenRefresh(): Promise<string | null> {
-    try {
-      const refreshToken = await this.getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await apiService.request<{ data: { accessToken: string } }>(
-        API_ENDPOINTS.AUTH.REFRESH_TOKEN,
-        {
-          method: 'POST',
-          data: { refreshToken },
-        }
-      );
-
-      const newAccessToken = response.data.accessToken;
-      await AsyncStorage.setItem('access_token', newAccessToken);
-      return newAccessToken;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      await this.clearTokens();
-      return null;
-    }
-  }
+  // 🔧 REMOVED: Complex refresh token method (now handled in base.service.ts)
 
   async getCurrentUser(token?: string): Promise<UserProfileResponse> {
     const accessToken = token || (await this.getToken());
@@ -147,7 +106,6 @@ class AuthService {
         data: { email }
       }
     )
-
     return { message: response.message || 'Forgot Password' };
   }
 
@@ -159,11 +117,10 @@ class AuthService {
         data: { token, newPassword },
       },
     )
-
     return { message: response.message || 'Reset Password'}
   }
 
-  // ------------------ TOKEN HANDLING ------------------
+  // Token methods
   async saveTokens(token: string, refreshToken: string): Promise<void> {
     await AsyncStorage.setItem('access_token', token);
     await AsyncStorage.setItem('refresh_token', refreshToken);
