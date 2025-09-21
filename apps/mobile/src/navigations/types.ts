@@ -5,9 +5,9 @@ export type HomeStackParamList = {
   Details: { id: string };
 };
 
-export type FeedStackParamList = {
+export type   FeedStackParamList = {
   Feed: undefined;
-  Create: undefined;
+  Create: { onPostCreated?: () => void };
   PostDetails: { postId: string };
 };
 

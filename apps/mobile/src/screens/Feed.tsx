@@ -299,7 +299,9 @@ export const FeedScreen = () => {
   }
 
   const handleCreate = async () => {
-    navigation.navigate('Create');
+    navigation.navigate('Create', {
+      onPostCreated: handleRefresh,
+    });
     // try {
     //   const res = await postService.createPost({
     //     title: "My First Post",
