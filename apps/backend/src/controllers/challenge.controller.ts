@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as challengeService from "../services/challenge.service";
 import { asyncHandler } from '../utils/asyncHandler';
-import { sendPaginatedSuccess, sendSuccess } from '../utils/response';
+import { sendPaginatedSuccess, sendSuccess, sendError, createPaginationMeta } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const createChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -22,14 +22,22 @@ export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 });
 
 export const getAllChallenges = asyncHandler(async (req: Request, res: Response) => {
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 10;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
+  
   const result = await challengeService.getAllChallenges(page, limit);
-  sendPaginatedSuccess(res, result.data, result.meta, 'Challenges retrieved successfully');
+  const meta = createPaginationMeta(result.meta.total, page, limit);
+  
+  sendPaginatedSuccess(res, result.data, meta, 'Challenges retrieved successfully');
 });
 
 export const getChallengeById = asyncHandler(async (req: Request, res: Response) => {
   const challengeId = Number(req.params.challengeId);
+  
+  if (!challengeId || challengeId <= 0) {
+    return sendError(res, 'Invalid challenge ID', 400);
+  }
+  
   const challenge = await challengeService.getChallengeById(challengeId);
   sendSuccess(res, challenge, 'Challenge retrieved successfully');
 });

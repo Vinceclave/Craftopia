@@ -18,6 +18,11 @@ export const register = async (username: string, email: string, password: string
     throw new AppError('All fields are required', 400);
   }
 
+  // Add password validation
+  if (password.length < 8) {
+    throw new AppError('Password must be at least 8 characters long', 400);
+  }
+
   const existingUser = await userService.findUserByUsernameOrEmail(username) 
                     || await userService.findUserByUsernameOrEmail(email);
 
@@ -34,6 +39,8 @@ export const register = async (username: string, email: string, password: string
   const { password_hash: _, ...safeUser } = user;
   return safeUser;
 };
+
+
 export const login = async (email: string, password: string) => {
   if (!email?.trim() || !password?.trim()) {
     throw new AppError('Email and password are required', 400);

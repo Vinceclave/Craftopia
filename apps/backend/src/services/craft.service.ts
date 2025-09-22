@@ -56,12 +56,12 @@ export const getCraftIdeas = async (options: GetCraftIdeasOptions) => {
     where.created_at = {};
     if (startDate) {
       const start = new Date(startDate);
-      if (isNaN(start.getTime())) throw new AppError('Invalid start date', 400);
+      if (isNaN(start.getTime())) throw new AppError('Invalid start date format', 400);
       where.created_at.gte = start;
     }
     if (endDate) {
       const end = new Date(endDate);
-      if (isNaN(end.getTime())) throw new AppError('Invalid end date', 400);
+      if (isNaN(end.getTime())) throw new AppError('Invalid end date format', 400);
       where.created_at.lte = end;
     }
   }
@@ -148,29 +148,32 @@ export const getCraftIdeasByUser = async (user_id: number) => {
   });
 };
 
+// FIXED: Use transaction for delete operations
 export const deleteCraftIdea = async (idea_id: number, userId: number) => {
   if (!idea_id || idea_id <= 0) {
     throw new AppError('Invalid craft idea ID', 400);
   }
 
-  const craftIdea = await prisma.craftIdea.findFirst({
-    where: { 
-      idea_id,
-      deleted_at: null 
+  return await prisma.$transaction(async (tx) => {
+    const craftIdea = await tx.craftIdea.findFirst({
+      where: { 
+        idea_id,
+        deleted_at: null 
+      }
+    });
+
+    if (!craftIdea) {
+      throw new AppError('Craft idea not found', 404);
     }
-  });
 
-  if (!craftIdea) {
-    throw new AppError('Craft idea not found', 404);
-  }
+    if (craftIdea.generated_by_user_id !== userId) {
+      throw new AppError('You can only delete your own craft ideas', 403);
+    }
 
-  if (craftIdea.generated_by_user_id !== userId) {
-    throw new AppError('You can only delete your own craft ideas', 403);
-  }
-
-  return await prisma.craftIdea.update({
-    where: { idea_id },
-    data: { deleted_at: new Date() },
+    return await tx.craftIdea.update({
+      where: { idea_id },
+      data: { deleted_at: new Date() },
+    });
   });
 };
 

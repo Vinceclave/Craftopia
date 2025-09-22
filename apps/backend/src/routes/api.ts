@@ -5,12 +5,15 @@ import craftRoutes from './craft.route';
 import challengeRoutes from './challenge.route';
 import userChallengeRoutes from './userChallenge.route';
 import moderationRoutes from './moderation.route';
-import announcementRoutes from './announcement.route'; // ADD THIS
-import reportRoutes from './report.route'; // ADD THIS
-import aiRoutes from '../ai/routes/craft.route';
-import aiChallengeRoutes from '../ai/routes/challenge.route';
-import imageRoutes from '../ai/routes/image.route'
+import announcementRoutes from './announcement.route';
+import reportRoutes from './report.route';
 import userRoutes from './user.route';
+import prisma from '../config/prisma';
+
+// AI Routes - Fixed imports and paths
+import aiCraftRoutes from '../ai/routes/craft.route';
+import aiChallengeRoutes from '../ai/routes/challenge.route';
+import aiImageRoutes from '../ai/routes/image.route';
 
 const router = Router();
 
@@ -24,19 +27,32 @@ router.use('/crafts', craftRoutes);
 router.use('/challenges', challengeRoutes);
 router.use('/user-challenges', userChallengeRoutes);
 router.use('/moderation', moderationRoutes);
-router.use('/announcements', announcementRoutes); // ADD THIS
-router.use('/reports', reportRoutes); // ADD THIS
-router.use('/ai', aiRoutes);
-router.use('/craft', aiChallengeRoutes);
-router.use('/image', imageRoutes);
+router.use('/announcements', announcementRoutes);
+router.use('/reports', reportRoutes);
 
-// Health check
-router.get('/health', (req, res) => {
-  res.json({ 
-    success: true, 
-    message: 'API is healthy',
-    timestamp: new Date().toISOString() 
-  });
+// AI Routes - Fixed paths
+router.use('/ai/craft', aiCraftRoutes);
+router.use('/ai/challenge', aiChallengeRoutes);
+router.use('/ai/image', aiImageRoutes);
+
+// Health check - Fixed with database connectivity
+router.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ 
+      success: true, 
+      message: 'API is healthy',
+      database: 'connected',
+      timestamp: new Date().toISOString() 
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: 'API unhealthy - database connection failed',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 export default router;

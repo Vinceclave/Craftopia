@@ -1,5 +1,14 @@
 import { Response } from 'express';
 
+interface PaginationMeta {
+  total: number;
+  page: number;
+  lastPage: number;
+  limit: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
+}
+
 export const sendSuccess = (
   res: Response, 
   data: any, 
@@ -8,16 +17,22 @@ export const sendSuccess = (
 ) => {
   res.status(statusCode).json({
     success: true,
-    message,
+    message: message || undefined,
     data,
     timestamp: new Date().toISOString()
   });
 };
 
-export const sendError = (res: Response, message: string, statusCode = 400) => {
+export const sendError = (
+  res: Response, 
+  message: string, 
+  statusCode = 400,
+  details?: any
+) => {
   res.status(statusCode).json({
     success: false,
     error: message,
+    details: details || undefined,
     timestamp: new Date().toISOString()
   });
 };
@@ -25,14 +40,43 @@ export const sendError = (res: Response, message: string, statusCode = 400) => {
 export const sendPaginatedSuccess = (
   res: Response,
   data: any[],
-  pagination: any,
-  message?: string
+  meta: PaginationMeta,
+  message?: string,
+  statusCode = 200
 ) => {
-  res.status(200).json({
+  // Ensure consistent meta structure
+  const enhancedMeta: PaginationMeta = {
+    total: meta.total,
+    page: meta.page,
+    lastPage: meta.lastPage,
+    limit: meta.limit,
+    hasNextPage: meta.page < meta.lastPage,
+    hasPrevPage: meta.page > 1,
+  };
+
+  res.status(statusCode).json({
     success: true,
-    message,
+    message: message || undefined,
     data,
-    pagination,
+    meta: enhancedMeta, // Always use 'meta' not 'pagination'
     timestamp: new Date().toISOString()
   });
+};
+
+// Helper to create pagination meta
+export const createPaginationMeta = (
+  total: number, 
+  page: number, 
+  limit: number
+): PaginationMeta => {
+  const lastPage = Math.max(1, Math.ceil(total / limit));
+  
+  return {
+    total,
+    page: Math.max(1, page),
+    lastPage,
+    limit: Math.max(1, limit),
+    hasNextPage: page < lastPage,
+    hasPrevPage: page > 1,
+  };
 };
