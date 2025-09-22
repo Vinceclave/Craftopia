@@ -8,7 +8,12 @@ import { PostActions } from './PostActions'
 export const Post: React.FC<PostProps> = memo((props) => (
   <View className="bg-white border-b border-gray-100 pb-4 mb-4 px-4">
     <PostHeader user={props.user} featured={props.featured} />
-    <PostContent title={props.title} content={props.content} image_url={props.image_url} tags={props.tags} />
+    <PostContent 
+      title={props.title} 
+      content={props.content} 
+      image_url={props.image_url} 
+      tags={props.tags} 
+    />
     <PostActions
       likeCount={props.likeCount}
       commentCount={props.commentCount}

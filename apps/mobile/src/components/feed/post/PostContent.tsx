@@ -14,13 +14,17 @@ export const PostContent: React.FC<PostContentProps> = memo(({ title, content, i
     <Text className="text-gray-600 text-sm leading-5 mb-2">{content}</Text>
 
     {image_url && (
-      <Image source={{ uri: image_url }} className="w-full h-48 rounded-lg mb-3" style={{ resizeMode: 'cover' }} />
+      <Image 
+        source={{ uri: image_url }} 
+        className="w-full h-48 rounded-lg mb-3" 
+        style={{ resizeMode: 'cover' }} 
+      />
     )}
 
     {tags.length > 0 && (
       <View className="flex-row mb-3">
         {tags.slice(0, 3).map((tag, idx) => (
-          <Text key={tag + idx} className="text-xs text-gray-500 mr-3">#{tag}</Text>
+          <Text key={`${tag}-${idx}`} className="text-xs text-gray-500 mr-3">#{tag}</Text>
         ))}
       </View>
     )}

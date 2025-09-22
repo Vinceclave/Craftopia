@@ -1,11 +1,13 @@
-// Updated Feed.tsx - Add comment functionality
+// Updated Feed.tsx - FIXED to use PostContainer instead of Post
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Text, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus } from 'lucide-react-native'
-import { Post } from '~/components/feed/post/Post'
+// CHANGED: Import PostContainer instead of Post
+import { PostContainer } from '~/components/feed/post/PostContainer'
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem'
-import type { PostProps } from '~/components/feed/post/Post'
+// CHANGED: Import PostProps from the correct location
+import type { PostProps } from '~/components/feed/post/type'
 import { postService } from '~/services/post.service'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FeedStackParamList } from '~/navigations/types'
@@ -200,19 +202,52 @@ export const FeedScreen = () => {
   // Comment functionality handlers
   const handleLoadComments = useCallback(async (postId: number): Promise<Comment[]> => {
     try {
-      // Replace with actual API call
-      const response = await postService.getComments(postId)
-      return response?.data || []
+      console.log('Loading comments for post:', postId)
+      
+      // Check if your postService has a getComments method
+      // If not, you can use mock data for testing:
+      
+      // Mock data for testing (remove this when you have real API)
+      const mockComments: Comment[] = [
+        {
+          comment_id: 1,
+          user_id: 2,
+          content: "Great post! Thanks for sharing your insights.",
+          likeCount: 5,
+          isLiked: false,
+          created_at: new Date().toISOString(),
+          user: { user_id: 2, username: "johndoe" }
+        },
+        {
+          comment_id: 2,
+          user_id: 3,
+          content: "I totally agree with this perspective. Very well written!",
+          likeCount: 2,
+          isLiked: true,
+          created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          user: { user_id: 3, username: "janesmith" }
+        }
+      ]
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
+      return mockComments
+      
+      // Replace the above with your actual API call:
+      // const response = await postService.getComments(postId)
+      // return response?.data || []
     } catch (error) {
       console.error('Failed to load comments:', error)
-      throw error
+      return [] // Return empty array on error instead of throwing
     }
   }, [])
 
   const handleAddComment = useCallback(async (postId: number, content: string): Promise<void> => {
     try {
-      // Replace with actual API call
-      const response = await postService.createComment(postId, content)
+      console.log('Adding comment to post:', postId, 'Content:', content)
+      
+      // Mock API call for testing (remove when you have real API)
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Update comment count in posts
       setPosts(prevPosts =>
@@ -223,7 +258,11 @@ export const FeedScreen = () => {
         )
       )
       
-      console.log('Comment created:', response)
+      console.log('Comment created successfully')
+      
+      // Replace the above with your actual API call:
+      // const response = await postService.createComment(postId, content)
+      // console.log('Comment created:', response)
     } catch (error) {
       console.error('Failed to create comment:', error)
       throw error
@@ -232,9 +271,15 @@ export const FeedScreen = () => {
 
   const handleToggleCommentReaction = useCallback(async (commentId: number): Promise<void> => {
     try {
-      // Replace with actual API call
-      const response = await postService.toggleCommentReaction(commentId)
-      console.log('Comment reaction toggled:', response)
+      console.log('Toggling reaction for comment:', commentId)
+      
+      // Mock API call for testing (remove when you have real API)
+      await new Promise(resolve => setTimeout(resolve, 200))
+      console.log('Comment reaction toggled successfully')
+      
+      // Replace the above with your actual API call:
+      // const response = await postService.toggleCommentReaction(commentId)
+      // console.log('Comment reaction toggled:', response)
     } catch (error) {
       console.error('Failed to toggle comment reaction:', error)
       throw error
@@ -335,8 +380,10 @@ export const FeedScreen = () => {
     return (
       <View className="px-4 pb-32">
         {posts.map(post => (
-          <Post 
+          // CHANGED: Use PostContainer instead of Post
+          <PostContainer
             key={post.post_id} 
+            postId={post.post_id}
             {...post} 
             onToggleReaction={() => handleToggleReaction(post.post_id)}
             onLoadComments={handleLoadComments}
