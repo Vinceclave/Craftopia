@@ -286,6 +286,8 @@ export const FeedScreen = () => {
     }
   }, [])
 
+  console.log(posts)
+
   // Refresh handler
   const handleRefresh = useCallback(() => {
     fetchPosts(1, true)
@@ -415,7 +417,7 @@ export const FeedScreen = () => {
   }
 
   return (
-    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       {/* Header */}
       <View className="bg-white px-4 pt-4 pb-2 border-b border-gray-100">
         <View className="flex-row justify-between items-center mb-4">

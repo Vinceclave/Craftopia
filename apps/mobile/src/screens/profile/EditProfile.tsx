@@ -1,187 +1,195 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+// apps/mobile/src/screens/profile/EditProfile.tsx - Optimized Version
+import React, { useState, useCallback, useMemo } from "react";
+import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, Camera, User, Mail, MapPin, FileText, Edit3 } from "lucide-react-native";
 import Button from '~/components/common/Button';
-import { Input } from "~/components/common/TextInputField";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";
-import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
+import { useAlert } from '~/hooks/useAlert';
+
+// Import the divided components
+import { EditProfileHeader } from "~/components/profile/edit/EditProfileHeader";
+import { AvatarSection } from "~/components/profile/edit/AvatarSection";
+import { PersonalDetailsForm } from "~/components/profile/edit/PersonalDetailsForm";
+import { BioForm } from "~/components/profile/edit/BioForm";
+import { EmailInfo } from "~/components/profile/edit/EmailInfo";
 
 interface UserProfile {
-  name?: string;
+  name: string;
   email: string;
   username: string;
-  bio?: string;
-  location?: string;
-  avatar?: string;
+  bio: string;
+  avatar: string;
 }
+
+// Validation constants
+const VALIDATION_RULES = {
+  NAME_MAX_LENGTH: 100,
+  BIO_MAX_LENGTH: 500,
+} as const;
+
+// Validation utility
+const validateProfile = (profile: UserProfile) => {
+  if (!profile.name.trim()) {
+    return { isValid: false, error: 'Full name is required' };
+  }
+  if (profile.name.length > VALIDATION_RULES.NAME_MAX_LENGTH) {
+    return { isValid: false, error: `Full name cannot exceed ${VALIDATION_RULES.NAME_MAX_LENGTH} characters` };
+  }
+  if (profile.bio.length > VALIDATION_RULES.BIO_MAX_LENGTH) {
+    return { isValid: false, error: `Bio cannot exceed ${VALIDATION_RULES.BIO_MAX_LENGTH} characters` };
+  }
+  return { isValid: true };
+};
 
 export function EditProfileScreen() {
   const navigation = useNavigation();
   const { user, setUser } = useAuth();
-  const { success, error } = useAlert(); // 👈 Add this
+  const { success, error } = useAlert();
   const [loading, setLoading] = useState(false);
 
-  const [profile, setProfile] = useState<UserProfile>({
-    name: user?.profile?.full_name,
+  // Memoized initial profile state
+  const initialProfile = useMemo((): UserProfile => ({
+    name: user?.profile?.full_name || '',
     email: user?.email || '',
     username: user?.username || '',
-    bio: user?.profile?.bio,
-    location: user?.profile?.location,
-    avatar: user?.profile?.profile_picture_url,
-  });
+    bio: user?.profile?.bio || '',
+    avatar: user?.profile?.profile_picture_url || '🧑‍🎨',
+  }), [user]);
 
-  const handleSave = async () => {
+  const [profile, setProfile] = useState<UserProfile>(initialProfile);
+
+  // Memoized change detection
+  const hasChanges = useMemo(() => {
+    return profile.name !== initialProfile.name || profile.bio !== initialProfile.bio;
+  }, [profile.name, profile.bio, initialProfile.name, initialProfile.bio]);
+
+  // Memoized validation
+  const validation = useMemo(() => validateProfile(profile), [profile]);
+
+  // Callback handlers to prevent re-renders
+  const handleBackPress = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+
+  const handleSave = useCallback(async () => {
+    if (!validation.isValid) {
+      error('Validation Error', validation.error!);
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
-        full_name: profile.name,
-        bio: profile.bio,
-        location: profile.location,
+        full_name: profile.name.trim(),
+        bio: profile.bio.trim() || null,
       };
 
-      // Send PUT request to update profile
-      const updatedData = await apiService.request('/api/v1/users/profile', {
+      await apiService.request('/api/v1/users/profile', {
         method: 'PUT',
-        // data: payload,
+        data: payload,
       });
 
-      console.log(updatedData)
-      // Update AuthContext.user immediately
+      // Update AuthContext optimistically
       if (setUser && user) {
-        setUser({
-          ...user,
+        setUser(prev => ({
+          ...prev!,
           profile: {
-            ...user.profile,
-            full_name: profile.name,
-            bio: profile.bio,
-            location: profile.location,
+            ...prev!.profile,
+            full_name: payload.full_name,
+            bio: payload.bio,
           },
-        });
+        }));
       }
 
-      // Show alert, navigate after user taps OK
-      success('Success', 'Profile updated successfully! ✅', () => {
+      success('Success', 'Profile updated successfully!', () => {
         navigation.goBack();
       });
-    } catch (error: any) {
-      console.error('Failed to update profile:', error.message);
-      error('Error', error.message || 'Something went wrong.');
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Something went wrong.';
+      error('Error', errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [validation, profile, error, setUser, user, success, navigation]);
 
-  const handleInputChange = (field: keyof UserProfile, value: string) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
-  };
+  const handleAvatarPress = useCallback(() => {
+    console.log('Avatar pressed - implement image picker');
+    // TODO: Implement image picker functionality
+  }, []);
+
+  const handleNameChange = useCallback((text: string) => {
+    setProfile(prev => ({ ...prev, name: text }));
+  }, []);
+
+  const handleBioChange = useCallback((text: string) => {
+    setProfile(prev => ({ ...prev, bio: text }));
+  }, []);
+
+  // Memoized save button state
+  const canSave = hasChanges && validation.isValid && !loading;
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: '#F0F0F0' }}>
-      {/* Background Shapes */}
-      <View className="absolute inset-0 overflow-hidden">
-        <View className="absolute -top-32 -right-32 w-64 h-64 rounded-full opacity-4" style={{ backgroundColor: '#004E98' }} />
-        <View className="absolute top-80 -left-24 w-48 h-48 rounded-full opacity-3" style={{ backgroundColor: '#7C9885' }} />
-      </View>
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
+      <EditProfileHeader 
+        onBackPress={handleBackPress}
+        onSavePress={handleSave}
+        loading={loading}
+        hasChanges={hasChanges}
+      />
 
       <ScrollView
-        className="flex-1 -mt-7 relative z-10"
+        className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={scrollViewStyle}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View className="px-6 pt-12 pb-8">
-          <View className="flex-row items-center justify-between mb-6">
-            <TouchableOpacity onPress={() => navigation.goBack()} className="flex-row items-center">
-              <ChevronLeft size={24} color="#004E98" strokeWidth={2.5} />
-              <Text className="ml-2 text-lg font-semibold" style={{ color: '#004E98' }}>Back</Text>
-            </TouchableOpacity>
-          </View>
+        <AvatarSection 
+          avatar={profile.avatar}
+          onAvatarPress={handleAvatarPress}
+        />
 
-          {/* Title */}
-          <View className="mb-8">
-            <View className="flex-row items-center mb-2">
-              <View className="w-2 h-2 rounded-full mr-3" style={{ backgroundColor: '#004E98' }} />
-              <Text className="text-sm font-semibold tracking-wider uppercase" style={{ color: '#333333' }}>Edit Profile</Text>
-            </View>
-            <Text className="text-4xl font-black tracking-tight mb-3" style={{ color: '#004E98' }}>Update Your Info</Text>
-            <View className="flex-row items-center">
-              <Edit3 size={18} color="#7C9885" />
-              <Text className="text-lg font-semibold ml-2" style={{ color: '#333333' }}>Make changes to your profile</Text>
-            </View>
-          </View>
+        <PersonalDetailsForm 
+          name={profile.name}
+          username={profile.username}
+          onNameChange={handleNameChange}
+        />
 
-          {/* Avatar */}
-          <View className="bg-white rounded-2xl p-6 mb-6 items-center" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' }}>
-            <View className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: '#004E98' }} />
-            <View className="w-20 h-20 rounded-2xl items-center justify-center mb-3 relative" style={{ backgroundColor: '#004E9812' }}>
-              <Text className="text-3xl">🧑‍🎨</Text>
-              <TouchableOpacity className="absolute -bottom-1 -right-1 w-8 h-8 rounded-xl items-center justify-center" style={{ backgroundColor: '#FF6700' }}>
-                <Camera size={14} color="white" />
-              </TouchableOpacity>
-            </View>
-            <Text className="text-sm font-bold" style={{ color: '#7C9885' }}>Change Photo</Text>
-          </View>
-        </View>
+        <BioForm 
+          bio={profile.bio}
+          onBioChange={handleBioChange}
+          characterLimit={VALIDATION_RULES.BIO_MAX_LENGTH}
+        />
 
-        {/* Form Sections */}
-        <View className="px-6">
-          {/* Personal Details */}
-          <View className="mb-6">
-            <View className="flex-row items-center mb-4">
-              <View className="w-8 h-8 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#004E9812' }}>
-                <User size={16} color="#004E98" />
-              </View>
-              <Text className="text-xl font-black" style={{ color: '#004E98' }}>Personal Details</Text>
-            </View>
-            <View className="space-y-4">
-              <Input label="Full Name" value={profile.name} placeholder="Enter your full name" onChangeText={text => handleInputChange('name', text)} />
-              <Input label="Username" value={profile.username} placeholder="Choose a unique username" editable={false} />
-            </View>
-          </View>
+        <EmailInfo email={profile.email} />
 
-          {/* About */}
-          <View className="mb-6">
-            <View className="flex-row items-center mb-4">
-              <View className="w-8 h-8 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#00A89612' }}>
-                <FileText size={16} color="#00A896" />
-              </View>
-              <Text className="text-xl font-black" style={{ color: '#004E98' }}>About You</Text>
-            </View>
-            <Input label="Bio" placeholder="Tell us about yourself..." value={profile.bio} onChangeText={text => handleInputChange('bio', text)} multiline numberOfLines={4} textAlignVertical="top" />
-          </View>
-
-          {/* Location */}
-          <View className="mb-6">
-            <View className="flex-row items-center mb-4">
-              <View className="w-8 h-8 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#FF670012' }}>
-                <MapPin size={16} color="#FF6700" />
-              </View>
-              <Text className="text-xl font-black" style={{ color: '#004E98' }}>Location</Text>
-            </View>
-            <Input label="Location" placeholder="Where are you based?" value={profile.location} onChangeText={text => handleInputChange('location', text)} />
-          </View>
-
-          {/* Email Info */}
-          <View className="bg-white rounded-2xl p-5 mb-6" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' }}>
-            <View className="flex-row items-center mb-3">
-              <View className="w-8 h-8 rounded-xl items-center justify-center mr-3" style={{ backgroundColor: '#7C988512' }}>
-                <Mail size={16} color="#7C9885" />
-              </View>
-              <Text className="text-base font-bold" style={{ color: '#004E98' }}>Account Email</Text>
-            </View>
-            <Text className="text-base font-medium mb-2" style={{ color: '#004E98' }}>{profile.email}</Text>
-            <Text className="text-sm font-medium" style={{ color: '#333333' }}>Email cannot be changed here. Contact support if needed.</Text>
-          </View>
-
-          {/* Save Button */}
-          <View className="mb-8">
-            <Button onPress={handleSave} title={loading ? 'Saving...' : 'Save Changes'} size="lg" variant="primary" disabled={loading} />
-          </View>
+        {/* Save Button */}
+        <View className="mx-4 mt-6">
+          <Button 
+            onPress={handleSave} 
+            title={loading ? 'Saving...' : 'Save Changes'} 
+            size="lg" 
+            variant="primary" 
+            disabled={!canSave}
+            loading={loading}
+          />
+          {!hasChanges && !loading && (
+            <Text className="text-center text-sm text-gray-500 mt-2">
+              No changes to save
+            </Text>
+          )}
+          {!validation.isValid && (
+            <Text className="text-center text-sm text-red-500 mt-2">
+              {validation.error}
+            </Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+// Memoized style object
+const scrollViewStyle = { paddingBottom: 120 };
