@@ -1,4 +1,3 @@
-// apps/mobile/src/screens/Profile.tsx - Divided Version
 import React from 'react';
 import { ScrollView } from 'react-native';
 import { User, Trophy, Zap } from 'lucide-react-native';
@@ -8,7 +7,7 @@ import type { ProfileStackParamList } from "../navigations/types";
 import { useAuth } from '~/context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Import the divided components
+// Import divided components
 import { ProfileHeader } from '~/components/profile/ProfileHeader';
 import { ProfileCard } from '~/components/profile/ProfileCard';
 import { QuickActions } from '~/components/profile/QuickActions';
@@ -29,11 +28,22 @@ interface UserProfile {
   location?: string;
 }
 
+// Craftopia semantic colors
+const craftopiaColors = {
+  primary: "#004E98",
+  secondary: "#00A896",
+  accent: "#FF6700",
+  digital: "#004E98",
+  spark: "#FF6700",
+  growth: "#10B981",
+  focus: "#4F46E5",
+  energy: "#FF6B6B",
+};
+
 export const ProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
   const { user } = useAuth();
 
-  // Create profile data directly from auth user
   const userProfile: UserProfile = {
     username: user?.username || 'Username',
     name: user?.profile?.full_name || user?.username || 'User Name',
@@ -49,50 +59,26 @@ export const ProfileScreen = () => {
     location: user?.profile?.location || 'Unknown',
   };
 
-  // Stats configuration
+  // Stats with Craftopia colors
   const stats = [
-    { label: 'Posts', value: '12', icon: User, color: '#3B82F6' },
-    { label: 'Points', value: userProfile.totalPoints?.toString() || '0', icon: Trophy, color: '#10B981' },
-    { label: 'Level', value: userProfile.level?.toString() || '1', icon: Zap, color: '#F59E0B' },
+    { label: 'Posts', value: '12', icon: User, color: 'primary' },
+    { label: 'Points', value: userProfile.totalPoints?.toString() || '0', icon: Trophy, color: 'growth' },
+    { label: 'Level', value: userProfile.level?.toString() || '1', icon: Zap, color: 'accent' },
   ];
 
-  // Quick actions configuration
+  // Quick actions with Craftopia colors
   const quickActions = [
-    {
-      label: 'My Posts',
-      icon: User,
-      color: '#3B82F6',
-      onPress: () => console.log('Navigate to my posts')
-    },
-    {
-      label: 'Achievements',
-      icon: Trophy,
-      color: '#10B981',
-      onPress: () => console.log('Navigate to achievements')
-    },
-    {
-      label: 'Activity Log',
-      icon: Zap,
-      color: '#F59E0B',
-      onPress: () => console.log('Navigate to activity log')
-    }
+    { label: 'My Posts', icon: User, color: 'primary', onPress: () => console.log('Navigate to my posts') },
+    { label: 'Achievements', icon: Trophy, color: 'growth', onPress: () => console.log('Navigate to achievements') },
+    { label: 'Activity Log', icon: Zap, color: 'accent', onPress: () => console.log('Navigate to activity log') },
   ];
 
-  // Handler functions
-  const handleSharePress = () => {
-    console.log('Share pressed');
-  };
-
-  const handleSettingsPress = () => {
-    navigation.navigate("Settings");
-  };
-
-  const handleEditPress = () => {
-    navigation.navigate("EditProfile");
-  };
+  const handleSharePress = () => console.log('Share pressed');
+  const handleSettingsPress = () => navigation.navigate("Settings");
+  const handleEditPress = () => navigation.navigate("EditProfile");
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       <ProfileHeader 
         onSharePress={handleSharePress}
         onSettingsPress={handleSettingsPress}
@@ -115,3 +101,4 @@ export const ProfileScreen = () => {
     </SafeAreaView>
   );
 };
+  

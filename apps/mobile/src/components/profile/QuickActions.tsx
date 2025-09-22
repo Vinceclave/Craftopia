@@ -6,7 +6,7 @@ import { LucideIcon } from 'lucide-react-native';
 interface ActionItem {
   label: string;
   icon: LucideIcon;
-  color: string;
+  color: keyof typeof craftopiaColors; // semantic color key
   onPress: () => void;
 }
 
@@ -14,29 +14,47 @@ interface QuickActionsProps {
   actions: ActionItem[];
 }
 
+// Craftopia color palette
+const craftopiaColors = {
+  primary: "#004E98",
+  secondary: "#00A896",
+  accent: "#FF6700",
+  digital: "#004E98",
+  spark: "#FF6700",
+  growth: "#10B981",
+  focus: "#4F46E5",
+  energy: "#FF6B6B",
+};
+
 export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
   return (
     <View className="px-4 mt-6">
-      <Text className="text-base font-medium text-gray-900 dark:text-white mb-4">
+      <Text className="text-base font-semibold text-craftopia-text-primary mb-4">
         Quick Actions
       </Text>
-      
-      <View className="space-y-2">
+
+      <View className="space-y-3">
         {actions.map((action, index) => (
           <TouchableOpacity 
             key={index}
             onPress={action.onPress}
-            className="bg-white dark:bg-gray-900 px-4 py-3 rounded-lg border border-gray-100 dark:border-gray-800 flex-row items-center active:opacity-70"
+            className="bg-craftopia-surface px-4 py-3 rounded-xl border border-craftopia-light flex-row items-center active:opacity-70 shadow-sm"
           >
-            <View className="w-8 h-8 rounded-lg items-center justify-center mr-3" style={{ backgroundColor: `${action.color}15` }}>
-              <action.icon size={16} color={action.color} />
+            {/* Icon container */}
+            <View
+              className="w-10 h-10 rounded-lg items-center justify-center mr-4"
+              style={{ backgroundColor: `${craftopiaColors[action.color]}33` }} // 20% opacity
+            >
+              <action.icon size={18} color={craftopiaColors[action.color]} />
             </View>
-            
-            <Text className="flex-1 font-medium text-gray-900 dark:text-white">
-              {action.label}
+
+            {/* Label */}
+            <Text className="flex-1 font-medium text-craftopia-text-primary text-base">
+              {action.label ?? ''}
             </Text>
-            
-            <Text className="text-gray-400 text-lg">›</Text>
+
+            {/* Arrow */}
+            <Text className="text-craftopia-text-secondary text-lg">›</Text>
           </TouchableOpacity>
         ))}
       </View>

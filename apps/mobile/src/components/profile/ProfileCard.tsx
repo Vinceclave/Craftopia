@@ -32,10 +32,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   const formatJoinDate = (dateString?: string) => {
     if (!dateString) return null;
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      year: 'numeric' 
-    });
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
   const getProgressPercentage = () => {
@@ -49,13 +46,10 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         source={{ uri: userProfile.avatar }}
         className="w-16 h-16 rounded-full"
         accessibilityLabel={`${userProfile.name || userProfile.username}'s profile picture`}
-        onError={() => {
-          // Handle image load error - could set a state to show fallback
-        }}
       />
     ) : (
-      <View className="w-16 h-16 rounded-full bg-gray-400 justify-center items-center">
-        <Text className="text-xl font-bold text-white">
+      <View className="w-16 h-16 rounded-full bg-craftopia-light justify-center items-center">
+        <Text className="text-xl font-bold text-craftopia-text-primary">
           {(userProfile.name?.charAt(0) || userProfile.username?.charAt(0) || '?').toUpperCase()}
         </Text>
       </View>
@@ -74,49 +68,47 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   if (isLoading) {
     return (
-      <View className="p-4 bg-white rounded-lg shadow-md">
+      <View className="p-4 bg-craftopia-surface rounded-lg shadow-md">
         <View className="flex-row items-center mb-4">
-          <View className="w-16 h-16 rounded-full bg-gray-200 mr-4" />
+          <View className="w-16 h-16 rounded-full bg-craftopia-light mr-4" />
           <View className="flex-1">
-            <View className="h-5 bg-gray-200 rounded mb-2 w-3/4" />
-            <View className="h-4 bg-gray-200 rounded w-1/2" />
+            <View className="h-5 bg-craftopia-light rounded mb-2 w-3/4" />
+            <View className="h-4 bg-craftopia-light rounded w-1/2" />
           </View>
         </View>
-        <View className="h-10 bg-gray-200 rounded" />
+        <View className="h-10 bg-craftopia-light rounded" />
       </View>
     );
   }
 
   return (
-    <View className="p-4 bg-white rounded-lg shadow-md">
+    <View className="p-4 bg-craftopia-surface rounded-lg shadow-md">
       {/* User Info */}
       <View className="flex-row items-center mb-4">
-        {/* Avatar */}
         {renderAvatar()}
 
-        {/* Username & Title */}
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
-            <Text className="text-lg font-semibold text-gray-900">
+            <Text className="text-lg font-semibold text-craftopia-text-primary">
               {userProfile.name || userProfile.username || 'Unknown User'}
             </Text>
             {userProfile.verified && (
-              <CheckCircle 
-                size={20} 
-                color="#4CAF50" 
+              <CheckCircle
+                size={20}
+                color="#10B981" // craftopia-growth
                 accessibilityLabel="Verified user"
               />
             )}
           </View>
-          
-          {userProfile.username && userProfile.name && (
-            <Text className="text-sm text-gray-500 mb-1">
+
+          {userProfile.username && (
+            <Text className="text-sm text-craftopia-text-secondary mb-1">
               @{userProfile.username}
             </Text>
           )}
-          
+
           {userProfile.title && (
-            <Text className="text-sm text-blue-600 font-medium">
+            <Text className="text-sm text-craftopia-primary font-medium">
               {userProfile.title}
             </Text>
           )}
@@ -126,30 +118,34 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       {/* Bio Section */}
       {userProfile.bio && (
         <View className="mb-4">
-          <Text className="text-sm text-gray-700 leading-5" numberOfLines={3}>
+          <Text
+            className="text-sm text-craftopia-text-primary leading-5"
+            numberOfLines={3}
+            ellipsizeMode="tail"
+          >
             {userProfile.bio}
           </Text>
         </View>
       )}
 
-      {/* Level/Points Progress */}
+      {/* Level / Points Progress */}
       {userProfile.level !== undefined && (
         <View className="mb-4">
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-gray-800">
+            <Text className="text-sm font-semibold text-craftopia-text-primary">
               Level {userProfile.level}
             </Text>
             {userProfile.totalPoints !== undefined && userProfile.nextLevelPoints !== undefined && (
-              <Text className="text-xs text-gray-500">
+              <Text className="text-xs text-craftopia-text-secondary">
                 {userProfile.totalPoints.toLocaleString()}/{userProfile.nextLevelPoints.toLocaleString()} XP
               </Text>
             )}
           </View>
-          
+
           {userProfile.totalPoints !== undefined && userProfile.nextLevelPoints !== undefined && (
-            <View className="bg-gray-200 rounded-full h-2">
-              <View 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            <View className="bg-craftopia-light rounded-full h-2">
+              <View
+                className="bg-craftopia-accent h-2 rounded-full"
                 style={{ width: `${getProgressPercentage()}%` }}
               />
             </View>
@@ -162,17 +158,17 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         <View className="flex-row items-center justify-between mb-4">
           {userProfile.location && (
             <View className="flex-row items-center">
-              <MapPin size={16} color="#6B7280" />
-              <Text className="text-sm text-gray-600 ml-1">
+              <MapPin size={16} color="#6B7280" /> {/* craftopia-text-secondary */}
+              <Text className="text-sm text-craftopia-text-secondary ml-1">
                 {userProfile.location}
               </Text>
             </View>
           )}
-          
+
           {userProfile.joinDate && (
             <View className="flex-row items-center">
               <Calendar size={16} color="#6B7280" />
-              <Text className="text-sm text-gray-600 ml-1">
+              <Text className="text-sm text-craftopia-text-secondary ml-1">
                 Joined {formatJoinDate(userProfile.joinDate)}
               </Text>
             </View>
@@ -186,7 +182,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         title="Edit Profile"
         leftIcon={<Pencil size={20} color="#FFF" />}
         size="md"
-        className="gap-2"
+        className="gap-2 bg-craftopia-primary text-white"
       />
     </View>
   );

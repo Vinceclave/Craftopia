@@ -9,20 +9,17 @@ module.exports = {
     extend: {
       colors: {
         craftopia: {
+          primary: "#004E98",
+          secondary: "#00A896",
+          accent: "#FF6700",
+          surface: "#FFFFFF",
+          light: "#F0F0F0",
           text: {
             primary: "#1A1A1A",
             secondary: "#6B7280",
           },
-          surface: "#FFFFFF",
-          neural: "#4B5563",
-          energy: "#FF6B6B",   // Example theme colors
-          focus: "#4F46E5",
-          growth: "#10B981",
         },
       },
-      boxShadow: {
-        card: "0 4px 6px rgba(0,0,0,0.08)", // ✅ Cross-platform safe shadow
-      },
     },
-  },
-};
+  }
+  };
