@@ -1,11 +1,11 @@
-// Fixed Feed.tsx - Improved toggle reaction handling
+// Updated Feed.tsx - Add comment functionality
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { Text, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus } from 'lucide-react-native'
-import { Post } from '~/components/feed/Post'
+import { Post } from '~/components/feed/post/Post'
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem'
-import type { PostProps } from '~/components/feed/Post'
+import type { PostProps } from '~/components/feed/post/Post'
 import { postService } from '~/services/post.service'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FeedStackParamList } from '~/navigations/types'
@@ -13,6 +13,18 @@ import { useNavigation } from '@react-navigation/native'
 
 type FeedType = 'all' | 'trending' | 'popular' | 'featured'
 
+interface Comment {
+  comment_id: number;
+  user_id: number;
+  content: string;
+  likeCount: number;
+  isLiked: boolean;
+  created_at: string;
+  user: {
+    user_id: number;
+    username: string;
+  };
+}
 
 const FEED_TABS = [
   { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
@@ -185,6 +197,50 @@ export const FeedScreen = () => {
     }
   }, [])
 
+  // Comment functionality handlers
+  const handleLoadComments = useCallback(async (postId: number): Promise<Comment[]> => {
+    try {
+      // Replace with actual API call
+      const response = await postService.getComments(postId)
+      return response?.data || []
+    } catch (error) {
+      console.error('Failed to load comments:', error)
+      throw error
+    }
+  }, [])
+
+  const handleAddComment = useCallback(async (postId: number, content: string): Promise<void> => {
+    try {
+      // Replace with actual API call
+      const response = await postService.createComment(postId, content)
+      
+      // Update comment count in posts
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, commentCount: post.commentCount + 1 }
+            : post
+        )
+      )
+      
+      console.log('Comment created:', response)
+    } catch (error) {
+      console.error('Failed to create comment:', error)
+      throw error
+    }
+  }, [])
+
+  const handleToggleCommentReaction = useCallback(async (commentId: number): Promise<void> => {
+    try {
+      // Replace with actual API call
+      const response = await postService.toggleCommentReaction(commentId)
+      console.log('Comment reaction toggled:', response)
+    } catch (error) {
+      console.error('Failed to toggle comment reaction:', error)
+      throw error
+    }
+  }, [])
+
   // Refresh handler
   const handleRefresh = useCallback(() => {
     fetchPosts(1, true)
@@ -279,7 +335,14 @@ export const FeedScreen = () => {
     return (
       <View className="px-4 pb-32">
         {posts.map(post => (
-          <Post key={post.post_id} {...post} onToggleReaction={() => handleToggleReaction(post.post_id)} />
+          <Post 
+            key={post.post_id} 
+            {...post} 
+            onToggleReaction={() => handleToggleReaction(post.post_id)}
+            onLoadComments={handleLoadComments}
+            onAddComment={handleAddComment}
+            onToggleCommentReaction={handleToggleCommentReaction}
+          />
         ))}
 
         {loadingMore && (
@@ -302,20 +365,6 @@ export const FeedScreen = () => {
     navigation.navigate('Create', {
       onPostCreated: handleRefresh,
     });
-    // try {
-    //   const res = await postService.createPost({
-    //     title: "My First Post",
-    //     content: "This is a test post",
-    //     imageUrl: "https://example.com/image.png",
-    //     tags: ["test", "post"],
-    //     category: "Social",
-    //     featured: true
-    //   })
-    //   console.log(res.data)
-    //   handleRefresh()
-    // } catch (err) {
-    //   console.error('Failed to create post:', err)
-    // }
   }
 
   return (
