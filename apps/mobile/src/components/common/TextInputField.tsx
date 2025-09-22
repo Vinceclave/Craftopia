@@ -15,41 +15,45 @@ interface InputProps extends TextInputProps {
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
-  ({ 
-    label, 
-    secure, 
-    error, 
-    nextInputRef, 
-    isLastInput, 
-    onSubmit, 
-    leftIcon, 
-    containerClassName = '', 
-    ...props 
-  }, ref) => {
+  (
+    {
+      label,
+      secure,
+      error,
+      nextInputRef,
+      isLastInput,
+      onSubmit,
+      leftIcon,
+      containerClassName = '',
+      ...props
+    },
+    ref
+  ) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
 
     return (
       <View className={`relative mb-4 ${containerClassName}`}>
         {label && (
-          <Text className="text-gray-600 text-sm mb-2 font-medium">
+          <Text className="text-craftopia-text-secondary text-sm mb-2 font-medium">
             {label}
           </Text>
         )}
 
-        <View className={`bg-gray-50 rounded-lg px-3 py-2 flex-row items-center border ${
-            error 
-              ? 'border-red-400' 
-              : isFocused 
-                ? 'border-gray-300' 
-                : 'border-gray-100'
-          }`}>
-          
+        <View
+          className={`flex-row items-center px-3 py-2 rounded-lg border ${
+            error
+              ? 'border-red-500'
+              : isFocused
+              ? 'border-craftopia-primary'
+              : 'border-craftopia-light'
+          } bg-craftopia-surface`}
+        >
           {leftIcon && <View className="mr-2">{leftIcon}</View>}
 
           <TextInput
             ref={ref}
-            className="flex-1 text-gray-900 text-sm"
+            className="flex-1 text-craftopia-text-primary text-base"
             placeholderTextColor="#9CA3AF"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
@@ -67,7 +71,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           />
 
           {secure && (
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
               className="ml-2 p-1"
             >
@@ -80,11 +84,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           )}
         </View>
 
-        {error && (
-          <Text className="text-red-500 text-sm mt-1">
-            {error}
-          </Text>
-        )}
+        {error && <Text className="text-red-500 text-sm mt-1">{error}</Text>}
       </View>
     );
   }

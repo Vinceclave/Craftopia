@@ -2,42 +2,18 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
 
-interface EditProfileHeaderProps {
-  onBackPress: () => void;
-  onSavePress: () => void;
-  loading: boolean;
-}
+interface Props { onBackPress: () => void; }
 
-export const EditProfileHeader: React.FC<EditProfileHeaderProps> = ({
-  onBackPress,
-  onSavePress,
-  loading
-}) => {
-  return (
-    <View className="bg-white px-6 py-4 border-b border-gray-100">
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <TouchableOpacity 
-            onPress={onBackPress} 
-            className="mr-3 p-1"
-          >
-            <ArrowLeft size={24} color="#374151" />
-          </TouchableOpacity>
-          <View>
-            <Text className="text-xl font-bold text-gray-900">Edit Profile</Text>
-            <Text className="text-sm text-gray-600">Update your information</Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={onSavePress}
-          disabled={loading}
-          className={`px-4 py-2 rounded-full ${loading ? 'bg-gray-300' : 'bg-blue-600'}`}
-        >
-          <Text className={`font-semibold ${loading ? 'text-gray-500' : 'text-white'}`}>
-            {loading ? 'Saving...' : 'Save'}
-          </Text>
-        </TouchableOpacity>
+export const EditProfileHeader: React.FC<Props> = ({ onBackPress }) => (
+  <View className="bg-craftopia-surface px-4 py-3 border-b border-gray-200">
+    <View className="flex-row items-center">
+      <TouchableOpacity onPress={onBackPress} className="w-9 h-9 rounded-full items-center justify-center mr-3 hover:bg-craftopia-light">
+        <ArrowLeft size={18} color="#004E98" />
+      </TouchableOpacity>
+      <View>
+        <Text className="text-lg font-semibold text-craftopia-textPrimary">Edit Profile</Text>
+        <Text className="text-base text-craftopia-textSecondary mt-1">Update your information</Text>
       </View>
     </View>
-  );
-};
+  </View>
+);

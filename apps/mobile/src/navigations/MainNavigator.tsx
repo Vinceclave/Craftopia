@@ -17,7 +17,7 @@ function MainNavigatorContent() {
     }}>
       {/* Status bar configuration */}
       <StatusBar 
-        barStyle="light-content" 
+        barStyle="dark-content" 
         backgroundColor="transparent" 
         translucent={true}
       />

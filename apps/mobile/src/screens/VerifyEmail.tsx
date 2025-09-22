@@ -1,14 +1,15 @@
-import { MailOpen } from 'lucide-react-native'
-import React, { useState } from 'react'
-import { Text, View, Alert, ScrollView } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+// VerifyEmailScreen.tsx
+import { MailOpen } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Text, View, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../navigations/AuthNavigator';
+import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Input } from '~/components/common/TextInputField'
-import Button from '~/components/common/Button'
-import { authService } from '../services/auth.service';
-import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
+import { Input } from '~/components/common/TextInputField';
+import Button from '~/components/common/Button';
+import { authService } from '~/services/auth.service';
+import { useAlert } from '~/hooks/useAlert';
 
 type VerifyEmailScreenProp = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
 type VerifyEmailRouteProp = RouteProp<AuthStackParamList, 'VerifyEmail'>;
@@ -16,31 +17,25 @@ type VerifyEmailRouteProp = RouteProp<AuthStackParamList, 'VerifyEmail'>;
 export const VerifyEmailScreen = () => {
   const navigation = useNavigation<VerifyEmailScreenProp>();
   const route = useRoute<VerifyEmailRouteProp>();
-  const { alert, success, error } = useAlert(); // 👈 Add this
+  const { alert, success, error } = useAlert();
 
   const [email, setEmail] = useState(route.params?.email || '');
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
-
-  // ✅ Explicit control for flow
   const [showTokenInput, setShowTokenInput] = useState(!!route.params?.email);
 
   const handleVerifyToken = async () => {
     if (!token.trim()) {
-        error('Error', 'Please enter the verification token from your email'); // 👈 Replace Alert.alert
+      error('Error', 'Please enter the verification token from your email');
       return;
     }
 
     setIsLoading(true);
     try {
       await authService.verifyEmail(token.trim());
-
       success('Email Verified! ✅', 'Redirecting you to login...', () => {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Login' }],
-        });
+        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       });
     } catch (err: any) {
       error('Verification Failed', err.message || 'Invalid or expired token.');
@@ -58,7 +53,6 @@ export const VerifyEmailScreen = () => {
     setIsResending(true);
     try {
       await authService.requestEmailVerification(email.trim());
-
       success(
         'Verification Email Sent! 📧',
         'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
@@ -87,15 +81,14 @@ export const VerifyEmailScreen = () => {
           </View>
 
           {showTokenInput ? (
-            // ✅ Token input flow
             <>
-              <Text className="text-craftopia-text-secondary text-center text-base leading-relaxed">
+              <Text className="text-craftopia-text-secondary text-center text-base leading-relaxed mb-4">
                 We sent a verification email to{'\n'}
-                <Text className="font-semibold text-craftopia-digital">{email}</Text>
+                <Text className="font-semibold text-craftopia-accent">{email}</Text>
               </Text>
 
               <View className="bg-craftopia-surface p-5 rounded-2xl mb-6 border border-craftopia-accent">
-                <Text className="text-craftopia-digital text-sm font-semibold mb-3">
+                <Text className="text-craftopia-accent text-sm font-semibold mb-3">
                   How to verify:
                 </Text>
                 <Text className="text-craftopia-text-secondary text-sm leading-relaxed">
@@ -115,11 +108,15 @@ export const VerifyEmailScreen = () => {
               />
 
               <View className="mt-6">
-                <Button title="Verify Email" onPress={handleVerifyToken} loading={isLoading} />
+                <Button
+                  title="Verify Email"
+                  onPress={handleVerifyToken}
+                  loading={isLoading}
+                  variant="primary"
+                />
               </View>
             </>
           ) : (
-            // ❌ Email input + resend button
             <>
               <Text className="text-craftopia-text-secondary text-center text-base mb-4">
                 Didn't get the verification email? Enter your email to request another link.
@@ -140,6 +137,7 @@ export const VerifyEmailScreen = () => {
                   title="Resend Verification Link"
                   onPress={handleResendVerification}
                   loading={isResending}
+                  variant="primary"
                 />
               </View>
             </>
@@ -155,5 +153,5 @@ export const VerifyEmailScreen = () => {
         </View>
       </ScrollView>
     </SafeAreaView>
-  )
-}
+  );
+};

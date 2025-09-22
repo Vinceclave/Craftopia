@@ -12,24 +12,18 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onSettingsPress
 }) => {
   return (
-    <View className="bg-craftopia-surface px-6 py-4 border-b border-gray-100">
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-gray-200">
       <View className="flex-row justify-between items-center">
         <View>
-          <Text className="text-2xl font-bold text-craftopia-text-primary">Profile</Text>
-          <Text className="text-sm text-craftopia-text-secondary">Manage your account</Text>
+          <Text className="text-lg font-semibold text-craftopia-textPrimary">Profile</Text>
+          <Text className="text-base text-craftopia-textSecondary mt-1">Manage your account</Text>
         </View>
-        <View className="flex-row items-center space-x-3">
-          <TouchableOpacity 
-            onPress={onSharePress}
-            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center active:bg-gray-200"
-          >
-            <Share2 size={20} color="#6B7280" />
+        <View className="flex-row gap-2 items-center">
+          <TouchableOpacity onPress={onSharePress} className="w-9 h-9 rounded-full items-center justify-center">
+            <Share2 size={18} color="#004E98" />
           </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={onSettingsPress}
-            className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center active:bg-gray-200"
-          >
-            <Settings size={20} color="#6B7280" />
+          <TouchableOpacity onPress={onSettingsPress} className="w-9 h-9 rounded-full items-center justify-center">
+            <Settings size={18} color="#004E98" />
           </TouchableOpacity>
         </View>
       </View>

@@ -1,53 +1,24 @@
-import React, { memo } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
-import { Heart, MessageCircle, Share2 } from 'lucide-react-native'
+import React, { memo } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Heart, MessageCircle } from 'lucide-react-native';
 
 interface PostActionsProps {
-  likeCount: number
-  commentCount: number
-  isLiked?: boolean
-  onToggleReaction?: () => void
-  onOpenComments?: () => void
+  likeCount: number;
+  commentCount: number;
+  isLiked: boolean;
+  onToggleReaction?: () => void;
+  onOpenComments?: () => void;
 }
 
-export const PostActions: React.FC<PostActionsProps> = memo(
-  ({ likeCount, commentCount, isLiked, onToggleReaction, onOpenComments }) => {
-    
-    const handleCommentPress = () => {
-      console.log('Comment button pressed!')
-      if (onOpenComments) {
-        console.log('Opening comments modal...')
-        onOpenComments()
-      } else {
-        console.log('onOpenComments callback not provided!')
-      }
-    }
-
-    return (
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row space-x-6">
-          <TouchableOpacity 
-            className="flex-row items-center" 
-            onPress={onToggleReaction}
-            activeOpacity={0.7}
-          >
-            <Heart size={18} color={isLiked ? '#EF4444' : '#9CA3AF'} fill={isLiked ? '#EF4444' : 'none'} />
-            <Text className="text-sm text-gray-500 ml-1">{likeCount}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            className="flex-row items-center" 
-            onPress={handleCommentPress}
-            activeOpacity={0.7}
-          >
-            <MessageCircle size={18} color="#9CA3AF" />
-            <Text className="text-sm text-gray-500 ml-1">{commentCount}</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity activeOpacity={0.7}>
-          <Share2 size={18} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-    )
-  }
-)
+export const PostActions: React.FC<PostActionsProps> = memo(({ likeCount, commentCount, isLiked, onToggleReaction, onOpenComments }) => (
+  <View className="flex-row items-center justify-start gap-2  mt-2">
+    <TouchableOpacity className="flex-row items-center" onPress={onToggleReaction}>
+      <Heart size={16} color={isLiked ? '#10B981' : '#6B7280'} />
+      <Text className="ml-1 text-sm text-craftopia-textSecondary">{likeCount}</Text>
+    </TouchableOpacity>
+    <TouchableOpacity className="flex-row items-center" onPress={onOpenComments}>
+      <MessageCircle size={16} color="#6B7280" />
+      <Text className="ml-1 text-sm text-craftopia-textSecondary">{commentCount}</Text>
+    </TouchableOpacity>
+  </View>
+));

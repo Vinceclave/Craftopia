@@ -1,6 +1,7 @@
-import { Image, Text, View, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, Image } from 'react-native';
+import { Check, Pencil, MapPin, Star } from 'lucide-react-native';
 import Button from '../common/Button';
-import { CheckCircle, Pencil, MapPin, Calendar } from 'lucide-react-native';
 
 interface UserProfile {
   username?: string;
@@ -19,170 +20,106 @@ interface UserProfile {
 interface ProfileCardProps {
   userProfile: UserProfile;
   onEditPress: () => void;
-  onAvatarPress?: () => void;
-  isLoading?: boolean;
 }
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({
   userProfile,
   onEditPress,
-  onAvatarPress,
-  isLoading = false
 }) => {
-  const formatJoinDate = (dateString?: string) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
-
-  const getProgressPercentage = () => {
-    if (!userProfile.totalPoints || !userProfile.nextLevelPoints) return 0;
-    return Math.min((userProfile.totalPoints / userProfile.nextLevelPoints) * 100, 100);
-  };
-
-  const renderAvatar = () => {
-    const avatarContent = userProfile.avatar ? (
-      <Image
-        source={{ uri: userProfile.avatar }}
-        className="w-16 h-16 rounded-full"
-        accessibilityLabel={`${userProfile.name || userProfile.username}'s profile picture`}
-      />
-    ) : (
-      <View className="w-16 h-16 rounded-full bg-craftopia-light justify-center items-center">
-        <Text className="text-xl font-bold text-craftopia-text-primary">
-          {(userProfile.name?.charAt(0) || userProfile.username?.charAt(0) || '?').toUpperCase()}
-        </Text>
-      </View>
-    );
-
-    if (onAvatarPress) {
-      return (
-        <TouchableOpacity onPress={onAvatarPress} className="mr-4">
-          {avatarContent}
-        </TouchableOpacity>
-      );
-    }
-
-    return <View className="mr-4">{avatarContent}</View>;
-  };
-
-  if (isLoading) {
-    return (
-      <View className="p-4 bg-craftopia-surface rounded-lg shadow-md">
-        <View className="flex-row items-center mb-4">
-          <View className="w-16 h-16 rounded-full bg-craftopia-light mr-4" />
-          <View className="flex-1">
-            <View className="h-5 bg-craftopia-light rounded mb-2 w-3/4" />
-            <View className="h-4 bg-craftopia-light rounded w-1/2" />
-          </View>
-        </View>
-        <View className="h-10 bg-craftopia-light rounded" />
-      </View>
-    );
-  }
+  const progressPercentage = userProfile.totalPoints && userProfile.nextLevelPoints 
+    ? Math.min((userProfile.totalPoints / userProfile.nextLevelPoints) * 100, 100)
+    : 0;
 
   return (
-    <View className="p-4 bg-craftopia-surface rounded-lg shadow-md">
-      {/* User Info */}
-      <View className="flex-row items-center mb-4">
-        {renderAvatar()}
-
-        <View className="flex-1">
-          <View className="flex-row items-center gap-2 mb-1">
-            <Text className="text-lg font-semibold text-craftopia-text-primary">
-              {userProfile.name || userProfile.username || 'Unknown User'}
-            </Text>
+    <View className="p-4 bg-craftopia-surface rounded-xl shadow-sm">
+      {/* Avatar + Name + Verified */}
+      <View className="flex-row items-center gap-3 mb-3">
+        {userProfile.avatar ? (
+          <View className="relative">
+            <Image
+              source={{ uri: userProfile.avatar }}
+              className="w-16 h-16 rounded-full"
+            />
             {userProfile.verified && (
-              <CheckCircle
-                size={20}
-                color="#10B981" // craftopia-growth
-                accessibilityLabel="Verified user"
-              />
+              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-5 h-5 justify-center items-center border-2 border-white">
+                <Check size={10} color="#fff" />
+              </View>
             )}
           </View>
-
-          {userProfile.username && (
-            <Text className="text-sm text-craftopia-text-secondary mb-1">
-              @{userProfile.username}
+        ) : (
+          <View className="w-16 h-16 bg-craftopia-light justify-center items-center rounded-full relative">
+            <Text className="text-craftopia-primary text-lg font-bold">
+              {userProfile.name?.[0] ?? "?"}
             </Text>
-          )}
-
-          {userProfile.title && (
-            <Text className="text-sm text-craftopia-primary font-medium">
-              {userProfile.title}
-            </Text>
-          )}
+            {userProfile.verified && (
+              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-5 h-5 justify-center items-center border-2 border-white">
+                <Check size={10} color="#fff" />
+              </View>
+            )}
+          </View>
+        )}
+        <View className="flex-1">
+          <Text className="text-lg text-craftopia-textPrimary font-bold mb-1">
+            {userProfile.name}
+          </Text>
+          <Text className="text-base text-craftopia-textSecondary">
+            @{userProfile.username}
+          </Text>
         </View>
       </View>
 
-      {/* Bio Section */}
+      {/* Bio */}
       {userProfile.bio && (
-        <View className="mb-4">
-          <Text
-            className="text-sm text-craftopia-text-primary leading-5"
-            numberOfLines={3}
-            ellipsizeMode="tail"
-          >
-            {userProfile.bio}
-          </Text>
-        </View>
+        <Text className="text-base text-craftopia-textSecondary italic mb-3 leading-5" numberOfLines={2}>
+          {userProfile.bio}
+        </Text>
       )}
 
-      {/* Level / Points Progress */}
-      {userProfile.level !== undefined && (
-        <View className="mb-4">
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-craftopia-text-primary">
-              Level {userProfile.level}
-            </Text>
-            {userProfile.totalPoints !== undefined && userProfile.nextLevelPoints !== undefined && (
-              <Text className="text-xs text-craftopia-text-secondary">
-                {userProfile.totalPoints.toLocaleString()}/{userProfile.nextLevelPoints.toLocaleString()} XP
-              </Text>
+      {/* Location + Join Date */}
+      <View className="mb-4 flex-row justify-between items-center">
+        {userProfile.location && (
+          <View className="flex-row items-center gap-2">
+            <MapPin size={16} color="#004E98" />
+            <Text className="text-base text-craftopia-textSecondary">{userProfile.location}</Text>
+          </View>
+        )}
+        {userProfile.joinDate && (
+          <Text className="text-base text-craftopia-textSecondary">Joined: {userProfile.joinDate}</Text>
+        )}
+      </View>
+
+      {/* Level & Points */}
+      <View className="mb-4 p-3 bg-craftopia-light rounded-lg">
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <Star size={18} color="#004E98" />
+            <Text className="text-base text-craftopia-primary font-semibold">Level {userProfile.level || 1}</Text>
+            {userProfile.title && (
+              <Text className="text-base text-craftopia-textSecondary">• {userProfile.title}</Text>
             )}
           </View>
-
-          {userProfile.totalPoints !== undefined && userProfile.nextLevelPoints !== undefined && (
-            <View className="bg-craftopia-light rounded-full h-2">
-              <View
-                className="bg-craftopia-accent h-2 rounded-full"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
-            </View>
-          )}
+          <Text className="text-base text-craftopia-textSecondary font-medium">{userProfile.totalPoints || 0} pts</Text>
         </View>
-      )}
 
-      {/* Additional Info */}
-      {(userProfile.location || userProfile.joinDate) && (
-        <View className="flex-row items-center justify-between mb-4">
-          {userProfile.location && (
-            <View className="flex-row items-center">
-              <MapPin size={16} color="#6B7280" /> {/* craftopia-text-secondary */}
-              <Text className="text-sm text-craftopia-text-secondary ml-1">
-                {userProfile.location}
-              </Text>
+        {/* Progress Bar */}
+        {userProfile.nextLevelPoints && (
+          <>
+            <View className="w-full h-2 bg-gray-200 rounded-full mb-1">
+              <View className="h-2 bg-craftopia-primary rounded-full" style={{ width: `${progressPercentage}%` }} />
             </View>
-          )}
-
-          {userProfile.joinDate && (
-            <View className="flex-row items-center">
-              <Calendar size={16} color="#6B7280" />
-              <Text className="text-sm text-craftopia-text-secondary ml-1">
-                Joined {formatJoinDate(userProfile.joinDate)}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
+            <Text className="text-base text-craftopia-textSecondary text-right">
+              {userProfile.nextLevelPoints - (userProfile.totalPoints || 0)} pts to next level
+            </Text>
+          </>
+        )}
+      </View>
 
       {/* Edit Button */}
       <Button
         onPress={onEditPress}
         title="Edit Profile"
-        leftIcon={<Pencil size={20} color="#FFF" />}
-        size="md"
-        className="gap-2 bg-craftopia-primary text-white"
+        leftIcon={<Pencil size={18} color="#fff" />}
+        textClassName="text-base font-semibold"
       />
     </View>
   );

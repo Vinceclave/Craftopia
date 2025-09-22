@@ -1,19 +1,24 @@
-// Updated Feed.tsx - FIXED to use PostContainer instead of Post
-import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { Text, View, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus } from 'lucide-react-native'
-// CHANGED: Import PostContainer instead of Post
-import { PostContainer } from '~/components/feed/post/PostContainer'
-import { TrendingTagItem } from '~/components/feed/TrendingTagItem'
-// CHANGED: Import PostProps from the correct location
-import type { PostProps } from '~/components/feed/post/type'
-import { postService } from '~/services/post.service'
+// apps/mobile/src/screens/feed/Feed.tsx
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  Text,
+  View,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus } from 'lucide-react-native';
+import { PostContainer } from '~/components/feed/post/PostContainer';
+import { TrendingTagItem } from '~/components/feed/TrendingTagItem';
+import type { PostProps } from '~/components/feed/post/type';
+import { postService } from '~/services/post.service';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FeedStackParamList } from '~/navigations/types'
-import { useNavigation } from '@react-navigation/native'
+import { FeedStackParamList } from '~/navigations/types';
+import { useNavigation } from '@react-navigation/native';
 
-type FeedType = 'all' | 'trending' | 'popular' | 'featured'
+type FeedType = 'all' | 'trending' | 'popular' | 'featured';
 
 interface Comment {
   comment_id: number;
@@ -22,10 +27,7 @@ interface Comment {
   likeCount: number;
   isLiked: boolean;
   created_at: string;
-  user: {
-    user_id: number;
-    username: string;
-  };
+  user: { user_id: number; username: string };
 }
 
 const FEED_TABS = [
@@ -33,360 +35,243 @@ const FEED_TABS = [
   { key: 'trending' as FeedType, label: 'Trending', icon: TrendingUp },
   { key: 'popular' as FeedType, label: 'Popular', icon: Flame },
   { key: 'featured' as FeedType, label: 'Featured', icon: Star },
-]
+];
 
 export const FeedScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
-  const [activeTab, setActiveTab] = useState<FeedType>('all')
-  const [posts, setPosts] = useState<PostProps[]>([])
-  const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  
-  // Track pending reactions to prevent duplicate requests
-  const pendingReactions = useRef<Set<number>>(new Set())
+  const [activeTab, setActiveTab] = useState<FeedType>('all');
+  const [posts, setPosts] = useState<PostProps[]>([]);
+  const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number; growth?: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  // Fetch posts
-  const fetchPosts = useCallback(async (pageNumber = 1, isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true)
-      else if (pageNumber === 1) setLoading(true)
-      else setLoadingMore(true)
-      setError(null)
+  const pendingReactions = useRef<Set<number>>(new Set());
 
-      const response = await postService.getPosts(activeTab, pageNumber)
-      const fetchedPosts: PostProps[] = response?.data || []
+  const fetchPosts = useCallback(
+    async (pageNumber = 1, isRefresh = false) => {
+      try {
+        if (isRefresh) setRefreshing(true);
+        else if (pageNumber === 1) setLoading(true);
+        else setLoadingMore(true);
 
-      if (isRefresh || pageNumber === 1) {
-        setPosts(prevPosts => {
-          const existingPostsMap = new Map(prevPosts.map(post => [post.post_id, post]))
-          
-          return fetchedPosts.map(post => {
-            const existingPost = existingPostsMap.get(post.post_id)
-            
-            if (existingPost) {
-              return {
-                ...post,
-                isLiked: existingPost.isLiked,
-                likeCount: existingPost.likeCount
-              }
-            }
-            
-            return post
-          })
-        })
-        setPage(1)
-      } else {
-        setPosts(prevPosts => {
-          const existingIds = new Set(prevPosts.map(p => p.post_id))
-          const newPosts = fetchedPosts.filter(post => !existingIds.has(post.post_id))
-          return [...prevPosts, ...newPosts]
-        })
-        setPage(pageNumber)
+        setError(null);
+        const response = await postService.getPosts(activeTab, pageNumber);
+        const fetchedPosts: PostProps[] = response?.data || [];
+
+        if (isRefresh || pageNumber === 1) {
+          setPosts(prevPosts => {
+            const existingMap = new Map(prevPosts.map(p => [p.post_id, p]));
+            return fetchedPosts.map(post => {
+              const existing = existingMap.get(post.post_id);
+              return existing
+                ? { ...post, isLiked: existing.isLiked, likeCount: existing.likeCount }
+                : post;
+            });
+          });
+          setPage(1);
+        } else {
+          setPosts(prevPosts => {
+            const existingIds = new Set(prevPosts.map(p => p.post_id));
+            const newPosts = fetchedPosts.filter(p => !existingIds.has(p.post_id));
+            return [...prevPosts, ...newPosts];
+          });
+          setPage(pageNumber);
+        }
+
+        setHasMore(response?.meta ? response.meta.page < response.meta.lastPage : fetchedPosts.length === 10);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load posts');
+        console.error('Error fetching posts:', err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
       }
+    },
+    [activeTab]
+  );
 
-      setHasMore(response?.meta ? response.meta.page < response.meta.lastPage : fetchedPosts.length === 10)
-    } catch (err: any) {
-      setError(err.message || 'Failed to load posts')
-      console.error('Error fetching posts:', err)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-      setLoadingMore(false)
-    }
-  }, [activeTab])
-
-  // Fetch trending tags
   const fetchTrendingTags = useCallback(async () => {
     try {
-      const response = await postService.getTrendingTags()
-      setTrendingTags(response?.data || [])
+      const response = await postService.getTrendingTags();
+      setTrendingTags(response?.data || []);
     } catch (err) {
-      console.error('Error fetching trending tags:', err)
+      console.error('Error fetching trending tags:', err);
     }
-  }, [])
+  }, []);
 
-  // FIXED: Improved toggle reaction with proper state management
   const handleToggleReaction = useCallback(async (postId: number) => {
-    // Prevent duplicate requests
-    if (pendingReactions.current.has(postId)) {
-      console.log('⚠️ Reaction already pending for post:', postId)
-      return
-    }
+    if (pendingReactions.current.has(postId)) return;
+    pendingReactions.current.add(postId);
 
-    // Add to pending set
-    pendingReactions.current.add(postId)
-
-    // Get current post state for rollback
-    let originalPost: PostProps | undefined
+    let originalPost: PostProps | undefined;
     setPosts(prevPosts => {
-      originalPost = prevPosts.find(p => p.post_id === postId)
-      
-      // Optimistic update
+      originalPost = prevPosts.find(p => p.post_id === postId);
       return prevPosts.map(post =>
         post.post_id === postId
-          ? { 
-              ...post, 
-              isLiked: !post.isLiked, 
-              likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 
-            }
+          ? { ...post, isLiked: !post.isLiked, likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 }
           : post
-      )
-    })
+      );
+    });
 
     try {
-      console.log('🔵 Frontend: Toggling reaction for post:', postId)
-      
-      // Call API
-      const response = await postService.toggleReaction(postId.toString())
-      console.log('🔵 Frontend: API Response:', response)
-
-      // Handle different response structures
-      const responseData = response?.data || response
-      const isLiked = responseData?.isLiked
-      const likeCount = responseData?.likeCount
-
-      if (typeof isLiked === 'boolean' && typeof likeCount === 'number') {
-        // Update with server response
-        setPosts(currentPosts =>
-          currentPosts.map(post =>
-            post.post_id === postId
-              ? { ...post, isLiked, likeCount }
-              : post
-          )
-        )
-        console.log('✅ Updated post with server data:', { postId, isLiked, likeCount })
+      const response = await postService.toggleReaction(postId.toString());
+      const data = response?.data || response;
+      if (typeof data?.isLiked === 'boolean' && typeof data?.likeCount === 'number') {
+        setPosts(current =>
+          current.map(p => (p.post_id === postId ? { ...p, isLiked: data.isLiked, likeCount: data.likeCount } : p))
+        );
       } else {
-        // If no proper response, fetch the current count from server
-        console.log('⚠️ Invalid response format, fetching count...')
-        const countResponse = await postService.getReactionCount(postId.toString())
-        const serverCount = countResponse?.data?.total || 0
-        
-        setPosts(currentPosts =>
-          currentPosts.map(post => {
-            if (post.post_id === postId) {
-              // Determine isLiked based on optimistic update
-              const wasLiked = originalPost?.isLiked || false
-              return { ...post, isLiked: !wasLiked, likeCount: serverCount }
-            }
-            return post
-          })
-        )
-      }
-    } catch (error: any) {
-      console.error('❌ Failed to toggle reaction:', error)
-      
-      // Rollback optimistic update
-      if (originalPost) {
-        setPosts(currentPosts =>
-          currentPosts.map(post =>
-            post.post_id === postId
-              ? { ...post, isLiked: originalPost!.isLiked, likeCount: originalPost!.likeCount }
-              : post
+        const countResponse = await postService.getReactionCount(postId.toString());
+        const serverCount = countResponse?.data?.total || 0;
+        setPosts(current =>
+          current.map(p =>
+            p.post_id === postId ? { ...p, isLiked: !originalPost?.isLiked, likeCount: serverCount } : p
           )
-        )
+        );
       }
-      
-      // Show user-friendly error
-      console.log('Failed to update reaction. Please try again.')
+    } catch (err) {
+      console.error('Failed to toggle reaction:', err);
+      if (originalPost) {
+        setPosts(current =>
+          current.map(p =>
+            p.post_id === postId ? { ...p, isLiked: originalPost!.isLiked, likeCount: originalPost!.likeCount } : p
+          )
+        );
+      }
     } finally {
-      // Remove from pending set
-      pendingReactions.current.delete(postId)
+      pendingReactions.current.delete(postId);
     }
-  }, [])
+  }, []);
 
-  // Comment functionality handlers
   const handleLoadComments = useCallback(async (postId: number): Promise<Comment[]> => {
-    try {
-      console.log('Loading comments for post:', postId)
-      
-      // Check if your postService has a getComments method
-      // If not, you can use mock data for testing:
-      
-      // Mock data for testing (remove this when you have real API)
-      const mockComments: Comment[] = [
-        {
-          comment_id: 1,
-          user_id: 2,
-          content: "Great post! Thanks for sharing your insights.",
-          likeCount: 5,
-          isLiked: false,
-          created_at: new Date().toISOString(),
-          user: { user_id: 2, username: "johndoe" }
-        },
-        {
-          comment_id: 2,
-          user_id: 3,
-          content: "I totally agree with this perspective. Very well written!",
-          likeCount: 2,
-          isLiked: true,
-          created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-          user: { user_id: 3, username: "janesmith" }
-        }
-      ]
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return mockComments
-      
-      // Replace the above with your actual API call:
-      // const response = await postService.getComments(postId)
-      // return response?.data || []
-    } catch (error) {
-      console.error('Failed to load comments:', error)
-      return [] // Return empty array on error instead of throwing
-    }
-  }, [])
+    const mockComments: Comment[] = [
+      {
+        comment_id: 1,
+        user_id: 2,
+        content: 'Great post! Thanks for sharing.',
+        likeCount: 5,
+        isLiked: false,
+        created_at: new Date().toISOString(),
+        user: { user_id: 2, username: 'johndoe' },
+      },
+      {
+        comment_id: 2,
+        user_id: 3,
+        content: 'Totally agree!',
+        likeCount: 2,
+        isLiked: true,
+        created_at: new Date(Date.now() - 3600000).toISOString(),
+        user: { user_id: 3, username: 'janesmith' },
+      },
+    ];
+    await new Promise(r => setTimeout(r, 500));
+    return mockComments;
+  }, []);
 
-  const handleAddComment = useCallback(async (postId: number, content: string): Promise<void> => {
-    try {
-      console.log('Adding comment to post:', postId, 'Content:', content)
-      
-      // Mock API call for testing (remove when you have real API)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Update comment count in posts
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.post_id === postId
-            ? { ...post, commentCount: post.commentCount + 1 }
-            : post
-        )
-      )
-      
-      console.log('Comment created successfully')
-      
-      // Replace the above with your actual API call:
-      // const response = await postService.createComment(postId, content)
-      // console.log('Comment created:', response)
-    } catch (error) {
-      console.error('Failed to create comment:', error)
-      throw error
-    }
-  }, [])
+  const handleAddComment = useCallback(async (postId: number, content: string) => {
+    await new Promise(r => setTimeout(r, 500));
+    setPosts(prev =>
+      prev.map(post => (post.post_id === postId ? { ...post, commentCount: post.commentCount + 1 } : post))
+    );
+  }, []);
 
-  const handleToggleCommentReaction = useCallback(async (commentId: number): Promise<void> => {
-    try {
-      console.log('Toggling reaction for comment:', commentId)
-      
-      // Mock API call for testing (remove when you have real API)
-      await new Promise(resolve => setTimeout(resolve, 200))
-      console.log('Comment reaction toggled successfully')
-      
-      // Replace the above with your actual API call:
-      // const response = await postService.toggleCommentReaction(commentId)
-      // console.log('Comment reaction toggled:', response)
-    } catch (error) {
-      console.error('Failed to toggle comment reaction:', error)
-      throw error
-    }
-  }, [])
+  const handleToggleCommentReaction = useCallback(async (commentId: number) => {
+    await new Promise(r => setTimeout(r, 200));
+  }, []);
 
-  console.log(posts)
-
-  // Refresh handler
   const handleRefresh = useCallback(() => {
-    fetchPosts(1, true)
-    if (activeTab === 'trending') fetchTrendingTags()
-  }, [fetchPosts, fetchTrendingTags, activeTab])
+    fetchPosts(1, true);
+    if (activeTab === 'trending') fetchTrendingTags();
+  }, [fetchPosts, fetchTrendingTags, activeTab]);
 
-  // Load more
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !loading) {
-      fetchPosts(page + 1)
-    }
-  }, [fetchPosts, page, loadingMore, hasMore, loading])
+    if (!loadingMore && hasMore && !loading) fetchPosts(page + 1);
+  }, [loadingMore, hasMore, loading, page, fetchPosts]);
 
-  // Scroll detection
-  const handleScroll = useCallback((event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent
-    const paddingToBottom = 100
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
-      handleLoadMore()
-    }
-  }, [handleLoadMore])
+  const handleScroll = useCallback(
+    (event: any) => {
+      const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+      if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 100) handleLoadMore();
+    },
+    [handleLoadMore]
+  );
 
-  // Effect for tab changes
   useEffect(() => {
-    setPosts([])
-    setPage(1)
-    setHasMore(true)
-    
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+
     const loadTabData = async () => {
-      await fetchPosts(1)
-      if (activeTab === 'trending') {
-        await fetchTrendingTags()
-      }
-    }
-    
-    loadTabData()
-  }, [activeTab])
+      await fetchPosts(1);
+      if (activeTab === 'trending') await fetchTrendingTags();
+    };
+    loadTabData();
+  }, [activeTab, fetchPosts, fetchTrendingTags]);
 
-  const renderTab = useCallback((tab: typeof FEED_TABS[0]) => {
-    const isActive = activeTab === tab.key
-    const IconComponent = tab.icon
-
-    return (
-      <TouchableOpacity
-        key={tab.key}
-        onPress={() => setActiveTab(tab.key)}
-        className={`mr-6 pb-3 ${isActive ? 'border-b-2 border-blue-600' : ''}`}
-      >
-        <View className="flex-row items-center mb-1">
-          <IconComponent size={18} color={isActive ? '#2563EB' : '#6B7280'} />
-          <Text className={`text-base font-semibold ml-2 ${isActive ? 'text-blue-600' : 'text-gray-700'}`}>
-            {tab.label}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    )
-  }, [activeTab])
+  const renderTab = useCallback(
+    (tab: typeof FEED_TABS[0]) => {
+      const isActive = activeTab === tab.key;
+      const IconComponent = tab.icon;
+      return (
+        <TouchableOpacity
+          key={tab.key}
+          onPress={() => setActiveTab(tab.key)}
+          className={`mr-6 pb-3 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+        >
+          <View className="flex-row items-center">
+            <IconComponent size={18} color={isActive ? '#004E98' : '#6B7280'} />
+            <Text className={`text-base font-semibold ml-2 ${isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'}`}>
+              {tab.label}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [activeTab]
+  );
 
   const renderContent = () => {
-    if (loading) {
+    if (loading)
       return (
         <View className="flex-1 justify-center items-center py-20">
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#004E98" />
           <Text className="text-gray-500 mt-4">Loading posts...</Text>
         </View>
-      )
-    }
+      );
 
-    if (error) {
+    if (error)
       return (
         <View className="flex-1 justify-center items-center py-20 px-6">
           <Text className="text-gray-900 text-lg font-semibold text-center mb-2">Oops! Something went wrong</Text>
           <Text className="text-gray-500 text-center mb-6">{error}</Text>
-          <TouchableOpacity onPress={() => fetchPosts()} className="bg-blue-600 px-6 py-3 rounded-lg">
+          <TouchableOpacity onPress={() => fetchPosts()} className="bg-craftopia-primary px-6 py-3 rounded-lg">
             <Text className="text-white font-semibold">Try Again</Text>
           </TouchableOpacity>
         </View>
-      )
-    }
+      );
 
-    if (posts.length === 0) {
+    if (posts.length === 0)
       return (
         <View className="flex-1 justify-center items-center py-20">
           <Text className="text-gray-400 text-center text-lg mb-4">No posts yet</Text>
-          <TouchableOpacity onPress={handleRefresh} className="bg-blue-600 px-6 py-3 rounded-lg">
+          <TouchableOpacity onPress={handleRefresh} className="bg-craftopia-primary px-6 py-3 rounded-lg">
             <Text className="text-white font-semibold">Refresh</Text>
           </TouchableOpacity>
         </View>
-      )
-    }
+      );
 
     return (
       <View className="px-4 pb-32">
         {posts.map(post => (
-          // CHANGED: Use PostContainer instead of Post
           <PostContainer
-            key={post.post_id} 
+            key={post.post_id}
             postId={post.post_id}
-            {...post} 
+            {...post}
             onToggleReaction={() => handleToggleReaction(post.post_id)}
             onLoadComments={handleLoadComments}
             onAddComment={handleAddComment}
@@ -396,7 +281,7 @@ export const FeedScreen = () => {
 
         {loadingMore && (
           <View className="py-4 items-center">
-            <ActivityIndicator size="small" color="#2563EB" />
+            <ActivityIndicator size="small" color="#004E98" />
             <Text className="text-gray-500 mt-2 text-sm">Loading more...</Text>
           </View>
         )}
@@ -407,14 +292,12 @@ export const FeedScreen = () => {
           </View>
         )}
       </View>
-    )
-  }
+    );
+  };
 
-  const handleCreate = async () => {
-    navigation.navigate('Create', {
-      onPostCreated: handleRefresh,
-    });
-  }
+  const handleCreate = () => {
+    navigation.navigate('Create', { onPostCreated: handleRefresh });
+  };
 
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
@@ -442,7 +325,7 @@ export const FeedScreen = () => {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#2563EB']} tintColor="#2563EB" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#004E98']} tintColor="#004E98" />}
       >
         {/* Trending Tags */}
         {activeTab === 'trending' && trendingTags.length > 0 && (
@@ -460,11 +343,11 @@ export const FeedScreen = () => {
       {/* FAB */}
       <TouchableOpacity
         onPress={handleCreate}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
-        style={{ shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+        className="absolute bottom-24 right-6 w-14 h-14 bg-craftopia-primary rounded-full items-center justify-center shadow-lg"
+        style={{ shadowColor: '#004E98', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
       >
-        <Plus size={24} color="#ffffff" />
+        <Plus size={24} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
-  )
-}
+  );
+};

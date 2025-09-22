@@ -1,20 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
-  Modal, 
-  View, 
-  Text, 
-  ScrollView, 
-  ActivityIndicator, 
-  KeyboardAvoidingView, 
-  Platform, 
-  SafeAreaView, 
-  TouchableOpacity,
-  Dimensions
+  Modal, View, Text, ScrollView, ActivityIndicator, 
+  KeyboardAvoidingView, Platform, TouchableOpacity, Dimensions 
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
 import { Comment } from '../type';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CommentModalProps {
   visible: boolean;
@@ -37,81 +30,58 @@ export const CommentModal: React.FC<CommentModalProps> = ({
 }) => {
   const scrollRef = useRef<ScrollView>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [modalHeight, setModalHeight] = useState(Dimensions.get('window').height);
-
-  useEffect(() => {
-    console.log('CommentModal rendered with visible:', visible);
-    console.log('Comments count:', comments.length);
-  }, [visible, comments]);
 
   const handleSend = async (content: string) => {
-    console.log('Sending comment:', content);
     setSubmitting(true);
     try {
       await onAddComment(content);
-      // Scroll to bottom after adding comment
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error(error);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    console.log('Closing comment modal');
-    onClose();
-  };
+  const handleClose = () => onClose();
 
   return (
-    <Modal 
-      visible={visible} 
-      animationType="slide" 
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-      transparent={false}
-    >
-      <SafeAreaView className="flex-1 bg-white">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-surface">
         <KeyboardAvoidingView 
           className="flex-1" 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
             <View className="flex-1 pr-4">
-              <Text className="font-semibold text-gray-900 text-lg">Comments</Text>
-              <Text className="text-sm text-gray-500 mt-1" numberOfLines={1}>
+              <Text className="font-semibold text-craftopia-textPrimary text-lg">Comments</Text>
+              <Text className="text-sm text-craftopia-textSecondary mt-1" numberOfLines={1}>
                 {postTitle}
               </Text>
             </View>
-            <TouchableOpacity 
-              onPress={handleClose} 
-              className="p-2"
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity onPress={handleClose} className="p-2" activeOpacity={0.7}>
               <X size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
           {/* Comments List */}
-          <ScrollView 
-            ref={scrollRef} 
-            className="flex-1 px-4" 
-            showsVerticalScrollIndicator={false} 
+          <ScrollView
+            ref={scrollRef}
+            className="flex-1 px-4"
+            showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ flexGrow: 1 }}
           >
             {loading ? (
               <View className="flex-1 justify-center items-center py-20">
                 <ActivityIndicator size="large" color="#2563EB" />
-                <Text className="text-gray-500 mt-2">Loading comments...</Text>
+                <Text className="text-craftopia-textSecondary mt-2">Loading comments...</Text>
               </View>
             ) : comments.length === 0 ? (
               <View className="flex-1 justify-center items-center py-20">
-                <Text className="text-gray-500 text-center">
+                <Text className="text-craftopia-textSecondary text-center">
                   No comments yet. Be the first to comment!
                 </Text>
               </View>

@@ -157,7 +157,7 @@ export const CreatePostScreen = () => {
   const isFormValid = formData.title.trim() && formData.content.trim() && formData.category
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={['top', 'left', 'right']}>
+    <SafeAreaView  className="flex-1 bg-gray-50" edges={['left', 'right']}>
       {/* Header */}
       <View className="bg-white px-6 py-4 border-b border-gray-100 flex-row justify-between items-center">
         <View className="flex-row items-center">

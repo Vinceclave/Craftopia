@@ -1,28 +1,29 @@
-// apps/mobile/src/components/feed/SectionHeader.tsx - SIMPLIFIED
-import React from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+// apps/mobile/src/components/feed/SectionHeader.tsx
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 interface SectionHeaderProps {
-  title: string
-  icon: React.ReactNode
-  isActive: boolean
-  onPress: () => void
+  title: string;
+  icon: React.ReactNode;
+  isActive: boolean;
+  onPress: () => void;
 }
 
-export const SectionHeader = ({ title, icon, isActive, onPress }: SectionHeaderProps) => (
+export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, icon, isActive, onPress }) => (
   <TouchableOpacity
     onPress={onPress}
-    className={`mr-6 pb-3 ${isActive ? 'border-b-2 border-blue-600' : ''}`}
+    activeOpacity={0.7}
+    className={`mr-6 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
   >
     <View className="flex-row items-center">
       {icon}
       <Text
         className={`text-base font-semibold ml-2 ${
-          isActive ? 'text-blue-600' : 'text-gray-700'
+          isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
         }`}
       >
         {title}
       </Text>
     </View>
   </TouchableOpacity>
-)
+);
