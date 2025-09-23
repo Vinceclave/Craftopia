@@ -1,4 +1,4 @@
-// VerifyEmailScreen.tsx
+// apps/mobile/src/screens/VerifyEmail.tsx - FIXED IMPORTS
 import { MailOpen } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Text, View, ScrollView } from 'react-native';
@@ -6,8 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Input } from '~/components/common/TextInputField';
-import Button from '~/components/common/Button';
+import { Input } from '~/components/common/TextInputField'; // ✅ Named import
+import Button from '~/components/common/Button'; // ✅ Default import
 import { authService } from '~/services/auth.service';
 import { useAlert } from '~/hooks/useAlert';
 

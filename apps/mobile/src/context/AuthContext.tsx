@@ -1,3 +1,4 @@
+// apps/mobile/src/context/AuthContext.tsx - FIXED AUTHENTICATION LOGIC
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginRequest, RegisterRequest, UserProfileResponse } from '../config/api';
 import { authService } from '../services/auth.service';
@@ -52,13 +53,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const currentUser = await authService.getCurrentUser(token);
         const normalizedUser = normalizeUser(currentUser);
         setUser(normalizedUser);
-        setIsAuthenticated(normalizedUser.is_email_verified);
+        // ✅ FIXED: User is authenticated if they have a valid token, 
+        // regardless of email verification status
+        setIsAuthenticated(true);
       } else {
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (err: any) {
       console.error('Auth check failed:', err);
+      // ✅ FIXED: Clear tokens on auth failure
+      await authService.clearTokens();
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -87,10 +92,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const normalizedUser = normalizeUser(currentUser);
 
       setUser(normalizedUser);
-      setIsAuthenticated(normalizedUser.is_email_verified);
+      
+      // ✅ FIXED: Always save tokens and set authenticated on successful login
+      await authService.saveTokens(accessToken, refreshToken);
+      setIsAuthenticated(true);
 
-      if (normalizedUser.is_email_verified) {
-        await authService.saveTokens(accessToken, refreshToken);
+      // ✅ IMPROVED: Handle email verification separately from authentication
+      if (!normalizedUser.is_email_verified) {
+        // User is logged in but needs email verification
+        // You can handle this in the UI by showing a verification prompt
+        console.log('User logged in but email not verified');
       }
 
       return normalizedUser;

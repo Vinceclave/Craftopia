@@ -1,7 +1,5 @@
 import { useModal } from "~/context/modalContext";
 
-// apps/mobile/src/hooks/useAlert.ts
-
 export const useAlert = () => {
   const { showModal } = useModal();
 

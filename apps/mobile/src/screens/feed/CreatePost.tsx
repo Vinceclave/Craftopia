@@ -1,8 +1,8 @@
-// ENHANCED: apps/mobile/src/screens/feed/CreatePost.tsx
+// apps/mobile/src/screens/feed/CreatePost.tsx - FIXED IMPORTS
 import React, { useRef, useState } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Image, Alert, Modal } from 'react-native'
-import { Input } from '~/components/common/TextInputField'
-import Button from '~/components/common/Button'
+import { Input } from '~/components/common/TextInputField' // ✅ Named import
+import Button from '~/components/common/Button' // ✅ Default import
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Image as ImageIcon, X, ArrowLeft, Camera, ImageIcon as Gallery, ChevronDown, Check } from 'lucide-react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'

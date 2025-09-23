@@ -1,3 +1,4 @@
+// apps/mobile/src/navigations/types.ts 
 import type { NavigatorScreenParams } from "@react-navigation/native";
 
 export type HomeStackParamList = {
@@ -5,7 +6,7 @@ export type HomeStackParamList = {
   Details: { id: string };
 };
 
-export type   FeedStackParamList = {
+export type FeedStackParamList = {
   Feed: undefined;
   Create: { onPostCreated?: () => void };
   PostDetails: { postId: string };
@@ -14,7 +15,7 @@ export type   FeedStackParamList = {
 export type CraftStackParamList = {
   Craft: undefined;
   CraftDetails: { craftId: string };
-  CraftEditor: { craftId?: string }; // optional for new
+  CraftEditor: { craftId?: string };
 };
 
 export type EcoQuestStackParamList = {
@@ -25,7 +26,7 @@ export type EcoQuestStackParamList = {
 export type ProfileStackParamList = {
   Profile: undefined;
   Settings: undefined;
-  EditProfile: { userId: string };
+  EditProfile: undefined;
 };
 
 export type RootTabParamList = {

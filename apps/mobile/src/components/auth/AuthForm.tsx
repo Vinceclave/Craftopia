@@ -1,7 +1,8 @@
+// apps/mobile/src/components/auth/AuthForm.tsx - FIXED IMPORTS
 import React, { useRef } from 'react';
 import { View, TextInput } from 'react-native';
-import { Button } from '../common/Button';
-import Input from '../common/TextInputField';
+import Button from '../common/Button'; // ✅ Default import
+import { Input } from '../common/TextInputField'; // ✅ Named import
 
 export interface AuthField {
   name: string;

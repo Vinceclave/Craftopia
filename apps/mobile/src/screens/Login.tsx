@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Login.tsx
+// apps/mobile/src/screens/Login.tsx - FIXED IMPORTS
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -6,20 +6,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 
 import AuthLayout from '~/components/auth/AuthLayout';
-import Button from '~/components/common/Button';
-import { Input } from '~/components/common/TextInputField';
+import Button from '~/components/common/Button'; // ✅ Default import
+import { Input } from '~/components/common/TextInputField'; // ✅ Named import
 import { useAuth } from '~/context/AuthContext';
 import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
 import debounce from 'lodash.debounce';
 import { authService } from '~/services/auth.service';
-import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
+import { useAlert } from '~/hooks/useAlert';
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginNavProp>();
   const { login, error, clearError } = useAuth();
-  const { alert, error: showError } = useAlert(); // 👈 Add this
+  const { alert, error: showError } = useAlert();
 
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<LoginFormErrors>({ email: '', password: '' });
@@ -33,7 +33,7 @@ const LoginScreen: React.FC = () => {
 
   useEffect(() => {
     if (error) {
-      showError('Login Failed', error); // 👈 Replace Alert.alert
+      showError('Login Failed', error);
     }
   }, [error, showError]);
 
@@ -67,7 +67,6 @@ const LoginScreen: React.FC = () => {
       });
 
       if (user && !user.isEmailVerified) {
-       
         return;
       }
 
@@ -77,7 +76,6 @@ const LoginScreen: React.FC = () => {
     } catch (err: any) {
       if (!err.message?.toLowerCase().includes('verify')) {
          await authService.requestEmailVerification(form.email.trim());
-        // 👈 Replace Alert.alert with custom modal
         alert('Verification Email Sent', 'Please check your inbox.', () => {
           navigation.navigate('VerifyEmail', { email: form.email.trim() });
         });
@@ -154,4 +152,4 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-export default LoginScreen; 
+export default LoginScreen;

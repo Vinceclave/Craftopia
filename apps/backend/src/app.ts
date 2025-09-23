@@ -7,6 +7,8 @@ import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api';
 import { errorHandler } from './middlewares/error.middleware';
 import { config } from './config';
+import '../src/cron/challenge.cron'
+
 
 dotenv.config();
 

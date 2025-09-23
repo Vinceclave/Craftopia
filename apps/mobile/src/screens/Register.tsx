@@ -1,14 +1,14 @@
-// apps/mobile/src/screens/Register.tsx - Updated
+// apps/mobile/src/screens/Register.tsx - FIXED IMPORTS
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import AuthLayout from '~/components/auth/AuthLayout';
-import Button from '~/components/common/Button';
-import { Input } from '~/components/common/TextInputField';
+import Button from '~/components/common/Button'; // ✅ Default import
+import { Input } from '~/components/common/TextInputField'; // ✅ Named import
 import { useAuth } from '~/context/AuthContext';
-import { useAlert } from '~/hooks/useAlert'; // 👈 Add this import
+import { useAlert } from '~/hooks/useAlert';
 import {
   validateRegister,
   RegisterFormValues,
@@ -21,7 +21,7 @@ type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterNavProp>();
   const { register, error, clearError } = useAuth();
-  const { success, error: showError } = useAlert(); // 👈 Add this
+  const { success, error: showError } = useAlert();
 
   const [form, setForm] = useState<RegisterFormValues>({
     username: '',
@@ -49,7 +49,7 @@ const RegisterScreen: React.FC = () => {
 
   useEffect(() => {
     if (error) {
-      showError('Registration Failed', error); // 👈 Replace Alert.alert
+      showError('Registration Failed', error);
     }
   }, [error, showError]);
 

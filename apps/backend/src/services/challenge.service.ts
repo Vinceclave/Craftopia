@@ -1,5 +1,5 @@
 import prisma from "../config/prisma";
-import { MaterialType } from "../generated/prisma";
+import { MaterialType, ChallengeCategory } from "../generated/prisma";
 import { AppError } from '../utils/error';
 
 export const createChallenge = async (data: {
@@ -8,6 +8,7 @@ export const createChallenge = async (data: {
   points_reward: number;
   material_type: string;
   created_by_admin_id: number | null;
+  category: ChallengeCategory; // ✅ added
 }) => {
   if (!data.title?.trim()) {
     throw new AppError('Challenge title is required', 400);
@@ -31,63 +32,27 @@ export const createChallenge = async (data: {
       description: data.description.trim(),
       points_reward: data.points_reward,
       material_type: data.material_type as MaterialType,
-      created_by_admin_id: data.created_by_admin_id
+      created_by_admin_id: data.created_by_admin_id,
+      category: data.category, // ✅ include category
     }
   });
 };
 
-export const getAllChallenges = async (page = 1, limit = 10) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 10;
-
-  const skip = (page - 1) * limit;
-
-  const [data, total] = await Promise.all([
-    prisma.ecoChallenge.findMany({
-      skip,
-      take: limit,
-      orderBy: { created_at: 'desc' },
-      include: {
-        created_by_admin: {
-          select: { user_id: true, username: true }
-        }
-      }
-    }),
-    prisma.ecoChallenge.count()
-  ]);
-
-  return {
-    data,
-    meta: {
-      total,
-      page,
-      lastPage: Math.ceil(total / limit),
-      limit
-    }
-  };
-};
-
-export const getChallengeById = async (challengeId: number) => {
-  if (!challengeId || challengeId <= 0) {
-    throw new AppError('Invalid challenge ID', 400);
-  }
-
-  const challenge = await prisma.ecoChallenge.findUnique({
-    where: { challenge_id: challengeId },
-    include: {
-      created_by_admin: {
-        select: { user_id: true, username: true }
-      }
-    }
+export const generateAndSaveChallenge = async (category: ChallengeCategory, adminId?: number) => {
+  const aiChallenge = await aiGenerateChallenge();
+  return prisma.ecoChallenge.create({
+    data: {
+      title: aiChallenge.title,
+      description: aiChallenge.description,
+      points_reward: aiChallenge.points,
+      material_type: aiChallenge.materialType,
+      created_by_admin_id: adminId || null,
+      category, // ✅ include category
+    },
   });
-
-  if (!challenge) {
-    throw new AppError('Challenge not found', 404);
-  }
-
-  return challenge;
 };
 
+// AI simulation function stays the same
 async function aiGenerateChallenge(): Promise<{
   title: string;
   description: string;
@@ -124,16 +89,3 @@ async function aiGenerateChallenge(): Promise<{
     materialType: randomMaterial as MaterialType,
   };
 }
-
-export const generateAndSaveChallenge = async (adminId?: number) => {
-  const aiChallenge = await aiGenerateChallenge();
-  return prisma.ecoChallenge.create({
-    data: {
-      title: aiChallenge.title,
-      description: aiChallenge.description,
-      points_reward: aiChallenge.points,
-      material_type: aiChallenge.materialType,
-      created_by_admin_id: adminId || null,
-    },
-  });
-};

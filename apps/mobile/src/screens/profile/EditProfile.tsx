@@ -1,9 +1,10 @@
+// apps/mobile/src/screens/profile/EditProfile.tsx - FIXED IMPORTS
 import React, { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
-import Button from '~/components/common/Button';
+import Button from '~/components/common/Button'; // ✅ Default import
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";
 import { useAlert } from '~/hooks/useAlert';
