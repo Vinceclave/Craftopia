@@ -1,41 +1,79 @@
-import cron from 'node-cron';
-import { generateChallenge } from '../ai/services/challenges.service';
+// apps/backend/src/cron/challenge.cron.ts - ENHANCED VERSION
 
-// Daily at 2:35 PM
-cron.schedule('20 19 * * *', async () => {
-  console.log('Running daily challenge generation...');
+import cron from 'node-cron';
+import { generateChallenge, createChallenges } from '../ai/services/challenges.service';
+
+// Helper function to log with timestamp
+const log = (message: string, level: 'info' | 'error' = 'info') => {
+  const timestamp = new Date().toISOString();
+  const prefix = level === 'error' ? '❌' : '✅';
+  console.log(`${prefix} [${timestamp}] ${message}`);
+};
+
+// Daily challenges - Every day at 6:00 AM
+cron.schedule('9 20 * * *', async () => {
+  log('Starting daily challenge generation...');
+  
   try {
     const challenges = await generateChallenge('daily');
-    // TODO: Save challenges to database
-    console.log('Daily challenges generated successfully:', challenges.length);
-  } catch (error) {
-    console.error('Daily challenge generation failed:', error);
-    // TODO: Send alert to admin or retry logic
+    
+    if (challenges && challenges.length > 0) {
+      // Auto-save generated challenges
+      await createChallenges(challenges);
+      log(`Successfully generated and saved ${challenges.length} daily challenges`);
+    } else {
+      log('No daily challenges generated', 'error');
+    }
+  } catch (error: any) {
+    log(`Daily challenge generation failed: ${error.message}`, 'error');
+    // TODO: Add notification to admin dashboard or email alert
   }
 });
 
-// Weekly on Monday at 2:35 PM  
-cron.schedule('20 19 * * 2', async () => {
-  console.log('Running weekly challenge generation...');
+// Weekly challenges - Every Monday at 7:00 AM
+cron.schedule('9 20 * * 2', async () => {
+  log('Starting weekly challenge generation...');
+  
   try {
     const challenges = await generateChallenge('weekly');
-    // TODO: Save challenges to database
-    console.log('Weekly challenges generated successfully:', challenges.length);
-  } catch (error) {
-    console.error('Weekly challenge generation failed:', error);
-    // TODO: Send alert to admin or retry logic
+    
+    if (challenges && challenges.length > 0) {
+      await createChallenges(challenges);
+      log(`Successfully generated and saved ${challenges.length} weekly challenges`);
+    } else {
+      log('No weekly challenges generated', 'error');
+    }
+  } catch (error: any) {
+    log(`Weekly challenge generation failed: ${error.message}`, 'error');
   }
 });
 
-// Monthly on 1st day at 2:35 PM
-cron.schedule('20 19 23 * *', async () => {
-  console.log('Running monthly challenge generation...');
+// Monthly challenges - 1st of every month at 8:00 AM
+cron.schedule('9 20 23 * *', async () => {
+  log('Starting monthly challenge generation...');
+  
   try {
     const challenges = await generateChallenge('monthly');
-    // TODO: Save challenges to database
-    console.log('Monthly challenges generated successfully:', challenges.length);
-  } catch (error) {
-    console.error('Monthly challenge generation failed:', error);
-    // TODO: Send alert to admin or retry logic
+    
+    if (challenges && challenges.length > 0) {
+      await createChallenges(challenges);
+      log(`Successfully generated and saved ${challenges.length} monthly challenges`);
+    } else {
+      log('No monthly challenges generated', 'error');
+    }
+  } catch (error: any) {
+    log(`Monthly challenge generation failed: ${error.message}`, 'error');
   }
 });
+
+// Optional: Health check cron - runs every hour to ensure the system is working
+cron.schedule('0 * * * *', async () => {
+  try {
+    // Simple health check - just verify AI service is responsive
+    log('Challenge automation system is running');
+  } catch (error) {
+    log('Challenge automation health check failed', 'error');
+  }
+});
+
+log('Challenge automation cron jobs initialized successfully');

@@ -26,43 +26,47 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   userProfile,
   onEditPress,
 }) => {
-  const progressPercentage = userProfile.totalPoints && userProfile.nextLevelPoints 
-    ? Math.min((userProfile.totalPoints / userProfile.nextLevelPoints) * 100, 100)
-    : 0;
+  const progressPercentage =
+    userProfile.totalPoints && userProfile.nextLevelPoints
+      ? Math.min(
+          (userProfile.totalPoints / userProfile.nextLevelPoints) * 100,
+          100,
+        )
+      : 0;
 
   return (
-    <View className="p-4 bg-craftopia-surface rounded-xl shadow-sm">
-      {/* Avatar + Name + Verified */}
-      <View className="flex-row items-center gap-3 mb-3">
+    <View className="p-3 bg-craftopia-surface rounded-lg shadow-sm">
+      {/* Avatar + Name */}
+      <View className="flex-row items-center gap-2.5 mb-2.5">
         {userProfile.avatar ? (
           <View className="relative">
             <Image
               source={{ uri: userProfile.avatar }}
-              className="w-16 h-16 rounded-full"
+              className="w-14 h-14 rounded-full"
             />
             {userProfile.verified && (
-              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-5 h-5 justify-center items-center border-2 border-white">
-                <Check size={10} color="#fff" />
+              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-4.5 h-4.5 justify-center items-center border-2 border-white">
+                <Check size={9} color="#fff" />
               </View>
             )}
           </View>
         ) : (
-          <View className="w-16 h-16 bg-craftopia-light justify-center items-center rounded-full relative">
-            <Text className="text-craftopia-primary text-lg font-bold">
-              {userProfile.name?.[0] ?? "?"}
+          <View className="w-14 h-14 bg-craftopia-light justify-center items-center rounded-full relative">
+            <Text className="text-craftopia-primary text-base font-bold">
+              {userProfile.name?.[0] ?? '?'}
             </Text>
             {userProfile.verified && (
-              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-5 h-5 justify-center items-center border-2 border-white">
-                <Check size={10} color="#fff" />
+              <View className="absolute top-0 right-0 bg-craftopia-primary rounded-full w-4.5 h-4.5 justify-center items-center border-2 border-white">
+                <Check size={9} color="#fff" />
               </View>
             )}
           </View>
         )}
         <View className="flex-1">
-          <Text className="text-lg text-craftopia-textPrimary font-bold mb-1">
+          <Text className="text-base text-craftopia-textPrimary font-bold mb-0.5">
             {userProfile.name}
           </Text>
-          <Text className="text-base text-craftopia-textSecondary">
+          <Text className="text-sm text-craftopia-textSecondary">
             @{userProfile.username}
           </Text>
         </View>
@@ -70,45 +74,62 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
       {/* Bio */}
       {userProfile.bio && (
-        <Text className="text-base text-craftopia-textSecondary italic mb-3 leading-5" numberOfLines={2}>
+        <Text
+          className="text-sm text-craftopia-textSecondary italic mb-2 leading-5"
+          numberOfLines={2}
+        >
           {userProfile.bio}
         </Text>
       )}
 
       {/* Location + Join Date */}
-      <View className="mb-4 flex-row justify-between items-center">
+      <View className="mb-3 flex-row justify-between items-center">
         {userProfile.location && (
-          <View className="flex-row items-center gap-2">
-            <MapPin size={16} color="#004E98" />
-            <Text className="text-base text-craftopia-textSecondary">{userProfile.location}</Text>
+          <View className="flex-row items-center gap-1.5">
+            <MapPin size={14} color="#004E98" />
+            <Text className="text-sm text-craftopia-textSecondary">
+              {userProfile.location}
+            </Text>
           </View>
         )}
         {userProfile.joinDate && (
-          <Text className="text-base text-craftopia-textSecondary">Joined: {userProfile.joinDate}</Text>
+          <Text className="text-sm text-craftopia-textSecondary">
+            Joined: {userProfile.joinDate}
+          </Text>
         )}
       </View>
 
       {/* Level & Points */}
-      <View className="mb-4 p-3 bg-craftopia-light rounded-lg">
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-2">
-            <Star size={18} color="#004E98" />
-            <Text className="text-base text-craftopia-primary font-semibold">Level {userProfile.level || 1}</Text>
+      <View className="mb-3 p-2.5 bg-craftopia-light rounded-md">
+        <View className="flex-row items-center justify-between mb-1.5">
+          <View className="flex-row items-center gap-1.5">
+            <Star size={16} color="#004E98" />
+            <Text className="text-sm text-craftopia-primary font-semibold">
+              Level {userProfile.level || 1}
+            </Text>
             {userProfile.title && (
-              <Text className="text-base text-craftopia-textSecondary">• {userProfile.title}</Text>
+              <Text className="text-sm text-craftopia-textSecondary">
+                • {userProfile.title}
+              </Text>
             )}
           </View>
-          <Text className="text-base text-craftopia-textSecondary font-medium">{userProfile.totalPoints || 0} pts</Text>
+          <Text className="text-sm text-craftopia-textSecondary font-medium">
+            {userProfile.totalPoints || 0} pts
+          </Text>
         </View>
 
-        {/* Progress Bar */}
+        {/* Progress */}
         {userProfile.nextLevelPoints && (
           <>
-            <View className="w-full h-2 bg-gray-200 rounded-full mb-1">
-              <View className="h-2 bg-craftopia-primary rounded-full" style={{ width: `${progressPercentage}%` }} />
+            <View className="w-full h-1.5 bg-gray-200 rounded-full mb-0.5">
+              <View
+                className="h-1.5 bg-craftopia-primary rounded-full"
+                style={{ width: `${progressPercentage}%` }}
+              />
             </View>
-            <Text className="text-base text-craftopia-textSecondary text-right">
-              {userProfile.nextLevelPoints - (userProfile.totalPoints || 0)} pts to next level
+            <Text className="text-xs text-craftopia-textSecondary text-right">
+              {userProfile.nextLevelPoints - (userProfile.totalPoints || 0)} pts
+              to next level
             </Text>
           </>
         )}
@@ -118,8 +139,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       <Button
         onPress={onEditPress}
         title="Edit Profile"
-        leftIcon={<Pencil size={18} color="#fff" />}
-        textClassName="text-base font-semibold"
+        leftIcon={<Pencil size={16} color="#fff" />}
+        textClassName="text-sm font-semibold"
       />
     </View>
   );

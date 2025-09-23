@@ -28,7 +28,8 @@ interface UserProfile {
 }
 
 export const ProfileScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
   const { user } = useAuth();
 
   const userProfile: UserProfile = {
@@ -37,19 +38,22 @@ export const ProfileScreen = () => {
     email: user?.email || 'email@example.com',
     avatar: user?.profile?.profile_picture_url || '',
     verified: user?.is_email_verified || false,
-    joinDate: user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown',
+    joinDate: user?.created_at
+      ? new Date(user.created_at).toLocaleDateString()
+      : 'Unknown',
     bio: user?.profile?.bio || 'This user has not set a bio yet.',
     level: Math.floor((user?.profile?.points || 0) / 100) + 1,
     title: 'Maker',
     totalPoints: user?.profile?.points || 0,
-    nextLevelPoints: (Math.floor((user?.profile?.points || 0) / 100) + 1) * 100,
+    nextLevelPoints:
+      (Math.floor((user?.profile?.points || 0) / 100) + 1) * 100,
     location: user?.profile?.location || 'Unknown',
   };
 
   const stats = [
-    { label: 'Posts', value: '12', icon: User},
-    { label: 'Points', value: userProfile.totalPoints?.toString() || '0', icon: Trophy},
-    { label: 'Level', value: userProfile.level?.toString() || '1', icon: Zap},
+    { label: 'Posts', value: '12', icon: User },
+    { label: 'Points', value: userProfile.totalPoints?.toString() || '0', icon: Trophy },
+    { label: 'Level', value: userProfile.level?.toString() || '1', icon: Zap },
   ];
 
   const quickActions = [
@@ -64,32 +68,25 @@ export const ProfileScreen = () => {
 
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
-      {/* Header */}
-      <ProfileHeader 
+      <ProfileHeader
         onSharePress={handleSharePress}
         onSettingsPress={handleSettingsPress}
       />
 
-      <ScrollView 
+      <ScrollView
         className="flex-1 px-4"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 90 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
       >
-        {/* Profile Card */}
-        <View className="mt-4">
-          <ProfileCard 
-            userProfile={userProfile}
-            onEditPress={handleEditPress}
-          />
+        <View className="mt-3">
+          <ProfileCard userProfile={userProfile} onEditPress={handleEditPress} />
         </View>
 
-        {/* Stats Grid */}
-        <View className="mt-6">
+        <View className="mt-5">
           <StatsGrid stats={stats} />
         </View>
 
-        {/* Quick Actions */}
-        <View className="mt-6 mb-10">
+        <View className="mt-5 mb-8">
           <QuickActions actions={quickActions} />
         </View>
       </ScrollView>

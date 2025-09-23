@@ -1,4 +1,5 @@
-// challenges.service.ts
+// apps/backend/src/ai/services/challenges.service.ts - UPDATED RECYCLABLE FOCUS
+
 import { ai } from "../gemini/client";
 import { AppError } from "../../utils/error";
 import { challengePrompt } from "../prompt/challenges.prompt";
@@ -17,27 +18,46 @@ export interface AIChallenge {
   source: 'ai';
 }
 
-// Material mapping
-const materialMap: Record<string, MaterialType> = {
-  plastic: "plastic",
-  paper: "paper",
-  glass: "glass",
-  metal: "metal",
-  electronics: "electronics",
-  organic: "organic",
-  textile: "textile",
-  mixed: "mixed",
+// UPDATED: Only recyclable materials mapping
+const recyclableMaterialMap: Record<string, MaterialType> = {
+  plastic: "plastic",     // Bottles, containers, bags
+  paper: "paper",         // Newspapers, cardboard, magazines
+  glass: "glass",         // Jars, bottles
+  metal: "metal",         // Cans, foil, containers
+  electronics: "electronics", // E-waste for proper recycling
+  organic: "organic",     // Compostable materials
+  textile: "textile",     // Clothing, fabric for repurposing
+};
+
+// UPDATED: Focus on common recyclable materials
+const getRecyclableMaterials = (frequency: 'daily' | 'weekly' | 'monthly'): string[] => {
+  const commonRecyclables = ['plastic', 'paper', 'glass', 'metal'];
+  const allRecyclables = [...commonRecyclables, 'textile', 'organic'];
+  
+  switch (frequency) {
+    case 'daily':
+      // Focus on most common household recyclables
+      return commonRecyclables.sort(() => 0.5 - Math.random()).slice(0, 3);
+    case 'weekly':
+      // Include more variety for weekly challenges
+      return allRecyclables.sort(() => 0.5 - Math.random()).slice(0, 4);
+    case 'monthly':
+      // Use all recyclable materials for monthly challenges
+      return allRecyclables.sort(() => 0.5 - Math.random()).slice(0, 5);
+    default:
+      return commonRecyclables;
+  }
 };
 
 export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<AIChallenge[]> => {
   try {
-    // Get random material types for variety
-    const materialTypes = Object.keys(materialMap);
-    const selectedMaterials = materialTypes
-      .sort(() => 0.5 - Math.random())
-      .slice(0, Math.min(materialTypes.length, frequency === 'daily' ? 3 : 5));
+    // Get appropriate recyclable materials for the frequency
+    const selectedMaterials = getRecyclableMaterials(frequency);
+    const materialTypesString = selectedMaterials.join(", ");
 
-    const prompt = challengePrompt(selectedMaterials.join(", "), frequency);
+    console.log(`Generating ${frequency} challenges for recyclable materials: ${materialTypesString}`);
+
+    const prompt = challengePrompt(materialTypesString, frequency);
 
     const response = await ai.models.generateContent({
       model: config.ai.model,
@@ -45,7 +65,7 @@ export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly
     });
 
     const text = response.text;
-    console.log('AI Response:', text);
+    console.log('AI Response for recyclable challenges:', text);
 
     if (!text) {
       throw new Error('AI response is empty');
@@ -54,28 +74,40 @@ export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly
     // Parse the JSON response
     const parsedChallenges = parseResponse(text);
     
-    // Validate and transform the response
-    const challenges: AIChallenge[] = parsedChallenges.map((challenge: any) => ({
-      title: challenge.title,
-      description: challenge.description,
-      points_reward: challenge.pointsReward,
-      material_type: materialMap[challenge.materialType] || MaterialType.mixed,
-      category: frequency,
-      is_active: challenge.isActive,
-      source: 'ai' as const,
-    }));
+    // Validate and transform the response - ensure only recyclable materials
+    const challenges: AIChallenge[] = parsedChallenges
+      .filter((challenge: any) => {
+        // Filter out any challenges with non-recyclable materials
+        const materialType = challenge.materialType?.toLowerCase();
+        return materialType && recyclableMaterialMap[materialType];
+      })
+      .map((challenge: any) => ({
+        title: challenge.title,
+        description: challenge.description,
+        points_reward: Math.max(15, Math.min(30, challenge.pointsReward || 20)), // Ensure 15-30 points
+        material_type: recyclableMaterialMap[challenge.materialType] || MaterialType.mixed,
+        category: frequency,
+        is_active: challenge.isActive,
+        source: 'ai' as const,
+      }));
 
-    console.log(`Generated ${challenges.length} ${frequency} challenges:`, challenges);
+    console.log(`Generated ${challenges.length} recyclable ${frequency} challenges:`, 
+      challenges.map(c => `${c.title} (${c.material_type})`));
     
-    // DON'T auto-save - let admin control this
+    // Validate we have challenges and they're focused on recyclables
+    if (challenges.length === 0) {
+      throw new Error('No valid recyclable material challenges generated');
+    }
+
     return challenges;
 
   } catch (error: any) {
-    console.error('AI generation failed:', error);
-    throw new AppError('Failed to generate challenges', 500);
+    console.error('Recyclable challenge generation failed:', error);
+    throw new AppError('Failed to generate recyclable material challenges', 500);
   }
 };
 
+// Keep existing createChallenges and createChallenge functions unchanged
 export const createChallenges = async (challenges: AIChallenge[]) => {
   try {
     const savedChallenges = await prisma.ecoChallenge.createMany({
@@ -84,7 +116,7 @@ export const createChallenges = async (challenges: AIChallenge[]) => {
         description: challenge.description.trim(),
         points_reward: challenge.points_reward,
         material_type: challenge.material_type,
-        category: challenge.category.toUpperCase() as ChallengeCategory,
+        category: challenge.category as ChallengeCategory, // Remove .toUpperCase()
         source: ChallengeSource.ai,
         is_active: challenge.is_active,
         created_by_admin_id: null,
@@ -92,21 +124,20 @@ export const createChallenges = async (challenges: AIChallenge[]) => {
       skipDuplicates: true,
     });
     
-    console.log(`Saved ${savedChallenges.count} challenges to database`);
+    console.log(`Saved ${savedChallenges.count} recyclable challenges to database`);
     return savedChallenges;
   } catch (error) {
-    console.error('Failed to save challenges to database:', error);
-    throw new AppError('Failed to save challenges to database', 500);
+    console.error('Failed to save recyclable challenges to database:', error);
+    throw new AppError('Failed to save recyclable challenges to database', 500);
   }
 };
 
-// Your existing createChallenge function (single challenge creation)
 export const createChallenge = async (data: {
   title: string;
   description: string;
   points_reward: number;
   material_type: string;
-  created_by_admin_id?: number | null;  // Made optional
+  created_by_admin_id?: number | null;
   category: ChallengeCategory;
 }) => {
   if (!data.title?.trim()) {
@@ -122,7 +153,7 @@ export const createChallenge = async (data: {
   }
 
   if (!Object.values(MaterialType).includes(data.material_type as MaterialType)) {
-    throw new AppError(`Invalid material type. Allowed values: ${Object.values(MaterialType).join(', ')}`, 400);
+    throw new AppError(`Invalid material type. Allowed recyclable materials: ${Object.values(MaterialType).join(', ')}`, 400);
   }
 
   if (!Object.values(ChallengeCategory).includes(data.category)) {
