@@ -75,6 +75,11 @@ enum ChallengeCategory {
   monthly
 }
 
+enum VerificationType {
+  manual
+  ai
+}
+
 // ==========================
 // MODULE 1: USER MANAGEMENT
 // ==========================
@@ -215,17 +220,17 @@ model Like {
 // MODULE 4: GAMIFICATION
 // ==========================
 model EcoChallenge {
-  challenge_id        Int              @id @default(autoincrement())
+  challenge_id        Int               @id @default(autoincrement())
   title               String
   description         String
   points_reward       Int
-  is_active           Boolean          @default(true)
-  source              ChallengeSource  @default(admin)
+  is_active           Boolean           @default(true)
+  source              ChallengeSource   @default(admin)
   material_type       MaterialType
-  category            ChallengeCategory  // 👈 added field for daily/weekly/monthly
+  category            ChallengeCategory
   created_by_admin_id Int?
-  created_at          DateTime         @default(now())
-  updated_at          DateTime         @default(now())
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @default(now())
   deleted_at          DateTime?
 
   created_by_admin User?           @relation(fields: [created_by_admin_id], references: [user_id])
@@ -233,18 +238,20 @@ model EcoChallenge {
 }
 
 model UserChallenge {
-  user_challenge_id     Int             @id @default(autoincrement())
-  user_id               Int
-  challenge_id          Int
-  status                ChallengeStatus @default(in_progress)
-  proof_url             String?
-  completed_at          DateTime?
-  verified_at           DateTime?
-  verified_by_admin_id  Int?
-  points_awarded        Int             @default(0)
-  admin_notes           String?
-  created_at            DateTime        @default(now())
-  deleted_at            DateTime?
+  user_challenge_id    Int               @id @default(autoincrement())
+  user_id              Int
+  challenge_id         Int
+  status               ChallengeStatus   @default(in_progress)
+  proof_url            String?
+  completed_at         DateTime?
+  verified_at          DateTime?
+  verified_by_admin_id Int?
+  verification_type    VerificationType?
+  ai_confidence_score  Float?            // 0.0 - 1.0 for AI verification
+  points_awarded       Int               @default(0)
+  admin_notes          String?
+  created_at           DateTime          @default(now())
+  deleted_at           DateTime?
 
   user        User         @relation(fields: [user_id], references: [user_id])
   challenge   EcoChallenge @relation(fields: [challenge_id], references: [challenge_id])

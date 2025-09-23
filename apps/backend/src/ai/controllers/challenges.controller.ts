@@ -10,6 +10,6 @@ export const generateChallenges = asyncHandler(async (req: Request, res: Respons
     return res.status(400).json({ message: "materials array and category required" });
   }
 
-  const challenges = await generateChallenge(materials, category);
+  const challenges = await generateChallenge();
   sendSuccess(res, challenges, 'Challenges successfully generated');
 });

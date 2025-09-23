@@ -1,11 +1,41 @@
 import cron from 'node-cron';
-import { createChallenges } from '../ai/services/challenges.service';
+import { generateChallenge } from '../ai/services/challenges.service';
 
-// Daily at 10:25 PM
-cron.schedule('54 22 * * *', () => createChallenges(['plastic','paper','glass'], 'daily'));
+// Daily at 2:35 PM
+cron.schedule('20 19 * * *', async () => {
+  console.log('Running daily challenge generation...');
+  try {
+    const challenges = await generateChallenge('daily');
+    // TODO: Save challenges to database
+    console.log('Daily challenges generated successfully:', challenges.length);
+  } catch (error) {
+    console.error('Daily challenge generation failed:', error);
+    // TODO: Send alert to admin or retry logic
+  }
+});
 
-// Weekly Monday at 10:25 PM
-cron.schedule('54 22 * * 1', () => createChallenges(['metal','textile','glass'], 'weekly'));
+// Weekly on Monday at 2:35 PM  
+cron.schedule('20 19 * * 2', async () => {
+  console.log('Running weekly challenge generation...');
+  try {
+    const challenges = await generateChallenge('weekly');
+    // TODO: Save challenges to database
+    console.log('Weekly challenges generated successfully:', challenges.length);
+  } catch (error) {
+    console.error('Weekly challenge generation failed:', error);
+    // TODO: Send alert to admin or retry logic
+  }
+});
 
-// Monthly 1st day at 10:25 PM
-cron.schedule('54 22 1 * *', () => createChallenges(['electronics','organic','plastic'], 'monthly'));
+// Monthly on 1st day at 2:35 PM
+cron.schedule('20 19 23 * *', async () => {
+  console.log('Running monthly challenge generation...');
+  try {
+    const challenges = await generateChallenge('monthly');
+    // TODO: Save challenges to database
+    console.log('Monthly challenges generated successfully:', challenges.length);
+  } catch (error) {
+    console.error('Monthly challenge generation failed:', error);
+    // TODO: Send alert to admin or retry logic
+  }
+});

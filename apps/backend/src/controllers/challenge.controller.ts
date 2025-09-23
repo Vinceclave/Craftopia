@@ -3,21 +3,30 @@ import * as challengeService from "../services/challenge.service";
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendPaginatedSuccess, sendSuccess, sendError, createPaginationMeta } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import { ChallengeCategory } from '../generated/prisma';
 
 export const createChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { title, description, points_reward, material_type } = req.body;
+  const { title, description, points_reward, material_type, category } = req.body;
+  
   const challenge = await challengeService.createChallenge({
     title,
     description,
     points_reward,
     material_type,
+    category: category || 'daily', // Default to 'daily' if not provided
     created_by_admin_id: req.user!.userId
   });
+  
   sendSuccess(res, challenge, 'Challenge created successfully', 201);
 });
 
 export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const challenge = await challengeService.generateAndSaveChallenge(req.user!.userId);
+  const { category } = req.body;
+  
+  // Validate category if provided, default to 'daily'
+  const challengeCategory: ChallengeCategory = category || 'daily';
+  
+  const challenge = await challengeService.generateAndSaveChallenge(challengeCategory, req.user!.userId);
   sendSuccess(res, challenge, 'Challenge generated successfully', 201);
 });
 

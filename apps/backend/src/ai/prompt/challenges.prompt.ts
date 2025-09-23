@@ -1,38 +1,62 @@
-export const challengePrompt = `Generate an array of recycling challenges in strict JSON format:
+export const challengePrompt = (materialTypes: string, frequency: 'daily' | 'weekly' | 'monthly' = 'daily') => {
+  const challengeCount = frequency === 'daily' ? 5 : frequency === 'weekly' ? 10 : 15;
+  
+  return `Generate an array of ${challengeCount} recycling challenges in strict JSON format using these materials: ${materialTypes}
+
+Create challenges that produce CLEAR, PHOTOGRAPHABLE results for AI validation:
+
+Requirements for each challenge:
+- Must create a visible, tangible outcome
+- Result should be clearly identifiable in a photo
+- Include specific quantities/numbers when possible
+- Avoid abstract or hard-to-photograph outcomes
+- Focus on transformation of materials into new forms
+
+Return ONLY valid JSON array with this exact structure:
 
 [
   {
     "title": "engaging 3-5 word title",
-    "description": "specific 1-2 sentence task",
-    "pointsReward": 1-100,
-    "materialType": "plastic|paper|glass|metal|electronics|organic|textile|mixed",
+    "description": "specific task that creates a clear visual result for photo validation",
+    "pointsReward": 20,
+    "materialType": "plastic",
     "isActive": true,
     "source": "ai"
   }
 ]
 
 Rules:
-- Return **an array** of 3 challenges.
-- Use only the provided materials when possible.
-- Ensure JSON is valid and parseable.
+- Return ONLY the JSON array, no additional text
+- Use materials: plastic, paper, glass, metal, electronics, organic, textile, mixed
+- Point rewards: 10-30 points based on effort and visual impact
+- Make outcomes easily recognizable by AI in photos
+- Include specific numbers/quantities for verification
 
-Examples:
+Examples of GOOD photo-validatable challenges:
 [
   {
-    "title": "Plastic Bottle Planters",
-    "description": "Transform 5 plastic bottles into small planters for herbs",
-    "pointsReward": 20,
+    "title": "Bottle Planter Garden",
+    "description": "Transform 5 plastic bottles into planters with soil and plants visible.",
+    "pointsReward": 25,
     "materialType": "plastic",
     "isActive": true,
     "source": "ai"
   },
   {
-    "title": "Glass Jar Storage",
-    "description": "Repurpose 3 glass jars as storage containers",
+    "title": "Glass Jar Organization",
+    "description": "Arrange 8 clean glass jars filled with organized items as storage.",
+    "pointsReward": 20,
+    "materialType": "glass", 
+    "isActive": true,
+    "source": "ai"
+  },
+  {
+    "title": "Paper Origami Display",
+    "description": "Create 12 origami figures from old magazines arranged in a display.",
     "pointsReward": 15,
-    "materialType": "glass",
+    "materialType": "paper",
     "isActive": true,
     "source": "ai"
   }
-]
-`;
+]`;
+};

@@ -8,7 +8,7 @@ export const createChallenge = async (data: {
   points_reward: number;
   material_type: string;
   created_by_admin_id: number | null;
-  category: ChallengeCategory; // ✅ added
+  category: ChallengeCategory;
 }) => {
   if (!data.title?.trim()) {
     throw new AppError('Challenge title is required', 400);
@@ -26,33 +26,144 @@ export const createChallenge = async (data: {
     throw new AppError(`Invalid material type. Allowed values: ${Object.values(MaterialType).join(', ')}`, 400);
   }
 
+  if (!Object.values(ChallengeCategory).includes(data.category)) {
+    throw new AppError(`Invalid category. Allowed values: ${Object.values(ChallengeCategory).join(', ')}`, 400);
+  }
+
   return prisma.ecoChallenge.create({
     data: {
       title: data.title.trim(),
       description: data.description.trim(),
       points_reward: data.points_reward,
       material_type: data.material_type as MaterialType,
+      category: data.category,
       created_by_admin_id: data.created_by_admin_id,
-      category: data.category, // ✅ include category
+    },
+    include: {
+      created_by_admin: {
+        select: { user_id: true, username: true }
+      }
     }
   });
 };
 
 export const generateAndSaveChallenge = async (category: ChallengeCategory, adminId?: number) => {
   const aiChallenge = await aiGenerateChallenge();
+  
   return prisma.ecoChallenge.create({
     data: {
       title: aiChallenge.title,
       description: aiChallenge.description,
       points_reward: aiChallenge.points,
       material_type: aiChallenge.materialType,
+      category,
       created_by_admin_id: adminId || null,
-      category, // ✅ include category
     },
+    include: {
+      created_by_admin: {
+        select: { user_id: true, username: true }
+      }
+    }
   });
 };
 
-// AI simulation function stays the same
+export const getAllChallenges = async (page = 1, limit = 10) => {
+  if (page < 1) page = 1;
+  if (limit < 1 || limit > 100) limit = 10;
+
+  const skip = (page - 1) * limit;
+
+  const [data, total] = await Promise.all([
+    prisma.ecoChallenge.findMany({
+      where: {
+        deleted_at: null,
+        is_active: true
+      },
+      skip,
+      take: limit,
+      orderBy: { created_at: 'desc' },
+      include: {
+        created_by_admin: {
+          select: { user_id: true, username: true }
+        },
+        _count: {
+          select: {
+            participants: {
+              where: { deleted_at: null }
+            }
+          }
+        }
+      }
+    }),
+    prisma.ecoChallenge.count({
+      where: {
+        deleted_at: null,
+        is_active: true
+      }
+    })
+  ]);
+
+  return {
+    data: data.map(challenge => ({
+      ...challenge,
+      participantCount: challenge._count.participants,
+      _count: undefined // Remove from response
+    })),
+    meta: {
+      total,
+      page,
+      lastPage: Math.ceil(total / limit),
+      limit
+    }
+  };
+};
+
+export const getChallengeById = async (challengeId: number) => {
+  if (!challengeId || challengeId <= 0) {
+    throw new AppError('Invalid challenge ID', 400);
+  }
+
+  const challenge = await prisma.ecoChallenge.findFirst({
+    where: {
+      challenge_id: challengeId,
+      deleted_at: null
+    },
+    include: {
+      created_by_admin: {
+        select: { user_id: true, username: true }
+      },
+      participants: {
+        where: { deleted_at: null },
+        include: {
+          user: {
+            select: { user_id: true, username: true }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10 // Show recent participants
+      },
+      _count: {
+        select: {
+          participants: {
+            where: { deleted_at: null }
+          }
+        }
+      }
+    }
+  });
+
+  if (!challenge) {
+    throw new AppError('Challenge not found', 404);
+  }
+
+  return {
+    ...challenge,
+    participantCount: challenge._count.participants,
+    _count: undefined // Remove from response
+  };
+};
+
+// AI simulation function
 async function aiGenerateChallenge(): Promise<{
   title: string;
   description: string;
