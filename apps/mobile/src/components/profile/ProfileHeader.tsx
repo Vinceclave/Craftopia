@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Share2, Settings } from 'lucide-react-native';
+import React from 'react'
+import { View, Text, TouchableOpacity } from 'react-native'
+import { Share2, Settings } from 'lucide-react-native'
 
 interface ProfileHeaderProps {
-  onSharePress: () => void;
-  onSettingsPress: () => void;
+  onSharePress: () => void
+  onSettingsPress: () => void
 }
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
@@ -12,31 +12,31 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onSettingsPress,
 }) => {
   return (
-    <View className="bg-craftopia-surface px-4 py-2.5 border-b border-gray-200">
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
       <View className="flex-row justify-between items-center">
         <View>
           <Text className="text-base font-semibold text-craftopia-textPrimary">
             Profile
           </Text>
-          <Text className="text-sm text-craftopia-textSecondary mt-0.5">
+          <Text className="text-xs text-craftopia-textSecondary mt-1">
             Manage your account
           </Text>
         </View>
-        <View className="flex-row gap-1.5 items-center">
+        <View className="flex-row gap-2 items-center">
           <TouchableOpacity
-            onPress={onSharePress}
             className="w-8 h-8 rounded-full items-center justify-center"
+            onPress={onSharePress}
           >
-            <Share2 size={16} color="#004E98" />
+            <Share2 size={18} color="#004E98" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={onSettingsPress}
             className="w-8 h-8 rounded-full items-center justify-center"
+            onPress={onSettingsPress}
           >
-            <Settings size={16} color="#004E98" />
+            <Settings size={18} color="#004E98" />
           </TouchableOpacity>
         </View>
       </View>
     </View>
-  );
-};
+  )
+}

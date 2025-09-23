@@ -1,4 +1,3 @@
-// apps/mobile/src/screens/feed/Feed.tsx
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Text,
@@ -63,15 +62,7 @@ export const FeedScreen = () => {
         const fetchedPosts: PostProps[] = response?.data || [];
 
         if (isRefresh || pageNumber === 1) {
-          setPosts(prevPosts => {
-            const existingMap = new Map(prevPosts.map(p => [p.post_id, p]));
-            return fetchedPosts.map(post => {
-              const existing = existingMap.get(post.post_id);
-              return existing
-                ? { ...post, isLiked: existing.isLiked, likeCount: existing.likeCount }
-                : post;
-            });
-          });
+          setPosts(fetchedPosts);
           setPage(1);
         } else {
           setPosts(prevPosts => {
@@ -85,7 +76,6 @@ export const FeedScreen = () => {
         setHasMore(response?.meta ? response.meta.page < response.meta.lastPage : fetchedPosts.length === 10);
       } catch (err: any) {
         setError(err.message || 'Failed to load posts');
-        console.error('Error fetching posts:', err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -108,41 +98,24 @@ export const FeedScreen = () => {
     if (pendingReactions.current.has(postId)) return;
     pendingReactions.current.add(postId);
 
-    let originalPost: PostProps | undefined;
-    setPosts(prevPosts => {
-      originalPost = prevPosts.find(p => p.post_id === postId);
-      return prevPosts.map(post =>
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
         post.post_id === postId
           ? { ...post, isLiked: !post.isLiked, likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1 }
           : post
-      );
-    });
+      )
+    );
 
     try {
-      const response = await postService.toggleReaction(postId.toString());
-      const data = response?.data || response;
-      if (typeof data?.isLiked === 'boolean' && typeof data?.likeCount === 'number') {
-        setPosts(current =>
-          current.map(p => (p.post_id === postId ? { ...p, isLiked: data.isLiked, likeCount: data.likeCount } : p))
-        );
-      } else {
-        const countResponse = await postService.getReactionCount(postId.toString());
-        const serverCount = countResponse?.data?.total || 0;
-        setPosts(current =>
-          current.map(p =>
-            p.post_id === postId ? { ...p, isLiked: !originalPost?.isLiked, likeCount: serverCount } : p
-          )
-        );
-      }
+      await postService.toggleReaction(postId.toString());
     } catch (err) {
-      console.error('Failed to toggle reaction:', err);
-      if (originalPost) {
-        setPosts(current =>
-          current.map(p =>
-            p.post_id === postId ? { ...p, isLiked: originalPost!.isLiked, likeCount: originalPost!.likeCount } : p
-          )
-        );
-      }
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.post_id === postId
+            ? { ...post, isLiked: !post.isLiked, likeCount: post.isLiked ? post.likeCount + 1 : post.likeCount - 1 }
+            : post
+        )
+      );
     } finally {
       pendingReactions.current.delete(postId);
     }
@@ -159,22 +132,13 @@ export const FeedScreen = () => {
         created_at: new Date().toISOString(),
         user: { user_id: 2, username: 'johndoe' },
       },
-      {
-        comment_id: 2,
-        user_id: 3,
-        content: 'Totally agree!',
-        likeCount: 2,
-        isLiked: true,
-        created_at: new Date(Date.now() - 3600000).toISOString(),
-        user: { user_id: 3, username: 'janesmith' },
-      },
     ];
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
     return mockComments;
   }, []);
 
   const handleAddComment = useCallback(async (postId: number, content: string) => {
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
     setPosts(prev =>
       prev.map(post => (post.post_id === postId ? { ...post, commentCount: post.commentCount + 1 } : post))
     );
@@ -205,12 +169,8 @@ export const FeedScreen = () => {
     setPosts([]);
     setPage(1);
     setHasMore(true);
-
-    const loadTabData = async () => {
-      await fetchPosts(1);
-      if (activeTab === 'trending') await fetchTrendingTags();
-    };
-    loadTabData();
+    fetchPosts(1);
+    if (activeTab === 'trending') fetchTrendingTags();
   }, [activeTab, fetchPosts, fetchTrendingTags]);
 
   const renderTab = useCallback(
@@ -221,11 +181,11 @@ export const FeedScreen = () => {
         <TouchableOpacity
           key={tab.key}
           onPress={() => setActiveTab(tab.key)}
-          className={`mr-6 pb-3 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+          className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
         >
           <View className="flex-row items-center">
-            <IconComponent size={18} color={isActive ? '#004E98' : '#6B7280'} />
-            <Text className={`text-base font-semibold ml-2 ${isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'}`}>
+            <IconComponent size={16} color={isActive ? '#004E98' : '#6B7280'} />
+            <Text className={`text-sm font-medium ml-1.5 ${isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'}`}>
               {tab.label}
             </Text>
           </View>
@@ -238,35 +198,35 @@ export const FeedScreen = () => {
   const renderContent = () => {
     if (loading)
       return (
-        <View className="flex-1 justify-center items-center py-20">
-          <ActivityIndicator size="large" color="#004E98" />
-          <Text className="text-gray-500 mt-4">Loading posts...</Text>
+        <View className="flex-1 justify-center items-center py-6">
+          <ActivityIndicator size="small" color="#004E98" />
+          <Text className="text-craftopia-textSecondary text-sm mt-2">Loading posts...</Text>
         </View>
       );
 
     if (error)
       return (
-        <View className="flex-1 justify-center items-center py-20 px-6">
-          <Text className="text-gray-900 text-lg font-semibold text-center mb-2">Oops! Something went wrong</Text>
-          <Text className="text-gray-500 text-center mb-6">{error}</Text>
-          <TouchableOpacity onPress={() => fetchPosts()} className="bg-craftopia-primary px-6 py-3 rounded-lg">
-            <Text className="text-white font-semibold">Try Again</Text>
+        <View className="flex-1 justify-center items-center py-6 px-4">
+          <Text className="text-craftopia-textPrimary text-base font-semibold text-center mb-1">Something went wrong</Text>
+          <Text className="text-craftopia-textSecondary text-sm text-center mb-4">{error}</Text>
+          <TouchableOpacity onPress={() => fetchPosts()} className="bg-craftopia-primary px-4 py-2 rounded-lg">
+            <Text className="text-craftopia-surface text-sm font-medium">Try Again</Text>
           </TouchableOpacity>
         </View>
       );
 
     if (posts.length === 0)
       return (
-        <View className="flex-1 justify-center items-center py-20">
-          <Text className="text-gray-400 text-center text-lg mb-4">No posts yet</Text>
-          <TouchableOpacity onPress={handleRefresh} className="bg-craftopia-primary px-6 py-3 rounded-lg">
-            <Text className="text-white font-semibold">Refresh</Text>
+        <View className="flex-1 justify-center items-center py-6">
+          <Text className="text-craftopia-textSecondary text-center text-base mb-3">No posts yet</Text>
+          <TouchableOpacity onPress={handleRefresh} className="bg-craftopia-primary px-4 py-2 rounded-lg">
+            <Text className="text-craftopia-surface text-sm font-medium">Refresh</Text>
           </TouchableOpacity>
         </View>
       );
 
     return (
-      <View className="px-4 pb-32">
+      <View className="pb-16">
         {posts.map(post => (
           <PostContainer
             key={post.post_id}
@@ -280,15 +240,15 @@ export const FeedScreen = () => {
         ))}
 
         {loadingMore && (
-          <View className="py-4 items-center">
+          <View className="py-3 items-center">
             <ActivityIndicator size="small" color="#004E98" />
-            <Text className="text-gray-500 mt-2 text-sm">Loading more...</Text>
+            <Text className="text-craftopia-textSecondary mt-1 text-xs">Loading more...</Text>
           </View>
         )}
 
         {!hasMore && posts.length > 0 && (
-          <View className="py-8 items-center">
-            <Text className="text-gray-400 text-sm">You've reached the end!</Text>
+          <View className="py-4 items-center">
+            <Text className="text-craftopia-textSecondary text-xs">You've reached the end!</Text>
           </View>
         )}
       </View>
@@ -300,21 +260,21 @@ export const FeedScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       {/* Header */}
-      <View className="bg-white px-4 pt-4 pb-2 border-b border-gray-100">
-        <View className="flex-row justify-between items-center mb-4">
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+        <View className="flex-row justify-between items-center mb-3">
           <View>
-            <Text className="text-2xl font-bold text-gray-900">Feed</Text>
-            <Text className="text-sm text-gray-600">Discover amazing projects</Text>
+            <Text className="text-base font-semibold text-craftopia-textPrimary">Feed</Text>
+            <Text className="text-xs text-craftopia-textSecondary">Discover amazing projects</Text>
           </View>
-          <TouchableOpacity className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
-            <Search size={20} color="#6B7280" />
+          <TouchableOpacity className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center">
+            <Search size={18} color="#6B7280" />
           </TouchableOpacity>
         </View>
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {FEED_TABS.map(renderTab)}
         </ScrollView>
       </View>
@@ -325,12 +285,12 @@ export const FeedScreen = () => {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#004E98']} tintColor="#004E98" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#004E98']} />}
       >
         {/* Trending Tags */}
         {activeTab === 'trending' && trendingTags.length > 0 && (
-          <View className="bg-white px-4 py-4 border-b border-gray-100">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Trending Tags</Text>
+          <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">Trending Tags</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {trendingTags.map(tag => <TrendingTagItem key={tag.tag} {...tag} />)}
             </ScrollView>
@@ -343,10 +303,9 @@ export const FeedScreen = () => {
       {/* FAB */}
       <TouchableOpacity
         onPress={handleCreate}
-        className="absolute bottom-24 right-6 w-14 h-14 bg-craftopia-primary rounded-full items-center justify-center shadow-lg"
-        style={{ shadowColor: '#004E98', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+        className="absolute bottom-24 right-4 w-12 h-12 bg-craftopia-primary rounded-full items-center justify-center shadow-sm"
       >
-        <Plus size={24} color="#fff" />
+        <Plus size={20} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );

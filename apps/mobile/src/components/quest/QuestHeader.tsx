@@ -3,14 +3,14 @@ import { View, Text } from 'react-native'
 
 export const QuestHeader = () => {
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-gray-200">
+    <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
       <View className="flex-row justify-between items-center">
         <View>
-          <Text className="text-lg font-semibold text-craftopia-textPrimary">
-            Quest
+          <Text className="text-base font-semibold text-craftopia-textPrimary">
+            Eco Quest
           </Text>
-          <Text className="text-sm text-craftopia-textSecondary mt-1">
-            Earn rewards by completing quests!
+          <Text className="text-xs text-craftopia-textSecondary mt-0.5">
+            Complete quests, earn rewards
           </Text>
         </View>
       </View>

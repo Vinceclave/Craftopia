@@ -10,14 +10,14 @@ export const QuestLists = () => {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      className="flex-row px-3 py-2"
+      className="flex-row px-4 py-2"
     >
       {QUEST_TABS.map((tab) => (
         <TouchableOpacity
           key={tab}
           onPress={() => setActiveTab(tab)}
-          activeOpacity={0.7}
-          className={`px-4 py-1.5 mr-2 rounded-full border
+          activeOpacity={0.8}
+          className={`px-3 py-1.5 mr-2 rounded-full border
             ${
               activeTab === tab
                 ? "bg-craftopia-primary border-craftopia-primary"
@@ -25,9 +25,9 @@ export const QuestLists = () => {
             }`}
         >
           <Text
-            className={`text-sm ${
+            className={`text-xs ${
               activeTab === tab
-                ? "text-white font-semibold"
+                ? "text-white font-medium"
                 : "text-craftopia-textSecondary"
             }`}
           >

@@ -1,7 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Modal, View, Text, ScrollView, ActivityIndicator, 
-  KeyboardAvoidingView, Platform, TouchableOpacity, Dimensions 
+  KeyboardAvoidingView, Platform, TouchableOpacity
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { CommentItem } from './CommentItem';
@@ -51,18 +51,17 @@ export const CommentModal: React.FC<CommentModalProps> = ({
         <KeyboardAvoidingView 
           className="flex-1" 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
-            <View className="flex-1 pr-4">
-              <Text className="font-semibold text-craftopia-textPrimary text-lg">Comments</Text>
-              <Text className="text-sm text-craftopia-textSecondary mt-1" numberOfLines={1}>
+          <View className="flex-row items-center justify-between px-4 py-3 border-b border-craftopia-light">
+            <View className="flex-1 pr-3">
+              <Text className="font-semibold text-craftopia-textPrimary text-base">Comments</Text>
+              <Text className="text-sm text-craftopia-textSecondary mt-0.5" numberOfLines={1}>
                 {postTitle}
               </Text>
             </View>
-            <TouchableOpacity onPress={handleClose} className="p-2" activeOpacity={0.7}>
-              <X size={24} color="#6B7280" />
+            <TouchableOpacity onPress={handleClose} className="p-1" activeOpacity={0.8}>
+              <X size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
 
@@ -72,21 +71,20 @@ export const CommentModal: React.FC<CommentModalProps> = ({
             className="flex-1 px-4"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ flexGrow: 1 }}
           >
             {loading ? (
-              <View className="flex-1 justify-center items-center py-20">
-                <ActivityIndicator size="large" color="#2563EB" />
-                <Text className="text-craftopia-textSecondary mt-2">Loading comments...</Text>
+              <View className="flex-1 justify-center items-center py-16">
+                <ActivityIndicator size="small" color="#004E98" />
+                <Text className="text-craftopia-textSecondary text-sm mt-2">Loading comments...</Text>
               </View>
             ) : comments.length === 0 ? (
-              <View className="flex-1 justify-center items-center py-20">
-                <Text className="text-craftopia-textSecondary text-center">
+              <View className="flex-1 justify-center items-center py-16">
+                <Text className="text-craftopia-textSecondary text-sm text-center">
                   No comments yet. Be the first to comment!
                 </Text>
               </View>
             ) : (
-              <View className="py-4">
+              <View className="py-3">
                 {comments.map(comment => (
                   <CommentItem 
                     key={comment.comment_id} 

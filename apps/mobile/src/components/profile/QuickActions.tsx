@@ -1,51 +1,84 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
+// QuickActions.tsx
+import React from 'react'
+import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
+import { LucideIcon } from 'lucide-react-native'
 
-interface ActionItem {
-  label: string;
-  icon: LucideIcon;
-  color: keyof typeof craftopiaColors;
-  onPress: () => void;
+interface QuickAction {
+  label: string
+  icon: LucideIcon
+  color: 'primary' | 'growth' | 'accent'
+  onPress: () => void
+  badge?: number // Optional badge count
 }
 
 interface QuickActionsProps {
-  actions: ActionItem[];
+  actions: QuickAction[]
 }
 
-const craftopiaColors = {
-  primary: "#004E98",
-  secondary: "#00A896",
-  accent: "#FF6700",
-  growth: "#10B981",
-};
+const colorMap = {
+  primary: '#6366F1', // Subtle indigo
+  growth: '#10B981', // Subtle emerald
+  accent: '#F59E0B',  // Subtle amber
+}
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
+  const screenWidth = Dimensions.get('window').width
+  const itemWidth = (screenWidth - 32) / actions.length // Reduced padding
+
   return (
-    <View className="px-0">
-      <Text className="text-base font-semibold text-craftopia-textPrimary mb-3">
-        Quick Actions
-      </Text>
-      <View className="space-y-2">
-        {actions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={action.onPress}
-            className="bg-craftopia-surface px-3 py-2.5 rounded-lg border border-craftopia-light flex-row items-center shadow-sm"
-          >
-            <View
-              className="w-9 h-9 rounded-md items-center justify-center mr-3"
-              style={{ backgroundColor: `${craftopiaColors[action.color]}33` }}
+    <View className="py-3 px-4 bg-white">
+      <View className="flex-row justify-between items-center">
+        {actions.map((action, index) => {
+          const Icon = action.icon
+          
+          return (
+            <TouchableOpacity
+              key={index}
+              className="items-center"
+              style={{ width: itemWidth }}
+              onPress={action.onPress}
+              activeOpacity={0.6}
             >
-              <action.icon size={16} color={craftopiaColors[action.color]} />
-            </View>
-            <Text className="flex-1 text-sm font-medium text-craftopia-textPrimary">
-              {action.label}
-            </Text>
-            <Text className="text-sm text-craftopia-textSecondary">›</Text>
-          </TouchableOpacity>
-        ))}
+              {/* Minimalist circular button */}
+              <View className="relative mb-1">
+                <View 
+                  className="w-11 h-11 rounded-full items-center justify-center"
+                  style={{
+                    backgroundColor: colorMap[action.color] + '15', // 15% opacity
+                  }}
+                >
+                  <Icon 
+                    size={18} 
+                    color={colorMap[action.color]} 
+                    strokeWidth={1.8}
+                  />
+                </View>
+
+                {/* Minimal badge */}
+                {action.badge && action.badge > 0 && (
+                  <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center">
+                    <Text className="text-white text-xs font-medium">
+                      {action.badge > 9 ? '9+' : action.badge}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Minimal label */}
+              <Text 
+                className="text-gray-600 text-center"
+                style={{ 
+                  fontSize: 11,
+                  maxWidth: itemWidth - 4
+                }}
+                numberOfLines={1}
+              >
+                {action.label}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
       </View>
     </View>
-  );
-};
+  )
+}

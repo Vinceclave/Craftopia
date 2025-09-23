@@ -5,24 +5,23 @@ import Button from '../common/Button'
 
 export const Achievements = () => {
   return (
-    <View className="px-3 py-2">
-      {/* Header Row */}
+    <View className="mx-4 mt-4 py-2">
       <View className="flex-row justify-between items-center">
-        {/* Left side: icon + label */}
-        <View className="flex-row items-center gap-1.5">
-          <Trophy size={18} color="#004E98" /> 
-          <Text className="text-base font-semibold text-craftopia-textPrimary">
+        <View className="flex-row items-center gap-2">
+          <View className="p-1.5 bg-craftopia-primary/10 rounded-full">
+            <Trophy size={16} color="#004E98" />
+          </View>
+          <Text className="text-sm font-medium text-craftopia-textPrimary">
             Achievements
           </Text>
         </View>
 
-        {/* Right side: see more button */}
         <Button
           onPress={() => {}}
           title="See more"
           size="sm"
-          rightIcon={<ArrowRight size={16} color="#1A1A1A" />}
-          className="bg-transparent px-1.5 py-0.5"
+          rightIcon={<ArrowRight size={12} color="#6B7280" />}
+          className="bg-transparent px-1 py-0.5"
           textClassName="text-xs text-craftopia-textSecondary"
         />
       </View>

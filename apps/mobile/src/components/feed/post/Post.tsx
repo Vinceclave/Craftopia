@@ -6,7 +6,7 @@ import { PostContent } from './PostContent';
 import { PostActions } from './PostActions';
 
 export const Post: React.FC<PostProps> = memo((props) => (
-  <View className="bg-craftopia-surface border-b border-gray-100 pb-4 mb-4 p-4">
+  <View className="bg-craftopia-surface border-b border-craftopia-light pb-3 mb-3 p-4">
     <PostHeader user={props.user} featured={props.featured} created_at={props.created_at} />
     <PostContent
       title={props.title}

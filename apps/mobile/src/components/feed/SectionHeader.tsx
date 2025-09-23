@@ -1,4 +1,3 @@
-// apps/mobile/src/components/feed/SectionHeader.tsx
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
@@ -12,13 +11,13 @@ interface SectionHeaderProps {
 export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, icon, isActive, onPress }) => (
   <TouchableOpacity
     onPress={onPress}
-    activeOpacity={0.7}
-    className={`mr-6 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+    activeOpacity={0.8}
+    className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
   >
     <View className="flex-row items-center">
       {icon}
       <Text
-        className={`text-base font-semibold ml-2 ${
+        className={`text-sm font-medium ml-1.5 ${
           isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
         }`}
       >

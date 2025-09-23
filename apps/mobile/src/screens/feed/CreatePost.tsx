@@ -1,8 +1,7 @@
-// apps/mobile/src/screens/feed/CreatePost.tsx - FIXED IMPORTS
 import React, { useRef, useState } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Image, Alert, Modal } from 'react-native'
-import { Input } from '~/components/common/TextInputField' // ✅ Named import
-import Button from '~/components/common/Button' // ✅ Default import
+import { Input } from '~/components/common/TextInputField'
+import Button from '~/components/common/Button'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Image as ImageIcon, X, ArrowLeft, Camera, ImageIcon as Gallery, ChevronDown, Check } from 'lucide-react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
@@ -67,9 +66,7 @@ export const CreatePostScreen = () => {
 
   const handleChange = (field: keyof CreatePostFormData, value: string | boolean) => {
     if (field === 'tags' && typeof value === 'string') {
-      // Store the raw input for display
       setTagsInput(value)
-      // Only split into array when there's actual content after commas
       const tagsArray = value.split(',').map(t => t.trim()).filter(Boolean)
       setFormData(prev => ({ ...prev, tags: tagsArray }))
     } else {
@@ -105,7 +102,7 @@ export const CreatePostScreen = () => {
         title: formData.title.trim(),
         content: formData.content.trim(),
         imageUrl: formData.imageUrl.trim() || undefined,
-        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean), // Parse tags from raw input
+        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
         category: formData.category as 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other',
         featured: formData.featured,
       }
@@ -113,7 +110,6 @@ export const CreatePostScreen = () => {
       const response = await postService.createPost(payload)
       console.log('Post created:', response.data)
 
-      // Trigger callback in FeedScreen
       onPostCreated?.()
 
       success('Post Created! 🎉', 'Your post has been shared successfully.', () => {
@@ -138,7 +134,6 @@ export const CreatePostScreen = () => {
         Alert.alert('Gallery', 'Gallery picker coming soon! For now, use image URL.')
         break
       case 'url':
-        // Focus on the image URL input
         refs.image.current?.focus()
         break
     }
@@ -150,28 +145,28 @@ export const CreatePostScreen = () => {
   }
 
   const getSelectedCategory = () => {
-    return CATEGORIES.find(cat => cat.id === formData.category) || CATEGORIES[4] // Default to Other
+    return CATEGORIES.find(cat => cat.id === formData.category) || CATEGORIES[4]
   }
 
   const getTagsAsString = (): string => tagsInput
   const isFormValid = formData.title.trim() && formData.content.trim() && formData.category
 
   return (
-    <SafeAreaView  className="flex-1 bg-gray-50" edges={['left', 'right']}>
+    <SafeAreaView className="flex-1 bg-craftopia-light" edges={['left', 'right']}>
       {/* Header */}
-      <View className="bg-white px-6 py-4 border-b border-gray-100 flex-row justify-between items-center">
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light flex-row justify-between items-center">
         <View className="flex-row items-center">
-          <TouchableOpacity className="mr-3 p-1" onPress={() => navigation.goBack()}>
-            <ArrowLeft size={24} color="#374151" />
+          <TouchableOpacity className="mr-2 p-1" onPress={() => navigation.goBack()}>
+            <ArrowLeft size={20} color="#1A1A1A" />
           </TouchableOpacity>
-          <Text className="text-xl font-bold text-gray-900">Create Post</Text>
+          <Text className="text-base font-semibold text-craftopia-textPrimary">Create Post</Text>
         </View>
         <TouchableOpacity
           onPress={handleSubmit}
           disabled={!isFormValid || loading}
-          className={`px-4 py-2 rounded-full ${isFormValid && !loading ? 'bg-blue-500' : 'bg-gray-300'}`}
+          className={`px-3 py-1.5 rounded-full ${isFormValid && !loading ? 'bg-craftopia-primary' : 'bg-craftopia-light'}`}
         >
-          <Text className={`font-semibold ${isFormValid && !loading ? 'text-white' : 'text-gray-500'}`}>
+          <Text className={`text-sm font-medium ${isFormValid && !loading ? 'text-white' : 'text-craftopia-textSecondary'}`}>
             {loading ? 'Sharing...' : 'Share'}
           </Text>
         </TouchableOpacity>
@@ -179,7 +174,7 @@ export const CreatePostScreen = () => {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Main Content Card */}
-        <View className="bg-white mx-4 mt-4 rounded-2xl shadow-sm border border-gray-100 p-4">
+        <View className="bg-craftopia-surface mx-4 mt-4 rounded-xl border border-craftopia-light p-4">
           {/* Title Input */}
           <Input
             label="Title"
@@ -204,44 +199,44 @@ export const CreatePostScreen = () => {
             numberOfLines={4}
             textAlignVertical="top"
             error={errors.content}
-            containerClassName="mt-4 mb-4"
+            containerClassName="mt-3 mb-3"
           />
 
           {/* Image Section */}
-          <View className="mb-4">
-            <Text className="text-gray-600 text-sm mb-2 font-medium">Image</Text>
+          <View className="mb-3">
+            <Text className="text-craftopia-textSecondary text-sm mb-2 font-medium">Image</Text>
             
             {formData.imageUrl ? (
               <View className="relative">
                 <Image 
                   source={{ uri: formData.imageUrl }} 
-                  className="w-full h-48 rounded-xl"
+                  className="w-full h-40 rounded-lg"
                   resizeMode="cover"
                 />
                 <TouchableOpacity 
-                  className="absolute top-2 right-2 bg-black/60 rounded-full p-2"
+                  className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5"
                   onPress={() => handleChange('imageUrl', '')}
                 >
-                  <X size={16} color="white" />
+                  <X size={14} color="white" />
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity 
-                className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 items-center"
-                activeOpacity={0.7}
+                className="bg-craftopia-light border-2 border-dashed border-craftopia-light rounded-lg p-6 items-center"
+                activeOpacity={0.8}
                 onPress={() => setShowImagePicker(true)}
               >
-                <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mb-3">
-                  <ImageIcon size={24} color="#3B82F6" />
+                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mb-2">
+                  <ImageIcon size={20} color="#004E98" />
                 </View>
-                <Text className="text-gray-700 font-medium mb-1">Add Photo</Text>
-                <Text className="text-gray-500 text-sm text-center">
+                <Text className="text-craftopia-textPrimary font-medium mb-0.5">Add Photo</Text>
+                <Text className="text-craftopia-textSecondary text-xs text-center">
                   Tap to upload from camera, gallery, or URL
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Image URL Input (always visible) */}
+            {/* Image URL Input */}
             <Input
               label="Or paste image URL"
               placeholder="https://example.com/image.jpg"
@@ -249,12 +244,12 @@ export const CreatePostScreen = () => {
               onChangeText={value => handleChange('imageUrl', value)}
               ref={refs.image}
               nextInputRef={refs.tags}
-              containerClassName="mt-3 mb-0"
+              containerClassName="mt-2 mb-0"
             />
           </View>
 
-          {/* Tags Input with Visual Preview */}
-          <View className="mb-4">
+          {/* Tags Input */}
+          <View className="mb-3">
             <Input
               label="Tags"
               placeholder="craft, recycling, DIY (comma separated)"
@@ -266,10 +261,10 @@ export const CreatePostScreen = () => {
             
             {/* Tag Preview */}
             {formData.tags.length > 0 && (
-              <View className="flex-row flex-wrap gap-2 mt-2">
+              <View className="flex-row flex-wrap gap-1.5 mt-2">
                 {formData.tags.map((tag, index) => (
-                  <View key={index} className="bg-blue-100 px-3 py-1 rounded-full flex-row items-center">
-                    <Text className="text-blue-800 text-sm font-medium">#{tag}</Text>
+                  <View key={index} className="bg-craftopia-primary/10 px-2.5 py-1 rounded-full flex-row items-center">
+                    <Text className="text-craftopia-primary text-xs font-medium">#{tag}</Text>
                     <TouchableOpacity 
                       className="ml-1"
                       onPress={() => {
@@ -279,7 +274,7 @@ export const CreatePostScreen = () => {
                         setFormData(prev => ({ ...prev, tags: newTags }))
                       }}
                     >
-                      <X size={14} color="#1E40AF" />
+                      <X size={12} color="#004E98" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -289,24 +284,24 @@ export const CreatePostScreen = () => {
 
           {/* Category Picker */}
           <View className="mb-4">
-            <Text className="text-gray-600 text-sm mb-2 font-medium">Category</Text>
+            <Text className="text-craftopia-textSecondary text-sm mb-2 font-medium">Category</Text>
             <TouchableOpacity
               onPress={() => setShowCategoryPicker(true)}
-              className={`flex-row items-center justify-between p-4 border rounded-xl ${
-                errors.category ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50'
+              className={`flex-row items-center justify-between p-3 border rounded-lg ${
+                errors.category ? 'border-red-400 bg-red-50' : 'border-craftopia-light bg-craftopia-light'
               }`}
             >
               <View className="flex-row items-center">
-                <Text className="text-2xl mr-3">{getSelectedCategory().icon}</Text>
+                <Text className="text-xl mr-2">{getSelectedCategory().icon}</Text>
                 <View>
-                  <Text className="font-medium text-gray-900">{getSelectedCategory().label}</Text>
-                  <Text className="text-sm text-gray-500">{getSelectedCategory().description}</Text>
+                  <Text className="font-medium text-craftopia-textPrimary">{getSelectedCategory().label}</Text>
+                  <Text className="text-xs text-craftopia-textSecondary">{getSelectedCategory().description}</Text>
                 </View>
               </View>
-              <ChevronDown size={20} color="#6B7280" />
+              <ChevronDown size={16} color="#6B7280" />
             </TouchableOpacity>
             {errors.category && (
-              <Text className="text-red-500 text-sm mt-1">{errors.category}</Text>
+              <Text className="text-red-500 text-xs mt-1">{errors.category}</Text>
             )}
           </View>
 
@@ -316,7 +311,7 @@ export const CreatePostScreen = () => {
             onPress={handleSubmit} 
             loading={loading} 
             disabled={!isFormValid || loading} 
-            size="lg" 
+            size="md"
           />
         </View>
       </ScrollView>
@@ -329,56 +324,56 @@ export const CreatePostScreen = () => {
         onRequestClose={() => setShowImagePicker(false)}
       >
         <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6">
-            <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
-            <Text className="text-xl font-bold text-gray-900 mb-6 text-center">Add Photo</Text>
+          <View className="bg-craftopia-surface rounded-t-xl p-4">
+            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
+            <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 text-center">Add Photo</Text>
             
-            <View className="space-y-3">
+            <View className="space-y-2">
               <TouchableOpacity 
-                className="flex-row items-center p-4 bg-blue-50 rounded-xl"
+                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
                 onPress={() => handleImageUpload('camera')}
               >
-                <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4">
-                  <Camera size={20} color="#3B82F6" />
+                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
+                  <Camera size={16} color="#004E98" />
                 </View>
                 <View>
-                  <Text className="font-semibold text-gray-900">Take Photo</Text>
-                  <Text className="text-sm text-gray-500">Use camera to capture</Text>
+                  <Text className="font-medium text-craftopia-textPrimary">Take Photo</Text>
+                  <Text className="text-xs text-craftopia-textSecondary">Use camera to capture</Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                className="flex-row items-center p-4 bg-green-50 rounded-xl"
+                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
                 onPress={() => handleImageUpload('gallery')}
               >
-                <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
-                  <Gallery size={20} color="#10B981" />
+                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
+                  <Gallery size={16} color="#004E98" />
                 </View>
                 <View>
-                  <Text className="font-semibold text-gray-900">Choose from Gallery</Text>
-                  <Text className="text-sm text-gray-500">Select from your photos</Text>
+                  <Text className="font-medium text-craftopia-textPrimary">Choose from Gallery</Text>
+                  <Text className="text-xs text-craftopia-textSecondary">Select from your photos</Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                className="flex-row items-center p-4 bg-purple-50 rounded-xl"
+                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
                 onPress={() => handleImageUpload('url')}
               >
-                <View className="w-12 h-12 bg-purple-100 rounded-full items-center justify-center mr-4">
-                  <ImageIcon size={20} color="#8B5CF6" />
+                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
+                  <ImageIcon size={16} color="#004E98" />
                 </View>
                 <View>
-                  <Text className="font-semibold text-gray-900">Paste URL</Text>
-                  <Text className="text-sm text-gray-500">Add image from web</Text>
+                  <Text className="font-medium text-craftopia-textPrimary">Paste URL</Text>
+                  <Text className="text-xs text-craftopia-textSecondary">Add image from web</Text>
                 </View>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity 
-              className="mt-6 p-4 bg-gray-100 rounded-xl"
+              className="mt-4 p-3 bg-craftopia-light rounded-lg"
               onPress={() => setShowImagePicker(false)}
             >
-              <Text className="text-center font-semibold text-gray-700">Cancel</Text>
+              <Text className="text-center font-medium text-craftopia-textSecondary">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -392,46 +387,46 @@ export const CreatePostScreen = () => {
         onRequestClose={() => setShowCategoryPicker(false)}
       >
         <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-6">
-            <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-6" />
-            <Text className="text-xl font-bold text-gray-900 mb-6 text-center">Select Category</Text>
+          <View className="bg-craftopia-surface rounded-t-xl p-4">
+            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
+            <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 text-center">Select Category</Text>
             
-            <View className="space-y-2">
+            <View className="space-y-1.5">
               {CATEGORIES.map((category) => (
                 <TouchableOpacity
                   key={category.id}
-                  className={`flex-row items-center justify-between p-4 rounded-xl ${
-                    formData.category === category.id ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
+                  className={`flex-row items-center justify-between p-3 rounded-lg ${
+                    formData.category === category.id ? 'bg-craftopia-primary/10 border border-craftopia-primary/20' : 'bg-craftopia-light'
                   }`}
                   onPress={() => handleCategorySelect(category.id)}
                 >
                   <View className="flex-row items-center">
-                    <Text className="text-2xl mr-4">{category.icon}</Text>
+                    <Text className="text-xl mr-3">{category.icon}</Text>
                     <View>
-                      <Text className={`font-semibold ${
-                        formData.category === category.id ? 'text-blue-900' : 'text-gray-900'
+                      <Text className={`font-medium ${
+                        formData.category === category.id ? 'text-craftopia-primary' : 'text-craftopia-textPrimary'
                       }`}>
                         {category.label}
                       </Text>
-                      <Text className={`text-sm ${
-                        formData.category === category.id ? 'text-blue-600' : 'text-gray-500'
+                      <Text className={`text-xs ${
+                        formData.category === category.id ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
                       }`}>
                         {category.description}
                       </Text>
                     </View>
                   </View>
                   {formData.category === category.id && (
-                    <Check size={20} color="#3B82F6" />
+                    <Check size={16} color="#004E98" />
                   )}
                 </TouchableOpacity>
               ))}
             </View>
 
             <TouchableOpacity 
-              className="mt-6 p-4 bg-gray-100 rounded-xl"
+              className="mt-4 p-3 bg-craftopia-light rounded-lg"
               onPress={() => setShowCategoryPicker(false)}
             >
-              <Text className="text-center font-semibold text-gray-700">Cancel</Text>
+              <Text className="text-center font-medium text-craftopia-textSecondary">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,62 +1,41 @@
-import { LucideIcon } from 'lucide-react-native';
-import React from 'react';
-import { View, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react'
+import { View, Text } from 'react-native'
+import { LucideIcon } from 'lucide-react-native'
 
 interface StatItem {
-  label: string;
-  value: string | number;
-  icon: LucideIcon;
+  label: string
+  value: string
+  icon: LucideIcon
 }
 
 interface StatsGridProps {
-  stats: StatItem[];
+  stats: StatItem[]
 }
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
-  const Stat: React.FC<StatItem & { fullWidth?: boolean; index: number }> = ({
-    label,
-    value,
-    icon: Icon,
-    fullWidth,
-    index,
-  }) => (
-    <View className={`${fullWidth ? 'w-full' : 'w-1/2'} p-1`}>
-      <LinearGradient
-        colors={
-          index === 0
-            ? ['#667eea', '#764ba2']
-            : index === 1
-            ? ['#f093fb', '#f5576c']
-            : ['#4facfe', '#00f2fe']
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="rounded-lg overflow-hidden shadow-sm p-3"
-      >
-        <View className="flex-row justify-between items-start">
-          <Icon size={28} color="#fff" />
-        </View>
-        <Text className="text-white font-bold text-xl mt-1.5">{value}</Text>
-        <Text className="text-white/70 text-xs">{label}</Text>
-      </LinearGradient>
-    </View>
-  );
-
   return (
-    <View className="px-0">
-      <View className="mb-2">
-        <Text className="text-base font-bold text-gray-800 mb-0.5">
-          Analytics Overview
-        </Text>
-        <View className="h-1 w-8 bg-craftopia-primary rounded-full" />
-      </View>
-
-      <View className="flex-row flex-wrap -mx-1">
-        {stats.map((stat, index) => (
-          <Stat key={index} {...stat} index={index} fullWidth={index === 2} />
-        ))}
+    <View className="p-4 bg-craftopia-surface rounded-xl shadow-sm">
+      <Text className="text-lg font-semibold text-craftopia-textPrimary mb-4">
+        Overview
+      </Text>
+      <View className="flex-row justify-between">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon
+          return (
+            <View key={i} className="flex-1 items-center">
+              <View className="w-10 h-10 rounded-full bg-craftopia-primary/10 items-center justify-center mb-2">
+                <Icon size={18} color="#004E98" />
+              </View>
+              <Text className="text-base font-bold text-craftopia-textPrimary">
+                {stat.value}
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary mt-0.5">
+                {stat.label}
+              </Text>
+            </View>
+          )
+        })}
       </View>
     </View>
-  );
-};
+  )
+}
