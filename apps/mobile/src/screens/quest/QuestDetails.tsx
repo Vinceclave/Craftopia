@@ -33,11 +33,12 @@ export const QuestDetailsScreen = () => {
   const [quest, setQuest] = useState<Quest | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isJoined, setIsJoined] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
 
   const fetchQuest = async (id: number) => {
     try {
       setIsLoading(true)
-      const response = await apiService.request(API_ENDPOINTS.CHALLENGES.BY_ID(id))
+      const response: any = await apiService.request(API_ENDPOINTS.CHALLENGES.BY_ID(id))
       const data = response.data
 
       const questData: Quest = {
@@ -123,7 +124,9 @@ export const QuestDetailsScreen = () => {
         />
         {isJoined && (
           <UserQuestProgress
-           
+            description={quest?.description}
+            imageUrl={imageUrl}
+            setImageUrl={setImageUrl}
           />
         )}
 

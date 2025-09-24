@@ -1,11 +1,20 @@
-// components/UserQuestProgress.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { Text, View } from 'react-native';
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker';
 
-export const UserQuestProgress = () => {
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
+interface UserQuestProgressProps {
+  description: string
+  imageUrl: string | undefined;
+  setImageUrl: (url: string | undefined) => void;
+}
+
+export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
+  description,
+  imageUrl,
+  setImageUrl,
+}) => {
   console.log('Uploaded image URL:', imageUrl);
+  console.log(description)
 
   return (
     <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
@@ -18,7 +27,7 @@ export const UserQuestProgress = () => {
         description="Upload from camera or gallery"
         value={imageUrl}
         onChange={setImageUrl}
-        folder="challenges" // ✅ force upload into challenges
+        folder="challenges"
       />
     </View>
   );
