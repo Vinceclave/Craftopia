@@ -9,7 +9,7 @@ interface UserQuestProgressProps {
   id: number;
   description: string;
   points: number;
-  challengeId?: number; // pass from parent if available
+  challengeId?: number;
 }
 
 export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
@@ -21,6 +21,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const { user } = useAuth();
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleVerify = async () => {
     if (!imageUrl) {
@@ -28,10 +29,15 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       return;
     }
 
+    // Make sure imageUrl is a valid absolute URL
+    if (imageUrl.startsWith('file://')) {
+      Alert.alert("Error", "Please upload the image first");
+      return;
+    }
+
     setIsVerifying(true);
 
     try {
-      // ✅ fixed endpoint: singular "image"
       const aiResponse = await apiService.request('/api/v1/ai/image/verify-upload', {
         method: 'POST',
         data: {
@@ -46,9 +52,10 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       console.log("AI Verification result:", aiResponse);
       Alert.alert("Verification Complete", "Check console for results");
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Verify request failed:", err);
-      Alert.alert("Error", "Failed to verify challenge. Please try again.");
+      const msg = err.response?.data?.error || err.message || "Something went wrong.";
+      Alert.alert("Error", msg);
     } finally {
       setIsVerifying(false);
     }
@@ -66,12 +73,14 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         value={imageUrl}
         onChange={setImageUrl}
         folder="challenges"
+        onUploadStart={() => setIsUploading(true)}
+        onUploadComplete={() => setIsUploading(false)}
       />
 
       <Button
-        title={isVerifying ? "Verifying..." : "Verify"}
+        title={isVerifying || isUploading ? "Processing..." : "Verify"}
         onPress={handleVerify}
-        disabled={isVerifying || !imageUrl}
+        disabled={isVerifying || isUploading || !imageUrl}
       />
     </View>
   );
