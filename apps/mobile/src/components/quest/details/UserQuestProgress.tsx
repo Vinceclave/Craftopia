@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Text, View, Alert } from 'react-native';
 import Button from '~/components/common/Button';
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker';
-import { API_ENDPOINTS } from '~/config/api';
 import { useAuth } from '~/context/AuthContext';
 import { apiService } from '~/services/base.service';
 
@@ -10,8 +9,6 @@ interface UserQuestProgressProps {
   id: number;
   description: string;
   points: number;
-  imageUrl: string | undefined;
-  setImageUrl: (url: string | undefined) => void;
   challengeId?: number; // pass from parent if available
 }
 
@@ -19,16 +16,11 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   id,
   description,
   points,
-  imageUrl,
-  setImageUrl,
   challengeId,
 }) => {
+  const [imageUrl, setImageUrl] = useState<string | undefined>();
   const { user } = useAuth();
   const [isVerifying, setIsVerifying] = useState(false);
-
-
-  
-  console.log('Uploaded image URL:', imageUrl);
 
   const handleVerify = async () => {
     if (!imageUrl) {
@@ -39,20 +31,20 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     setIsVerifying(true);
 
     try {
-      // Step 1: Call AI verification endpoint
-      const aiResponse = await apiService.request(API_ENDPOINTS.USER_CHALLENGES.VERIFY(id), {
+      // ✅ fixed endpoint: singular "image"
+      const aiResponse = await apiService.request('/api/v1/ai/image/verify-upload', {
         method: 'POST',
         data: {
           challengeDescription: description,
           imageUrl,
           challengePoints: points,
-          userId: user?.id
-      }
-      }
-      );
+          userId: user?.id,
+          challengeId: challengeId ?? null,
+        },
+      });
 
       console.log("AI Verification result:", aiResponse);
-
+      Alert.alert("Verification Complete", "Check console for results");
 
     } catch (err) {
       console.error("Verify request failed:", err);

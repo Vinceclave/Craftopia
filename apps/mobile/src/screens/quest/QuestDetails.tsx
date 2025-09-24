@@ -33,7 +33,6 @@ export const QuestDetailsScreen = () => {
   const [quest, setQuest] = useState<Quest | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isJoined, setIsJoined] = useState(false)
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
 
   const fetchQuest = async (id: number) => {
     try {
@@ -127,8 +126,6 @@ export const QuestDetailsScreen = () => {
             id={quest?.id}
             description={quest?.description}
             points={quest?.points_reward}
-            imageUrl={imageUrl}
-            setImageUrl={setImageUrl}
           />
         )}
 
