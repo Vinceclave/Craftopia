@@ -1,3 +1,4 @@
+// hooks/useLocalUpload.ts
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '~/services/base.service';
@@ -8,32 +9,25 @@ export const useLocalUpload = () => {
   const { error } = useAlert();
 
   const uploadToFolder = async (
-    imageUri: string, 
+    imageUri: string,
     folder: 'posts' | 'profiles' | 'crafts' | 'challenges' = 'posts'
   ): Promise<string | null> => {
     try {
       setUploading(true);
 
       const formData = new FormData();
-      
-      // IMPORTANT: The field name MUST match what multer expects ('image')
       formData.append('image', {
         uri: imageUri,
         type: 'image/jpeg',
         name: 'image.jpg',
       } as any);
-      
-      // Specify folder
-      formData.append('folder', folder);
 
-      const response: any = await apiService.request('/api/v1/upload/image', {
+      // ✅ folder is sent via query param, not body
+      const response: any = await apiService.request(`/api/v1/upload/image?folder=${folder}`, {
         method: 'POST',
         data: formData,
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-        },
-        // Add timeout for large uploads
-        timeout: 30000, // 30 seconds
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
       });
 
       if (response.success && response.data?.imageUrl) {
@@ -41,10 +35,9 @@ export const useLocalUpload = () => {
       } else {
         throw new Error('Upload response invalid');
       }
-
     } catch (err: any) {
       console.error('Upload error details:', err);
-      
+
       if (err.response?.data?.error) {
         error('Upload Failed', err.response.data.error);
       } else if (err.message) {
@@ -52,7 +45,7 @@ export const useLocalUpload = () => {
       } else {
         error('Upload Failed', 'Unknown error occurred');
       }
-      
+
       return null;
     } finally {
       setUploading(false);
@@ -64,17 +57,16 @@ export const useLocalUpload = () => {
     folder: 'posts' | 'profiles' | 'crafts' | 'challenges' = 'posts'
   ): Promise<string | null> => {
     let result;
-    
+
     if (source === 'camera') {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
         error('Permission Denied', 'Camera permission is required');
         return null;
       }
-      
+
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // No cropping
         quality: 0.8,
       });
     } else {
@@ -83,10 +75,9 @@ export const useLocalUpload = () => {
         error('Permission Denied', 'Media library permission is required');
         return null;
       }
-      
+
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // No cropping
         quality: 0.8,
       });
     }

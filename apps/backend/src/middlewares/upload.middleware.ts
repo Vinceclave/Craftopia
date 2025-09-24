@@ -1,40 +1,43 @@
+// middlewares/upload.middleware.ts
 import multer from 'multer';
 import path from 'path';
-import fs, { promises as fsPromises } from 'fs';
+import fs from 'fs';
 
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-        const folder = req.body.folder || 'posts';
-        const uploadPath = path.join(__dirname, '../../uploads', folder);
+  destination: (req, file, cb) => {
+    try {
+      // ✅ read folder from query instead of body
+      const folder = (req.query.folder as string) || 'posts';
+      const uploadPath = path.join(process.cwd(), 'uploads', folder);
 
-        if (!fs.existsSync(uploadPath)) {
-            await fsPromises.mkdir(uploadPath, { recursive: true });
-        }
-        
-        cb(null, uploadPath);
-    },
-    filename: (req, file, cb) => {
-        const timestamp = Date.now();
-        const extension = path.extname(file.originalname);
-        const filename = `image_${timestamp}${extension}`;
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
 
-        cb(null, filename);
+      cb(null, uploadPath);
+    } catch (err) {
+      cb(err as any, '');
     }
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const extension = path.extname(file.originalname);
+    const filename = `image_${timestamp}${extension}`;
+    cb(null, filename);
+  }
 });
 
-const fileFilter = (req: any, file: any, cb: any) => {
-    // FIX: Check file.mimetype, not file.mimeType (typo!)
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only image files (JPEG, JPG, PNG, WEBP) are allowed'), false);
-    }
+const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files (JPEG, JPG, PNG, WEBP) are allowed'), false);
+  }
 };
 
 export const uploadToFolder = multer({
-    storage,
-    fileFilter,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB
+  storage,
+  fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB
 });
