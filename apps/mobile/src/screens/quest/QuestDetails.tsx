@@ -106,7 +106,7 @@ export const QuestDetailsScreen = () => {
       joinChallenge(quest.id)
     }
   }
-
+  console.log(quest)
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       <DetailHeader onBackPress={handleBack} questId={questId} />
@@ -124,7 +124,9 @@ export const QuestDetailsScreen = () => {
         />
         {isJoined && (
           <UserQuestProgress
+            id={quest?.id}
             description={quest?.description}
+            points={quest?.points_reward}
             imageUrl={imageUrl}
             setImageUrl={setImageUrl}
           />

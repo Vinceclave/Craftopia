@@ -36,7 +36,6 @@ Rules:
 
 Be accurate and helpful for users who want to create sustainable DIY projects.`;
 
-
 export function createChallengeVerificationPrompt(
   challengeDescription: string,
   proofUrl: string,
@@ -72,7 +71,6 @@ export function createChallengeVerificationPrompt(
 
     Return exactly one JSON object with these fields and valid values (no placeholders, no extra text). Example of the required JSON shape (fill with actual values when returning):
 
-    \`\`\`json
     {
       "status": "completed",
       "points_awarded": ${challengePoints},
@@ -83,6 +81,5 @@ export function createChallengeVerificationPrompt(
       "verified_at": "${nowIso}",
       "submission_timestamp": "${submissionIso}",
       "user_id": ${userId ?? null}
-    }
-    \`\`\``;
-    }
+    }`;
+}

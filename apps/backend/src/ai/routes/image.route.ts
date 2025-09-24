@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { imageRecognition } from "../controllers/image.controller";
+import { verifyChallengeWithUpload } from "../controllers/image.controller";
 
 const router = Router();
 
-router.post("/analyze", imageRecognition);
+router.post("/verify-upload", verifyChallengeWithUpload);
 
 
 export default router;
