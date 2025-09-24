@@ -14,27 +14,25 @@ export const QuestBanner = () => {
             2850/3000 to next level
           </Text>
           
-          {/* Compact progress bar */}
-          <View className="h-1.5 bg-craftopia-light rounded-full mt-2">
-            <View className="h-1.5 w-11/12 rounded-full bg-craftopia-primary" />
+          <View className="h-1 bg-craftopia-light rounded-full mt-2">
+            <View className="h-1 w-11/12 rounded-full bg-craftopia-primary" />
           </View>
         </View>
 
-        <View className="pl-3">
-          <View className="p-1.5 bg-craftopia-primary/10 rounded-full">
-            <Badge size={16} color="#004E98" />
+        <View className="pl-2">
+          <View className="p-1 bg-craftopia-primary/10 rounded-full">
+            <Badge size={14} color="#004E98" />
           </View>
         </View>
       </View>
 
-      {/* Compact stats */}
       <View className="flex-row justify-between mt-3 pt-2 border-t border-craftopia-light">
         <View className="items-center">
-          <Text className="text-base font-bold text-craftopia-textPrimary">12</Text>
+          <Text className="text-sm font-bold text-craftopia-textPrimary">12</Text>
           <Text className="text-xs text-craftopia-textSecondary">Day Streak</Text>
         </View>
         <View className="items-center">
-          <Text className="text-base font-bold text-craftopia-textPrimary">48</Text>
+          <Text className="text-sm font-bold text-craftopia-textPrimary">48</Text>
           <Text className="text-xs text-craftopia-textSecondary">Quests</Text>
         </View>
       </View>

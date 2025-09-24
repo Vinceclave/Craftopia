@@ -8,8 +8,8 @@ export const Achievements = () => {
     <View className="mx-4 mt-4 py-2">
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
-          <View className="p-1.5 bg-craftopia-primary/10 rounded-full">
-            <Trophy size={16} color="#004E98" />
+          <View className="p-1 bg-craftopia-primary/10 rounded-full">
+            <Trophy size={14} color="#004E98" />
           </View>
           <Text className="text-sm font-medium text-craftopia-textPrimary">
             Achievements

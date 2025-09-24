@@ -31,13 +31,11 @@ export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 });
 
 export const getAllChallenges = asyncHandler(async (req: Request, res: Response) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
-  
-  const result = await challengeService.getAllChallenges(page, limit);
-  const meta = createPaginationMeta(result.meta.total, page, limit);
-  
-  sendPaginatedSuccess(res, result.data, meta, 'Challenges retrieved successfully');
+  const category = req.query.category as string | undefined;
+
+  const result = await challengeService.getAllChallenges(category);
+
+  sendSuccess(res, result.data, 'Challenges retrieved successfully');
 });
 
 export const getChallengeById = asyncHandler(async (req: Request, res: Response) => {

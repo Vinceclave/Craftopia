@@ -75,11 +75,12 @@ const Button: React.FC<ButtonProps> = ({
     switch (variant) {
       case 'secondary':
       case 'outline':
-        return `text-craftopia-text-primary ${textSize} font-medium ${textClassName}`;
+        return `${textSize} font-medium ${textClassName || 'text-craftopia-text-primary'}`;
       default:
-        return `text-white ${textSize} font-medium ${textClassName}`;
+        return `${textSize} font-medium ${textClassName || 'text-white'}`;
     }
   };
+
 
   return (
     <TouchableOpacity

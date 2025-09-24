@@ -67,55 +67,34 @@ export const generateAndSaveChallenge = async (category: ChallengeCategory, admi
   });
 };
 
-export const getAllChallenges = async (page = 1, limit = 10) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 10;
-
-  const skip = (page - 1) * limit;
-
-  const [data, total] = await Promise.all([
-    prisma.ecoChallenge.findMany({
-      where: {
-        deleted_at: null,
-        is_active: true
-      },
-      skip,
-      take: limit,
-      orderBy: { created_at: 'desc' },
-      include: {
-        created_by_admin: {
-          select: { user_id: true, username: true }
-        },
-        _count: {
-          select: {
-            participants: {
-              where: { deleted_at: null }
-            }
-          }
-        }
-      }
-    }),
-    prisma.ecoChallenge.count({
-      where: {
-        deleted_at: null,
-        is_active: true
-      }
-    })
-  ]);
-
-  return {
-    data: data.map(challenge => ({
-      ...challenge,
-      participantCount: challenge._count.participants,
-      _count: undefined // Remove from response
-    })),
-    meta: {
-      total,
-      page,
-      lastPage: Math.ceil(total / limit),
-      limit
-    }
+export const getAllChallenges = async (category?: string) => {
+  const where: any = {
+    deleted_at: null,
+    is_active: true,
   };
+
+  if (category && category !== 'all') {
+    where.category = category;
+  }
+
+  const data = await prisma.ecoChallenge.findMany({
+    where,
+    orderBy: { created_at: 'desc' },
+    include: {
+      created_by_admin: {
+        select: { user_id: true, username: true },
+      },
+      _count: {
+        select: {
+          participants: {
+            where: { deleted_at: null },
+          },
+        },
+      },
+    },
+  });
+
+  return { data, total: data.length };
 };
 
 export const getChallengeById = async (challengeId: number) => {
