@@ -33,9 +33,9 @@ export const Input = forwardRef<TextInput, InputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className={`relative mb-4 ${containerClassName}`}>
+      <View className={`mb-3 ${containerClassName}`}>
         {label && (
-          <Text className="text-craftopia-text-secondary text-sm mb-2 font-medium">
+          <Text className="text-craftopia-textSecondary text-sm mb-1.5 font-medium">
             {label}
           </Text>
         )}
@@ -53,8 +53,8 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           <TextInput
             ref={ref}
-            className="flex-1 text-craftopia-text-primary text-base"
-            placeholderTextColor="#9CA3AF"
+            className="flex-1 text-craftopia-textPrimary text-sm"
+            placeholderTextColor="#6B7280"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
             blurOnSubmit={isLastInput}
@@ -73,18 +73,18 @@ export const Input = forwardRef<TextInput, InputProps>(
           {secure && (
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              className="ml-2 p-1"
+              className="ml-1 p-1"
             >
               {showPassword ? (
-                <EyeOff size={18} color="#6B7280" />
+                <EyeOff size={16} color="#6B7280" />
               ) : (
-                <Eye size={18} color="#6B7280" />
+                <Eye size={16} color="#6B7280" />
               )}
             </TouchableOpacity>
           )}
         </View>
 
-        {error && <Text className="text-red-500 text-sm mt-1">{error}</Text>}
+        {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
       </View>
     );
   }

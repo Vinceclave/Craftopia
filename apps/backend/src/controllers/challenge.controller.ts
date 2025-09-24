@@ -38,13 +38,16 @@ export const getAllChallenges = asyncHandler(async (req: Request, res: Response)
   sendSuccess(res, result.data, 'Challenges retrieved successfully');
 });
 
-export const getChallengeById = asyncHandler(async (req: Request, res: Response) => {
+export const getChallengeById = asyncHandler(async (req: AuthRequest, res: Response) => {
   const challengeId = Number(req.params.challengeId);
   
   if (!challengeId || challengeId <= 0) {
     return sendError(res, 'Invalid challenge ID', 400);
   }
   
-  const challenge = await challengeService.getChallengeById(challengeId);
+  // Pass the user ID to check join status
+  const userId = req.user?.userId; // Get from auth middleware
+  const challenge = await challengeService.getChallengeById(challengeId, userId);
+  
   sendSuccess(res, challenge, 'Challenge retrieved successfully');
 });

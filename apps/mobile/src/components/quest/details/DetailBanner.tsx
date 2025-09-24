@@ -1,9 +1,10 @@
-import { Award, Star } from 'lucide-react-native'
+import { Award, Star, Users } from 'lucide-react-native'
 import React from 'react'
 import { Text, View } from 'react-native'
 import Button from '~/components/common/Button'
 
 interface DetailBannerProp {
+  participants: number
   category: string
   title: string
   description: string
@@ -14,6 +15,7 @@ interface DetailBannerProp {
 }
 
 export const DetailBanner: React.FC<DetailBannerProp> = ({ 
+  participants,
   category, 
   title, 
   description, 
@@ -38,7 +40,7 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
   }
 
   return (
-    <View className="bg-craftopia-surface px-4 py-4 border-b border-craftopia-light">
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
       <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full self-start mb-2">
         <Text className="text-craftopia-primary text-xs font-medium">{category}</Text>
       </View>
@@ -46,24 +48,31 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
       <Text className="text-base font-semibold text-craftopia-textPrimary mb-2">{title}</Text>
       <Text className="text-sm text-craftopia-textSecondary leading-5 mb-3">{description}</Text>
 
-      <View className="flex-row items-center gap-2 mb-3">
-        <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
-          <Award size={12} color="#004E98" />
-          <Text className="text-craftopia-primary text-xs font-medium ml-1">{points} Points</Text>
-        </View>
+      <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center gap-2">
+          <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
+            <Award size={12} color="#004E98" />
+            <Text className="text-craftopia-primary text-xs font-medium ml-1">{points} Points</Text>
+          </View>
 
-        <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
-          <Star size={12} color="#FF6700" />
-          <Text className="text-craftopia-primary text-xs font-medium ml-1">4.8</Text>
+          <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
+            <Star size={12} color="#FF6700" />
+            <Text className="text-craftopia-primary text-xs font-medium ml-1">4.8</Text>
+          </View>
+        </View>
+        
+        <View className="flex-row items-center">
+          <Users size={12} color="#6B7280" />
+          <Text className="text-craftopia-textSecondary text-xs ml-1">{participants}</Text>
         </View>
       </View>
-
-      <View className="px-2 py-3 pb-0 bg-craftopia-surface border-t border-craftopia-light">
+      <View className="mt-2 pt-2 border-t border-craftopia-light">
         <Button
           onPress={onPress}
-          title={isJoined ? "Continue Quest" : "Start Quest"}
-          disabled={isJoined} // ← disable if already joined
-          className={isJoined ? 'opacity-50' : ''}
+          title={!isJoined ? 'Start Quest' : 'Joined'}
+          size="sm"
+          loading={isLoading}
+          disabled={isJoined}
         />
       </View>
     </View>

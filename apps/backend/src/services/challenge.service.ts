@@ -97,7 +97,7 @@ export const getAllChallenges = async (category?: string) => {
   return { data, total: data.length };
 };
 
-export const getChallengeById = async (challengeId: number) => {
+export const getChallengeById = async (challengeId: number, userId?: number) => {
   if (!challengeId || challengeId <= 0) {
     throw new AppError('Invalid challenge ID', 400);
   }
@@ -135,9 +135,23 @@ export const getChallengeById = async (challengeId: number) => {
     throw new AppError('Challenge not found', 404);
   }
 
+  // Check if the current user has joined this challenge
+  let isJoined = false;
+  if (userId) {
+    const userChallenge = await prisma.userChallenge.findFirst({
+      where: {
+        user_id: userId,
+        challenge_id: challengeId,
+        deleted_at: null
+      }
+    });
+    isJoined = !!userChallenge;
+  }
+
   return {
     ...challenge,
     participantCount: challenge._count.participants,
+    isJoined, // Add this field
     _count: undefined // Remove from response
   };
 };

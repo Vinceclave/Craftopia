@@ -41,15 +41,15 @@ const Button: React.FC<ButtonProps> = ({
   const getButtonStyles = () => {
     const base = iconOnly
       ? size === 'sm'
-        ? 'rounded-lg p-2'
+        ? 'rounded-lg p-1.5'
         : size === 'lg'
-        ? 'rounded-lg p-4'
-        : 'rounded-lg p-3'
+        ? 'rounded-lg p-3'
+        : 'rounded-lg p-2'
       : size === 'sm'
-      ? 'rounded-lg py-2 px-4'
+      ? 'rounded-lg py-1.5 px-3'
       : size === 'lg'
-      ? 'rounded-lg py-4 px-8'
-      : 'rounded-lg py-3 px-6';
+      ? 'rounded-lg py-3 px-6'
+      : 'rounded-lg py-2 px-4';
 
     const baseStyles = `${base} items-center ${
       iconOnly ? '' : 'flex-row justify-center'
@@ -70,17 +70,16 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextStyles = () => {
-    const textSize = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
+    const textSize = size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
 
     switch (variant) {
       case 'secondary':
       case 'outline':
-        return `${textSize} font-medium ${textClassName || 'text-craftopia-text-primary'}`;
+        return `${textSize} font-medium ${textClassName || 'text-craftopia-textPrimary'}`;
       default:
         return `${textSize} font-medium ${textClassName || 'text-white'}`;
     }
   };
-
 
   return (
     <TouchableOpacity
@@ -88,7 +87,7 @@ const Button: React.FC<ButtonProps> = ({
       style={style}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
       {loading ? (
         <ActivityIndicator
@@ -97,9 +96,9 @@ const Button: React.FC<ButtonProps> = ({
         />
       ) : (
         <>
-          {leftIcon && <View className="mr-2">{leftIcon}</View>}
+          {leftIcon && <View className="mr-1.5">{leftIcon}</View>}
           {title && <Text className={getTextStyles()}>{title}</Text>}
-          {rightIcon && <View className="ml-2">{rightIcon}</View>}
+          {rightIcon && <View className="ml-1.5">{rightIcon}</View>}
         </>
       )}
     </TouchableOpacity>
