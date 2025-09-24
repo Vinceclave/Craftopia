@@ -1,6 +1,6 @@
-// QuestList.tsx
 import React from 'react';
 import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import Button from '../common/Button'; // make sure the path is correct
 
 interface Challenge {
   challenge_id: number;
@@ -17,9 +17,10 @@ interface Challenge {
 interface QuestListProps {
   challenges: Challenge[] | null;
   loading?: boolean;
+  onJoin?: (challengeId: number) => void;
 }
 
-export const QuestList: React.FC<QuestListProps> = ({ challenges, loading = false }) => {
+export const QuestList: React.FC<QuestListProps> = ({ challenges, loading = false, onJoin }) => {
   if (loading) {
     return (
       <View className="px-4 py-4 flex-row justify-center items-center">
@@ -42,7 +43,7 @@ export const QuestList: React.FC<QuestListProps> = ({ challenges, loading = fals
       data={challenges}
       keyExtractor={(item) => item.challenge_id.toString()}
       scrollEnabled={false}
-      contentContainerStyle={{ paddingHorizontal: 16 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
       renderItem={({ item }) => (
         <View className={`p-3 mb-2 rounded-lg ${item.is_active ? 'bg-craftopia-surface' : 'bg-craftopia-light'}`}>
           <View className="flex-row justify-between items-center">
@@ -71,6 +72,19 @@ export const QuestList: React.FC<QuestListProps> = ({ challenges, loading = fals
               {item.material_type}
             </Text>
           </View>
+
+          {/* Join Challenge Button */}
+          {item.is_active && (
+            <View className="mt-3">
+              <Button
+                title="Join Challenge"
+                onPress={() => onJoin && onJoin(item.challenge_id)}
+                size="sm"
+                className="bg-craftopia-primary"
+                textClassName="text-white font-medium"
+              />
+            </View>
+          )}
         </View>
       )}
     />

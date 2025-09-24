@@ -20,7 +20,7 @@ export type CraftStackParamList = {
 
 export type EcoQuestStackParamList = {
   EcoQuest: undefined;
-  QuestDetails: { questId: string };
+  QuestDetails: { questId: number };
 };
 
 export type ProfileStackParamList = {

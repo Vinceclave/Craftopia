@@ -79,7 +79,7 @@ export const getAllChallenges = async (category?: string) => {
 
   const data = await prisma.ecoChallenge.findMany({
     where,
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: 'asc' }, // <-- changed to ascending
     include: {
       created_by_admin: {
         select: { user_id: true, username: true },

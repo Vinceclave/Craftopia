@@ -38,7 +38,7 @@ export const API_ENDPOINTS = {
     LIST: `${API_BASE_URL}/api/v1/challenges`,
     CREATE: `${API_BASE_URL}/api/v1/challenges`,
     GENERATE: `${API_BASE_URL}/api/v1/challenges/generate`,
-    BY_ID: (id: string) => `${API_BASE_URL}/api/v1/challenges/${id}`,
+    BY_ID: (id: number) => `${API_BASE_URL}/api/v1/challenges/${id}`,
   },
   USER_CHALLENGES: {
     JOIN: `${API_BASE_URL}/api/v1/user-challenges/join`,
