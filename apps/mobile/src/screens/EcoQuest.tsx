@@ -45,7 +45,7 @@ export const EcoQuestScreen = () => {
   }, [activeTab]);
 
   const handleJoinChallenge = (challengeId: number) => {
-    navigation.navigate('QuestDetails', { questId: challengeId.toString() });
+    navigation.navigate('QuestDetails', { questId: challengeId });
   };
 
   return (
