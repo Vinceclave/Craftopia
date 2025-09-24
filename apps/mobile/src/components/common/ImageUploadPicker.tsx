@@ -1,28 +1,31 @@
 import { Camera, ImageIcon, X } from 'lucide-react-native'
 import React, { useState } from 'react'
-import { Image, Text, TouchableOpacity, View, Modal } from 'react-native'
+import { Image, Text, TouchableOpacity, View, Modal, ActivityIndicator } from 'react-native'
+import { useLocalUpload } from '~/hooks/useUpload'
 
 interface ImageUploadPickerProps {
-    label?: string
-    description: string
-    value?: string
-    onChange: (url?: string ) => void
+  label?: string
+  description: string
+  value?: string
+  onChange: (url?: string) => void
+  folder?: 'posts' | 'profiles' | 'crafts' | 'challenges'
 }
 
 export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
-    label = 'Proof Image',
-    description = 'Upload from camera, gallery, or Url',
-    value,
-    onChange
+  label = 'Proof Image',
+  description = 'Upload from camera, gallery',
+  value,
+  onChange,
+  folder = 'challenges',
 }) => {
-    const [showPicker, setShowPicker] = useState<boolean>(false)
+  const [showPicker, setShowPicker] = useState(false)
+  const { pickAndUpload, uploading } = useLocalUpload()
 
-    const handleImageUpload = (type: 'camera' | 'gallery') => {
-        // You can replace these with real integrations (expo-camera, image picker, url input modal, etc.)
-        const dummyUrl = 'https://via.placeholder.com/300'
-        onChange(dummyUrl)
-        setShowPicker(false)
-    }
+  const handleImageUpload = async (type: 'camera' | 'gallery') => {
+    const url = await pickAndUpload(type, folder)
+    if (url) onChange(url)
+    setShowPicker(false)
+  }
 
   return (
     <View className="mb-3">
@@ -48,19 +51,26 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
         </View>
       ) : (
         <TouchableOpacity
+          disabled={uploading}
           className="bg-craftopia-light border-2 border-dashed border-craftopia-light rounded-lg p-4 items-center"
           activeOpacity={0.8}
           onPress={() => setShowPicker(true)}
         >
-          <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mb-1.5">
-            <ImageIcon size={16} color="#004E98" />
-          </View>
-          <Text className="text-craftopia-textPrimary font-medium mb-0.5">
-            Add Proof
-          </Text>
-          <Text className="text-craftopia-textSecondary text-xs text-center">
-            {description}
-          </Text>
+          {uploading ? (
+            <ActivityIndicator size="small" color="#004E98" />
+          ) : (
+            <>
+              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mb-1.5">
+                <ImageIcon size={16} color="#004E98" />
+              </View>
+              <Text className="text-craftopia-textPrimary font-medium mb-0.5">
+                Add Proof
+              </Text>
+              <Text className="text-craftopia-textSecondary text-xs text-center">
+                {description}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       )}
 
@@ -82,6 +92,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
               <TouchableOpacity
                 className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
                 onPress={() => handleImageUpload('camera')}
+                disabled={uploading}
               >
                 <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
                   <Camera size={14} color="#004E98" />
@@ -95,6 +106,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
               <TouchableOpacity
                 className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
                 onPress={() => handleImageUpload('gallery')}
+                disabled={uploading}
               >
                 <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
                   <ImageIcon size={14} color="#004E98" />

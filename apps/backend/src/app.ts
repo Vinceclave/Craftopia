@@ -8,6 +8,7 @@ import apiRoutes from './routes/api';
 import { errorHandler } from './middlewares/error.middleware';
 import { config } from './config';
 import '../src/cron/challenge.cron'
+import path from 'path';
 
 
 dotenv.config();
@@ -56,6 +57,7 @@ app.use(cors({
 // Body parsing with reasonable limits
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Apply rate limiting
 app.use('/api/v1', limiter);

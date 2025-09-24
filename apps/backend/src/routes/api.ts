@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import uploadRoutes from './upload.route'
 import authRoutes from './auth.route';
 import postRoutes from './post.route';
 import craftRoutes from './craft.route';
@@ -21,6 +22,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 
 // Protected routes
+router.use('/upload', uploadRoutes)
 router.use('/users', userRoutes);
 router.use('/posts', postRoutes);
 router.use('/crafts', craftRoutes);
