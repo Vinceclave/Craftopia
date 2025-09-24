@@ -1,16 +1,17 @@
-import { Response, Request } from 'express' 
-import { uploadToFolder } from '../middlewares/upload.middleware'
-import { AuthRequest } from '../middlewares/auth.middleware'
-import { sendSuccess, sendError } from '../utils/response'
-import { asyncHandler } from './base.controller'
+import { Response, Request } from 'express';
+import { uploadToFolder } from '../middlewares/upload.middleware';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { sendSuccess, sendError } from '../utils/response';
+import { asyncHandler } from '../utils/asyncHandler'; // Fix import path
 
-export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
-    if (!req.file)
+export const uploadImage = asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
         return sendError(res, 'No file uploaded', 400);
+    }
     
-    const folder = req.body.folder || 'posts'
+    const folder = req.body.folder || 'posts';
     
-    const imageUrl = `/uploads/${folder}/${req.file.filename}`
+    const imageUrl = `/uploads/${folder}/${req.file.filename}`;
 
     sendSuccess(res, {
         imageUrl,
@@ -18,7 +19,7 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
         originalName: req.file.originalname,
         size: req.file.size,
         folder
-    }, 'Image uploaded successfully')
-})
+    }, 'Image uploaded successfully');
+});
 
 export const uploadMiddleware = uploadToFolder.single('image');

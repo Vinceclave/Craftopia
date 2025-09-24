@@ -1,9 +1,10 @@
-import { Router } from "express"
-import { uploadImage, uploadMiddleware } from "../controllers/upload.controller"
-import { requireAuth } from "../middlewares/rolebase.middleware"
+import { Router } from "express";
+import { uploadImage, uploadMiddleware } from "../controllers/upload.controller";
+import { requireAuth } from "../middlewares/rolebase.middleware";
 
-const router = Router()
+const router = Router();
 
-router.post('/image', requireAuth, uploadImage, uploadImage)
+// CORRECT: middleware chain order matters!
+router.post('/image', requireAuth, uploadMiddleware, uploadImage);
 
-export default router
+export default router;
