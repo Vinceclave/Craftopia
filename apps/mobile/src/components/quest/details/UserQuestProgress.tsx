@@ -1,12 +1,20 @@
-import React from 'react'
-import { View } from 'react-native'
+import React, { useState } from 'react'
+import { Text, View } from 'react-native'
+import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 
 export const UserQuestProgress = () => {
+    const [imageUrl, setImageUrl] = useState<string | undefined>()
+
   return (
-    <View>
+    <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
+      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">Your Progress</Text>
       
-
-
+      <ImageUploadPicker 
+        label="Proof Image"
+        description="Upload from camera, gallery"
+        value={imageUrl}
+        onChange={setImageUrl}
+      />
     </View>
   )
 }

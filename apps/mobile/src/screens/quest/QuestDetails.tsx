@@ -123,10 +123,7 @@ export const QuestDetailsScreen = () => {
         />
         {isJoined && (
           <UserQuestProgress
-            challengeTitle={quest?.title || ''}
-            status="in_progress"
-            proofUrl="https://via.placeholder.com/300"
-            pointsAwarded={quest?.points_reward || 0}
+           
           />
         )}
 
