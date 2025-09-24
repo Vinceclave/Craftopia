@@ -1,10 +1,9 @@
-// apps/mobile/src/screens/profile/EditProfile.tsx - FIXED IMPORTS
 import React, { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
-import Button from '~/components/common/Button'; // ✅ Default import
+import Button from '~/components/common/Button';
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";
 import { useAlert } from '~/hooks/useAlert';
@@ -20,7 +19,7 @@ interface UserProfile {
   email: string;
   username: string;
   bio: string;
-  avatar: string;
+  avatar: string; // must be a URL if uploaded
 }
 
 const VALIDATION_RULES = {
@@ -54,8 +53,10 @@ export function EditProfileScreen() {
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
 
   const hasChanges = useMemo(() => (
-    profile.name !== initialProfile.name || profile.bio !== initialProfile.bio
-  ), [profile.name, profile.bio, initialProfile]);
+    profile.name !== initialProfile.name || 
+    profile.bio !== initialProfile.bio ||
+    profile.avatar !== initialProfile.avatar
+  ), [profile.name, profile.bio, profile.avatar, initialProfile]);
 
   const validation = useMemo(() => validateProfile(profile), [profile]);
 
@@ -66,25 +67,48 @@ export function EditProfileScreen() {
 
     setLoading(true);
     try {
-      const payload = { full_name: profile.name.trim(), bio: profile.bio.trim() || null };
-      await apiService.request('/api/v1/users/profile', { method: 'PUT', data: payload });
+      const payload = { 
+        full_name: profile.name.trim(), 
+        bio: profile.bio.trim() || null,
+        profile_picture_url: profile.avatar.startsWith('http') ? profile.avatar : null
+      };
+
+      console.log('💾 Saving profile with payload:', payload);
+
+      const response = await apiService.request('/api/v1/users/profile', { 
+        method: 'PUT', 
+        data: payload 
+      });
+
+      console.log('✅ Profile save response:', response);
 
       if (setUser && user) {
         setUser(prev => ({
           ...prev!,
-          profile: { ...prev!.profile, full_name: payload.full_name, bio: payload.bio },
+          profile: { 
+            ...prev!.profile, 
+            full_name: payload.full_name, 
+            bio: payload.bio,
+            profile_picture_url: payload.profile_picture_url
+          },
         }));
       }
 
       success('Success', 'Profile updated successfully!', () => navigation.goBack());
     } catch (err: any) {
-      console.error(err);
+      console.error('❌ Profile save error:', err);
       const msg = err.response?.data?.error || err.message || 'Something went wrong.';
       error('Error', msg);
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   }, [validation, profile, error, setUser, user, success, navigation]);
 
-  const handleAvatarPress = useCallback(() => console.log('Avatar pressed – implement picker'), []);
+  const handleAvatarChange = useCallback((url?: string) => {
+    console.log('🖼️ Avatar changed to:', url);
+    setProfile(p => ({ ...p, avatar: url || '🧑‍🎨' }));
+  }, []);
+
   const handleNameChange = useCallback((text: string) => setProfile(p => ({ ...p, name: text })), []);
   const handleBioChange = useCallback((text: string) => setProfile(p => ({ ...p, bio: text })), []);
 
@@ -99,7 +123,8 @@ export function EditProfileScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
       >
-        <AvatarSection avatar={profile.avatar} onAvatarPress={handleAvatarPress} />
+        <AvatarSection avatar={profile.avatar} onChange={handleAvatarChange} />
+        
         <PersonalDetailsForm
           name={profile.name}
           username={profile.username}
