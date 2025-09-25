@@ -38,6 +38,7 @@ export const QuestDetailsScreen = () => {
       setIsLoading(true)
       const response: any = await apiService.request(API_ENDPOINTS.CHALLENGES.BY_ID(id))
       const data = response.data
+      console.log(data)
 
       const questData: Quest = {
         id: data.challenge_id,

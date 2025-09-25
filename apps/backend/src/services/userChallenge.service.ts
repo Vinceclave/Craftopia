@@ -1,4 +1,5 @@
 // apps/backend/src/services/userChallenge.service.ts - FIXED VERSION
+import { verifyChallengeAI } from "../ai/services/image.service";
 import prisma from "../config/prisma";
 import { ChallengeStatus } from "../generated/prisma";
 import { AppError } from "../utils/error";
@@ -118,16 +119,59 @@ export const completeChallenge = async (userChallengeId: number, userId: number,
 
 export const verifyChallenge = async (
   userChallengeId: number, 
-  imageUri: string
+  imageUri: string,
+  description: string,
+  points: number,
+  userId: number
 ) => {
   if (!userChallengeId || userChallengeId <= 0) {
     throw new AppError('Invalid user challenge ID', 400);
   }
 
-  console.log(userChallengeId)
-  console.log(imageUri)
-};
+ const aiVerification = await verifyChallengeAI(description, imageUri, points, userId);
+  const { 
+    status, 
+    points_awarded, 
+    ai_confidence_score, 
+    verification_type, 
+    admin_notes, 
+    completed_at, 
+    verified_at,
+    submission_timestamp,
+    user_id
+  } = aiVerification;
 
+  console.log(userChallengeId)
+  console.log(aiVerification)
+  
+  const verify = await prisma.userChallenge.update({
+    where: {
+      user_challenge_id: userChallengeId,
+    }, data: {
+      proof_url: imageUri,
+      status: status,
+      points_awarded: points_awarded,
+      ai_confidence_score: ai_confidence_score,
+      verification_type: verification_type,
+      completed_at: completed_at,
+      admin_notes: admin_notes,
+      verified_at: verified_at,
+      user_id: user_id
+    }
+  })      
+
+  // Return test data
+  return {
+    data: {
+      userChallengeId,
+      imageUri,
+      description,
+      points
+    },
+    message: 'Test verification successful'
+  };
+};
+ 
 export const getUserChallenges = async (user_id: number, status?: ChallengeStatus) => {
   if (!user_id || user_id <= 0) {
     throw new AppError('Invalid user ID', 400);

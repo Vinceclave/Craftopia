@@ -22,6 +22,10 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  console.log(user?.id)
+
+  console.log(imageUrl)
+
   const handleVerify = async () => {
     if (!imageUrl) {
       Alert.alert("Error", "Please upload a proof image first");
@@ -38,12 +42,16 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
     try {
       const response = await apiService.request(API_ENDPOINTS.USER_CHALLENGES.VERIFY(id), {
-        method: 'POST',
-        data: {
-          imageUri: imageUrl
-        }
+          method: 'POST',
+          data: {
+            proof_url: imageUrl,
+            description: description,
+            points: points,
+            userId: user.id
+          }
       })
 
+      console.log(response)
     } catch (err: any) {
       console.error("Verify request failed:", err);
       const msg = err.response?.data?.error || err.message || "Something went wrong.";

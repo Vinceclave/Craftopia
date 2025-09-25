@@ -46,40 +46,40 @@ export function createChallengeVerificationPrompt(
   const submissionIso = new Date(submissionTimestamp).toISOString();
   const nowIso = new Date().toISOString();
 
-  return `You are an AI validator for Craftopia eco-challenges. Analyze this submission carefully and RETURN VALID JSON ONLY (no commentary, no markdown, exactly one JSON object).
+  return `You are an AI validator for Craftopia eco-challenges. Analyze this submission and return EXACTLY ONE JSON object. Do not include any explanatory text, markdown formatting, or multiple JSON objects.
 
-    Challenge: "${challengeDescription}"
-    Proof Image URL: ${proofUrl}
-    Points Available: ${challengePoints}
-    Submission Timestamp (ISO): ${submissionIso}
-    User ID: ${userId ?? null}
+Challenge: "${challengeDescription}"
+Proof Image URL: ${proofUrl}
+Points Available: ${challengePoints}
+Submission Timestamp: ${submissionIso}
+User ID: ${userId ?? null}
 
-    Validation rules (be precise):
-    - ai_confidence_score must be a number between 0.00 and 1.00 (two decimals).
-    - Map score -> status:
-      - score >= 0.70 => "completed"
-      - 0.30 <= score < 0.70 => "pending_verification"
-      - score < 0.30 => "rejected"
-    - Points awarding (only when status === "completed"):
-      - score >= 0.90 -> award 100% of points
-      - 0.80 <= score < 0.90 -> award 80% (rounded)
-      - 0.70 <= score < 0.80 -> award 60% (rounded)
-    - For "pending_verification" and "rejected", points_awarded must be 0.
-    - completed_at: ISO timestamp of submission (use the submission_timestamp) if status === "completed", otherwise null.
-    - verified_at: current time in ISO 8601 (now).
-    - admin_notes: concise 1-2 sentence explanation mentioning key visual evidence or the reason for uncertainty/rejection.
+VALIDATION RULES:
+1. ai_confidence_score: number between 0.00-1.00 (exactly 2 decimals)
+2. Status mapping:
+   - score >= 0.70 → "completed"
+   - 0.30 ≤ score < 0.70 → "pending_verification"  
+   - score < 0.30 → "rejected"
+3. Points calculation (only when status === "completed"):
+   - score >= 0.90 → award 100% of points
+   - 0.80 ≤ score < 0.90 → award 80% of points (rounded)
+   - 0.70 ≤ score < 0.80 → award 60% of points (rounded)
+4. For "pending_verification" and "rejected": points_awarded = 0
+5. completed_at: ${submissionIso} if completed, otherwise null
+6. verified_at: ${nowIso}
+7. admin_notes: 1-2 sentences explaining your decision
 
-    Return exactly one JSON object with these fields and valid values (no placeholders, no extra text). Example of the required JSON shape (fill with actual values when returning):
+IMPORTANT: Return ONLY the JSON object below with actual values. No placeholders, no extra text, no markdown:
 
-    {
-      "status": "completed",
-      "points_awarded": ${challengePoints},
-      "ai_confidence_score": 0.93,
-      "verification_type": "ai",
-      "admin_notes": "Clear photo showing separated recyclables and a timestamped receipt visible.",
-      "completed_at": "${submissionIso}",
-      "verified_at": "${nowIso}",
-      "submission_timestamp": "${submissionIso}",
-      "user_id": ${userId ?? null}
-    }`;
+{
+  "status": "completed|pending_verification|rejected",
+  "points_awarded": 0,
+  "ai_confidence_score": 0.00,
+  "verification_type": "ai",
+  "admin_notes": "Your explanation here",
+  "completed_at": "${submissionIso}",
+  "verified_at": "${nowIso}",
+  "submission_timestamp": "${submissionIso}",
+  "user_id": ${userId}
+}`;
 }

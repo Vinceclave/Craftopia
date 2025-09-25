@@ -2,6 +2,9 @@ import { ai } from "../gemini/client";
 import { AppError } from "../../utils/error";
 import { parseResponse } from "../utils/responseParser";
 import { config } from "../../config";
+import { createChallengeVerificationPrompt } from "../prompt/image.prompt";
+import path from "path";
+import fs from 'fs'
 
 export const recognizeImage = async (url: string) => {
   if (!url?.trim()) {
@@ -121,4 +124,49 @@ export const recognizeImage = async (url: string) => {
   }
 
   return parsed;
+};
+
+export const verifyChallengeAI = async (
+  description: string,
+  imageUrl: string,
+  points: number,
+  userId: number
+) => {
+  if (!description?.trim()) throw new Error("Challenge description required");
+  if (!imageUrl?.trim()) throw new Error("Image URL required");
+  if (!points || points <= 0) throw new Error("Valid challenge points required");
+
+  const filePath = path.join(process.cwd(), imageUrl);
+  if (!fs.existsSync(filePath)) throw new Error("Image file not found");
+
+  const imageBuffer = fs.readFileSync(filePath);
+  const base64ImageData = imageBuffer.toString("base64");
+
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType =
+    ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+
+  const prompt = createChallengeVerificationPrompt(description, imageUrl, points, Date.now(), userId );
+
+  const result = await ai.models.generateContent({
+    model: config.ai.model,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: contentType, data: base64ImageData } },
+          { text: prompt },
+        ],
+      },
+    ],
+  });
+
+  const text = result.text;
+  if (!text?.trim()) throw new Error("AI verification failed");
+
+  const verification = parseResponse(text);
+  if (!verification || typeof verification !== "object")
+    throw new Error("Invalid AI verification format");
+
+  return verification;
 };

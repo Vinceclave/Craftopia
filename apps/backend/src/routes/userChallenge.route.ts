@@ -17,7 +17,7 @@ router.post('/join', requireAuth, validate(joinChallengeSchema), userChallengeCo
 router.post('/:userChallengeId/complete', requireAuth, validate(completeChallengeSchema), userChallengeController.completeChallenge);
 
 // Admin actions
-router.post('/:userChallengeId/verify', requireAdmin, validate(verifyChallengeSchema), userChallengeController.verifyChallenge);
+router.post('/:userChallengeId/verify', requireAuth, validate(verifyChallengeSchema), userChallengeController.verifyChallenge);
 router.get('/pending-verifications', requireAdmin, userChallengeController.getPendingVerifications);
 
 // Public/User queries

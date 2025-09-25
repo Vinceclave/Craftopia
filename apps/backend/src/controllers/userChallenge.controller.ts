@@ -26,11 +26,14 @@ export const completeChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userChallengeId = Number(req.params.userChallengeId);
-  const { imageUri } = req.body
+  const { proof_url, description, points, userId } = req.body;
 
-  const updated = userChallengeService.verifyChallenge(userChallengeId, imageUri);
+  const updated = await userChallengeService.verifyChallenge(userChallengeId, proof_url, description, points, userId);
 
-
+  
+  
+  // Add this line to send a response back
+  sendSuccess(res, updated, 'Challenge verification test completed');
 });
 
 export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {

@@ -1,76 +1,58 @@
 import { AppError } from "../../utils/error";
 
-export const parseResponse = (rawText: string | undefined) => {
-    if (!rawText?.trim()) {
-        throw new AppError('AI returned empty response', 500);
-    }
-
-    let cleanText = rawText.trim();
+export function parseResponse(aiResponse: string): any {
+  try {
+    // Remove any potential markdown code blocks
+    let cleanResponse = aiResponse.trim();
     
-    // Remove common markdown wrappers
-    const markdownPatterns = [
-        /^```json\s*([\s\S]*?)\s*```$/,
-        /^```\s*([\s\S]*?)\s*```$/,
-        /^`{1,2}([\s\S]*?)`{1,2}$/
-    ];
-    
-    for (const pattern of markdownPatterns) {
-        const match = cleanText.match(pattern);
-        if (match) {
-            cleanText = match[1].trim();
-            break;
-        }
+    // Remove ```json and ``` if present
+    if (cleanResponse.startsWith('```json')) {
+      cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanResponse.startsWith('```')) {
+      cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
     
-    // Remove common prefixes/suffixes
-    cleanText = cleanText
-        .replace(/^(Here's the|Here is the|Response:|JSON:|Result:)\s*/i, '')
-        .replace(/\s*(That's it|Hope this helps|Let me know if you need anything else)\.?$/i, '');
-
-    if (!cleanText) {
-        throw new AppError('AI response is empty after cleaning', 500);
+    // Find the first { and last } to extract just the JSON object
+    const firstBrace = cleanResponse.indexOf('{');
+    const lastBrace = cleanResponse.lastIndexOf('}');
+    
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
+      throw new Error('No valid JSON object found in response');
     }
-
-    // Validate JSON structure before parsing
-    if (!cleanText.startsWith('{') && !cleanText.startsWith('[')) {
-        console.error('Invalid JSON structure:', cleanText.substring(0, 100) + '...');
-        throw new AppError('AI returned invalid JSON format - missing opening bracket', 500);
+    
+    const jsonString = cleanResponse.slice(firstBrace, lastBrace + 1);
+    
+    // Parse the JSON
+    const parsed = JSON.parse(jsonString);
+    
+    // Validate required fields
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Parsed response is not a valid object');
     }
-
-    if (!cleanText.endsWith('}') && !cleanText.endsWith(']')) {
-        console.error('Invalid JSON structure:', '...' + cleanText.substring(cleanText.length - 100));
-        throw new AppError('AI returned invalid JSON format - missing closing bracket', 500);
+    
+    // Check for required fields
+    const requiredFields = ['status', 'points_awarded', 'ai_confidence_score', 'verification_type', 'admin_notes'];
+    for (const field of requiredFields) {
+      if (!(field in parsed)) {
+        throw new Error(`Missing required field: ${field}`);
+      }
     }
-
-    try {
-        const parsed = JSON.parse(cleanText);
-        
-        // Additional validation for common AI response issues
-        if (parsed === null) {
-            throw new AppError('AI returned null response', 500);
-        }
-        
-        return parsed;
-        
-    } catch (parseError: any) {
-        console.error('JSON Parse Error:', {
-            error: parseError.message,
-            rawText: rawText.substring(0, 500) + (rawText.length > 500 ? '...' : ''),
-            cleanText: cleanText.substring(0, 500) + (cleanText.length > 500 ? '...' : '')
-        });
-        
-        // Try to provide more specific error messages
-        if (parseError.message.includes('Unexpected token')) {
-            throw new AppError('AI returned malformed JSON - unexpected character', 500);
-        }
-        
-        if (parseError.message.includes('Unexpected end')) {
-            throw new AppError('AI returned incomplete JSON response', 500);
-        }
-        
-        throw new AppError(`AI returned invalid JSON format: ${parseError.message}`, 500);
-    }
-};
+    
+    // Ensure numeric fields are properly typed
+    parsed.points_awarded = Number(parsed.points_awarded) || 0;
+    parsed.ai_confidence_score = Number(parsed.ai_confidence_score) || 0;
+    
+    // Ensure confidence score is within bounds
+    parsed.ai_confidence_score = Math.max(0, Math.min(1, parsed.ai_confidence_score));
+    
+    return parsed;
+    
+  } catch (error: any) {
+    console.error('Error parsing AI response:', error);
+    console.error('Raw response:', aiResponse);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
+  }
+}
 
 // Helper function to sanitize AI responses for logging
 export const sanitizeForLog = (text: string, maxLength = 200): string => {

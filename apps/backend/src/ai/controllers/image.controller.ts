@@ -12,11 +12,12 @@ export const verifyChallengeWithUpload = asyncHandler(
   async (req: Request, res: Response) => {
     const { 
       challengeDescription,
-      imageUrl, // e.g., "/uploads/challenges/proof_123.jpg"
+      imageUrl,
       challengePoints,
-      userId 
+      userId
     } = req.body;
 
+    // Validation
     if (!challengeDescription?.trim()) {
       return sendError(res, "Challenge description is required", 400);
     }
@@ -48,11 +49,13 @@ export const verifyChallengeWithUpload = asyncHandler(
       // Create verification prompt
       const prompt = createChallengeVerificationPrompt(
         challengeDescription,
-        imageUrl, // pass the URL for reference
+        imageUrl,
         challengePoints,
         Date.now(),
         userId
       );
+
+      console.log("Sending request to AI for verification...");
 
       // Send to AI for verification
       const result = await ai.models.generateContent({
@@ -75,20 +78,51 @@ export const verifyChallengeWithUpload = asyncHandler(
         ],
       });
 
-      const text = result.text;
-      if (!text?.trim()) {
-        return sendError(res, "AI verification failed", 500);
+      const rawText = result.text;
+      console.log("Raw AI response:", rawText);
+
+      if (!rawText?.trim()) {
+        return sendError(res, "AI verification failed - empty response", 500);
       }
 
-      const verification = parseResponse(text);
-      if (!verification || typeof verification !== "object") {
+      // Parse the response ONCE
+      let verification;
+      try {
+        verification = parseResponse(rawText);
+        console.log("Parsed verification result:", verification);
+      } catch (parseError) {
+        console.error("Parse error:", parseError);
         return sendError(res, "Invalid AI verification format", 500);
       }
 
+      // Validate the verification object
+      if (!verification || typeof verification !== "object") {
+        return sendError(res, "Invalid verification object", 500);
+      }
+
+      // Ensure all required fields are present
+      const requiredFields = ['status', 'points_awarded', 'ai_confidence_score'];
+      for (const field of requiredFields) {
+        if (verification[field] === undefined || verification[field] === null) {
+          return sendError(res, `Missing required field: ${field}`, 500);
+        }
+      }
+
+      // Return the verification result ONCE
       return sendSuccess(res, verification, "Challenge verification completed");
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Challenge verification error:", error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('quota')) {
+        return sendError(res, "AI service quota exceeded", 503);
+      }
+      
+      if (error.message?.includes('network')) {
+        return sendError(res, "Network error during AI verification", 502);
+      }
+      
       return sendError(res, "Failed to verify challenge", 500);
     }
   }
