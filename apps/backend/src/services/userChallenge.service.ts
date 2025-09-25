@@ -118,84 +118,14 @@ export const completeChallenge = async (userChallengeId: number, userId: number,
 
 export const verifyChallenge = async (
   userChallengeId: number, 
-  adminId: number, 
-  approved: boolean = true,
-  adminNotes?: string
+  imageUri: string
 ) => {
   if (!userChallengeId || userChallengeId <= 0) {
     throw new AppError('Invalid user challenge ID', 400);
   }
 
-  if (!adminId || adminId <= 0) {
-    throw new AppError('Invalid admin ID', 400);
-  }
-
-  return await prisma.$transaction(async (tx) => {
-    const userChallenge = await tx.userChallenge.findFirst({
-      where: { 
-        user_challenge_id: userChallengeId,
-        deleted_at: null
-      },
-      include: { 
-        challenge: true,
-        user: {
-          include: {
-            profile: true
-          }
-        }
-      }
-    });
-
-    if (!userChallenge) {
-      throw new AppError('User challenge not found', 404);
-    }
-
-    if (userChallenge.status !== ChallengeStatus.completed) {
-      throw new AppError('Challenge must be completed before verification', 400);
-    }
-
-    const newStatus = approved ? ChallengeStatus.completed : ChallengeStatus.rejected;
-    const pointsToAward = approved ? userChallenge.challenge.points_reward : 0;
-
-    // Update the user challenge
-    const updatedChallenge = await tx.userChallenge.update({
-      where: { user_challenge_id: userChallengeId },
-      data: {
-        status: newStatus,
-        verified_at: new Date(),
-        verified_by_admin_id: adminId,
-        points_awarded: pointsToAward,
-        admin_notes: adminNotes?.trim() || null
-      },
-      include: {
-        challenge: true,
-        user: {
-          select: { user_id: true, username: true, email: true }
-        },
-        verified_by: {
-          select: { user_id: true, username: true }
-        }
-      }
-    });
-
-    // If approved, award points to user
-    if (approved && pointsToAward > 0) {
-      await tx.userProfile.upsert({
-        where: { user_id: userChallenge.user_id },
-        create: {
-          user_id: userChallenge.user_id,
-          points: pointsToAward
-        },
-        update: {
-          points: {
-            increment: pointsToAward
-          }
-        }
-      });
-    }
-
-    return updatedChallenge;
-  });
+  console.log(userChallengeId)
+  console.log(imageUri)
 };
 
 export const getUserChallenges = async (user_id: number, status?: ChallengeStatus) => {

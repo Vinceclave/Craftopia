@@ -13,8 +13,9 @@ interface Props {
 // ✅ Replace with your server's public URL
 
 export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChange }) => {
-  const safeAvatar = avatar || '🧑‍🎨';
-  const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
+  const safeAvatar = String(avatar || '🧑‍🎨');
+const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
+
   
   const { uploadToFolder } = useLocalUpload()
   const [showPicker, setShowPicker] = useState(false)

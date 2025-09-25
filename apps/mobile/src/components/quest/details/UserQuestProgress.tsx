@@ -2,21 +2,20 @@ import React, { useState } from 'react';
 import { Text, View, Alert } from 'react-native';
 import Button from '~/components/common/Button';
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker';
+import { API_ENDPOINTS } from '~/config/api';
 import { useAuth } from '~/context/AuthContext';
 import { apiService } from '~/services/base.service';
 
 interface UserQuestProgressProps {
-  id: number;
-  description: string;
-  points: number;
-  challengeId?: number;
+  id?: number;
+  description?: string | undefined ;
+  points?: number;
 }
 
 export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   id,
   description,
   points,
-  challengeId,
 }) => {
   const [imageUrl, setImageUrl] = useState<string | undefined>();
   const { user } = useAuth();
@@ -38,19 +37,12 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     setIsVerifying(true);
 
     try {
-      const aiResponse = await apiService.request('/api/v1/ai/image/verify-upload', {
+      const response = await apiService.request(API_ENDPOINTS.USER_CHALLENGES.VERIFY(id), {
         method: 'POST',
         data: {
-          challengeDescription: description,
-          imageUrl,
-          challengePoints: points,
-          userId: user?.id,
-          challengeId: challengeId ?? null,
-        },
-      });
-
-      console.log("AI Verification result:", aiResponse);
-      Alert.alert("Verification Complete", "Check console for results");
+          imageUri: imageUrl
+        }
+      })
 
     } catch (err: any) {
       console.error("Verify request failed:", err);

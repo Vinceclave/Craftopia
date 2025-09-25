@@ -26,17 +26,11 @@ export const completeChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userChallengeId = Number(req.params.userChallengeId);
-  const { approved = true, notes } = req.body;
-  
-  const updated = await userChallengeService.verifyChallenge(
-    userChallengeId, 
-    req.user!.userId,
-    approved,
-    notes
-  );
-  
-  const message = approved ? 'Challenge verified and points awarded' : 'Challenge rejected';
-  sendSuccess(res, updated, message);
+  const { imageUri } = req.body
+
+  const updated = userChallengeService.verifyChallenge(userChallengeId, imageUri);
+
+
 });
 
 export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
