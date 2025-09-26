@@ -21,6 +21,8 @@ router.post('/:userChallengeId/verify', requireAuth, validate(verifyChallengeSch
 router.get('/pending-verifications', requireAdmin, userChallengeController.getPendingVerifications);
 
 // Public/User queries
+router.get('/:challengeId', requireAuth, validate(getUserChallengesQuerySchema), userChallengeController.getUserChallengeById
+);
 router.get('/user/:userId?', requireAuth, validateQuery(getUserChallengesQuerySchema), userChallengeController.getUserChallenges);
 router.get('/leaderboard', requireAuth, validateQuery(leaderboardQuerySchema), userChallengeController.getChallengeLeaderboard);
 

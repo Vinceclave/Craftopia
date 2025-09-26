@@ -19,6 +19,10 @@ export const getUserChallengesQuerySchema = Joi.object({
   userId: Joi.number().positive().optional()
 });
 
+export const getUserChallengeByIdParamsSchema = Joi.object({
+  challengeId: Joi.number().positive().required()
+});
+
 export const leaderboardQuerySchema = Joi.object({
   challengeId: Joi.number().positive().optional(),
   limit: Joi.number().min(1).max(50).default(10)

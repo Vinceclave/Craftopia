@@ -122,13 +122,16 @@ export const verifyChallenge = async (
   imageUri: string,
   description: string,
   points: number,
+  challenge_id: number,
   userId: number
 ) => {
   if (!userChallengeId || userChallengeId <= 0) {
     throw new AppError('Invalid user challenge ID', 400);
   }
 
- const aiVerification = await verifyChallengeAI(description, imageUri, points, userId);
+  // Step 1: Run AI verification
+  const aiVerification = await verifyChallengeAI(description, imageUri, points, userId);
+
   const { 
     status, 
     points_awarded, 
@@ -137,41 +140,81 @@ export const verifyChallenge = async (
     admin_notes, 
     completed_at, 
     verified_at,
-    submission_timestamp,
     user_id
   } = aiVerification;
 
-  console.log(userChallengeId)
-  console.log(aiVerification)
-  
-  const verify = await prisma.userChallenge.update({
-    where: {
-      user_challenge_id: userChallengeId,
-    }, data: {
-      proof_url: imageUri,
-      status: status,
-      points_awarded: points_awarded,
-      ai_confidence_score: ai_confidence_score,
-      verification_type: verification_type,
-      completed_at: completed_at,
-      admin_notes: admin_notes,
-      verified_at: verified_at,
-      user_id: user_id
-    }
-  })      
+  console.log("verifyChallenge params:", { userChallengeId, userId, challenge_id });
+  console.log("AI verification result:", aiVerification);
 
-  // Return test data
-  return {
+  // Step 2: Update using correct Prisma syntax
+  const verify = await prisma.userChallenge.update({
+    where: { user_challenge_id: userChallengeId }, // must be unique ID
     data: {
-      userChallengeId,
-      imageUri,
-      description,
-      points
+      status,
+      proof_url: imageUri,
+      verified_at,
+      points_awarded,
+      ai_confidence_score,
+      verification_type,
+      admin_notes,
+      completed_at,
+      // Optional: ensure we re-assign relations if needed
+      user_id: userId,
+      challenge_id
     },
-    message: 'Test verification successful'
-  };
+    include: {
+      challenge: true,
+      user: {
+        select: { user_id: true, username: true, email: true },
+      },
+      verified_by: {
+        select: { user_id: true, username: true },
+      }
+    }
+  });
+
+  console.log("Prisma update result:", verify);
+  return verify;
 };
- 
+
+export const getUserChallengeById = async (user_id: number, challenge_id: number) => {
+  if (!user_id || user_id <= 0) {
+    throw new AppError("Invalid user ID", 400);
+  }
+
+  if (!challenge_id || challenge_id <= 0) {
+    throw new AppError("Invalid challenge ID", 400);
+  }
+
+  const userChallenge = await prisma.userChallenge.findUnique({
+    where: {
+      user_id_challenge_id: {
+        user_id,
+        challenge_id,
+      },
+    },
+    include: {
+      challenge: {
+        include: {
+          created_by_admin: {
+            select: { user_id: true, username: true },
+          },
+        },
+      },
+      verified_by: {
+        select: { user_id: true, username: true },
+      },
+    },
+  });
+
+  if (!userChallenge || userChallenge.deleted_at) {
+    throw new AppError("User challenge not found", 404);
+  }
+
+  return userChallenge;
+};
+
+
 export const getUserChallenges = async (user_id: number, status?: ChallengeStatus) => {
   if (!user_id || user_id <= 0) {
     throw new AppError('Invalid user ID', 400);

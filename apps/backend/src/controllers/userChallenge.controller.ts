@@ -26,9 +26,9 @@ export const completeChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userChallengeId = Number(req.params.userChallengeId);
-  const { proof_url, description, points, userId } = req.body;
+  const { proof_url, description, points, challenge_id, userId } = req.body;
 
-  const updated = await userChallengeService.verifyChallenge(userChallengeId, proof_url, description, points, userId);
+  const updated = await userChallengeService.verifyChallenge(userChallengeId, proof_url, description, points, challenge_id, userId);
 
   
   
@@ -42,6 +42,15 @@ export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Resp
   
   const challenges = await userChallengeService.getUserChallenges(userId, status);
   sendSuccess(res, challenges, 'User challenges retrieved successfully');
+});
+
+export const getUserChallengeById = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId; // Always enforce current logged-in user
+  const challengeId = Number(req.params.challengeId);
+
+  const challenge = await userChallengeService.getUserChallengeById(userId, challengeId);
+
+  sendSuccess(res, challenge, "User challenge retrieved successfully");
 });
 
 export const getChallengeLeaderboard = asyncHandler(async (req: Request, res: Response) => {
