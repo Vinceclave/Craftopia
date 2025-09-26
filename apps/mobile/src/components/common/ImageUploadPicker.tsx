@@ -10,6 +10,7 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { X, Camera, Image as ImageIcon } from 'lucide-react-native'
 import { useLocalUpload } from '~/hooks/useUpload'
+import { API_BASE_URL } from '~/config/api'
 
 interface ImageUploadPickerProps {
   label?: string | null
@@ -17,6 +18,8 @@ interface ImageUploadPickerProps {
   value?: string
   onChange: (url?: string) => void
   folder?: 'posts' | 'profiles' | 'crafts' | 'challenges'
+  onUploadStart?: () => void
+  onUploadComplete?: () => void
 }
 
 export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
@@ -25,6 +28,8 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
   value,
   onChange,
   folder = 'posts',
+  onUploadStart,
+  onUploadComplete,
 }) => {
   const { uploadToFolder } = useLocalUpload()
   const [uploading, setUploading] = useState(false)
@@ -44,13 +49,21 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
     if (!result.canceled) {
       const asset = result.assets[0]
       setUploading(true)
+      onUploadStart?.()
       try {
         const uploadedUrl = await uploadToFolder(asset.uri, folder)
-        onChange(uploadedUrl)
+
+        console.log('📤 Upload raw response:', uploadedUrl)
+
+        // send only relative path to backend
+        if (uploadedUrl) onChange?.(uploadedUrl)
+
+        setShowPicker(false)
       } catch (err) {
         console.error('Upload failed:', err)
       } finally {
         setUploading(false)
+        onUploadComplete?.()
         setShowPicker(false)
       }
     }
@@ -58,7 +71,6 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
   return (
     <View className="flex flex-col gap-2">
-      {/* Optional Label */}
       {label ? (
         <Text className="text-craftopia-textSecondary text-sm mb-1 font-medium">
           {label}
@@ -68,7 +80,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
       {value ? (
         <View className="relative">
           <Image
-            source={{ uri: value }}
+            source={{ uri: `${API_BASE_URL}${value}` }} // full URL for display
             className="w-full h-40 rounded-lg"
             resizeMode="cover"
           />
@@ -107,7 +119,6 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
       {/* Picker Modal */}
       <Modal
-        className=''
         visible={showPicker}
         transparent
         animationType="slide"

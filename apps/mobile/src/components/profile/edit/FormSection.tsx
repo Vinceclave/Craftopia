@@ -11,12 +11,12 @@ interface Props {
 }
 
 export const FormSection: React.FC<Props> = ({ title, icon: Icon, iconColor, iconBgColor, children }) => (
-  <View className="bg-white mx-4 mt-4 rounded-2xl p-6 border border-gray-100">
-    <View className="flex-row items-center mb-4">
-      <View className="w-10 h-10 rounded-full items-center justify-center mr-3" style={{ backgroundColor: iconBgColor }}>
-        <Icon size={18} color={iconColor} />
+  <View className="bg-craftopia-surface mx-4 mt-3 rounded-lg p-4 border border-craftopia-light">
+    <View className="flex-row items-center mb-3">
+      <View className="w-8 h-8 rounded-full items-center justify-center mr-2" style={{ backgroundColor: iconBgColor }}>
+        <Icon size={14} color={iconColor} />
       </View>
-      <Text className="text-lg font-bold text-gray-900">{title}</Text>
+      <Text className="text-sm font-semibold text-craftopia-textPrimary">{title}</Text>
     </View>
     {children}
   </View>

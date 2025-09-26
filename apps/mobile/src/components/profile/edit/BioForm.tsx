@@ -6,14 +6,14 @@ import { FormSection } from './FormSection';
 interface Props { bio?: string; onBioChange: (text: string) => void; characterLimit?: number; }
 
 export const BioForm: React.FC<Props> = ({ bio, onBioChange, characterLimit }) => (
-  <FormSection title="About You" icon={FileText} iconColor="#10B981" iconBgColor="#D1FAE5">
+  <FormSection title="About You" icon={FileText} iconColor="#00A896" iconBgColor="#00A896/10">
     <Input
       label="Bio"
       placeholder="Tell us about yourself..."
       value={bio}
       onChangeText={onBioChange}
       multiline
-      numberOfLines={4}
+      numberOfLines={3}
       textAlignVertical="top"
       maxLength={characterLimit}
     />

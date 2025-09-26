@@ -10,12 +10,9 @@ interface Props {
   onChange?: (uri?: string) => void
 }
 
-// ✅ Replace with your server's public URL
-
 export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChange }) => {
   const safeAvatar = String(avatar || '🧑‍🎨');
-const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
-
+  const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
   
   const { uploadToFolder } = useLocalUpload()
   const [showPicker, setShowPicker] = useState(false)
@@ -36,21 +33,15 @@ const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
       const asset = result.assets[0]
       setUploading(true)
       try {
-        // Upload and get relative path
         const uploadedPath = await uploadToFolder(asset.uri, 'profiles')
-        console.log('✅ Avatar uploaded (relative path):', uploadedPath)
-
-        // Convert to absolute URL
         const fullUrl = uploadedPath.startsWith('http') 
           ? uploadedPath 
           : `${API_BASE_URL}${uploadedPath}`
 
-        console.log('✅ Avatar full URL:', fullUrl)
-
         if (fullUrl) onChange?.(fullUrl)
         setShowPicker(false)
       } catch (err) {
-        console.error('❌ Avatar upload failed:', err)
+        console.error('Avatar upload failed:', err)
       } finally {
         setUploading(false)
       }
@@ -58,40 +49,34 @@ const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
   }
 
   return (
-    <View className="bg-craftopia-surface rounded-2xl p-6 border border-craftopia-light shadow mt-4">
-      <Text className="text-lg font-bold text-craftopia-textPrimary mb-4">
+    <View className="bg-craftopia-surface rounded-lg p-4 border border-craftopia-light mt-3">
+      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">
         Profile Photo
       </Text>
 
       <View className="items-center">
         <TouchableOpacity onPress={() => setShowPicker(true)} disabled={uploading}>
           <View className="relative">
-            <View className="w-24 h-24 bg-craftopia-light rounded-2xl items-center justify-center overflow-hidden">
+            <View className="w-20 h-20 bg-craftopia-light rounded-lg items-center justify-center overflow-hidden">
               {isEmoji ? (
-                <Text className="text-xl">{avatar}</Text>
+                <Text className="text-lg">{avatar}</Text>
               ) : (
                 <Image
                   source={{ uri: avatar }}
-                  className="w-full h-full rounded-2xl"
+                  className="w-full h-full rounded-lg"
                   resizeMode="cover"
                 />
               )}
             </View>
-            <View className="absolute -bottom-1 -right-1 w-8 h-8 bg-craftopia-primary rounded-full items-center justify-center">
-              <Camera size={14} color="white" />
+            <View className="absolute -bottom-1 -right-1 w-6 h-6 bg-craftopia-primary rounded-full items-center justify-center">
+              <Camera size={12} color="white" />
             </View>
           </View>
         </TouchableOpacity>
 
-        <Text className="text-sm text-craftopia-textSecondary mt-3">
+        <Text className="text-xs text-craftopia-textSecondary mt-2">
           Tap to change photo
         </Text>
-
-        {avatar && avatar.startsWith('file://') && (
-          <Text className="text-xs text-blue-600 mt-1">
-            New image selected (not saved yet)
-          </Text>
-        )}
       </View>
 
       <Modal
@@ -112,7 +97,7 @@ const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
               onPress={() => pickImage(true)}
             >
               <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <Camera size={16} color="#16a34a" />
+                <Camera size={14} color="#004E98" />
               </View>
               <Text className="text-craftopia-textPrimary font-medium text-sm">
                 Take Photo
@@ -124,7 +109,7 @@ const isEmoji = safeAvatar.length <= 2 && !safeAvatar.startsWith('http');
               onPress={() => pickImage(false)}
             >
               <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <ImageIcon size={16} color="#16a34a" />
+                <ImageIcon size={14} color="#004E98" />
               </View>
               <Text className="text-craftopia-textPrimary font-medium text-sm">
                 Choose from Gallery

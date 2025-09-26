@@ -55,10 +55,7 @@ const Button: React.FC<ButtonProps> = ({
       iconOnly ? '' : 'flex-row justify-center'
     }`;
 
-    if (disabled || loading) {
-      return `${baseStyles} opacity-40 ${className}`;
-    }
-
+    // 🔥 Keep styles consistent, no opacity changes for disabled/loading
     switch (variant) {
       case 'secondary':
         return `${baseStyles} bg-craftopia-light ${className}`;
@@ -70,12 +67,15 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextStyles = () => {
-    const textSize = size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
+    const textSize =
+      size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
 
     switch (variant) {
       case 'secondary':
       case 'outline':
-        return `${textSize} font-medium ${textClassName || 'text-craftopia-textPrimary'}`;
+        return `${textSize} font-medium ${
+          textClassName || 'text-craftopia-textPrimary'
+        }`;
       default:
         return `${textSize} font-medium ${textClassName || 'text-white'}`;
     }

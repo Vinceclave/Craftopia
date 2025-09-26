@@ -1,3 +1,4 @@
+// EditProfileScreen.tsx - Updated with your colors
 import React, { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,7 +20,7 @@ interface UserProfile {
   email: string;
   username: string;
   bio: string;
-  avatar: string; // must be a URL if uploaded
+  avatar: string;
 }
 
 const VALIDATION_RULES = {
@@ -56,7 +57,7 @@ export function EditProfileScreen() {
     profile.name !== initialProfile.name || 
     profile.bio !== initialProfile.bio ||
     profile.avatar !== initialProfile.avatar
-  ), [profile.name, profile.bio, profile.avatar, initialProfile]);
+  ), [profile, initialProfile]);
 
   const validation = useMemo(() => validateProfile(profile), [profile]);
 
@@ -73,14 +74,10 @@ export function EditProfileScreen() {
         profile_picture_url: profile.avatar.startsWith('http') ? profile.avatar : null
       };
 
-      console.log('💾 Saving profile with payload:', payload);
-
       const response = await apiService.request('/api/v1/users/profile', { 
         method: 'PUT', 
         data: payload 
       });
-
-      console.log('✅ Profile save response:', response);
 
       if (setUser && user) {
         setUser(prev => ({
@@ -96,7 +93,6 @@ export function EditProfileScreen() {
 
       success('Success', 'Profile updated successfully!', () => navigation.goBack());
     } catch (err: any) {
-      console.error('❌ Profile save error:', err);
       const msg = err.response?.data?.error || err.message || 'Something went wrong.';
       error('Error', msg);
     } finally { 
@@ -105,7 +101,6 @@ export function EditProfileScreen() {
   }, [validation, profile, error, setUser, user, success, navigation]);
 
   const handleAvatarChange = useCallback((url?: string) => {
-    console.log('🖼️ Avatar changed to:', url);
     setProfile(p => ({ ...p, avatar: url || '🧑‍🎨' }));
   }, []);
 
@@ -115,12 +110,13 @@ export function EditProfileScreen() {
   const canSave = hasChanges && validation.isValid && !loading;
 
   return (
-    <SafeAreaView edges={['left','right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-light">
       <EditProfileHeader onBackPress={handleBackPress} />
+      
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         keyboardShouldPersistTaps="handled"
       >
         <AvatarSection avatar={profile.avatar} onChange={handleAvatarChange} />
@@ -130,20 +126,27 @@ export function EditProfileScreen() {
           username={profile.username}
           onNameChange={handleNameChange}
         />
+        
         <BioForm bio={profile.bio} onBioChange={handleBioChange} characterLimit={VALIDATION_RULES.BIO_MAX_LENGTH} />
+        
         <EmailInfo email={profile.email} />
 
-        <View className="mx-4 mt-6">
+        <View className="mx-4 mt-4">
           <Button
             onPress={handleSave}
             title={loading ? 'Saving...' : 'Save Changes'}
-            size="lg"
-            variant="primary"
+            size="md"
             disabled={!canSave}
             loading={loading}
           />
-          {!hasChanges && !loading && <Text className="text-center text-sm text-gray-500 mt-2">No changes to save</Text>}
-          {!validation.isValid && <Text className="text-center text-sm text-red-500 mt-2">{validation.error}</Text>}
+          
+          {!hasChanges && !loading && (
+            <Text className="text-center text-xs text-craftopia-textSecondary mt-2">No changes to save</Text>
+          )}
+          
+          {!validation.isValid && (
+            <Text className="text-center text-xs text-red-500 mt-2">{validation.error}</Text>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

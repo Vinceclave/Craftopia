@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, Alert, ActivityIndicator } from 'react-native';
-import Button from '~/components/common/Button';
-import { ImageUploadPicker } from '~/components/common/ImageUploadPicker';
-import { API_ENDPOINTS } from '~/config/api';
-import { useAuth } from '~/context/AuthContext';
-import { apiService } from '~/services/base.service';
+import React, { useEffect, useState } from 'react'
+import { Text, View, Alert, ActivityIndicator } from 'react-native'
+import { CheckCircle, Clock, Upload } from 'lucide-react-native'
+import Button from '~/components/common/Button'
+import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
+import { API_ENDPOINTS } from '~/config/api'
+import { useAuth } from '~/context/AuthContext'
+import { apiService } from '~/services/base.service'
 
 interface UserQuestProgressProps {
-  id: number;
-  description?: string;
-  points?: number;
+  id: number
+  description?: string
+  points?: number
 }
 
 export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
@@ -17,64 +18,57 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   description,
   points,
 }) => {
-  const { user } = useAuth();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [challengeData, setChallengeData] = useState<any | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth()
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [challengeData, setChallengeData] = useState<any | null>(null)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  // ✅ fetch challenge data safely
   const fetchData = async () => {
-    if (!user?.id) return;
-    setLoading(true);
+    if (!user?.id) return
+    setLoading(true)
 
     try {
       const response = await apiService.request(
         `${API_ENDPOINTS.USER_CHALLENGES.BY_CHALLENGE_ID(id)}?user_id=${user.id}`,
         { method: 'GET' }
-      );
+      )
 
       if (response) {
-        setChallengeData(response.data);
-        if (response.proof_url) {
-          setImageUrl(response.proof_url);
+        setChallengeData(response.data)
+        if (response.data?.proof_url) {
+          setImageUrl(response.data.proof_url)
         }
       }
     } catch (err: any) {
-      console.error('Failed to fetch challenge data:', err);
-      const msg = err.response?.data?.error || err.message || 'Unable to load progress.';
-      Alert.alert('Error', msg);
+      console.error('Failed to fetch challenge data:', err)
+      const msg = err.response?.data?.error || err.message || 'Unable to load progress.'
+      Alert.alert('Error', msg)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // ✅ run fetch on mount and when id/user changes
   useEffect(() => {
-    let mounted = true;
-    fetchData().catch(() => {});
-
-    return () => {
-      mounted = false;
-    };
-  }, [id, user?.id]);
+    fetchData().catch(() => {})
+  }, [id, user?.id])
 
   const handleVerify = async () => {
     if (!imageUrl) {
-      Alert.alert('Error', 'Please upload a proof image first');
-      return;
+      Alert.alert('Error', 'Please upload a proof image first')
+      return
     }
 
     if (imageUrl.startsWith('file://')) {
-      Alert.alert('Error', 'Please upload the image first');
-      return;
+      Alert.alert('Error', 'Please upload the image first')
+      return
     }
 
-    setIsVerifying(true);
+    setIsVerifying(true)
 
     try {
-      const response = await apiService.request(
+      await apiService.request(
         API_ENDPOINTS.USER_CHALLENGES.VERIFY(challengeData.user_challenge_id),
         {
           method: 'POST',
@@ -86,21 +80,57 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             userId: user?.id,
           },
         }
-      );
+      )
 
-      console.log(response);
-      Alert.alert('Success', 'Challenge submitted for verification!');
-      fetchData(); // refresh data after verify
+      Alert.alert('Success', 'Challenge submitted for verification!')
+      fetchData()
     } catch (err: any) {
-      console.error('Verify request failed:', err);
-      const msg = err.response?.data?.error || err.message || 'Something went wrong.';
-      Alert.alert('Error', msg);
+      console.error('Verify request failed:', err)
+      const msg = err.response?.data?.error || err.message || 'Something went wrong.'
+      Alert.alert('Error', msg)
     } finally {
-      setIsVerifying(false);
+      setIsVerifying(false)
     }
-  };
+  }
 
-  console.log(challengeData)
+  const getStatusIcon = () => {
+    if (!challengeData) return null
+
+    switch (challengeData.status) {
+      case 'completed':
+        return <CheckCircle size={14} color="#004E98" />
+      default:
+        return <Clock size={14} color="#FF6700" />
+    }
+  }
+
+  const getStatusColor = () => {
+    if (!challengeData) return 'text-craftopia-textSecondary'
+
+    switch (challengeData.status) {
+      case 'completed':
+        return 'text-craftopia-primary'
+      default:
+        return 'text-craftopia-accent'
+    }
+  }
+
+  // ✅ New: Dynamic button title
+  const getButtonTitle = () => {
+    if (isVerifying || isUploading) return 'Processing...'
+    if (!challengeData) return 'Submit for Verification'
+
+    switch (challengeData.status) {
+      case 'pending_verification':
+        return 'Waiting for Verification'
+      case 'completed':
+        return 'Completed'
+      case 'rejected':
+        return 'Resubmit Proof'
+      default:
+        return 'Submit for Verification'
+    }
+  }
 
   return (
     <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
@@ -109,7 +139,9 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       </Text>
 
       {loading ? (
-        <ActivityIndicator size="small" color="#666" />
+        <View className="items-center py-2">
+          <ActivityIndicator size="small" color="#004E98" />
+        </View>
       ) : (
         <>
           <ImageUploadPicker
@@ -123,25 +155,41 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
           />
 
           <Button
-            title={isVerifying || isUploading ? 'Processing...' : 'Verify'}
+            title={getButtonTitle()}
             onPress={handleVerify}
-            disabled={isVerifying || isUploading || !imageUrl}
+            disabled={
+              isVerifying ||
+              isUploading ||
+              !imageUrl ||
+              (challengeData?.status === 'pending_verification') ||
+              (challengeData?.status === 'completed')
+            }
+            leftIcon={isVerifying || isUploading ? null : <Upload size={14} color="#fff" />}
+            size="sm"
+            className="mt-2"
           />
 
           {challengeData && (
-            <View className="mt-3">
-              <Text className="text-xs text-craftopia-textSecondary">
-                Status: {challengeData.status}
-              </Text>
-              {challengeData.verified_at && (
-                <Text className="text-xs text-green-600">
-                  Verified on {new Date(challengeData.verified_at).toLocaleDateString()}
+            <View className="flex flex-row mt-3 pt-2 border-t border-craftopia-light items-center justify-between">
+              <View className="flex-row items-center">
+                {getStatusIcon()}
+                <Text className={`text-xs font-medium ml-1 ${getStatusColor()}`}>
+                  {challengeData.status}
                 </Text>
+              </View>
+
+              {challengeData.verified_at && (
+                <View className="flex-row items-center">
+                  <CheckCircle size={12} color="#00A896" />
+                  <Text className="text-xs text-craftopia-growth ml-1">
+                    {new Date(challengeData.verified_at).toLocaleDateString()}
+                  </Text>
+                </View>
               )}
             </View>
           )}
         </>
       )}
     </View>
-  );
-};
+  )
+}
