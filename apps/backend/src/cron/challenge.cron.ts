@@ -11,7 +11,7 @@ const log = (message: string, level: 'info' | 'error' = 'info') => {
 };
 
 // Daily challenges - Every day at 6:00 AM
-cron.schedule('9 20 * * *', async () => {
+cron.schedule('21 12 * * *', async () => {
   log('Starting daily challenge generation...');
   
   try {

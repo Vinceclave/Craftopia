@@ -1,8 +1,16 @@
-// apps/backend/src/ai/prompt/challenges.prompt.ts - UPDATED VERSION
-
-export const challengePrompt = (materialTypes: string, frequency: 'daily' | 'weekly' | 'monthly' = 'daily') => {
+export const challengePrompt = (
+  materialTypes: string,
+  frequency: 'daily' | 'weekly' | 'monthly' = 'daily'
+) => {
   const challengeCount = frequency === 'daily' ? 5 : frequency === 'weekly' ? 10 : 15;
-  
+  const expiresInDays = frequency === 'daily' ? 1 : frequency === 'weekly' ? 7 : 30;
+
+  const now = new Date();
+  const startAt = now.toISOString();
+  const expiresAt = new Date(now);
+  expiresAt.setDate(now.getDate() + expiresInDays);
+  const expiresAtISO = expiresAt.toISOString();
+
   return `Generate an array of ${challengeCount} RECYCLING challenges focused strictly on recyclable materials: ${materialTypes}
 
 IMPORTANT: Focus ONLY on actual recyclable materials and eco-friendly recycling activities.
@@ -26,7 +34,9 @@ Return ONLY valid JSON array with this exact structure:
     "pointsReward": 20,
     "materialType": "plastic",
     "isActive": true,
-    "source": "ai"
+    "source": "ai",
+    "startAt": "${startAt}",
+    "expiresAt": "${expiresAtISO}"
   }
 ]
 
@@ -37,6 +47,8 @@ Rules:
 - Make outcomes easily recognizable by AI in photos
 - Include specific quantities for verification
 - Focus on environmental benefits and sustainability
+- "startAt" should always be today's date
+- "expiresAt" should be startAt + ${expiresInDays} days (1 day for daily, 7 for weekly, 30 for monthly)
 
 Examples of GOOD recyclable material challenges:
 
@@ -47,55 +59,19 @@ Examples of GOOD recyclable material challenges:
     "pointsReward": 25,
     "materialType": "plastic",
     "isActive": true,
-    "source": "ai"
+    "source": "ai",
+    "startAt": "${startAt}",
+    "expiresAt": "${new Date(new Date().setDate(new Date().getDate() + 1)).toISOString()}"
   },
   {
-    "title": "Glass Jar Storage Set",
-    "description": "Clean and repurpose 8 glass jars as kitchen storage containers, label and organize on shelf.",
-    "pointsReward": 20,
-    "materialType": "glass",
-    "isActive": true,
-    "source": "ai"
-  },
-  {
-    "title": "Newspaper Gift Wrapping",
-    "description": "Use old newspapers to wrap 5 gifts creatively, include decorative paper ribbons made from magazines.",
-    "pointsReward": 15,
-    "materialType": "paper",
-    "isActive": true,
-    "source": "ai"
-  },
-  {
-    "title": "Metal Can Organizers",
-    "description": "Convert 4 clean metal cans into desk organizers, remove labels and arrange as pen/tool holders.",
-    "pointsReward": 18,
-    "materialType": "metal",
-    "isActive": true,
-    "source": "ai"
-  },
-  {
-    "title": "Textile Cleaning Rags",
-    "description": "Cut 10 old t-shirts into reusable cleaning rags, hem edges and stack neatly for household use.",
-    "pointsReward": 16,
+    "title": "Textile Grocery Bags",
+    "description": "Create reusable grocery bags from old textile scraps. It's 2025 right now, with at least two grocery items (e.g., apples, small box) placed inside.",
+    "pointsReward": 25,
     "materialType": "textile",
     "isActive": true,
-    "source": "ai"
-  },
-  {
-    "title": "Cardboard Drawer Dividers",
-    "description": "Create 6 drawer dividers from cardboard boxes, measure and cut to fit standard drawer sizes.",
-    "pointsReward": 17,
-    "materialType": "paper",
-    "isActive": true,
-    "source": "ai"
-  },
-  {
-    "title": "Organic Compost Bin",
-    "description": "Set up compost bin using organic kitchen scraps, show 2 weeks of decomposition progress.",
-    "pointsReward": 28,
-    "materialType": "organic",
-    "isActive": true,
-    "source": "ai"
+    "source": "ai",
+    "startAt": "${startAt}",
+    "expiresAt": "${expiresAtISO}"
   }
 ]
 

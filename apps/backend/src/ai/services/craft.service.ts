@@ -1,7 +1,7 @@
 import { AppError } from "../../utils/error";
 import { ai } from "../gemini/client";
 import { craftPrompt } from "../prompt/craft.prompt";
-import { parseResponse } from "../utils/responseParser";
+import { parseJsonFromMarkdown } from "../utils/responseParser";
 import { config } from "../../config";
 
 export const generateCraft = async (materials: string) => {
@@ -41,7 +41,7 @@ export const generateCraft = async (materials: string) => {
             throw new AppError('AI did not return a response', 500);
         }
 
-        const ideas = parseResponse(text);
+        const ideas = parseJsonFromMarkdown(text);
 
         if (!Array.isArray(ideas)) {
             throw new AppError('AI did not return a valid ideas array', 500);

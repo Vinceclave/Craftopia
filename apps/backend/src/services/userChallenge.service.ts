@@ -211,6 +211,28 @@ export const getUserChallengeById = async (user_id: number, challenge_id: number
     throw new AppError("User challenge not found", 404);
   }
 
+  const now = new Date();
+
+  // Check if the challenge has expired
+  if (userChallenge.challenge.expires_at && userChallenge.challenge.expires_at < now) {
+    // Automatically update the userChallenge status to "rejected" if not already
+    if (userChallenge.status !== "rejected") {
+      await prisma.userChallenge.update({
+        where: {
+          user_id_challenge_id: {
+            user_id,
+            challenge_id,
+          },
+        },
+        data: {
+          status: "rejected",
+        },
+      });
+      // Also update the local object so the returned value reflects it
+      userChallenge.status = "rejected";
+    }
+  }
+
   return userChallenge;
 };
 

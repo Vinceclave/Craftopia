@@ -1,6 +1,6 @@
 import { ai } from "../gemini/client";
 import { AppError } from "../../utils/error";
-import { parseResponse } from "../utils/responseParser";
+import { parseJsonFromMarkdown } from "../utils/responseParser";
 import { config } from "../../config";
 import { createChallengeVerificationPrompt } from "../prompt/image.prompt";
 import path from "path";
@@ -113,7 +113,7 @@ export const recognizeImage = async (url: string) => {
     throw new AppError("AI did not return a response", 500);
   }
 
-  const parsed = parseResponse(text);
+  const parsed = parseJsonFromMarkdown(text);
   if (!parsed || typeof parsed !== "object") {
     throw new AppError("Invalid AI response format", 500);
   }
@@ -164,7 +164,7 @@ export const verifyChallengeAI = async (
   const text = result.text;
   if (!text?.trim()) throw new Error("AI verification failed");
 
-  const verification = parseResponse(text);
+  const verification = parseJsonFromMarkdown(text);
   if (!verification || typeof verification !== "object")
     throw new Error("Invalid AI verification format");
 

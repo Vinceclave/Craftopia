@@ -51,15 +51,15 @@ export const EcoQuestScreen = () => {
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       <QuestHeader />
-
+      <QuestBanner />
+        <Achievements />
+        <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
-        <QuestBanner />
-        <Achievements />
-        <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
+        
         {loading ? (
           <ActivityIndicator size="large" color="#4F46E5" className="mt-10" />
         ) : challenges.length === 0 ? (

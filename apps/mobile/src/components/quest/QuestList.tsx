@@ -42,8 +42,9 @@ export const QuestList: React.FC<QuestListProps> = ({ challenges, loading = fals
     <FlatList
       data={challenges}
       keyExtractor={(item) => item.challenge_id.toString()}
-      scrollEnabled={false}
-      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+      scrollEnabled={true} // ✅ enable scrolling here
+      nestedScrollEnabled={true} // ✅ needed if inside a ScrollView
+      contentContainerStyle={{ paddingBottom: 16, paddingHorizontal: 16 }}
       renderItem={({ item }) => (
         <View className={`p-3 mb-2 rounded-lg ${item.is_active ? 'bg-craftopia-surface' : 'bg-craftopia-light'}`}>
           <View className="flex-row justify-between items-center">

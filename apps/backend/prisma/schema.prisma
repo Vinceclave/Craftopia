@@ -233,6 +233,11 @@ model EcoChallenge {
   updated_at          DateTime          @default(now())
   deleted_at          DateTime?
 
+  // Expiration fields (aligned with daily/weekly/monthly categories)
+  start_at            DateTime          @default(now())
+  expires_at          DateTime?         
+
+
   created_by_admin User?           @relation(fields: [created_by_admin_id], references: [user_id])
   participants     UserChallenge[]
 }

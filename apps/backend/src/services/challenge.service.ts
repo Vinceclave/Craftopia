@@ -68,30 +68,28 @@ export const generateAndSaveChallenge = async (category: ChallengeCategory, admi
 };
 
 export const getAllChallenges = async (category?: string) => {
-  const where: any = {
-    deleted_at: null,
-    is_active: true,
-  };
+  // Mark expired challenges as inactive (ignore deleted)
+  await prisma.ecoChallenge.updateMany({
+    where: {
+      expires_at: { lt: new Date() },  // find challenges that have expired
+      is_active: true,                 // only currently active ones
+      deleted_at: null                  // ignore deleted ones
+    },
+    data: {
+      is_active: false                  // mark them as inactive
+    },
+  });
 
-  if (category && category !== 'all') {
-    where.category = category;
-  }
+  const where: any = { deleted_at: null, is_active: true };
+  if (category && category !== 'all') where.category = category;
 
   const data = await prisma.ecoChallenge.findMany({
     where,
-    orderBy: { created_at: 'asc' }, // <-- changed to ascending
+    orderBy: { created_at: 'desc' },
     include: {
-      created_by_admin: {
-        select: { user_id: true, username: true },
-      },
-      _count: {
-        select: {
-          participants: {
-            where: { deleted_at: null },
-          },
-        },
-      },
-    },
+      created_by_admin: { select: { user_id: true, username: true } },
+      _count: { select: { participants: { where: { deleted_at: null } } } },
+    }
   });
 
   return { data, total: data.length };

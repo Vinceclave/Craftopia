@@ -1,9 +1,7 @@
-// apps/backend/src/ai/services/challenges.service.ts - UPDATED RECYCLABLE FOCUS
-
 import { ai } from "../gemini/client";
 import { AppError } from "../../utils/error";
 import { challengePrompt } from "../prompt/challenges.prompt";
-import { parseResponse } from "../utils/responseParser";
+import { parseJsonFromMarkdown } from "../utils/responseParser";
 import { config } from "../../config";
 import prisma from "../../config/prisma";
 import { MaterialType, ChallengeCategory, ChallengeSource } from "../../generated/prisma";
@@ -16,42 +14,47 @@ export interface AIChallenge {
   category: 'daily' | 'weekly' | 'monthly';
   is_active: boolean;
   source: 'ai';
+  start_at: Date;
+  expires_at: Date;
 }
 
-// UPDATED: Only recyclable materials mapping
+// Mapping only common recyclable materials
 const recyclableMaterialMap: Record<string, MaterialType> = {
-  plastic: "plastic",     // Bottles, containers, bags
-  paper: "paper",         // Newspapers, cardboard, magazines
-  glass: "glass",         // Jars, bottles
-  metal: "metal",         // Cans, foil, containers
-  electronics: "electronics", // E-waste for proper recycling
-  organic: "organic",     // Compostable materials
-  textile: "textile",     // Clothing, fabric for repurposing
+  plastic: MaterialType.plastic,
+  paper: MaterialType.paper,
+  glass: MaterialType.glass,
+  metal: MaterialType.metal,
+  electronics: MaterialType.electronics,
+  organic: MaterialType.organic,
+  textile: MaterialType.textile,
 };
 
-// UPDATED: Focus on common recyclable materials
+// Pick materials based on frequency
 const getRecyclableMaterials = (frequency: 'daily' | 'weekly' | 'monthly'): string[] => {
   const commonRecyclables = ['plastic', 'paper', 'glass', 'metal'];
   const allRecyclables = [...commonRecyclables, 'textile', 'organic'];
-  
+
   switch (frequency) {
     case 'daily':
-      // Focus on most common household recyclables
       return commonRecyclables.sort(() => 0.5 - Math.random()).slice(0, 3);
     case 'weekly':
-      // Include more variety for weekly challenges
       return allRecyclables.sort(() => 0.5 - Math.random()).slice(0, 4);
     case 'monthly':
-      // Use all recyclable materials for monthly challenges
       return allRecyclables.sort(() => 0.5 - Math.random()).slice(0, 5);
     default:
       return commonRecyclables;
   }
 };
 
+// Map frequency to default expiration days
+const frequencyToDays: Record<'daily' | 'weekly' | 'monthly', number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: 30,
+};
+
 export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<AIChallenge[]> => {
   try {
-    // Get appropriate recyclable materials for the frequency
     const selectedMaterials = getRecyclableMaterials(frequency);
     const materialTypesString = selectedMaterials.join(", ");
 
@@ -65,40 +68,35 @@ export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly
     });
 
     const text = response.text;
-    console.log('AI Response for recyclable challenges:', text);
+    if (!text) throw new Error('AI response is empty');
 
-    if (!text) {
-      throw new Error('AI response is empty');
-    }
+    const parsedChallenges = parseJsonFromMarkdown(text);
+    if (!Array.isArray(parsedChallenges)) throw new Error('Expected an array of challenges');
 
-    // Parse the JSON response
-    const parsedChallenges = parseResponse(text);
-    
-    // Validate and transform the response - ensure only recyclable materials
+    const now = new Date();
+
     const challenges: AIChallenge[] = parsedChallenges
-      .filter((challenge: any) => {
-        // Filter out any challenges with non-recyclable materials
-        const materialType = challenge.materialType?.toLowerCase();
-        return materialType && recyclableMaterialMap[materialType];
-      })
-      .map((challenge: any) => ({
-        title: challenge.title,
-        description: challenge.description,
-        points_reward: Math.max(15, Math.min(30, challenge.pointsReward || 20)), // Ensure 15-30 points
-        material_type: recyclableMaterialMap[challenge.materialType] || MaterialType.mixed,
-        category: frequency,
-        is_active: challenge.isActive,
-        source: 'ai' as const,
-      }));
+      .filter((challenge: any) => challenge && typeof challenge === 'object' && recyclableMaterialMap[challenge.materialType?.toLowerCase()])
+      .map((challenge: any) => {
+        const expiresAt = new Date(now);
+        expiresAt.setDate(now.getDate() + frequencyToDays[frequency]);
 
-    console.log(`Generated ${challenges.length} recyclable ${frequency} challenges:`, 
-      challenges.map(c => `${c.title} (${c.material_type})`));
-    
-    // Validate we have challenges and they're focused on recyclables
-    if (challenges.length === 0) {
-      throw new Error('No valid recyclable material challenges generated');
-    }
+        return {
+          title: challenge.title || 'Untitled Challenge',
+          description: challenge.description || '',
+          points_reward: Math.max(15, Math.min(30, Number(challenge.pointsReward) || 20)),
+          material_type: recyclableMaterialMap[challenge.materialType.toLowerCase()] || MaterialType.mixed,
+          category: frequency,
+          is_active: challenge.isActive !== false,
+          source: 'ai',
+          start_at: now,
+          expires_at: expiresAt,
+        };
+      });
 
+    if (challenges.length === 0) throw new Error('No valid recyclable material challenges generated');
+
+    console.log(`Generated ${challenges.length} recyclable ${frequency} challenges:`, challenges.map(c => `${c.title} (${c.material_type})`));
     return challenges;
 
   } catch (error: any) {
@@ -107,7 +105,6 @@ export const generateChallenge = async (frequency: 'daily' | 'weekly' | 'monthly
   }
 };
 
-// Keep existing createChallenges and createChallenge functions unchanged
 export const createChallenges = async (challenges: AIChallenge[]) => {
   try {
     const savedChallenges = await prisma.ecoChallenge.createMany({
@@ -116,14 +113,16 @@ export const createChallenges = async (challenges: AIChallenge[]) => {
         description: challenge.description.trim(),
         points_reward: challenge.points_reward,
         material_type: challenge.material_type,
-        category: challenge.category as ChallengeCategory, // Remove .toUpperCase()
+        category: challenge.category as ChallengeCategory,
         source: ChallengeSource.ai,
         is_active: challenge.is_active,
         created_by_admin_id: null,
+        start_at: challenge.start_at,
+        expires_at: challenge.expires_at
       })),
       skipDuplicates: true,
     });
-    
+
     console.log(`Saved ${savedChallenges.count} recyclable challenges to database`);
     return savedChallenges;
   } catch (error) {
@@ -140,25 +139,15 @@ export const createChallenge = async (data: {
   created_by_admin_id?: number | null;
   category: ChallengeCategory;
 }) => {
-  if (!data.title?.trim()) {
-    throw new AppError('Challenge title is required', 400);
-  }
+  if (!data.title?.trim()) throw new AppError('Challenge title is required', 400);
+  if (!data.description?.trim()) throw new AppError('Challenge description is required', 400);
+  if (!data.points_reward || data.points_reward < 1) throw new AppError('Points reward must be greater than 0', 400);
+  if (!Object.values(MaterialType).includes(data.material_type as MaterialType)) throw new AppError(`Invalid material type. Allowed recyclable materials: ${Object.values(MaterialType).join(', ')}`, 400);
+  if (!Object.values(ChallengeCategory).includes(data.category)) throw new AppError(`Invalid category. Allowed values: ${Object.values(ChallengeCategory).join(', ')}`, 400);
 
-  if (!data.description?.trim()) {
-    throw new AppError('Challenge description is required', 400);
-  }
-
-  if (!data.points_reward || data.points_reward < 1) {
-    throw new AppError('Points reward must be greater than 0', 400);
-  }
-
-  if (!Object.values(MaterialType).includes(data.material_type as MaterialType)) {
-    throw new AppError(`Invalid material type. Allowed recyclable materials: ${Object.values(MaterialType).join(', ')}`, 400);
-  }
-
-  if (!Object.values(ChallengeCategory).includes(data.category)) {
-    throw new AppError(`Invalid category. Allowed values: ${Object.values(ChallengeCategory).join(', ')}`, 400);
-  }
+  const now = new Date();
+  const expiresAt = new Date(now);
+  expiresAt.setDate(now.getDate() + 7); // default 7 days if not provided
 
   return prisma.ecoChallenge.create({
     data: {
@@ -169,11 +158,13 @@ export const createChallenge = async (data: {
       category: data.category,
       source: data.created_by_admin_id ? ChallengeSource.admin : ChallengeSource.ai,
       created_by_admin_id: data.created_by_admin_id || null,
+      start_at: now,
+      expires_at: expiresAt,
     },
     include: {
       created_by_admin: {
-        select: { user_id: true, username: true }
-      }
-    }
+        select: { user_id: true, username: true },
+      },
+    },
   });
 };
