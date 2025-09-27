@@ -109,7 +109,7 @@ export default function TabNavigator() {
       };
 
       const currentScreenName = getCurrentScreenName(e.data.state);
-      const hideOnScreens = ['EditProfile', 'Create']; // Only hide on EditProfile
+      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges']; // Only hide on EditProfile
       setTabBarVisible(!hideOnScreens.includes(currentScreenName));
     });
 

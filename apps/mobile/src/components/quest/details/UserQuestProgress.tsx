@@ -165,7 +165,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             folder="challenges"
             onUploadStart={() => setIsUploading(true)}
             onUploadComplete={() => setIsUploading(false)}
-            disabled={challengeData?.status === 'rejected'}
+            disabled={challengeData?.status === 'rejected' || 'completed'}
           />
 
           <Button
