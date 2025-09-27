@@ -1,7 +1,7 @@
-import { ArrowRight, Trophy } from 'lucide-react-native'
-import React from 'react'
-import { Text, View } from 'react-native'
-import Button from '../common/Button'
+import { ArrowRight, Trophy } from 'lucide-react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
+import Button from '../common/Button';
 
 export const Achievements = () => {
   return (
@@ -9,7 +9,7 @@ export const Achievements = () => {
       <View className="flex-row justify-between items-center">
         <View className="flex-row items-center gap-2">
           <View className="p-1 bg-craftopia-primary/10 rounded-full">
-            <Trophy size={14} color="#004E98" />
+            <Trophy size={14} className="text-craftopia-primary" />
           </View>
           <Text className="text-sm font-medium text-craftopia-textPrimary">
             Achievements
@@ -20,11 +20,11 @@ export const Achievements = () => {
           onPress={() => {}}
           title="See more"
           size="sm"
-          rightIcon={<ArrowRight size={12} color="#6B7280" />}
+          rightIcon={<ArrowRight size={12} className="text-craftopia-textSecondary" />}
           className="bg-transparent px-1 py-0.5"
           textClassName="text-xs text-craftopia-textSecondary"
         />
       </View>
     </View>
-  )
-}
+  );
+};

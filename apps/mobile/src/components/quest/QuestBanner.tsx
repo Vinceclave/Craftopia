@@ -1,10 +1,10 @@
-import { Badge } from 'lucide-react-native'
-import React from 'react'
-import { Text, View } from 'react-native'
+import { Badge } from 'lucide-react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
 
 export const QuestBanner = () => {
   return (
-    <View className="mx-4 mt-4 p-3 bg-craftopia-surface rounded-lg">
+    <View className="mx-4 mt-4 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
       <View className="flex-row justify-between items-center">
         <View className="flex-1">
           <Text className="text-sm font-medium text-craftopia-textPrimary">
@@ -21,7 +21,7 @@ export const QuestBanner = () => {
 
         <View className="pl-2">
           <View className="p-1 bg-craftopia-primary/10 rounded-full">
-            <Badge size={14} color="#004E98" />
+            <Badge size={14} className="text-craftopia-primary" />
           </View>
         </View>
       </View>
@@ -35,7 +35,11 @@ export const QuestBanner = () => {
           <Text className="text-sm font-bold text-craftopia-textPrimary">48</Text>
           <Text className="text-xs text-craftopia-textSecondary">Quests</Text>
         </View>
+        <View className="items-center">
+          <Text className="text-sm font-bold text-craftopia-accent">2.8k</Text>
+          <Text className="text-xs text-craftopia-textSecondary">Points</Text>
+        </View>
       </View>
     </View>
-  )
-}
+  );
+};

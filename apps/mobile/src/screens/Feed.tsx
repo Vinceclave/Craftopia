@@ -184,7 +184,7 @@ export const FeedScreen = () => {
           className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
         >
           <View className="flex-row items-center">
-            <IconComponent size={16} color={isActive ? '#004E98' : '#6B7280'} />
+            <IconComponent size={16} className={isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'} />
             <Text className={`text-sm font-medium ml-1.5 ${isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'}`}>
               {tab.label}
             </Text>
@@ -199,7 +199,7 @@ export const FeedScreen = () => {
     if (loading)
       return (
         <View className="flex-1 justify-center items-center py-6">
-          <ActivityIndicator size="small" color="#004E98" />
+          <ActivityIndicator size="small" className="text-craftopia-primary" />
           <Text className="text-craftopia-textSecondary text-sm mt-2">Loading posts...</Text>
         </View>
       );
@@ -241,7 +241,7 @@ export const FeedScreen = () => {
 
         {loadingMore && (
           <View className="py-3 items-center">
-            <ActivityIndicator size="small" color="#004E98" />
+            <ActivityIndicator size="small" className="text-craftopia-primary" />
             <Text className="text-craftopia-textSecondary mt-1 text-xs">Loading more...</Text>
           </View>
         )}
@@ -266,10 +266,10 @@ export const FeedScreen = () => {
         <View className="flex-row justify-between items-center mb-3">
           <View>
             <Text className="text-base font-semibold text-craftopia-textPrimary">Feed</Text>
-            <Text className="text-xs text-craftopia-textSecondary">Discover amazing projects</Text>
+            <Text className="text-sm text-craftopia-textSecondary">Discover amazing projects</Text>
           </View>
           <TouchableOpacity className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center">
-            <Search size={18} color="#6B7280" />
+            <Search size={18} className="text-craftopia-textSecondary" />
           </TouchableOpacity>
         </View>
 
@@ -285,7 +285,13 @@ export const FeedScreen = () => {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#004E98']} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh} 
+            colors={['#374A36']} 
+          />
+        }
       >
         {/* Trending Tags */}
         {activeTab === 'trending' && trendingTags.length > 0 && (
@@ -303,9 +309,9 @@ export const FeedScreen = () => {
       {/* FAB */}
       <TouchableOpacity
         onPress={handleCreate}
-        className="absolute bottom-24 right-4 w-12 h-12 bg-craftopia-primary rounded-full items-center justify-center shadow-sm"
+        className="absolute bottom-24 right-4 w-12 h-12 bg-craftopia-primary rounded-full items-center justify-center shadow-lg"
       >
-        <Plus size={20} color="#fff" />
+        <Plus size={20} className="text-craftopia-surface" />
       </TouchableOpacity>
     </SafeAreaView>
   );

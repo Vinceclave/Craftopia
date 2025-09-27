@@ -19,19 +19,19 @@ module.exports = {
         }
       },
       spacing: {
-        1: 6,   // was 4
-        2: 12,  // was 8
-        3: 18,  // was 12
-        4: 24,  // was 16
-        6: 36,  // was 24
-        8: 48,  // was 32
+        1: 4,   // smaller base unit
+        2: 8,   
+        3: 12,  
+        4: 16,  
+        6: 24,  
+        8: 32,  
       },
       fontSize: {
-        xs: ['14px', '20px'],  // was 12/18
-        sm: ['16px', '24px'],  // was 14/20
-        base: ['18px', '28px'], // was 16/24
-        lg: ['20px', '30px'],   // was 18/26
-        xl: ['24px', '32px'],   // was 20/28
+        xs: ['12px', '16px'],
+        sm: ['14px', '20px'],
+        base: ['16px', '22px'],
+        lg: ['18px', '24px'],
+        xl: ['20px', '28px'],
       },
     },
   },

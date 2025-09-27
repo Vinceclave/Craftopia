@@ -146,9 +146,9 @@ export const verifyChallenge = async (
   console.log("verifyChallenge params:", { userChallengeId, userId, challenge_id });
   console.log("AI verification result:", aiVerification);
 
-  // Step 2: Update using correct Prisma syntax
+  // Step 2: Update userChallenge using Prisma
   const verify = await prisma.userChallenge.update({
-    where: { user_challenge_id: userChallengeId }, // must be unique ID
+    where: { user_challenge_id: userChallengeId },
     data: {
       status,
       proof_url: imageUri,
@@ -158,14 +158,13 @@ export const verifyChallenge = async (
       verification_type,
       admin_notes,
       completed_at,
-      // Optional: ensure we re-assign relations if needed
       user_id: userId,
       challenge_id
     },
     include: {
       challenge: true,
       user: {
-        select: { user_id: true, username: true, email: true },
+        select: { user_id: true, username: true, email: true, },
       },
       verified_by: {
         select: { user_id: true, username: true },
@@ -174,8 +173,27 @@ export const verifyChallenge = async (
   });
 
   console.log("Prisma update result:", verify);
+
+ // Step 3: Increment user score if status is 'completed'
+  if (status === 'completed' && points_awarded) {
+    await prisma.userProfile.upsert({
+      where: { user_id: userId },
+      update: {
+        points: {
+          increment: points_awarded,
+        },
+      },
+      create: {
+        user_id: userId,
+        points: points_awarded,
+      },
+    });
+    console.log(`User ${userId} score incremented by ${points_awarded}`);
+  }
+
   return verify;
 };
+
 
 export const getUserChallengeById = async (user_id: number, challenge_id: number) => {
   if (!user_id || user_id <= 0) {

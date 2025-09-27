@@ -12,7 +12,7 @@ interface QuestHeaderProps {
 export const QuestHeader: React.FC<QuestHeaderProps> = ({ navigation }) => {
   const handleSeeChallenges = () => {
     console.log('See Challenges pressed');
-    navigation.navigate('UserChallenges'); // or pass questId if needed
+    navigation.navigate('UserChallenges');
   };
 
   return (
@@ -22,7 +22,7 @@ export const QuestHeader: React.FC<QuestHeaderProps> = ({ navigation }) => {
           <Text className="text-base font-semibold text-craftopia-textPrimary">
             Eco Quest
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary mt-0.5">
+          <Text className="text-sm text-craftopia-textSecondary mt-0.5">
             Complete quests, earn rewards
           </Text>
         </View>
@@ -31,7 +31,7 @@ export const QuestHeader: React.FC<QuestHeaderProps> = ({ navigation }) => {
           title=""
           onPress={handleSeeChallenges}
           iconOnly
-          leftIcon={<List color="#4B5563" size={20} />}
+          leftIcon={<List size={20} className="text-craftopia-textSecondary" />}
           className="bg-transparent"
         />
       </View>

@@ -65,6 +65,11 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       return
     }
 
+    if (!challengeData?.user_challenge_id) {
+      Alert.alert('Error', 'Challenge data not found. Please try refreshing.')
+      return
+    }
+
     setIsVerifying(true)
 
     try {
@@ -73,7 +78,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         {
           method: 'POST',
           data: {
-            proof_url: imageUrl,
+            imageUri: imageUrl,  // Changed from proof_url to imageUri to match backend
             description,
             points,
             challenge_id: id,
@@ -95,7 +100,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   const getStatusIcon = () => {
     if (!challengeData) return null
-
     switch (challengeData.status) {
       case 'completed':
         return <CheckCircle size={14} color="#004E98" />
@@ -106,7 +110,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   const getStatusColor = () => {
     if (!challengeData) return 'text-craftopia-textSecondary'
-
     switch (challengeData.status) {
       case 'completed':
         return 'text-craftopia-primary'
@@ -139,9 +142,8 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       isVerifying ||
       isUploading ||
       !imageUrl ||
-      challengeData.status === 'pending_verification' ||
-      challengeData.status === 'completed' ||
-      challengeData.status === 'rejected' // disable everything if rejected
+      // Fixed: removed extra space in 'completed'
+      ['pending_verification', 'completed'].includes(challengeData.status)
     )
   }
 
@@ -165,14 +167,15 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             folder="challenges"
             onUploadStart={() => setIsUploading(true)}
             onUploadComplete={() => setIsUploading(false)}
-            disabled={challengeData?.status === 'rejected' || 'completed'}
+            // Fixed: use consistent status names
+            disabled={['pending_verification', 'completed'].includes(challengeData?.status || '')}
           />
 
           <Button
             title={getButtonTitle()}
             onPress={handleVerify}
             disabled={isDisabled()}
-            leftIcon={isVerifying || isUploading ? null : <Upload size={14} color="#fff" />}
+            leftIcon={isVerifying || isUploading ? undefined : <Upload size={14} color="#fff" />}
             size="sm"
             className="mt-2"
           />

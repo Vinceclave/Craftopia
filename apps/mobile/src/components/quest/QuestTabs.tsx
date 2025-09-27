@@ -1,11 +1,11 @@
-import React from 'react'
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import React from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-type QuestType = 'all' | 'daily' | 'weekly' | 'monthly'
+type QuestType = 'all' | 'daily' | 'weekly' | 'monthly';
 
 interface QuestListsProps {
-  activeTab: QuestType
-  onChangeTab: (tab: QuestType) => void
+  activeTab: QuestType;
+  onChangeTab: (tab: QuestType) => void;
 }
 
 const QUEST_TABS: { key: QuestType; label: string }[] = [
@@ -13,7 +13,7 @@ const QUEST_TABS: { key: QuestType; label: string }[] = [
   { key: 'daily', label: 'Daily' },
   { key: 'weekly', label: 'Weekly' },
   { key: 'monthly', label: 'Monthly' },
-]
+];
 
 export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab }) => {
   return (
@@ -24,7 +24,7 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
         className="px-4"
       >
         {QUEST_TABS.map((tab) => {
-          const isActive = activeTab === tab.key
+          const isActive = activeTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -38,15 +38,15 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
             >
               <Text
                 className={`text-xs ${
-                  isActive ? 'text-white font-medium' : 'text-craftopia-textSecondary'
+                  isActive ? 'text-craftopia-surface font-medium' : 'text-craftopia-textSecondary'
                 }`}
               >
                 {tab.label}
               </Text>
             </TouchableOpacity>
-          )
+          );
         })}
       </ScrollView>
     </View>
-  )
-}
+  );
+};
