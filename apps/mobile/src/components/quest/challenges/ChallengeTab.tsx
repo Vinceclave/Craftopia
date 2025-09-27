@@ -17,11 +17,10 @@ const QUEST_TABS: { key: QuestType; label: string }[] = [
 
 export const ChallengeTab: React.FC<ChallengeTabProps> = ({ activeTab, onChangeTab }) => {
   return (
-    <View className="py-2 bg-craftopia-light border-b border-craftopia-light">
+    <View className="px-4 py-2 border-b border-craftopia-light bg-craftopia-surface">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="px-4"
       >
         {QUEST_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -30,15 +29,15 @@ export const ChallengeTab: React.FC<ChallengeTabProps> = ({ activeTab, onChangeT
               key={tab.key}
               onPress={() => onChangeTab(tab.key)}
               activeOpacity={0.8}
-              className={`mr-2 px-3 py-1.5 rounded-full border ${
+              className={`mr-3 px-3 py-1.5 rounded-full border ${
                 isActive
                   ? 'bg-craftopia-primary border-craftopia-primary'
-                  : 'bg-craftopia-surface border-craftopia-light'
+                  : 'bg-craftopia-light border-craftopia-light'
               }`}
             >
               <Text
                 className={`text-xs ${
-                  isActive ? 'text-white font-medium' : 'text-craftopia-textSecondary'
+                  isActive ? 'text-craftopia-surface font-medium' : 'text-craftopia-textSecondary'
                 }`}
               >
                 {tab.label}
@@ -49,4 +48,4 @@ export const ChallengeTab: React.FC<ChallengeTabProps> = ({ activeTab, onChangeT
       </ScrollView>
     </View>
   );
-};  
+};

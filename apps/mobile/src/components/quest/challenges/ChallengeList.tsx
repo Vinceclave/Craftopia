@@ -10,6 +10,8 @@ interface Challenge {
   title: string;
   description: string;
   completedAt?: string;
+  points?: number;
+  status?: string;
 }
 
 interface ChallengeListProps {
@@ -41,11 +43,11 @@ const SkeletonItem: React.FC = () => {
 
   const backgroundColor = shimmer.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#F2F4F3', '#E8EAE9'], // Using craftopia-light shades
+    outputRange: ['#F2F4F3', '#E8EAE9'],
   });
 
   return (
-    <View className="mx-4 my-1 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
+    <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
       <Animated.View style={{ height: 16, width: '60%', borderRadius: 4, backgroundColor, marginBottom: 8 }} />
       <Animated.View style={{ height: 12, width: '90%', borderRadius: 4, backgroundColor, marginBottom: 4 }} />
       <Animated.View style={{ height: 12, width: '70%', borderRadius: 4, backgroundColor, marginBottom: 8 }} />
@@ -63,38 +65,71 @@ export const ChallengeList: React.FC<ChallengeListProps> = ({ challenges, loadin
         data={Array.from({ length: 3 })}
         keyExtractor={(_, index) => `skeleton-${index}`}
         renderItem={() => <SkeletonItem />}
-        contentContainerStyle={{ paddingVertical: 8 }}
+        showsVerticalScrollIndicator={false}
       />
     );
   }
 
   if (!challenges || challenges.length === 0) {
     return (
-      <View className="flex-1 justify-center items-center py-6">
-        <Text className="text-craftopia-textSecondary text-sm">No challenges found</Text>
+      <View className="px-4 py-6 border-b border-craftopia-light bg-craftopia-surface">
+        <Text className="text-craftopia-textSecondary text-sm text-center">No challenges found</Text>
       </View>
     );
   }
+
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-craftopia-primary';
+      case 'pending_verification':
+        return 'text-craftopia-accent';
+      case 'rejected':
+        return 'text-red-500';
+      default:
+        return 'text-craftopia-textSecondary';
+    }
+  };
 
   return (
     <FlatList
       data={challenges}
       keyExtractor={(item, index) => (item.id ? item.id.toString() : index.toString())}
-      className="flex-1"
-      contentContainerStyle={{ paddingVertical: 8 }}
+      showsVerticalScrollIndicator={false}
       renderItem={({ item }) => (
-        <View className="mx-4 my-1 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
-          <Text className="text-sm font-semibold text-craftopia-textPrimary">{item.title}</Text>
-          <Text className="text-xs text-craftopia-textSecondary mt-1">{item.description}</Text>
-          {item.completedAt && (
-            <Text className="text-xs text-craftopia-growth mt-1">
-              Completed: {new Date(item.completedAt).toLocaleDateString()}
+        <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
+          <View className="flex-row justify-between items-start mb-1">
+            <Text className="text-sm font-semibold text-craftopia-textPrimary flex-1 mr-2">
+              {item.title}
             </Text>
-          )}
+            {item.status && (
+              <Text className={`text-xs font-medium ${getStatusColor(item.status)}`}>
+                {item.status.replace('_', ' ').toUpperCase()}
+              </Text>
+            )}
+          </View>
+          
+          <Text className="text-xs text-craftopia-textSecondary mb-2">
+            {item.description}
+          </Text>
+          
+          <View className="flex-row justify-between items-center mb-2">
+            {item.points && (
+              <Text className="text-xs font-medium text-craftopia-primary">
+                {item.points} points
+              </Text>
+            )}
+            {item.completedAt && (
+              <Text className="text-xs text-craftopia-textSecondary">
+                Completed: {new Date(item.completedAt).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+          
           <Button
             title="View Details"
-            size="sm"
-            className="mt-2"
+            size="md"
+            className="mt-1"
             onPress={() => navigation.navigate('QuestDetails', { questId: Number(item.id) })}
           />
         </View>

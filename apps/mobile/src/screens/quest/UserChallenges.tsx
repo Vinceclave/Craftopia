@@ -59,7 +59,7 @@ export const UserChallengesScreen = () => {
 
   console.log(challenges)
   return (
-    <SafeAreaView className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       {/* Header */}
       <UserChallengesHeader navigation={navigation} />
 

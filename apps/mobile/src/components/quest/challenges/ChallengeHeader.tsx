@@ -11,29 +11,28 @@ interface UserChallengesHeaderProps {
 
 export const UserChallengesHeader: React.FC<UserChallengesHeaderProps> = ({ navigation }) => {
   const handleGoBack = () => {
-    navigation.goBack(); // Navigate to previous screen
+    navigation.goBack();
   };
 
   return (
     <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
-      <View className="flex-row items-center">
-        {/* Back Button */}
-        <Button
-          title=""
-          onPress={handleGoBack}
-          iconOnly
-          leftIcon={<ArrowLeft color="#4B5563" size={20} />}
-          className="bg-transparent mr-3"
-        />
-
-        {/* Header Text */}
-        <View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary">
-            Your Challenges
-          </Text>
-          <Text className="text-xs text-craftopia-textSecondary mt-0.5">
-            Track your quests and claim your rewards
-          </Text>
+      <View className="flex-row justify-between items-center">
+        <View className="flex-row items-center">
+          <Button
+            title=""
+            onPress={handleGoBack}
+            iconOnly
+            leftIcon={<ArrowLeft size={20} className="text-craftopia-textSecondary" />}
+            className="bg-transparent mr-3"
+          />
+          <View>
+            <Text className="text-base font-semibold text-craftopia-textPrimary">
+              Your Challenges
+            </Text>
+            <Text className="text-sm text-craftopia-textSecondary mt-0.5">
+              Track your quests and claim your rewards
+            </Text>
+          </View>
         </View>
       </View>
     </View>
