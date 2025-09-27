@@ -118,7 +118,7 @@ export const EcoQuestScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-light">
       <QuestHeader navigation={navigation} />
       <QuestBanner />
       <Achievements />

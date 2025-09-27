@@ -65,11 +65,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       return
     }
 
-    if (!challengeData?.user_challenge_id) {
-      Alert.alert('Error', 'Challenge data not found. Please try refreshing.')
-      return
-    }
-
     setIsVerifying(true)
 
     try {
@@ -78,7 +73,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         {
           method: 'POST',
           data: {
-            imageUri: imageUrl,  // Changed from proof_url to imageUri to match backend
+            proof_url: imageUrl,
             description,
             points,
             challenge_id: id,
@@ -142,7 +137,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       isVerifying ||
       isUploading ||
       !imageUrl ||
-      // Fixed: removed extra space in 'completed'
       ['pending_verification', 'completed'].includes(challengeData.status)
     )
   }
@@ -167,8 +161,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             folder="challenges"
             onUploadStart={() => setIsUploading(true)}
             onUploadComplete={() => setIsUploading(false)}
-            // Fixed: use consistent status names
-            disabled={['pending_verification', 'completed'].includes(challengeData?.status || '')}
+            disabled={['pending_request', 'completed'].includes(challengeData?.status || '')}
           />
 
           <Button
@@ -176,7 +169,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             onPress={handleVerify}
             disabled={isDisabled()}
             leftIcon={isVerifying || isUploading ? undefined : <Upload size={14} color="#fff" />}
-            size="sm"
+            size="md"
             className="mt-2"
           />
 

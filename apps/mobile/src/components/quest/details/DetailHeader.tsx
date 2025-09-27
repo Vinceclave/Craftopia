@@ -10,20 +10,20 @@ interface DetailHeaderProp {
 
 export const DetailHeader: React.FC<DetailHeaderProp> = ({ onBackPress, questId }) => {
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+    <View className="p-4 bg-craftopia-surface rounded-lg border border-craftopia-light">
       <View className="flex-row items-center">
         <Button
           onPress={onBackPress}
           title=""
           iconOnly
-          leftIcon={<ArrowLeft size={16} color="#1A1A1A" />}
-          className="bg-transparent p-1 mr-2"
+          leftIcon={<ArrowLeft size={18} className="text-craftopia-textPrimary" />}
+          className="bg-transparent p-2 mr-3"
         />
-        <View>
-          <Text className="text-sm font-semibold text-craftopia-textPrimary">
+        <View className="flex-1">
+          <Text className="text-base font-semibold text-craftopia-textPrimary">
             Quest Details
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary">
+          <Text className="text-sm text-craftopia-textSecondary mt-1">
             Challenge #{questId}
           </Text>
         </View>

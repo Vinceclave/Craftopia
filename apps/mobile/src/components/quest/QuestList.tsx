@@ -31,7 +31,7 @@ export const QuestList: React.FC<QuestListProps> = ({
   onJoin,
 }) => {
   const renderChallengeItem = ({ item }: { item: Challenge }) => (
-    <View className={`p-3 mb-2 mx-4 rounded-lg border ${
+    <View className={`p-4 mb-3 mx-4 rounded-lg border ${
       item.is_active ? 'bg-craftopia-surface border-craftopia-light' : 'bg-craftopia-light/50 border-craftopia-light'
     }`}>
       <View className="flex-row justify-between items-center">
@@ -39,24 +39,24 @@ export const QuestList: React.FC<QuestListProps> = ({
         {!item.is_active && <Text className="text-xs text-red-500 font-medium">Inactive</Text>}
       </View>
 
-      <Text className="text-sm text-craftopia-textSecondary mt-1">{item.description}</Text>
+      <Text className="text-sm text-craftopia-textSecondary mt-2">{item.description}</Text>
 
-      <View className="flex-row justify-between items-center mt-2">
+      <View className="flex-row justify-between items-center mt-3">
         <Text className="text-sm font-medium text-craftopia-primary">{item.points_reward} pts</Text>
         <Text className="text-xs text-craftopia-textSecondary">{item._count.participants} participants</Text>
       </View>
 
-      <View className="mt-2 flex-row flex-wrap gap-1">
-        <View className="px-2 py-1 bg-craftopia-light rounded-full">
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
           <Text className="text-xs text-craftopia-textSecondary">{item.category}</Text>
         </View>
-        <View className="px-2 py-1 bg-craftopia-light rounded-full">
+        <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
           <Text className="text-xs text-craftopia-textSecondary">{item.material_type}</Text>
         </View>
       </View>
 
       {item.is_active && (
-        <View className="mt-3">
+        <View className="mt-4">
           <Button
             title="Join Challenge"
             onPress={() => onJoin(item.challenge_id)}
@@ -69,7 +69,6 @@ export const QuestList: React.FC<QuestListProps> = ({
 
   return (
     <FlatList
-      style={{ paddingBottom: 150 }}
       data={challenges}
       keyExtractor={(item) => item.challenge_id.toString()}
       renderItem={renderChallengeItem}
@@ -103,7 +102,10 @@ export const QuestList: React.FC<QuestListProps> = ({
         />
       }
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 16 }}
+      contentContainerStyle={{ 
+        paddingBottom: 80,
+        paddingTop: 8 // Added top padding for better spacing
+      }}
     />
   );
 };

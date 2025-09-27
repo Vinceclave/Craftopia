@@ -39,7 +39,7 @@ export const HomeHeader = () => {
         {/* Left: Greeting & Date */}
         <View className="flex-1">
           <View className="flex-row items-center mb-1 gap-2">
-            <GreetingIcon size={16} className="text-craftopia-primary mr-2" />
+            <GreetingIcon size={16} className="text-craftopia-primary" />
             <Text className="text-base font-semibold text-craftopia-textPrimary">
               {greeting.text}
             </Text>

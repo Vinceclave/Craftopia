@@ -26,7 +26,7 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
 }) => {
   if (isLoading) {
     return (
-      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+      <View className="bg-craftopia-surface px-4 py-4 border-b border-craftopia-light">
         <View className="h-4 bg-craftopia-light rounded mb-2 w-16" />
         <View className="h-5 bg-craftopia-light rounded mb-2 w-3/4" />
         <View className="h-3 bg-craftopia-light rounded mb-2 w-full" />
@@ -40,37 +40,38 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
   }
 
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
-      <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full self-start mb-2">
+    <View className="bg-craftopia-surface px-4 py-4 border-b border-craftopia-light">
+      <View className="bg-craftopia-primary/10 px-3 py-1.5 rounded-full self-start mb-3">
         <Text className="text-craftopia-primary text-xs font-medium">{category}</Text>
       </View>
 
       <Text className="text-base font-semibold text-craftopia-textPrimary mb-2">{title}</Text>
       <Text className="text-sm text-craftopia-textSecondary leading-5 mb-3">{description}</Text>
 
-      <View className="flex-row items-center justify-between mb-2">
+      <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center gap-2">
           <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
-            <Award size={12} color="#004E98" />
+            <Award size={12} className="text-craftopia-primary" />
             <Text className="text-craftopia-primary text-xs font-medium ml-1">{points} Points</Text>
           </View>
 
           <View className="bg-craftopia-primary/10 px-2 py-1 rounded-full flex-row items-center">
-            <Star size={12} color="#FF6700" />
+            <Star size={12} className="text-craftopia-accent" />
             <Text className="text-craftopia-primary text-xs font-medium ml-1">4.8</Text>
           </View>
         </View>
         
         <View className="flex-row items-center">
-          <Users size={12} color="#6B7280" />
+          <Users size={12} className="text-craftopia-textSecondary" />
           <Text className="text-craftopia-textSecondary text-xs ml-1">{participants}</Text>
         </View>
       </View>
-      <View className="mt-2 pt-2 border-t border-craftopia-light">
+      
+      <View className="mt-3 pt-3 border-t border-craftopia-light">
         <Button
           onPress={onPress}
           title={!isJoined ? 'Start Quest' : 'Joined'}
-          size="sm"
+          size="md"
           loading={isLoading}
           disabled={isJoined}
         />
