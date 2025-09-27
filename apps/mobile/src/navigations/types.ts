@@ -20,6 +20,7 @@ export type CraftStackParamList = {
 
 export type EcoQuestStackParamList = {
   EcoQuest: undefined;
+  UserChallenges: undefined;
   QuestDetails: { questId: number };
 };
 

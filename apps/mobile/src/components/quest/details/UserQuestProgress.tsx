@@ -110,12 +110,13 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     switch (challengeData.status) {
       case 'completed':
         return 'text-craftopia-primary'
+      case 'rejected':
+        return 'text-red-600'
       default:
         return 'text-craftopia-accent'
     }
   }
 
-  // ✅ New: Dynamic button title
   const getButtonTitle = () => {
     if (isVerifying || isUploading) return 'Processing...'
     if (!challengeData) return 'Submit for Verification'
@@ -126,10 +127,22 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       case 'completed':
         return 'Completed'
       case 'rejected':
-        return 'Resubmit Proof'
+        return 'Challenge Rejected'
       default:
         return 'Submit for Verification'
     }
+  }
+
+  const isDisabled = () => {
+    if (!challengeData) return false
+    return (
+      isVerifying ||
+      isUploading ||
+      !imageUrl ||
+      challengeData.status === 'pending_verification' ||
+      challengeData.status === 'completed' ||
+      challengeData.status === 'rejected' // disable everything if rejected
+    )
   }
 
   return (
@@ -152,18 +165,13 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             folder="challenges"
             onUploadStart={() => setIsUploading(true)}
             onUploadComplete={() => setIsUploading(false)}
+            disabled={challengeData?.status === 'rejected'}
           />
 
           <Button
             title={getButtonTitle()}
             onPress={handleVerify}
-            disabled={
-              isVerifying ||
-              isUploading ||
-              !imageUrl ||
-              (challengeData?.status === 'pending_verification') ||
-              (challengeData?.status === 'completed')
-            }
+            disabled={isDisabled()}
             leftIcon={isVerifying || isUploading ? null : <Upload size={14} color="#fff" />}
             size="sm"
             className="mt-2"

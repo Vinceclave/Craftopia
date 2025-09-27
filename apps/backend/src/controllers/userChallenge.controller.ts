@@ -39,6 +39,7 @@ export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Respon
 export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = Number(req.params.userId) || req.user!.userId;
   const status = req.query.status as ChallengeStatus;
+  console.log(userId, status)
   
   const challenges = await userChallengeService.getUserChallenges(userId, status);
   sendSuccess(res, challenges, 'User challenges retrieved successfully');

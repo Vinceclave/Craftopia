@@ -236,22 +236,28 @@ export const getUserChallengeById = async (user_id: number, challenge_id: number
   return userChallenge;
 };
 
-
 export const getUserChallenges = async (user_id: number, status?: ChallengeStatus) => {
   if (!user_id || user_id <= 0) {
     throw new AppError('Invalid user ID', 400);
   }
+
+  console.log(user_id)
+  console.log(status)
 
   const where: any = { 
     user_id,
     deleted_at: null
   };
 
-  if (status && Object.values(ChallengeStatus).includes(status)) {
+  // Only apply status filter if it exists in the enum
+  if (status) {
+    if (!Object.values(ChallengeStatus).includes(status)) {
+      throw new AppError(`Invalid challenge status: ${status}`, 400);
+    }
     where.status = status;
   }
 
-  return prisma.userChallenge.findMany({
+  const challenges = await prisma.userChallenge.findMany({
     where,
     include: { 
       challenge: {
@@ -267,6 +273,8 @@ export const getUserChallenges = async (user_id: number, status?: ChallengeStatu
     },
     orderBy: { created_at: 'desc' }
   });
+
+  return challenges;
 };
 
 export const getChallengeLeaderboard = async (challengeId?: number, limit: number = 10) => {

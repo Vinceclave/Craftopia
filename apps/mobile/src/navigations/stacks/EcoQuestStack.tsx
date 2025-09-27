@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { EcoQuestScreen } from "~/screens/EcoQuest";
 import { QuestDetailsScreen } from "~/screens/quest/QuestDetails";
 import type { EcoQuestStackParamList } from "../types";
+import { UserChallengesScreen } from "~/screens/quest/UserChallenges";
 
 const Stack = createNativeStackNavigator<EcoQuestStackParamList>();
 
@@ -13,6 +14,7 @@ export function EcoQuestStack() {
     >
       <Stack.Screen name="EcoQuest" component={EcoQuestScreen} />
       <Stack.Screen name="QuestDetails" component={QuestDetailsScreen} />
+      <Stack.Screen name="UserChallenges" component={UserChallengesScreen} />
     </Stack.Navigator>
   );
 }

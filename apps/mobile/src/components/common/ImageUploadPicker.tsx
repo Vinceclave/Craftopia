@@ -20,6 +20,7 @@ interface ImageUploadPickerProps {
   folder?: 'posts' | 'profiles' | 'crafts' | 'challenges'
   onUploadStart?: () => void
   onUploadComplete?: () => void
+  disabled?: boolean // ✅ new prop
 }
 
 export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
@@ -30,12 +31,15 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
   folder = 'posts',
   onUploadStart,
   onUploadComplete,
+  disabled = false, // default to false
 }) => {
   const { uploadToFolder } = useLocalUpload()
   const [uploading, setUploading] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
 
   const pickImage = async (fromCamera = false) => {
+    if (disabled) return // prevent picker if disabled
+
     const permission = fromCamera
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -52,12 +56,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
       onUploadStart?.()
       try {
         const uploadedUrl = await uploadToFolder(asset.uri, folder)
-
-        console.log('📤 Upload raw response:', uploadedUrl)
-
-        // send only relative path to backend
         if (uploadedUrl) onChange?.(uploadedUrl)
-
         setShowPicker(false)
       } catch (err) {
         console.error('Upload failed:', err)
@@ -71,29 +70,27 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
   return (
     <View className="flex flex-col gap-2">
-      {label ? (
-        <Text className="text-craftopia-textSecondary text-sm mb-1 font-medium">
-          {label}
-        </Text>
-      ) : null}
+      {label && <Text className="text-craftopia-textSecondary text-sm mb-1 font-medium">{label}</Text>}
 
       {value ? (
         <View className="relative">
           <Image
-            source={{ uri: `${API_BASE_URL}${value}` }} // full URL for display
+            source={{ uri: `${API_BASE_URL}${value}` }}
             className="w-full h-40 rounded-lg"
             resizeMode="cover"
           />
-          <TouchableOpacity
-            className="absolute top-2 right-2 bg-black/50 p-1 rounded-full"
-            onPress={() => onChange(undefined)}
-          >
-            <X size={18} color="white" />
-          </TouchableOpacity>
+          {!disabled && (
+            <TouchableOpacity
+              className="absolute top-2 right-2 bg-black/50 p-1 rounded-full"
+              onPress={() => onChange(undefined)}
+            >
+              <X size={18} color="white" />
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <TouchableOpacity
-          disabled={uploading}
+          disabled={uploading || disabled} // disable touch if uploading or disabled
           onPress={() => setShowPicker(true)}
           className="flex flex-col items-center justify-center border border-dashed border-craftopia-light rounded-lg p-4 bg-craftopia-surface"
         >
@@ -104,14 +101,8 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
               <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mb-2">
                 <ImageIcon size={20} color="#16a34a" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium">
-                Add Image
-              </Text>
-              {description ? (
-                <Text className="text-craftopia-textSecondary text-xs text-center mt-1">
-                  {description}
-                </Text>
-              ) : null}
+              <Text className="text-craftopia-textPrimary font-medium">Add Image</Text>
+              {description && <Text className="text-craftopia-textSecondary text-xs text-center mt-1">{description}</Text>}
             </>
           )}
         </TouchableOpacity>
@@ -119,7 +110,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
       {/* Picker Modal */}
       <Modal
-        visible={showPicker}
+        visible={showPicker && !disabled} // prevent modal if disabled
         transparent
         animationType="slide"
         onRequestClose={() => setShowPicker(false)}
@@ -127,43 +118,35 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-craftopia-surface rounded-t-xl p-4">
             <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-4 text-center">
-              Select Image
-            </Text>
+            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-4 text-center">Select Image</Text>
 
             <TouchableOpacity
               className="flex-row items-center p-3 bg-craftopia-light rounded-lg mb-2"
               onPress={() => pickImage(true)}
-              disabled={uploading}
+              disabled={uploading || disabled} // disable if disabled
             >
               <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
                 <Camera size={16} color="#16a34a" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
-                Take Photo
-              </Text>
+              <Text className="text-craftopia-textPrimary font-medium text-sm">Take Photo</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
               onPress={() => pickImage(false)}
-              disabled={uploading}
+              disabled={uploading || disabled} // disable if disabled
             >
               <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
                 <ImageIcon size={16} color="#16a34a" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
-                Choose from Gallery
-              </Text>
+              <Text className="text-craftopia-textPrimary font-medium text-sm">Choose from Gallery</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               className="mt-4 p-3 bg-craftopia-light rounded-lg"
               onPress={() => setShowPicker(false)}
             >
-              <Text className="text-center font-medium text-craftopia-textSecondary text-sm">
-                Cancel
-              </Text>
+              <Text className="text-center font-medium text-craftopia-textSecondary text-sm">Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>

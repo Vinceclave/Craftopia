@@ -45,7 +45,7 @@ export const API_ENDPOINTS = {
     BY_CHALLENGE_ID: (challengeId: number) => `${API_BASE_URL}/api/v1/user-challenges/${challengeId}`,
     COMPLETE: (id: string) => `${API_BASE_URL}/api/v1/user-challenges/${id}/complete`,
     VERIFY: (id: number | undefined) => `${API_BASE_URL}/api/v1/user-challenges/${id}/verify`,
-    USER_LIST: (userId?: string) => `${API_BASE_URL}/api/v1/user-challenges/user${userId ? `/${userId}` : ''}`,
+    USER_LIST: (userId?: number) => `${API_BASE_URL}/api/v1/user-challenges/user${userId ? `/${userId}` : ''}`,
     LEADERBOARD: `${API_BASE_URL}/api/v1/user-challenges/leaderboard`,
     PENDING: `${API_BASE_URL}/api/v1/user-challenges/pending-verifications`,
   },

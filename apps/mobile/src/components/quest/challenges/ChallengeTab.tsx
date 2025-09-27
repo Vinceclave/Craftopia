@@ -1,30 +1,30 @@
-import React from 'react'
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native'
+import React from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-type QuestType = 'all' | 'daily' | 'weekly' | 'monthly'
+export type QuestType = 'in_progress' | 'pending_verification' | 'rejected' | 'completed';
 
-interface QuestListsProps {
-  activeTab: QuestType
-  onChangeTab: (tab: QuestType) => void
+interface ChallengeTabProps {
+  activeTab: QuestType;
+  onChangeTab: (tab: QuestType) => void;
 }
 
 const QUEST_TABS: { key: QuestType; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'daily', label: 'Daily' },
-  { key: 'weekly', label: 'Weekly' },
-  { key: 'monthly', label: 'Monthly' },
-]
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'pending_verification', label: 'Pending' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'completed', label: 'Completed' },
+];
 
-export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab }) => {
+export const ChallengeTab: React.FC<ChallengeTabProps> = ({ activeTab, onChangeTab }) => {
   return (
-    <View className="py-2 bg-craftopia-light">
+    <View className="py-2 bg-craftopia-light border-b border-craftopia-light">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         className="px-4"
       >
         {QUEST_TABS.map((tab) => {
-          const isActive = activeTab === tab.key
+          const isActive = activeTab === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
@@ -44,9 +44,9 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
                 {tab.label}
               </Text>
             </TouchableOpacity>
-          )
+          );
         })}
       </ScrollView>
     </View>
-  )
-}
+  );
+};  
