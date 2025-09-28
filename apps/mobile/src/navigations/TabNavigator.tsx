@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// Fixed TabNavigator.tsx - AnimatedTabIcon component
+import React, { useState, useEffect, forwardRef } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation, NavigationState } from "@react-navigation/native";
 import type { RootTabParamList } from "./types";
@@ -13,83 +14,89 @@ import { Platform, Animated } from "react-native";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-// Enhanced animated tab bar component
-const AnimatedTabIcon = ({ focused, children, color }) => {
-  const scaleValue = React.useRef(new Animated.Value(focused ? 1.15 : 1)).current;
-  const bounceValue = React.useRef(new Animated.Value(0)).current;
-  const opacityValue = React.useRef(new Animated.Value(focused ? 1 : 0.7)).current;
+// ✅ FIXED: Wrap AnimatedTabIcon with forwardRef
+const AnimatedTabIcon = forwardRef<any, { focused: boolean; children: React.ReactNode; color: string }>(
+  ({ focused, children, color }, ref) => {
+    const scaleValue = React.useRef(new Animated.Value(focused ? 1.15 : 1)).current;
+    const bounceValue = React.useRef(new Animated.Value(0)).current;
+    const opacityValue = React.useRef(new Animated.Value(focused ? 1 : 0.7)).current;
 
-  React.useEffect(() => {
-    if (focused) {
-      // Scale and bounce animation
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(scaleValue, {
-            toValue: 1.25,
+    React.useEffect(() => {
+      if (focused) {
+        // Scale and bounce animation
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(scaleValue, {
+              toValue: 1.25,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scaleValue, {
+              toValue: 1.15,
+              friction: 4,
+              tension: 180,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(bounceValue, {
+              toValue: -6,
+              duration: 250,
+              useNativeDriver: true,
+            }),
+            Animated.spring(bounceValue, {
+              toValue: 0,
+              friction: 5,
+              tension: 120,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.timing(opacityValue, {
+            toValue: 1,
             duration: 200,
             useNativeDriver: true,
           }),
-          Animated.spring(scaleValue, {
-            toValue: 1.15,
-            friction: 4,
-            tension: 180,
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(scaleValue, {
+            toValue: 1,
+            duration: 180,
             useNativeDriver: true,
           }),
-        ]),
-        Animated.sequence([
           Animated.timing(bounceValue, {
-            toValue: -6,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.spring(bounceValue, {
             toValue: 0,
-            friction: 5,
-            tension: 120,
+            duration: 150,
             useNativeDriver: true,
           }),
-        ]),
-        Animated.timing(opacityValue, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(scaleValue, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceValue, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityValue, {
-          toValue: 0.7,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [focused]);
+          Animated.timing(opacityValue, {
+            toValue: 0.7,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }, [focused]);
 
-  return (
-    <Animated.View
-      style={{
-        transform: [
-          { scale: scaleValue },
-          { translateY: bounceValue },
-        ],
-        opacity: opacityValue,
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-};
+    return (
+      <Animated.View
+        ref={ref}
+        style={{
+          transform: [
+            { scale: scaleValue },
+            { translateY: bounceValue },
+          ],
+          opacity: opacityValue,
+        }}
+      >
+        {children}
+      </Animated.View>
+    );
+  }
+);
+
+// Add display name for debugging
+AnimatedTabIcon.displayName = 'AnimatedTabIcon';
 
 export default function TabNavigator() {
   const [tabBarVisible, setTabBarVisible] = useState(true);
@@ -109,7 +116,7 @@ export default function TabNavigator() {
       };
 
       const currentScreenName = getCurrentScreenName(e.data.state);
-      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges']; // Only hide on EditProfile
+      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges'];
       setTabBarVisible(!hideOnScreens.includes(currentScreenName));
     });
 
@@ -139,7 +146,6 @@ export default function TabNavigator() {
           shadowOpacity: 0.08,
           shadowRadius: 12,
           elevation: 8,
-          // Animate tab bar visibility
           display: tabBarVisible ? 'flex' : 'none',
         },
         tabBarLabelStyle: {

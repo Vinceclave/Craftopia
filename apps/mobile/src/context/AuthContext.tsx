@@ -3,17 +3,12 @@ import { useAuthStatus, useLogin, useLogout, useRegister, useCurrentUser } from 
 import { LoginRequest, RegisterRequest, User } from '~/config/api';
 
 interface AuthContextType {
-  // State
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | undefined;
-  
-  // Actions
   login: (credentials: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
   register: (userData: RegisterRequest) => Promise<void>;
-  
-  // Loading states
   isLoggingIn: boolean;
   isLoggingOut: boolean;
   isRegistering: boolean;
@@ -33,6 +28,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Overall loading state
   const isLoading = authLoading || (authStatus?.isAuthenticated && userLoading);
+  const isAuthenticated = authStatus?.isAuthenticated ?? false;
 
   // Wrapper functions
   const login = async (credentials: LoginRequest) => {
@@ -50,17 +46,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider
       value={{
-        // State
-        isAuthenticated: authStatus?.isAuthenticated ?? false,
+        isAuthenticated,
         isLoading,
         user,
-        
-        // Actions
         login,
         logout,
         register,
-        
-        // Loading states
         isLoggingIn: loginMutation.isPending,
         isLoggingOut: logoutMutation.isPending,
         isRegistering: registerMutation.isPending,
