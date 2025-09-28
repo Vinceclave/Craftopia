@@ -29,8 +29,38 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 
 export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.query;
-  const user = await authService.verifyEmail(token as string);
-  sendSuccess(res, null, 'Email verified successfully');
+  
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Verification token is required',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    const user = await authService.verifyEmail(token);
+    
+    // For web browsers, redirect to success page
+    if (req.headers['user-agent']?.includes('Mobile')) {
+      sendSuccess(res, null, 'Email verified successfully');
+    } else {
+      // Redirect to frontend success page for web browsers
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?success=true`);
+    }
+  } catch (error: any) {
+    console.error('Email verification error:', error);
+    
+    if (req.headers['user-agent']?.includes('Mobile')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message || 'Invalid or expired verification token',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?error=${encodeURIComponent(error.message)}`);
+    }
+  }
 });
 
 export const requestEmailVerification = asyncHandler(async (req: Request, res: Response) => {

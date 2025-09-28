@@ -1,6 +1,6 @@
 import { MailOpen } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Text, View, ScrollView } from 'react-native';
+import { Text, View, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
@@ -22,7 +22,6 @@ export const VerifyEmailScreen = () => {
   const [token, setToken] = useState('');
   const [showTokenInput, setShowTokenInput] = useState(!!route.params?.email);
 
-  // TanStack Query mutations
   const verifyEmailMutation = useVerifyEmail();
   const resendVerificationMutation = useResendVerification();
 
@@ -35,17 +34,28 @@ export const VerifyEmailScreen = () => {
     try {
       await verifyEmailMutation.mutateAsync(token.trim());
       
-      success('Email Verified! ✅', 'Redirecting you to login...', () => {
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      });
+      success(
+        'Email Verified! ✅', 
+        'Your email has been successfully verified. You can now log in to your account.',
+        () => {
+          navigation.reset({ 
+            index: 0, 
+            routes: [{ name: 'Login' }] 
+          });
+        }
+      );
     } catch (err: any) {
-      error('Verification Failed', err.message || 'Invalid or expired token.');
+      console.error('Email verification failed:', err);
+      error(
+        'Verification Failed', 
+        err.message || 'The verification token is invalid or has expired. Please request a new one.'
+      );
     }
   };
 
   const handleResendVerification = async () => {
     if (!email?.trim()) {
-      error('Error', 'No email address found. Please go back and register again.');
+      error('Error', 'Please enter your email address to resend verification.');
       return;
     }
 
@@ -54,12 +64,21 @@ export const VerifyEmailScreen = () => {
       
       success(
         'Verification Email Sent! 📧',
-        'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
+        'A new verification email has been sent to your inbox. Please check your email and click the verification link or copy the token.',
         () => setShowTokenInput(true)
       );
     } catch (err: any) {
-      error('Failed to Send Email', err.message || 'Something went wrong. Please try again.');
+      console.error('Resend verification failed:', err);
+      error(
+        'Failed to Send Email', 
+        err.message || 'Could not send verification email. Please try again later.'
+      );
     }
+  };
+
+  const handleOpenEmail = () => {
+    // Open default email app
+    Linking.openURL('mailto:');
   };
 
   return (
@@ -70,51 +89,61 @@ export const VerifyEmailScreen = () => {
         keyboardShouldPersistTaps="handled"
       >
         <View className="flex-1 justify-center">
-          <View className="items-center mb-4">
-            <MailOpen size={64} color="#4A90E2" strokeWidth={2.5} />
-            <Text className="text-xl font-black text-craftopia-text-primary text-center mt-4 mb-3">
-              Verify your email
+          <View className="items-center mb-6">
+            <MailOpen size={64} color="#004E98" strokeWidth={2} />
+            <Text className="text-2xl font-bold text-craftopia-textPrimary text-center mt-4 mb-2">
+              Verify Your Email
+            </Text>
+            <Text className="text-craftopia-textSecondary text-center text-sm">
+              We need to verify your email address to complete your registration
             </Text>
           </View>
 
           {showTokenInput ? (
             <>
-              <Text className="text-craftopia-text-secondary text-center text-base leading-relaxed mb-4">
+              <Text className="text-craftopia-textSecondary text-center text-base leading-relaxed mb-6">
                 We sent a verification email to{'\n'}
-                <Text className="font-semibold text-craftopia-accent">{email}</Text>
+                <Text className="font-semibold text-craftopia-primary">{email}</Text>
               </Text>
 
-              <View className="bg-craftopia-surface p-5 rounded-2xl mb-6 border border-craftopia-accent">
-                <Text className="text-craftopia-accent text-sm font-semibold mb-3">
-                  How to verify:
+              <View className="bg-craftopia-surface p-4 rounded-xl mb-6 border border-craftopia-light">
+                <Text className="text-craftopia-primary text-sm font-semibold mb-2">
+                  📧 Check Your Email
                 </Text>
-                <Text className="text-craftopia-text-secondary text-sm leading-relaxed">
-                  1. Check your email inbox (and spam folder){'\n'}
-                  2. Open the verification email from Craftopia{'\n'}
-                  3. Tap the link OR copy the token below
+                <Text className="text-craftopia-textSecondary text-sm leading-relaxed mb-3">
+                  • Look for an email from Craftopia{'\n'}
+                  • Click the verification link in the email{'\n'}
+                  • Or copy the verification token and paste it below
                 </Text>
+                <Button
+                  title="Open Email App"
+                  onPress={handleOpenEmail}
+                  variant="outline"
+                  size="sm"
+                />
               </View>
 
               <Input
-                label="Verification Token"
-                placeholder="Paste verification token"
+                label="Verification Token (Optional)"
+                placeholder="Paste token from email"
                 value={token}
                 onChangeText={setToken}
                 autoCapitalize="none"
                 isLastInput
+                onSubmit={handleVerifyToken}
               />
 
-              <View className="mt-6">
-                <Button
-                  title="Verify Email"
-                  onPress={handleVerifyToken}
-                  loading={verifyEmailMutation.isPending}
-                  disabled={!token.trim() || verifyEmailMutation.isPending}
-                  variant="primary"
-                />
-              </View>
+              <View className="mt-6 space-y-3">
+                {token.trim() && (
+                  <Button
+                    title="Verify Email"
+                    onPress={handleVerifyToken}
+                    loading={verifyEmailMutation.isPending}
+                    disabled={!token.trim() || verifyEmailMutation.isPending}
+                    variant="primary"
+                  />
+                )}
 
-              <View className="mt-4">
                 <Button
                   title="Resend Verification Email"
                   onPress={handleResendVerification}
@@ -126,18 +155,20 @@ export const VerifyEmailScreen = () => {
             </>
           ) : (
             <>
-              <Text className="text-craftopia-text-secondary text-center text-base mb-4">
-                Didn't get the verification email? Enter your email to request another link.
+              <Text className="text-craftopia-textSecondary text-center text-base mb-6">
+                Enter your email address to receive a verification link
               </Text>
 
               <Input
-                label="Email"
+                label="Email Address"
                 placeholder="Enter your email"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 autoComplete="email"
+                keyboardType="email-address"
                 isLastInput
+                onSubmit={handleResendVerification}
               />
 
               <View className="mt-6">
@@ -159,6 +190,19 @@ export const VerifyEmailScreen = () => {
               variant="outline"
               disabled={verifyEmailMutation.isPending || resendVerificationMutation.isPending}
             />
+          </View>
+
+          {/* Help Section */}
+          <View className="mt-6 p-4 bg-craftopia-surface rounded-xl border border-craftopia-light">
+            <Text className="text-craftopia-textPrimary text-sm font-semibold mb-2">
+              Need Help?
+            </Text>
+            <Text className="text-craftopia-textSecondary text-xs leading-relaxed">
+              • Check your spam/junk folder{'\n'}
+              • Make sure you entered the correct email{'\n'}
+              • Wait a few minutes for the email to arrive{'\n'}
+              • Try resending if you don't receive it
+            </Text>
           </View>
         </View>
       </ScrollView>

@@ -237,7 +237,7 @@ const sendPasswordResetEmail = async (user: { user_id: number; email: string }, 
 
 const sendVerificationEmail = async (user: { user_id: number; email: string }) => {
   const token = generateEmailToken(user.user_id);
-  const url = `${config.frontend.url}/api/v1/auth/verify-email?token=${token}`;
+  const verificationUrl = `${config.frontend.url}/api/v1/auth/verify-email?token=${token}`;
   const userName = user.email.split('@')[0];
 
   const html = `
@@ -251,7 +251,7 @@ const sendVerificationEmail = async (user: { user_id: number; email: string }) =
     <body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #F9FAFB; color: #111827; line-height: 1.6; padding: 20px;">
       <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #F3F4F6; padding: 40px;">
         <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
-          <div style="font-size: 24px; font-weight: 800; color: #6D28D9; margin-bottom: 5px;">CRAFTOPIA</div>
+          <div style="font-size: 24px; font-weight: 800; color: #004E98; margin-bottom: 5px;">CRAFTOPIA</div>
           <div style="font-size: 14px; color: #6B7280;">AI-Powered Sustainable Upcycling</div>
         </div>
         
@@ -259,19 +259,31 @@ const sendVerificationEmail = async (user: { user_id: number; email: string }) =
           <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 15px; margin-top: 0;">Welcome to Craftopia!</h1>
           
           <p style="font-size: 15px; color: #6B7280; margin-bottom: 20px;">
-            Hello <span style="color: #0891B2; font-weight: 500;">${userName}</span>,
+            Hello <span style="color: #004E98; font-weight: 500;">${userName}</span>,
           </p>
           
           <p style="font-size: 15px; color: #6B7280; margin-bottom: 20px;">
-            Verify your email to start transforming waste into creative DIY projects with AI-powered craft ideas.
+            Please verify your email address to complete your registration and start creating amazing projects.
           </p>
           
-          <a href="${url}" style="display: inline-block; background-color: #6D28D9; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; margin-bottom: 25px;">Verify Email Address</a>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="display: inline-block; background-color: #004E98; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
+          </div>
           
-          <div style="text-align: center; color: #6B7280; font-size: 14px; margin: 20px 0;">or use this code</div>
+          <p style="font-size: 14px; color: #6B7280; margin-bottom: 20px;">
+            If the button doesn't work, copy and paste this link into your browser:
+          </p>
+          
+          <div style="border: 1px solid #F3F4F6; background-color: #F9FAFB; padding: 10px; text-align: center; margin-bottom: 20px; word-break: break-all;">
+            <a href="${verificationUrl}" style="color: #004E98; text-decoration: none; font-size: 12px;">${verificationUrl}</a>
+          </div>
+
+          <p style="font-size: 14px; color: #6B7280; margin-bottom: 20px;">
+            Or use this verification token in the mobile app:
+          </p>
           
           <div style="border: 1px solid #F3F4F6; background-color: #F9FAFB; padding: 15px; text-align: center; margin-bottom: 25px;">
-            <div style="font-family: monospace; font-size: 16px; font-weight: 600; color: #6D28D9;">${token}</div>
+            <div style="font-family: monospace; font-size: 16px; font-weight: 600; color: #004E98;">${token}</div>
           </div>
         </div>
         
@@ -279,7 +291,9 @@ const sendVerificationEmail = async (user: { user_id: number; email: string }) =
           <p style="font-size: 13px; color: #6B7280; margin-bottom: 8px;">
             This link expires in <span style="color: #DC2626; font-weight: 500;">24 hours</span>
           </p>
-          <p style="font-size: 13px; color: #6B7280; margin-bottom: 0;">support@craftopia.com</p>
+          <p style="font-size: 13px; color: #6B7280; margin-bottom: 0;">
+            If you didn't create an account, you can safely ignore this email.
+          </p>
         </div>
       </div>
     </body>
@@ -294,13 +308,31 @@ export const verifyEmail = async (token: string) => {
     throw new AppError('Verification token is required', 400);
   }
 
-  const payload = verifyEmailToken(token);
-  if (!payload || payload.type !== 'email_verification') {
+  let payload;
+  try {
+    payload = verifyEmailToken(token);
+    console.log('Token payload:', payload);
+  } catch (error) {
+    console.error('Token verification failed:', error);
     throw new AppError('Invalid or expired verification token', 400);
+  }
+
+  if (!payload || payload.type !== 'email_verification') {
+    throw new AppError('Invalid verification token format', 400);
+  }
+
+  const user = await userService.findUserById(payload.userId);
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  if (user.is_email_verified) {
+    throw new AppError('Email is already verified', 400);
   }
 
   return userService.markUserAsVerified(payload.userId);
 };
+
 
 export const resendVerificationEmail = async (email: string) => {
   if (!email?.trim()) {

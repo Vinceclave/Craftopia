@@ -122,21 +122,43 @@ class AuthService {
 
   // Email verification
   async verifyEmail(token: string): Promise<{ message: string }> {
-    const response = await apiService.request<{ data: { message: string } }>(
-      `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`
-    );
-    return response.data;
+    try {
+      const response = await apiService.request<{ data?: { message: string }, message?: string }>(
+        `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${encodeURIComponent(token)}`,
+        { 
+          method: 'GET',
+          headers: {
+            'User-Agent': 'Mobile App'
+          }
+        }
+      );
+      
+      return { 
+        message: response.data?.message || response.message || 'Email verified successfully' 
+      };
+    } catch (error: any) {
+      console.error('Verify email error:', error);
+      throw new Error(error.message || 'Email verification failed');
+    }
   }
 
-  async resendVerification(email: string): Promise<{ message: string }> {
-    const response = await apiService.request<{ message: string }>(
-      API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
-      {
-        method: 'POST',
-        data: { email },
-      }
-    );
-    return { message: response.message || 'Verification email sent' };
+ async resendVerification(email: string): Promise<{ message: string }> {
+    try {
+      const response = await apiService.request<{ data?: { message: string }, message?: string }>(
+        API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
+        {
+          method: 'POST',
+          data: { email },
+        }
+      );
+      
+      return { 
+        message: response.data?.message || response.message || 'Verification email sent successfully' 
+      };
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      throw new Error(error.message || 'Failed to send verification email');
+    }
   }
 
   // Password reset
