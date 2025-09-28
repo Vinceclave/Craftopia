@@ -10,6 +10,8 @@ import { ProfileStack } from "./stacks/ProfileStack";
 import { EcoQuestStack } from "./stacks/EcoQuestStack";
 import { FeedStack } from "./stacks/FeedStack";
 import { CraftStack } from "./stacks/CraftStack";
+import { ChatBotStack } from "./stacks/ChatBotStack";
+
 import { Platform, Animated } from "react-native";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -339,6 +341,14 @@ export default function TabNavigator() {
           ),
         }}
       />
+      <Tab.Screen
+  name="ChatBotStack"
+  component={ChatBotStack}
+  options={{
+    title: "AI Chat",
+    tabBarButton: () => null, // This hides the tab button since we're using the floating button
+  }}
+/>    
     </Tab.Navigator>
   );
 }

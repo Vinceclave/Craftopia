@@ -30,10 +30,15 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
 };
 
+export type ChatBotStackParamList = {
+  ChatBot: undefined;
+};
+
 export type RootTabParamList = {
   HomeStack: NavigatorScreenParams<HomeStackParamList>;
   FeedStack: NavigatorScreenParams<FeedStackParamList>;
   CraftStack: NavigatorScreenParams<CraftStackParamList>;
   EcoQuestStack: NavigatorScreenParams<EcoQuestStackParamList>;
   ProfileStack: NavigatorScreenParams<ProfileStackParamList>;
+  ChatBotStack: NavigatorScreenParams<ChatBotStackParamList>; // Add this line
 };

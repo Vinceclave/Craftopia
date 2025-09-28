@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import TabNavigator from './TabNavigator';
+import { useNavigation } from '@react-navigation/native';
 
 function BotIcon() {
   return (
@@ -38,6 +39,7 @@ function BotIcon() {
 function DraggableButton() {
   const { width, height } = Dimensions.get('window');
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation(); // Add this import: import { useNavigation } from '@react-navigation/native';
   
   const buttonSize = 60;
   const pan = useRef(new Animated.ValueXY({
@@ -70,7 +72,8 @@ function DraggableButton() {
         // Handle tap if minimal movement
         if (Math.abs(gestureState.dx) < 8 && Math.abs(gestureState.dy) < 8) {
           console.log('Bot button tapped!');
-          // Add your bot action here
+          // Navigate to ChatBot screen
+          navigation.navigate('ChatBotStack' as never, { screen: 'ChatBot' } as never);
           return;
         }
         
@@ -92,6 +95,7 @@ function DraggableButton() {
       },
     })
   ).current;
+
 
   return (
     <Animated.View
