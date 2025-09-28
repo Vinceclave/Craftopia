@@ -143,6 +143,8 @@ export const verifyChallenge = async (
     user_id
   } = aiVerification;
 
+  console.log(status)
+
   console.log("verifyChallenge params:", { userChallengeId, userId, challenge_id });
   console.log("AI verification result:", aiVerification);
 
@@ -150,7 +152,7 @@ export const verifyChallenge = async (
   const verify = await prisma.userChallenge.update({
     where: { user_challenge_id: userChallengeId },
     data: {
-      status,
+      status: status,
       proof_url: imageUri,
       verified_at,
       points_awarded,

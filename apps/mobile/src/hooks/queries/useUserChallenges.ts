@@ -215,16 +215,59 @@ export const useSubmitChallengeVerification = () => {
       return response;
     },
     onSuccess: (data, variables) => {
-      // Invalidate user challenges
-      queryClient.invalidateQueries({ 
-        queryKey: userChallengeKeys.lists() 
-      });
-      
-      // Invalidate specific challenge progress
+      // Force immediate refetch of all related queries
+      console.log('onsuccess', data)
       if (user?.id) {
+        // Invalidate and refetch specific challenge progress
         queryClient.invalidateQueries({ 
           queryKey: userChallengeKeys.progress(variables.challengeId, user.id) 
         });
+        
+        // Refetch immediately to get fresh data
+        queryClient.refetchQueries({ 
+          queryKey: userChallengeKeys.progress(variables.challengeId, user.id) 
+        });
+      }
+      
+      // Invalidate user challenges list
+      queryClient.invalidateQueries({ 
+        queryKey: userChallengeKeys.lists() 
+      });
+    },
+    // Add optimistic update for immediate UI feedback
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ 
+        queryKey: userChallengeKeys.progress(variables.challengeId, user?.id || 0) 
+      });
+
+      // Snapshot the previous value
+      const previousProgress = queryClient.getQueryData(
+        userChallengeKeys.progress(variables.challengeId, user?.id || 0)
+      );
+
+      // Optimistically update to pending_verification
+      queryClient.setQueryData(
+        userChallengeKeys.progress(variables.challengeId, user?.id || 0),
+        (old: QuestProgress | null) => {
+          if (!old) return null;
+          return {
+            ...old,
+            status: 'pending_verification',
+            proof_url: variables.proofUrl,
+          };
+        }
+      );
+
+      return { previousProgress };
+    },
+    onError: (err, variables, context) => {
+      // Revert on error
+      if (context?.previousProgress) {
+        queryClient.setQueryData(
+          userChallengeKeys.progress(variables.challengeId, user?.id || 0),
+          context.previousProgress
+        );
       }
     },
   });
