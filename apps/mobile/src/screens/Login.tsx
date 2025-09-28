@@ -1,42 +1,33 @@
-// apps/mobile/src/screens/Login.tsx - FIXED IMPORTS
-import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 
 import AuthLayout from '~/components/auth/AuthLayout';
-import Button from '~/components/common/Button'; // ✅ Default import
-import { Input } from '~/components/common/TextInputField'; // ✅ Named import
+import Button from '~/components/common/Button';
+import { Input } from '~/components/common/TextInputField';
 import { useAuth } from '~/context/AuthContext';
 import { validateLogin, LoginFormValues, LoginFormErrors } from '~/utils/validator';
-import debounce from 'lodash.debounce';
-import { authService } from '~/services/auth.service';
 import { useAlert } from '~/hooks/useAlert';
+import debounce from 'lodash.debounce';
+import { useLogin } from '~/hooks/useAuth';
+import { useCallback, useRef, useState } from 'react';
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginNavProp>();
-  const { login, error, clearError } = useAuth();
   const { alert, error: showError } = useAlert();
 
   const [form, setForm] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<LoginFormErrors>({ email: '', password: '' });
-  const [loading, setLoading] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
+  // Get login mutation from TanStack Query
+  const loginMutation = useLogin();
 
-  useEffect(() => {
-    if (error) {
-      showError('Login Failed', error);
-    }
-  }, [error, showError]);
-
+  // Debounced validation
   const debouncedValidate = useCallback(
     debounce((values: LoginFormValues) => {
       setErrors(validateLogin(values));
@@ -57,35 +48,32 @@ const LoginScreen: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    clearError();
-
     try {
-      const user = await login({
+      // Use TanStack Query mutation
+      await loginMutation.mutateAsync({
         email: form.email.trim(),
         password: form.password,
       });
 
-      if (user && !user.isEmailVerified) {
-        return;
-      }
-
-      if (user) {
-        console.log('Login successful:', user.username);
-      }
+      // Success! Navigation will happen automatically via AppNavigator
+      console.log('Login successful!');
     } catch (err: any) {
-      if (!err.message?.toLowerCase().includes('verify')) {
-         await authService.requestEmailVerification(form.email.trim());
-        alert('Verification Email Sent', 'Please check your inbox.', () => {
-          navigation.navigate('VerifyEmail', { email: form.email.trim() });
-        });
+      // Handle different error types
+      if (err.message?.toLowerCase().includes('verify') || 
+          err.message?.toLowerCase().includes('email')) {
+        alert('Email Verification Required', 
+          'Please check your email and verify your account before signing in.', 
+          () => {
+            navigation.navigate('VerifyEmail', { email: form.email.trim() });
+          }
+        );
+      } else {
+        showError('Login Failed', err.message || 'Something went wrong. Please try again.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
-  const isFormValid =
+  const isFormValid = 
     form.email.trim() &&
     form.password.trim() &&
     !Object.values(errors).some((err) => err);
@@ -121,8 +109,8 @@ const LoginScreen: React.FC = () => {
           <Button
             title="Sign In"
             onPress={handleLogin}
-            loading={loading}
-            disabled={!isFormValid || loading}
+            loading={loginMutation.isPending} // TanStack Query loading state
+            disabled={!isFormValid || loginMutation.isPending}
           />
         </View>
 
@@ -131,7 +119,10 @@ const LoginScreen: React.FC = () => {
             <Text className="text-craftopia-text-secondary text-base">
               Don't have an account?
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('Register')}
+              disabled={loginMutation.isPending}
+            >
               <Text className="text-craftopia-digital text-base font-semibold ml-1">
                 Sign Up
               </Text>
@@ -142,7 +133,7 @@ const LoginScreen: React.FC = () => {
             className="mt-2"
             activeOpacity={0.7}
             onPress={() => navigation.navigate('ForgotPassword')}
-            disabled={loading}
+            disabled={loginMutation.isPending}
           >
             <Text className="text-craftopia-spark text-sm">Forgot Password?</Text>
           </TouchableOpacity>

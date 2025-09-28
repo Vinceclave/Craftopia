@@ -9,6 +9,7 @@ import { useAuth } from '~/context/AuthContext';
 import { EcoQuestStackParamList } from '~/navigations/types';
 import { apiService } from '~/services/base.service';
 import { ChallengeList } from '~/components/quest/challenges/ChallengeList';
+import { useCurrentUser } from '~/hooks/useAuth';
 
 interface Challenge {
   id: number | string;
@@ -18,7 +19,8 @@ interface Challenge {
 }
 
 export const UserChallengesScreen = () => {
-  const { user } = useAuth();
+ const { data: user, isLoading, error } = useCurrentUser();
+  console.log(user)
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
   const route = useRoute<RouteProp<EcoQuestStackParamList, 'UserChallenges'>>();
 
@@ -35,7 +37,7 @@ export const UserChallengesScreen = () => {
         `${API_ENDPOINTS.USER_CHALLENGES.USER_LIST(user.id)}?status=${tab}`,
         { method: 'GET' }
       );
-
+      console.log(response)
       // Normalize API response
       const normalized: Challenge[] = (response.data || []).map((item: any, index: number) => ({
         id: item.user_challenge_id || item.challenge_id || index, // safe fallback

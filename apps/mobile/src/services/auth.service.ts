@@ -1,129 +1,126 @@
-// apps/mobile/src/services/auth.service.ts - SIMPLE FIX
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  API_ENDPOINTS,
-  AuthResponse,
-  RegisterRequest,
-  LoginRequest,
-  UserProfileResponse,
-  User,
-} from '../config/api';
+import { API_ENDPOINTS, AuthResponse, LoginRequest, RegisterRequest, User, UserProfile } from '~/config/api';
 import { apiService } from './base.service';
 
 class AuthService {
-  async register(payload: RegisterRequest): Promise<{ user: Partial<User> }> {
-    return apiService.request(API_ENDPOINTS.AUTH.REGISTER, {
-      method: 'POST',
-      data: payload,
-    });
-  }
-
-  async login(payload: LoginRequest): Promise<AuthResponse> {
+  // Authentication methods
+  async login(credentials: LoginRequest): Promise<AuthResponse> {
     const response = await apiService.request<{ data: AuthResponse }>(
       API_ENDPOINTS.AUTH.LOGIN,
-      { method: 'POST', data: payload }
+      {
+        method: 'POST',
+        data: credentials,
+      }
     );
     return response.data;
   }
 
+  async register(userData: RegisterRequest): Promise<{ user: Partial<User> }> {
+    return apiService.request(API_ENDPOINTS.AUTH.REGISTER, {
+      method: 'POST',
+      data: userData,
+    });
+  }
+
   async logout(): Promise<void> {
     const refreshToken = await this.getRefreshToken();
+    
     if (refreshToken) {
       try {
         await apiService.request(API_ENDPOINTS.AUTH.LOGOUT, {
           method: 'POST',
           data: { refreshToken },
         });
-      } catch (err) {
-        console.warn('Backend logout failed:', err);
+      } catch (error) {
+        console.warn('Backend logout failed:', error);
       }
     }
+    
     await this.clearTokens();
   }
 
-  // 🔧 REMOVED: Complex refresh token method (now handled in base.service.ts)
-
-  async getCurrentUser(token?: string): Promise<UserProfileResponse> {
-    const accessToken = token || (await this.getToken());
-    if (!accessToken) throw new Error('No access token available');
-
-    const response = await apiService.request<{ data: UserProfileResponse }>(
-      API_ENDPOINTS.USER.PROFILE,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
+  // User data methods
+  async getCurrentUser(): Promise<User> {
+    const response = await apiService.request<{ data: User }>(
+      API_ENDPOINTS.USER.PROFILE
     );
-
-    const userData = response.data;
-
-    if (!userData.profile) {
-      userData.profile = {
-        user_id: userData.user_id,
+    
+    const user = response.data;
+    
+    // Ensure profile exists
+    if (!user.profile) {
+      user.profile = {
+        user_id: user.id,
         full_name: '',
         bio: '',
         profile_picture_url: '',
         points: 0,
-        home_dashboard_layout: null as any,
         location: '',
       };
     }
-
-    return userData;
+    
+    return user;
   }
 
-  async verifyEmail(token: string): Promise<{ message: string }> {
-    const response = await apiService.request<{ data: { message: string } }>(
-      `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`,
-      { method: 'GET' }
+  async updateProfile(data: Partial<UserProfile>): Promise<User> {
+    const response = await apiService.request<{ data: User }>(
+      API_ENDPOINTS.USER.UPDATE_PROFILE,
+      {
+        method: 'PUT',
+        data,
+      }
     );
     return response.data;
   }
 
-  async requestEmailVerification(email: string) {
-    const token = await this.getToken();
-    const response = await apiService.request<{ message?: string }>(
+  // Email verification
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const response = await apiService.request<{ data: { message: string } }>(
+      `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${token}`
+    );
+    return response.data;
+  }
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
       {
         method: 'POST',
         data: { email },
-        headers: token
-          ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-          : { 'Content-Type': 'application/json' },
       }
     );
-    return { message: response.data.message || 'Verification email sent' };
+    return { message: response.message || 'Verification email sent' };
   }
 
-  async forgotPassword(email: string) {
-    const response = await apiService.request<{message?: string}>(
+  // Password reset
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
       {
         method: 'POST',
-        data: { email }
+        data: { email },
       }
-    )
-    return { message: response.message || 'Forgot Password' };
+    );
+    return { message: response.message || 'Reset email sent' };
   }
 
-  async resetPassword(token: string, newPassword: string) {
-    const response = await apiService.request<{ message?:string }>(
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.RESET_PASSWORD,
       {
         method: 'POST',
         data: { token, newPassword },
-      },
-    )
-    return { message: response.message || 'Reset Password'}
+      }
+    );
+    return { message: response.message || 'Password reset successful' };
   }
 
-  // Token methods
-  async saveTokens(token: string, refreshToken: string): Promise<void> {
-    await AsyncStorage.setItem('access_token', token);
-    await AsyncStorage.setItem('refresh_token', refreshToken);
+  // Token management
+  async saveTokens(accessToken: string, refreshToken: string): Promise<void> {
+    await AsyncStorage.multiSet([
+      ['access_token', accessToken],
+      ['refresh_token', refreshToken],
+    ]);
   }
 
   async getToken(): Promise<string | null> {
@@ -136,6 +133,11 @@ class AuthService {
 
   async clearTokens(): Promise<void> {
     await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
+  }
+
+  async hasValidToken(): Promise<boolean> {
+    const token = await this.getToken();
+    return !!token;
   }
 }
 

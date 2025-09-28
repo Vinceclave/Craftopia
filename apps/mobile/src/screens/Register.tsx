@@ -1,13 +1,12 @@
-// apps/mobile/src/screens/Register.tsx - FIXED IMPORTS
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
+
 import AuthLayout from '~/components/auth/AuthLayout';
-import Button from '~/components/common/Button'; // ✅ Default import
-import { Input } from '~/components/common/TextInputField'; // ✅ Named import
-import { useAuth } from '~/context/AuthContext';
+import Button from '~/components/common/Button';
+import { Input } from '~/components/common/TextInputField';
 import { useAlert } from '~/hooks/useAlert';
 import {
   validateRegister,
@@ -15,12 +14,12 @@ import {
   RegisterFormErrors,
 } from '~/utils/validator';
 import debounce from 'lodash.debounce';
+import { useRegister } from '~/hooks/useAuth';
 
 type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterNavProp>();
-  const { register, error, clearError } = useAuth();
   const { success, error: showError } = useAlert();
 
   const [form, setForm] = useState<RegisterFormValues>({
@@ -37,22 +36,14 @@ const RegisterScreen: React.FC = () => {
     confirmPassword: '',
   });
 
-  const [loading, setLoading] = useState(false);
-
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
+  // Get register mutation from TanStack Query
+  const registerMutation = useRegister();
 
-  useEffect(() => {
-    if (error) {
-      showError('Registration Failed', error);
-    }
-  }, [error, showError]);
-
+  // Debounced validation
   const debouncedValidate = useCallback(
     debounce((values: RegisterFormValues) => {
       setErrors(validateRegister(values));
@@ -73,31 +64,41 @@ const RegisterScreen: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    clearError();
-
     try {
-      await register({
+      // Use TanStack Query mutation
+      await registerMutation.mutateAsync({
         username: form.username.trim(),
         email: form.email.trim(),
         password: form.password,
       });
 
-      success('Registration Successful 🎉', 'Please verify your email.', () => {
-        navigation.navigate('VerifyEmail', { email: form.email.trim() });
-      });
+      success(
+        'Registration Successful! 🎉', 
+        'Please check your email to verify your account before signing in.',
+        () => {
+          navigation.navigate('VerifyEmail', { email: form.email.trim() });
+        }
+      );
     } catch (err: any) {
       console.log('Registration failed:', err.message);
-    } finally {
-      setLoading(false);
+      
+      // Handle specific error cases
+      if (err.message?.toLowerCase().includes('username')) {
+        setErrors(prev => ({ ...prev, username: err.message }));
+      } else if (err.message?.toLowerCase().includes('email')) {
+        setErrors(prev => ({ ...prev, email: err.message }));
+      } else {
+        showError('Registration Failed', err.message || 'Something went wrong. Please try again.');
+      }
     }
   };
 
-  const isFormValid = form.username.trim() && 
-                    form.email.trim() && 
-                    form.password.trim() && 
-                    form.confirmPassword.trim() &&
-                    !Object.values(errors).some(err => err);
+  const isFormValid = 
+    form.username.trim() && 
+    form.email.trim() && 
+    form.password.trim() && 
+    form.confirmPassword.trim() &&
+    !Object.values(errors).some(err => err);
 
   return (
     <AuthLayout
@@ -156,8 +157,8 @@ const RegisterScreen: React.FC = () => {
           <Button
             title="Create Account"
             onPress={handleRegister}
-            loading={loading}
-            disabled={!isFormValid || loading}
+            loading={registerMutation.isPending} // TanStack Query loading state
+            disabled={!isFormValid || registerMutation.isPending}
           />
         </View>
 
@@ -169,7 +170,7 @@ const RegisterScreen: React.FC = () => {
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Login')}
-              disabled={loading}
+              disabled={registerMutation.isPending}
             >
               <Text className="text-craftopia-digital text-base font-semibold">
                 Sign In

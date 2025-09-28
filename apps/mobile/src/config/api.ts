@@ -5,21 +5,18 @@ export const API_BASE_URL = __DEV__
 
 export const API_ENDPOINTS = {
   AUTH: {
-    REGISTER: `${API_BASE_URL}/api/v1/auth/register`,
-    LOGIN: `${API_BASE_URL}/api/v1/auth/login`,
-    LOGOUT: `${API_BASE_URL}/api/v1/auth/logout`, // FIXED: removed extra space
-    REFRESH_TOKEN: `${API_BASE_URL}/api/v1/auth/refresh-token`,
-    VERIFY_EMAIL: `${API_BASE_URL}/api/v1/auth/verify-email`,
-    RESEND_VERIFICATION: `${API_BASE_URL}/api/v1/auth/resend-verification`,
-    CHANGE_PASSWORD: `${API_BASE_URL}/api/v1/auth/change-password`,
-    FORGOT_PASSWORD: `${API_BASE_URL}/api/v1/auth/forgot-password`,
-    RESET_PASSWORD: `${API_BASE_URL}/api/v1/auth/reset-password`,
+    LOGIN: '/api/v1/auth/login',
+    REGISTER: '/api/v1/auth/register',
+    LOGOUT: '/api/v1/auth/logout',
+    REFRESH_TOKEN: '/api/v1/auth/refresh-token',
+    VERIFY_EMAIL: '/api/v1/auth/verify-email',
+    RESEND_VERIFICATION: '/api/v1/auth/resend-verification',
+    FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
+    RESET_PASSWORD: '/api/v1/auth/reset-password',
   },
   USER: {
-    PROFILE: `${API_BASE_URL}/api/v1/users/profile`,
-    UPDATE_PROFILE: `${API_BASE_URL}/api/v1/users/profile`,
-    STATS: `${API_BASE_URL}/api/v1/users/stats`,
-    LEADERBOARD: `${API_BASE_URL}/api/v1/users/leaderboard`,
+    PROFILE: '/api/v1/users/profile',
+    UPDATE_PROFILE: '/api/v1/users/profile',
   },
   CRAFTS: {
     LIST: `${API_BASE_URL}/api/v1/crafts`,
@@ -73,16 +70,6 @@ export const API_ENDPOINTS = {
 };
 
 // Types
-export interface UserProfile {
-  user_id: number;
-  bio?: string;
-  profile_picture_url?: string;
-  points: number;
-  home_dashboard_layout?: object;
-  full_name?: string;
-  location?: string;
-}
-
 export interface User {
   id: number;
   username: string;
@@ -90,14 +77,17 @@ export interface User {
   is_email_verified: boolean;
   role: 'user' | 'admin';
   created_at: string;
-  
-  // Add profile data
   profile?: UserProfile;
-  
-  // Keep for backward compatibility
-  isEmailVerified?: boolean;
 }
 
+export interface UserProfile {
+  user_id: number;
+  full_name?: string;
+  bio?: string;
+  profile_picture_url?: string;
+  points: number;
+  location?: string;
+}
 // If you're getting the user profile from getCurrentUser, the response looks like this:
 export interface UserProfileResponse {
   user_id: number;
@@ -123,13 +113,13 @@ export interface AuthResponse {
   refreshToken: string;
 }
 
-export interface RegisterRequest {
-  username: string;
+export interface LoginRequest {
   email: string;
   password: string;
 }
 
-export interface LoginRequest {
+export interface RegisterRequest {
+  username: string;
   email: string;
   password: string;
 }

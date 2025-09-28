@@ -1,4 +1,3 @@
-// apps/mobile/src/screens/VerifyEmail.tsx - FIXED IMPORTS
 import { MailOpen } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Text, View, ScrollView } from 'react-native';
@@ -6,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Input } from '~/components/common/TextInputField'; // ✅ Named import
-import Button from '~/components/common/Button'; // ✅ Default import
-import { authService } from '~/services/auth.service';
+import { Input } from '~/components/common/TextInputField';
+import Button from '~/components/common/Button';
+import { useVerifyEmail, useResendVerification } from '~/hooks/useAuth';
 import { useAlert } from '~/hooks/useAlert';
 
 type VerifyEmailScreenProp = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
@@ -21,9 +20,11 @@ export const VerifyEmailScreen = () => {
 
   const [email, setEmail] = useState(route.params?.email || '');
   const [token, setToken] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
   const [showTokenInput, setShowTokenInput] = useState(!!route.params?.email);
+
+  // TanStack Query mutations
+  const verifyEmailMutation = useVerifyEmail();
+  const resendVerificationMutation = useResendVerification();
 
   const handleVerifyToken = async () => {
     if (!token.trim()) {
@@ -31,16 +32,14 @@ export const VerifyEmailScreen = () => {
       return;
     }
 
-    setIsLoading(true);
     try {
-      await authService.verifyEmail(token.trim());
+      await verifyEmailMutation.mutateAsync(token.trim());
+      
       success('Email Verified! ✅', 'Redirecting you to login...', () => {
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       });
     } catch (err: any) {
       error('Verification Failed', err.message || 'Invalid or expired token.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -50,18 +49,16 @@ export const VerifyEmailScreen = () => {
       return;
     }
 
-    setIsResending(true);
     try {
-      await authService.requestEmailVerification(email.trim());
+      await resendVerificationMutation.mutateAsync(email.trim());
+      
       success(
         'Verification Email Sent! 📧',
         'A new verification email has been sent to your inbox. Please check your email and enter the verification token below.',
         () => setShowTokenInput(true)
       );
     } catch (err: any) {
-      error('Verification Failed', err.message || 'Invalid or expired token.');
-    } finally {
-      setIsResending(false);
+      error('Failed to Send Email', err.message || 'Something went wrong. Please try again.');
     }
   };
 
@@ -111,8 +108,19 @@ export const VerifyEmailScreen = () => {
                 <Button
                   title="Verify Email"
                   onPress={handleVerifyToken}
-                  loading={isLoading}
+                  loading={verifyEmailMutation.isPending}
+                  disabled={!token.trim() || verifyEmailMutation.isPending}
                   variant="primary"
+                />
+              </View>
+
+              <View className="mt-4">
+                <Button
+                  title="Resend Verification Email"
+                  onPress={handleResendVerification}
+                  loading={resendVerificationMutation.isPending}
+                  disabled={resendVerificationMutation.isPending}
+                  variant="outline"
                 />
               </View>
             </>
@@ -134,9 +142,10 @@ export const VerifyEmailScreen = () => {
 
               <View className="mt-6">
                 <Button
-                  title="Resend Verification Link"
+                  title="Send Verification Email"
                   onPress={handleResendVerification}
-                  loading={isResending}
+                  loading={resendVerificationMutation.isPending}
+                  disabled={!email.trim() || resendVerificationMutation.isPending}
                   variant="primary"
                 />
               </View>
@@ -148,6 +157,7 @@ export const VerifyEmailScreen = () => {
               title="Back to Login"
               onPress={() => navigation.navigate('Login')}
               variant="outline"
+              disabled={verifyEmailMutation.isPending || resendVerificationMutation.isPending}
             />
           </View>
         </View>

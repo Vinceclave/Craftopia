@@ -1,144 +1,63 @@
-// apps/mobile/src/context/AuthContext.tsx - FIXED AUTHENTICATION LOGIC
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginRequest, RegisterRequest, UserProfileResponse } from '../config/api';
-import { authService } from '../services/auth.service';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useAuthStatus, useLogin, useLogout, useRegister } from '~/hooks/useAuth';
+import { LoginRequest, RegisterRequest } from '~/config/api';
 
 interface AuthContextType {
-  user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  isLoading: boolean;
+  // State
   isAuthenticated: boolean;
-  error: string | null;
-  register: (credentials: RegisterRequest) => Promise<void>;
-  login: (credentials: LoginRequest) => Promise<User>;
+  isLoading: boolean;
+  
+  // Actions
+  login: (credentials: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
-  clearError: () => void;
-  refreshAuth: () => Promise<void>;
+  register: (userData: RegisterRequest) => Promise<void>;
+  
+  // Loading states
+  isLoggingIn: boolean;
+  isLoggingOut: boolean;
+  isRegistering: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Get auth status from TanStack Query
+  const { data: authStatus, isLoading } = useAuthStatus();
+  
+  // Get mutations
+  const loginMutation = useLogin();
+  const logoutMutation = useLogout();
+  const registerMutation = useRegister();
 
-const normalizeUser = (data: UserProfileResponse): User => ({
-  id: data.user_id,
-  username: data.username,
-  email: data.email,
-  role: data.role as 'user' | 'admin',
-  created_at: data.created_at,
-  is_email_verified: data.is_email_verified,
-  isEmailVerified: data.is_email_verified,
-  profile: data.profile,
-});
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const clearError = () => setError(null);
-
-  const checkAuthStatus = async () => {
-    setIsLoading(true);
-    try {
-      const token = await authService.getToken();
-      if (token) {
-        const currentUser = await authService.getCurrentUser(token);
-        const normalizedUser = normalizeUser(currentUser);
-        setUser(normalizedUser);
-        // ✅ FIXED: User is authenticated if they have a valid token, 
-        // regardless of email verification status
-        setIsAuthenticated(true);
-      } else {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    } catch (err: any) {
-      console.error('Auth check failed:', err);
-      // ✅ FIXED: Clear tokens on auth failure
-      await authService.clearTokens();
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const register = async (userData: RegisterRequest) => {
-    try {
-      setError(null);
-      await authService.register(userData);
-    } catch (err: any) {
-      setError(err.message || 'Registration failed.');
-      throw err;
-    }
-  };
-
+  // Wrapper functions
   const login = async (credentials: LoginRequest) => {
-    try {
-      setError(null);
-      const response = await authService.login(credentials);
-      const { accessToken, refreshToken } = response;
-      if (!accessToken) throw new Error('Login failed, no access token returned');
-
-      const currentUser = await authService.getCurrentUser(accessToken);
-      const normalizedUser = normalizeUser(currentUser);
-
-      setUser(normalizedUser);
-      
-      // ✅ FIXED: Always save tokens and set authenticated on successful login
-      await authService.saveTokens(accessToken, refreshToken);
-      setIsAuthenticated(true);
-
-      // ✅ IMPROVED: Handle email verification separately from authentication
-      if (!normalizedUser.is_email_verified) {
-        // User is logged in but needs email verification
-        // You can handle this in the UI by showing a verification prompt
-        console.log('User logged in but email not verified');
-      }
-
-      return normalizedUser;
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
-      throw err;
-    }
+    await loginMutation.mutateAsync(credentials);
   };
 
   const logout = async () => {
-    try {
-      await authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
-      setError(null);
-    } catch (err) {
-      console.error('Logout error:', err);
-      setUser(null);
-      setIsAuthenticated(false);
-    }
+    await logoutMutation.mutateAsync();
   };
 
-  const refreshAuth = async () => await checkAuthStatus();
+  const register = async (userData: RegisterRequest) => {
+    await registerMutation.mutateAsync(userData);
+  };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        setUser,
+        // State
+        isAuthenticated: authStatus?.isAuthenticated ?? false,
         isLoading,
-        isAuthenticated,
-        error,
-        register,
+        
+        // Actions
         login,
         logout,
-        clearError,
-        refreshAuth,
+        register,
+        
+        // Loading states
+        isLoggingIn: loginMutation.isPending,
+        isLoggingOut: logoutMutation.isPending,
+        isRegistering: registerMutation.isPending,
       }}
     >
       {children}
@@ -148,6 +67,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };
