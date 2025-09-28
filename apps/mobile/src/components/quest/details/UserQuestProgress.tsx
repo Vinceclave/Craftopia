@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { Text, View, Alert, ActivityIndicator } from 'react-native'
+// apps/mobile/src/components/quest/details/UserQuestProgress.tsx
+import React, { useState } from 'react'
+import { Text, View, ActivityIndicator } from 'react-native'
 import { CheckCircle, Clock, Upload } from 'lucide-react-native'
 import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
-import { API_ENDPOINTS } from '~/config/api'
-import { useAuth } from '~/context/AuthContext'
-import { apiService } from '~/services/base.service'
+import { useUserChallengeProgress, useSubmitChallengeVerification } from '~/hooks/queries/useUserChallenges'
+import { useAlert } from '~/hooks/useAlert'
 
 interface UserQuestProgressProps {
   id: number
@@ -18,64 +18,54 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   description,
   points,
 }) => {
-  console.log(id)
-  const { user } = useAuth()
+  const { success, error } = useAlert()
   const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [challengeData, setChallengeData] = useState<any | null>(null)
-  const [isVerifying, setIsVerifying] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [loading, setLoading] = useState(false)
 
-  const fetchData = async () => {
-    if (!user?.id) return
-    setLoading(true)
-    try {
-      const response = await apiService.request(
-        `${API_ENDPOINTS.USER_CHALLENGES.BY_CHALLENGE_ID(id)}?user_id=${user.id}`,
-        { method: 'GET' }
-      )
-      if (response) {
-        setChallengeData(response.data)
-        if (response.data?.proof_url) setImageUrl(response.data.proof_url)
-      }
-    } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Unable to load progress.'
-      Alert.alert('Error', msg)
-    } finally {
-      setLoading(false)
+  // Get user's progress for this challenge
+  const { 
+    data: challengeData, 
+    isLoading: loading,
+    error: progressError,
+    refetch 
+  } = useUserChallengeProgress(id)
+
+  // Submit verification mutation
+  const submitVerificationMutation = useSubmitChallengeVerification()
+
+  // Set initial image URL when data loads
+  React.useEffect(() => {
+    if (challengeData?.proof_url && !imageUrl) {
+      setImageUrl(challengeData.proof_url)
     }
-  }
-
-  useEffect(() => {
-    fetchData().catch(() => {})
-  }, [id, user?.id])
+  }, [challengeData?.proof_url, imageUrl])
 
   const handleVerify = async () => {
     if (!imageUrl || imageUrl.startsWith('file://')) {
-      Alert.alert('Error', 'Please upload a proof image first')
+      error('Error', 'Please upload a proof image first')
       return
     }
+    
     if (!challengeData?.user_challenge_id) {
-      Alert.alert('Error', 'Challenge data not found. Please try refreshing.')
+      error('Error', 'Challenge data not found. Please try refreshing.')
       return
     }
 
-    setIsVerifying(true)
     try {
-      await apiService.request(
-        API_ENDPOINTS.USER_CHALLENGES.VERIFY(challengeData.user_challenge_id),
-        {
-          method: 'POST',
-          data: { proof_url: imageUrl, description, points, challenge_id: id, userId: user?.id },
-        }
-      )
-      Alert.alert('Success', 'Challenge submitted for verification!')
-      fetchData()
+      await submitVerificationMutation.mutateAsync({
+        userChallengeId: challengeData.user_challenge_id,
+        proofUrl: imageUrl,
+        description,
+        points,
+        challengeId: id,
+      })
+      
+      success('Success', 'Challenge submitted for verification!')
+      // Refetch to get updated status
+      refetch()
     } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Something went wrong.'
-      Alert.alert('Error', msg)
-    } finally {
-      setIsVerifying(false)
+      const msg = err.message || 'Something went wrong.'
+      error('Error', msg)
     }
   }
 
@@ -96,7 +86,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   }
 
   const getButtonTitle = () => {
-    if (isVerifying || isUploading) return 'Processing...'
+    if (submitVerificationMutation.isPending || isUploading) return 'Processing...'
     if (!challengeData) return 'Submit for Verification'
     switch (challengeData.status) {
       case 'pending_verification': return 'Waiting for Verification'
@@ -107,7 +97,36 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   }
 
   const isDisabled = () =>
-    !challengeData ? false : isVerifying || isUploading || !imageUrl || ['pending_verification', 'completed'].includes(challengeData.status)
+    !challengeData ? false : 
+    submitVerificationMutation.isPending || 
+    isUploading || 
+    !imageUrl || 
+    ['pending_verification', 'completed'].includes(challengeData.status)
+
+  // Show error state (but not for 404 - that means user hasn't joined)
+  if (progressError && !progressError.message?.includes('not found')) {
+    return (
+      <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
+        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">Your Progress</Text>
+        <View className="items-center py-4">
+          <Text className="text-sm text-red-500 text-center">
+            Failed to load progress: {progressError.message}
+          </Text>
+          <Button
+            title="Retry"
+            onPress={() => refetch()}
+            size="md"
+            className="mt-2"
+          />
+        </View>
+      </View>
+    )
+  }
+
+  // If user hasn't joined the challenge yet, don't show the progress component
+  if (!challengeData && !loading) {
+    return null;
+  }
 
   return (
     <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
@@ -116,6 +135,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       {loading ? (
         <View className="items-center py-2">
           <ActivityIndicator size="small" color="#004E98" />
+          <Text className="text-xs text-craftopia-textSecondary mt-1">Loading progress...</Text>
         </View>
       ) : (
         <>
@@ -134,7 +154,8 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             title={getButtonTitle()}
             onPress={handleVerify}
             disabled={isDisabled()}
-            leftIcon={isVerifying || isUploading ? undefined : <Upload size={14} color="#fff" />}
+            leftIcon={submitVerificationMutation.isPending || isUploading ? undefined : <Upload size={14} color="#fff" />}
+            loading={submitVerificationMutation.isPending}
             size="md"
             className="mt-2"
           />
@@ -144,14 +165,14 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
               <View className="flex-row items-center">
                 {getStatusIcon()}
                 <Text className={`text-xs font-medium ml-1 ${getStatusColor()}`}>
-                  {challengeData.status}
+                  {challengeData.status.replace('_', ' ').toUpperCase()}
                 </Text>
               </View>
 
               {challengeData.verified_at && (
                 <View className="flex-row items-center">
                   <CheckCircle size={12} color="#00A896" />
-                  <Text className="text-xs text-craftopia-growth ml-1">
+                  <Text className="text-xs text-green-600 ml-1">
                     {new Date(challengeData.verified_at).toLocaleDateString()}
                   </Text>
                 </View>

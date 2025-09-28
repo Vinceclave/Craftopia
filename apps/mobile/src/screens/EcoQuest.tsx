@@ -8,8 +8,9 @@ import { QuestBanner } from '~/components/quest/QuestBanner';
 import { Achievements } from '~/components/quest/Achievements';
 import { QuestTabs } from '~/components/quest/QuestTabs';
 import { QuestList } from '~/components/quest/QuestList';
-import { useChallenges, useJoinChallenge } from '~/hooks/queries/useChallenges';
+import { useChallenges } from '~/hooks/queries/useChallenges';
 import { EcoQuestStackParamList } from '~/navigations/types';
+import { useUserStats } from '~/hooks/useUserStats';
 
 type QuestType = 'all' | 'daily' | 'weekly' | 'monthly';
 
@@ -17,7 +18,14 @@ export const EcoQuestScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
   const [activeTab, setActiveTab] = useState<QuestType>('all');
 
-  // TanStack Query hooks
+  // User stats query
+  const { 
+    data: userStats, 
+    isLoading: statsLoading, 
+    error: statsError 
+  } = useUserStats();
+
+  // Challenges query
   const { 
     data: challenges = [], 
     isLoading, 
@@ -33,15 +41,16 @@ export const EcoQuestScreen = () => {
   const handleRefresh = () => {
     refetch();
   };
-  
-
-  console.log(challenges)
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-light">
       <QuestHeader navigation={navigation} />
-      <QuestBanner />
+
+      {/* Fixed: use userStats and statsLoading here */}
+      <QuestBanner data={userStats} loading={statsLoading} />
+
       <Achievements />
+
       <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 
       <QuestList

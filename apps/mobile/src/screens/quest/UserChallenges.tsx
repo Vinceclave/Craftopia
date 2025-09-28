@@ -1,75 +1,70 @@
-import React, { useState, useEffect } from 'react';
+// apps/mobile/src/screens/quest/UserChallenges.tsx
+import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { UserChallengesHeader } from '~/components/quest/challenges/ChallengeHeader';
 import { ChallengeTab, QuestType } from '~/components/quest/challenges/ChallengeTab';
-import { API_ENDPOINTS } from '~/config/api';
-import { useAuth } from '~/context/AuthContext';
 import { EcoQuestStackParamList } from '~/navigations/types';
-import { apiService } from '~/services/base.service';
 import { ChallengeList } from '~/components/quest/challenges/ChallengeList';
-import { useCurrentUser } from '~/hooks/useAuth';
+import { useUserChallenges, UserChallengeStatus } from '~/hooks/queries/useUserChallenges';
+import { RefreshControl } from 'react-native';
 
-interface Challenge {
-  id: number | string;
-  title: string;
-  description: string;
-  completedAt?: string;
-}
+// Map UI tabs to API status values
+const statusMap: Record<QuestType, UserChallengeStatus> = {
+  'in_progress': 'in_progress',
+  'pending_verification': 'pending_verification',
+  'rejected': 'rejected',
+  'completed': 'completed',
+};
 
 export const UserChallengesScreen = () => {
- const { data: user, isLoading, error } = useCurrentUser();
-  console.log(user)
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
-  const route = useRoute<RouteProp<EcoQuestStackParamList, 'UserChallenges'>>();
-
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<QuestType>('in_progress');
 
-  const fetchData = async (tab: QuestType) => {
-    if (!user?.id) return;
+  // Get user challenges for the selected status
+  const { 
+    data: userChallenges = [], 
+    isLoading, 
+    error,
+    refetch 
+  } = useUserChallenges(statusMap[activeTab]);
 
-    setLoading(true);
-    try {
-      const response = await apiService.request(
-        `${API_ENDPOINTS.USER_CHALLENGES.USER_LIST(user.id)}?status=${tab}`,
-        { method: 'GET' }
-      );
-      console.log(response)
-      // Normalize API response
-      const normalized: Challenge[] = (response.data || []).map((item: any, index: number) => ({
-        id: item.user_challenge_id || item.challenge_id || index, // safe fallback
-        title: item.challenge?.title || 'No title',
-        description: item.challenge?.description || 'No description',
-        completedAt: item.completedAt,
-      }));
+  // Transform data for the ChallengeList component
+  const transformedChallenges = userChallenges.map(userChallenge => ({
+    id: userChallenge.user_challenge_id,
+    title: userChallenge.challenge?.title || 'No title',
+    description: userChallenge.challenge?.description || 'No description',
+    completedAt: userChallenge.completed_at || userChallenge.verified_at,
+    points: userChallenge.challenge?.points_reward,
+    status: userChallenge.status,
+  }));
 
-      setChallenges(normalized);
-    } catch (error) {
-      console.error('Failed to fetch challenges:', error);
-      setChallenges([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleTabChange = (tab: QuestType) => {
+    setActiveTab(tab);
   };
 
-  useEffect(() => {
-    fetchData(activeTab);
-  }, [user?.id, activeTab]);
+  const handleRefresh = () => {
+    refetch();
+  };
 
-  console.log(challenges)
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
       {/* Header */}
       <UserChallengesHeader navigation={navigation} />
 
       {/* Tabs */}
-      <ChallengeTab activeTab={activeTab} onChangeTab={setActiveTab} />
+      <ChallengeTab activeTab={activeTab} onChangeTab={handleTabChange} />
 
       {/* Challenges List */}
-      <ChallengeList challenges={challenges} loading={loading} />
+      <ChallengeList 
+        challenges={transformedChallenges} 
+        loading={isLoading}
+        error={error?.message}
+        onRefresh={handleRefresh}
+        refreshing={false}
+        onRetry={handleRefresh}
+      />
     </SafeAreaView>
   );
 };

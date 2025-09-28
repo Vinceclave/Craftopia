@@ -1,3 +1,4 @@
+// apps/mobile/src/services/base.service.ts - Improved error handling
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '~/config/api';
@@ -73,8 +74,34 @@ class ApiService {
       const response = await this.axios({ url, ...config });
       return response.data;
     } catch (error: any) {
-      const message = error.response?.data?.error || error.message || 'Request failed';
-      throw new Error(message);
+      // Enhanced error handling for different status codes
+      if (error.response) {
+        const status = error.response.status;
+        const errorData = error.response.data;
+        
+        switch (status) {
+          case 404:
+            throw new Error(errorData?.error || 'Resource not found');
+          case 400:
+            throw new Error(errorData?.error || 'Bad request');
+          case 401:
+            throw new Error(errorData?.error || 'Unauthorized');
+          case 403:
+            throw new Error(errorData?.error || 'Forbidden');
+          case 422:
+            throw new Error(errorData?.error || 'Validation error');
+          case 500:
+            throw new Error(errorData?.error || 'Internal server error');
+          default:
+            throw new Error(errorData?.error || `Request failed with status ${status}`);
+        }
+      } else if (error.request) {
+        // Network error
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        // Other error
+        throw new Error(error.message || 'Request failed');
+      }
     }
   }
 }
