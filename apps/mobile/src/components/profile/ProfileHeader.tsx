@@ -18,22 +18,22 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           <Text className="text-base font-semibold text-craftopia-textPrimary">
             Profile
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary mt-1">
+          <Text className="text-sm text-craftopia-textSecondary mt-0.5">
             Manage your account
           </Text>
         </View>
         <View className="flex-row gap-2 items-center">
           <TouchableOpacity
-            className="w-8 h-8 rounded-full items-center justify-center"
+            className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
             onPress={onSharePress}
           >
-            <Share2 size={18} color="#004E98" />
+            <Share2 size={18} className="text-craftopia-primary" />
           </TouchableOpacity>
           <TouchableOpacity
-            className="w-8 h-8 rounded-full items-center justify-center"
+            className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
             onPress={onSettingsPress}
           >
-            <Settings size={18} color="#004E98" />
+            <Settings size={18} className="text-craftopia-primary" />
           </TouchableOpacity>
         </View>
       </View>

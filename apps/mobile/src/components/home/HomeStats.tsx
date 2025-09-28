@@ -2,41 +2,50 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { TrendingUp } from 'lucide-react-native';
 
-export const HomeStats = () => {
+interface HomeStatsProps {
+  user: {
+    points: number;
+    profile?: {
+      full_name?: string;
+    };
+  };
+}
+
+export const HomeStats: React.FC<HomeStatsProps> = ({ user }) => {
   return (
-    <View style={{ marginTop: -40 }} className="mx-4 bg-craftopia-primary rounded-2xl p-4 border border-craftopia-light">
-      <View className="flex-row items-center">
-        {/* Left: Waste Saved */}
-        <View className="flex-row items-center flex-1">
-          <View className="mr-3 bg-craftopia-secondary/20 p-2 rounded-full">
-            <TrendingUp size={20} color='#ffff' />
+    <View style={{ marginTop: -40 }} className="mx-4 bg-red-600 rounded-xl p-4 border border-red-500">
+      <View className="flex-row items-center justify-between">
+        {/* Waste Saved */}
+        <View className="flex-row items-center">
+          <View className="mr-3 bg-green-400/30 p-2 rounded-full">
+            <TrendingUp size={20} className="text-green-300" />
           </View>
           <View>
-            <Text className="text-lg font-extrabold text-craftopia-surface">
+            <Text className="text-lg font-bold text-orange-50">
               12.5kg
             </Text>
-            <Text className="text-xs text-craftopia-surface/80 mt-0.5">
+            <Text className="text-xs text-orange-100/80 mt-1">
               waste saved
             </Text>
           </View>
         </View>
 
-        {/* Right: Points and Crafts */}
-        <View className="flex-row items-center gap-4">
-          <View className="items-center bg-craftopia-secondary/20 p-2 rounded-lg">
-            <Text className="text-base font-bold text-craftopia-surface">
-              2.8k
+        {/* Stats */}
+        <View className="flex-row items-center gap-3">
+          <View className="items-center bg-orange-400/30 p-2 rounded-lg">
+            <Text className="text-base font-bold text-orange-50">
+              {user.profile?.points}
             </Text>
-            <Text className="text-xs text-craftopia-surface/80 uppercase tracking-wide">
+            <Text className="text-xs text-orange-100/80 uppercase">
               POINTS
             </Text>
           </View>
           
-          <View className="items-center bg-craftopia-secondary/20 p-2 rounded-lg">
-            <Text className="text-base font-bold text-craftopia-surface">
+          <View className="items-center bg-yellow-400/30 p-2 rounded-lg">
+            <Text className="text-base font-bold text-orange-50">
               23
             </Text>
-            <Text className="text-xs text-craftopia-surface/80 uppercase tracking-wide">
+            <Text className="text-xs text-orange-100/80 uppercase">
               CRAFTS
             </Text>
           </View>

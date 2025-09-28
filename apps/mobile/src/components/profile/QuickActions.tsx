@@ -6,19 +6,32 @@ import { LucideIcon } from 'lucide-react-native'
 interface QuickAction {
   label: string
   icon: LucideIcon
-  color: 'primary' | 'growth' | 'accent'
+  color: 'primary' | 'growth' | 'accent'  // Keep growth
   onPress: () => void
-  badge?: number // Optional badge count
+  badge?: number
 }
+
 
 interface QuickActionsProps {
   actions: QuickAction[]
 }
 
 const colorMap = {
-  primary: '#6366F1', // Subtle indigo
-  growth: '#10B981', // Subtle emerald
-  accent: '#F59E0B',  // Subtle amber
+  primary: {
+    bg: 'bg-craftopia-primary/10',
+    icon: 'text-craftopia-primary',
+    text: 'text-craftopia-textSecondary'
+  },
+  growth: {  // Add growth mapping
+    bg: 'bg-green-500/10',  // or use your growth color if defined
+    icon: 'text-green-500',
+    text: 'text-craftopia-textSecondary'
+  },
+  accent: {
+    bg: 'bg-craftopia-accent/10',
+    icon: 'text-craftopia-accent',
+    text: 'text-craftopia-textSecondary'
+  }
 }
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
@@ -26,10 +39,11 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
   const itemWidth = (screenWidth - 32) / actions.length // Reduced padding
 
   return (
-    <View className="py-3 px-4 bg-white">
+    <View className="py-3 px-4 bg-craftopia-surface border-b border-craftopia-primary/5">
       <View className="flex-row justify-between items-center">
         {actions.map((action, index) => {
           const Icon = action.icon
+          const colors = colorMap[action.color] || colorMap.primary // Fallback to primary if color not found
           
           return (
             <TouchableOpacity
@@ -39,38 +53,23 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
               onPress={action.onPress}
               activeOpacity={0.6}
             >
-              {/* Minimalist circular button */}
               <View className="relative mb-1">
-                <View 
-                  className="w-11 h-11 rounded-full items-center justify-center"
-                  style={{
-                    backgroundColor: colorMap[action.color] + '15', // 15% opacity
-                  }}
-                >
-                  <Icon 
-                    size={18} 
-                    color={colorMap[action.color]} 
-                    strokeWidth={1.8}
-                  />
+                <View className={`w-11 h-11 rounded-full items-center justify-center ${colors.bg}`}>
+                  <Icon size={18} className={colors.icon} strokeWidth={1.8} />
                 </View>
 
-                {/* Minimal badge */}
                 {action.badge && action.badge > 0 && (
                   <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center">
-                    <Text className="text-white text-xs font-medium">
+                    <Text className="text-craftopia-surface text-xs font-medium">
                       {action.badge > 9 ? '9+' : action.badge}
                     </Text>
                   </View>
                 )}
               </View>
 
-              {/* Minimal label */}
               <Text 
-                className="text-gray-600 text-center"
-                style={{ 
-                  fontSize: 11,
-                  maxWidth: itemWidth - 4
-                }}
+                className={`text-xs text-center ${colors.text}`}
+                style={{ maxWidth: itemWidth - 4 }}
                 numberOfLines={1}
               >
                 {action.label}

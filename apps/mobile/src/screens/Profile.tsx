@@ -67,17 +67,17 @@ export const ProfileScreen = () => {
 
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
-      <ProfileHeader
+      {/* <ProfileHeader
         onSharePress={handleSharePress}
         onSettingsPress={handleSettingsPress}
-      />
+      /> */}
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
-        <ProfileCard userProfile={userProfile} onEditPress={handleEditPress} />
+        <ProfileCard userProfile={userProfile} onSettingsPress={handleSettingsPress}  onEditPress={handleEditPress} />
         <QuickActions actions={quickActions} />
         
         {/* Extra bottom spacing matching EcoQuest */}

@@ -16,6 +16,17 @@ module.exports = {
           light: "#F2F4F3",         // Cool gray with green hint
           textPrimary: "#1D261D",   // Near black
           textSecondary: "#5D6B5D", // Sophisticated gray
+          
+          // Suggested additional colors for variety
+          success: "#4A7C59",       // Muted green (between primary & secondary)
+          warning: "#B68D40",       // Muted gold (complements accent)
+          error: "#8B4513",         // Warm brown (earth tone)
+          info: "#5D8AA8",          // Muted blue (subtle contrast)
+          
+          // Gradient variants
+          primaryLight: "#4A5D48",  // Lighter olive
+          secondaryLight: "#7A977A", // Lighter dusty green
+          accentLight: "#DDB98A",   // Lighter wheat tone
         }
       },
       spacing: {
@@ -27,11 +38,10 @@ module.exports = {
         8: 32,  
       },
       fontSize: {
-        xs: ['12px', '16px'],
-        sm: ['14px', '20px'],
-        base: ['16px', '22px'],
-        lg: ['18px', '24px'],
-        xl: ['20px', '28px'],
+        'xs': ['12px', '16px'],
+        'sm': ['14px', '18px'],
+        'base': ['16px', '20px'],
+        'lg': ['18px', '22px'],
       },
     },
   },
