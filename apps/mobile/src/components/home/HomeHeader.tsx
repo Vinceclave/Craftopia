@@ -7,6 +7,8 @@ export const HomeHeader = () => {
   // Get user data from TanStack Query
   const { data: user, isLoading, error } = useCurrentUser();
 
+  console.log(user)
+
   const today = new Date();
   const hour = today.getHours();
 
@@ -114,7 +116,8 @@ export const HomeHeader = () => {
 
   // Safe access to user data with fallbacks
   const username = user?.username || 'Crafter';
-  const userPoints = user?.profile?.points || 0;
+  const userPoints = user?.totalPoints || 0;
+  console.log(userPoints)
 
   return (
     <View className="px-4 pt-4 bg-craftopia-surface border-b border-craftopia-light pb-16">

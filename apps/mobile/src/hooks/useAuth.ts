@@ -30,6 +30,13 @@ export const useCurrentUser = () => {
     queryFn: () => authService.getCurrentUser(),
     enabled: authStatus?.isAuthenticated ?? false,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry if it's an auth error
+      if (error?.message?.includes('401') || error?.message?.includes('unauthorized')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };
 
@@ -43,14 +50,22 @@ export const useLogin = () => {
       // Save tokens
       await authService.saveTokens(response.accessToken, response.refreshToken);
       
-      // Update auth status
+      // Update auth status immediately
       queryClient.setQueryData(authKeys.status, { isAuthenticated: true });
       
-      // Cache user data
+      // Cache user data immediately
       queryClient.setQueryData(authKeys.user, response.user);
+      
+      // Also refetch to ensure we have the latest data
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: authKeys.user });
+      }, 100);
     },
     onError: (error) => {
       console.error('Login failed:', error);
+      // Clear any cached data on login failure
+      queryClient.removeQueries({ queryKey: authKeys.user });
+      queryClient.setQueryData(authKeys.status, { isAuthenticated: false });
     },
   });
 };
@@ -75,8 +90,8 @@ export const useLogout = () => {
       // Clear all user data
       queryClient.removeQueries({ queryKey: authKeys.user });
       
-      // Optionally clear all cache
-      // queryClient.clear();
+      // Clear all cached data
+      queryClient.clear();
     },
   });
 };

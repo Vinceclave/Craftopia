@@ -1,11 +1,12 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useAuthStatus, useLogin, useLogout, useRegister } from '~/hooks/useAuth';
-import { LoginRequest, RegisterRequest } from '~/config/api';
+import { useAuthStatus, useLogin, useLogout, useRegister, useCurrentUser } from '~/hooks/useAuth';
+import { LoginRequest, RegisterRequest, User } from '~/config/api';
 
 interface AuthContextType {
   // State
   isAuthenticated: boolean;
   isLoading: boolean;
+  user: User | undefined;
   
   // Actions
   login: (credentials: LoginRequest) => Promise<void>;
@@ -22,12 +23,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Get auth status from TanStack Query
-  const { data: authStatus, isLoading } = useAuthStatus();
+  const { data: authStatus, isLoading: authLoading } = useAuthStatus();
+  const { data: user, isLoading: userLoading } = useCurrentUser();
   
   // Get mutations
   const loginMutation = useLogin();
   const logoutMutation = useLogout();
   const registerMutation = useRegister();
+
+  // Overall loading state
+  const isLoading = authLoading || (authStatus?.isAuthenticated && userLoading);
 
   // Wrapper functions
   const login = async (credentials: LoginRequest) => {
@@ -48,6 +53,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // State
         isAuthenticated: authStatus?.isAuthenticated ?? false,
         isLoading,
+        user,
         
         // Actions
         login,

@@ -18,6 +18,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   description,
   points,
 }) => {
+  console.log(id)
   const { user } = useAuth()
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [challengeData, setChallengeData] = useState<any | null>(null)

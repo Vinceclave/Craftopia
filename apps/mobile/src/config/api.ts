@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
   USER: {
     PROFILE: '/api/v1/users/profile',
     UPDATE_PROFILE: '/api/v1/users/profile',
+    STATS: 'api/v1/users/stats'
+
   },
   CRAFTS: {
     LIST: `${API_BASE_URL}/api/v1/crafts`,
@@ -32,10 +34,10 @@ export const API_ENDPOINTS = {
     ANALYZE_IMAGE: `${API_BASE_URL}/api/v1/image/analyze`,
   },
   CHALLENGES: {
-    LIST: `${API_BASE_URL}/api/v1/challenges`,
-    CREATE: `${API_BASE_URL}/api/v1/challenges`,
-    GENERATE: `${API_BASE_URL}/api/v1/challenges/generate`,
-    BY_ID: (id: number) => `${API_BASE_URL}/api/v1/challenges/${id}`,
+    LIST: `/api/v1/challenges`,
+    CREATE: `/api/v1/challenges`,
+    GENERATE: `/api/v1/challenges/generate`,
+    BY_ID: (id: number) => `/api/v1/challenges/${id}`,
   },
   USER_CHALLENGES: {
     JOIN: `${API_BASE_URL}/api/v1/user-challenges/join`,

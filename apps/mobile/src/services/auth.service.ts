@@ -12,7 +12,21 @@ class AuthService {
         data: credentials,
       }
     );
-    return response.data;
+    
+    // Ensure the user has a complete profile
+    const authData = response.data;
+    if (authData.user && !authData.user.profile) {
+      authData.user.profile = {
+        user_id: authData.user.id,
+        full_name: authData.user.username,
+        bio: '',
+        profile_picture_url: '',
+        points: 0,
+        location: '',
+      };
+    }
+    
+    return authData;
   }
 
   async register(userData: RegisterRequest): Promise<{ user: Partial<User> }> {
@@ -41,25 +55,58 @@ class AuthService {
 
   // User data methods
   async getCurrentUser(): Promise<User> {
-    const response = await apiService.request<{ data: User }>(
-      API_ENDPOINTS.USER.PROFILE
-    );
-    
-    const user = response.data;
-    
-    // Ensure profile exists
-    if (!user.profile) {
-      user.profile = {
-        user_id: user.id,
-        full_name: '',
-        bio: '',
-        profile_picture_url: '',
-        points: 0,
-        location: '',
-      };
+    try {
+      const response = await apiService.request<{ data: User }>(
+        API_ENDPOINTS.USER.PROFILE
+      );
+      
+      let user = response.data;
+      
+      // Handle different response structures
+      if (!user && response) {
+        user = response as any;
+      }
+      
+      // Ensure user has required properties
+      if (!user.id && user.user_id) {
+        user.id = user.user_id;
+      }
+      
+      // Ensure profile exists with default values
+      if (!user.profile) {
+        user.profile = {
+          user_id: user.id,
+          full_name: user.username || '',
+          bio: '',
+          profile_picture_url: '',
+          points: 0,
+          location: '',
+        };
+      } else {
+        // Ensure profile has all required fields
+        user.profile = {
+          user_id: user.profile.user_id || user.id,
+          full_name: user.profile.full_name || user.username || '',
+          bio: user.profile.bio || '',
+          profile_picture_url: user.profile.profile_picture_url || '',
+          points: user.profile.points || 0,
+          location: user.profile.location || '',
+          ...user.profile, // Keep any additional fields
+        };
+      }
+      
+      console.log('AuthService getCurrentUser result:', user);
+      return user;
+    } catch (error: any) {
+      console.error('AuthService getCurrentUser error:', error);
+      
+      // If it's an auth error, clear tokens
+      if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
+        await this.clearTokens();
+      }
+      
+      throw error;
     }
-    
-    return user;
   }
 
   async updateProfile(data: Partial<UserProfile>): Promise<User> {
@@ -138,6 +185,17 @@ class AuthService {
   async hasValidToken(): Promise<boolean> {
     const token = await this.getToken();
     return !!token;
+  }
+
+  // Helper method to check if user data is complete
+  isUserDataComplete(user: User): boolean {
+    return !!(
+      user &&
+      user.id &&
+      user.username &&
+      user.email &&
+      user.profile
+    );
   }
 }
 

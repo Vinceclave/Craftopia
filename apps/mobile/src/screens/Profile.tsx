@@ -9,14 +9,16 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { ProfileHeader } from '~/components/profile/ProfileHeader'
 import { ProfileCard } from '~/components/profile/ProfileCard'
 import { QuickActions } from '~/components/profile/QuickActions'
-import { useCurrentUser } from '~/hooks/useAuth'
+import { useAuth } from '~/context/AuthContext'
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
-  const { data: user, isLoading, error } = useCurrentUser();
+  const { user, isLoading } = useAuth();
+
+  console.log('ProfileScreen - User data:', user);
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || !user) {
     return (
       <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
         <ProfileHeader
@@ -25,23 +27,9 @@ export const ProfileScreen = () => {
         />
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#004E98" />
-          <Text className="text-craftopia-textSecondary mt-2">Loading profile...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
-        <ProfileHeader
-          onSharePress={() => console.log('Share pressed')}
-          onSettingsPress={() => navigation.navigate("Settings")}
-        />
-        <View className="flex-1 justify-center items-center px-4">
-          <Text className="text-craftopia-textPrimary text-center mb-2">Failed to load profile</Text>
-          <Text className="text-craftopia-textSecondary text-center">{error.message}</Text>
+          <Text className="text-craftopia-textSecondary mt-2">
+            {isLoading ? 'Loading profile...' : 'Fetching user data...'}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -49,20 +37,20 @@ export const ProfileScreen = () => {
 
   // Safe user profile with fallbacks
   const userProfile = {
-    username: user?.username || 'User',
-    name: user?.profile?.full_name || user?.username || 'User Name',
-    email: user?.email || 'email@example.com',
-    avatar: user?.profile?.profile_picture_url || '🧑‍🎨',
-    verified: user?.is_email_verified || false,
-    joinDate: user?.created_at
+    username: user.username || 'User',
+    name: user.profile?.full_name || user.username || 'User Name',
+    email: user.email || 'email@example.com',
+    avatar: user.profile?.profile_picture_url || '🧑‍🎨',
+    verified: user.is_email_verified || false,
+    joinDate: user.created_at
       ? new Date(user.created_at).toLocaleDateString()
       : 'Unknown',
-    bio: user?.profile?.bio || 'This user has not set a bio yet.',
-    level: Math.floor((user?.profile?.points || 0) / 100) + 1,
+    bio: user.profile?.bio || 'This user has not set a bio yet.',
+    level: Math.floor((user.profile?.points || 0) / 100) + 1,
     title: 'Maker',
-    totalPoints: user?.profile?.points || 0,
-    nextLevelPoints: (Math.floor((user?.profile?.points || 0) / 100) + 1) * 100,
-    location: user?.profile?.location || 'Unknown',
+    totalPoints: user.profile?.points || 0,
+    nextLevelPoints: (Math.floor((user.profile?.points || 0) / 100) + 1) * 100,
+    location: user.profile?.location || 'Unknown',
   };
 
   const stats = [
@@ -77,9 +65,6 @@ export const ProfileScreen = () => {
     { label: 'Activity Log', icon: Zap, color: 'accent' as const, onPress: () => console.log('Navigate to activity log') },
   ];
 
-  console.log(userProfile)
-
-
   const handleSharePress = () => console.log('Share pressed');
   const handleSettingsPress = () => navigation.navigate("Settings");
   const handleEditPress = () => navigation.navigate("EditProfile");
@@ -91,7 +76,11 @@ export const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}
       >
-        <ProfileCard userProfile={userProfile} onEditPress={handleEditPress} />
+        <ProfileCard 
+          userProfile={userProfile} 
+          onEditPress={handleEditPress} 
+          onSettingsPress={handleSettingsPress}
+        />
         <QuickActions actions={quickActions} />
         
         <View className="h-4" />
