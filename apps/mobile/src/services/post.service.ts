@@ -1,8 +1,7 @@
-// apps/mobile/src/services/post.service.ts - FIXED & IMPROVED
+// services/post.service.ts - Fixed complete implementation
 import { API_ENDPOINTS } from "~/config/api";
 import { apiService } from "./base.service";
 
-// ✅ IMPROVED: Standardized response interface
 interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -23,7 +22,6 @@ class PostService {
         { method: 'GET' }
       );
       
-      // ✅ FIXED: Handle different response structures
       return {
         success: true,
         data: response.data || response || [],
@@ -81,28 +79,22 @@ class PostService {
 
   async toggleReaction(postId: string): Promise<ApiResponse<{ isLiked: boolean; likeCount: number }>> {
     try {
-      console.log('🔵 PostService: Calling toggleReaction for postId:', postId);
-      
       const response = await apiService.request<any>(
         API_ENDPOINTS.POSTS.TOGGLE_REACTION(postId),
         { method: "POST" }
       );
       
-      console.log('🔵 PostService: Toggle response:', response);
-      
-      // ✅ FIXED: Handle different response structures
       const data = response.data || response;
       return {
         success: true,
         data: {
-          isLiked: data.isLiked ?? !data.wasLiked, // Handle different field names
+          isLiked: data.isLiked ?? !data.wasLiked,
           likeCount: data.likeCount ?? data.totalLikes ?? 0
         }
       };
     } catch (error: any) {
-      console.error('❌ PostService: Toggle reaction failed:', error);
+      console.error('Toggle reaction failed:', error);
       
-      // ✅ IMPROVED: Better error handling for different scenarios
       if (error.response?.status === 404) {
         throw new Error('Post not found');
       } else if (error.response?.status === 401) {
@@ -112,28 +104,6 @@ class PostService {
       } else {
         throw new Error(error.response?.data?.error || 'Failed to toggle reaction');
       }
-    }
-  }
-
-  async getReactionCount(postId: string): Promise<ApiResponse<{ total: number }>> {
-    try {
-      console.log('🔵 PostService: Getting reaction count for postId:', postId);
-      
-      const response = await apiService.request<any>(
-        API_ENDPOINTS.POSTS.REACTION_COUNT(postId),
-        { method: "GET" }
-      );
-      
-      console.log('🔵 PostService: Reaction count response:', response);
-      
-      const data = response.data || response;
-      return {
-        success: true,
-        data: { total: data.total ?? data.count ?? 0 }
-      };
-    } catch (error: any) {
-      console.error('❌ PostService: Get reaction count failed:', error);
-      throw new Error(error.response?.data?.error || 'Failed to get reaction count');
     }
   }
 
@@ -211,7 +181,24 @@ class PostService {
     }
   }
 
-  // ✅ IMPROVED: Check if user has liked a post
+  async getReactionCount(postId: string): Promise<ApiResponse<{ total: number }>> {
+    try {
+      const response = await apiService.request<any>(
+        API_ENDPOINTS.POSTS.REACTION_COUNT(postId),
+        { method: "GET" }
+      );
+      
+      const data = response.data || response;
+      return {
+        success: true,
+        data: { total: data.total ?? data.count ?? 0 }
+      };
+    } catch (error: any) {
+      console.error('Get reaction count failed:', error);
+      throw new Error(error.response?.data?.error || 'Failed to get reaction count');
+    }
+  }
+
   async checkUserReaction(postId: string): Promise<boolean> {
     try {
       const post = await this.getPostById(postId);

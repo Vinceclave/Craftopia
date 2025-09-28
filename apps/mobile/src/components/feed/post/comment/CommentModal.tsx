@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { 
   Modal, View, Text, ScrollView, ActivityIndicator, 
   KeyboardAvoidingView, Platform, TouchableOpacity
@@ -6,7 +6,7 @@ import {
 import { X } from 'lucide-react-native';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
-import { Comment } from '../type';
+import { Comment } from '~/hooks/queries/usePosts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface CommentModalProps {
@@ -15,8 +15,8 @@ interface CommentModalProps {
   postTitle: string;
   comments: Comment[];
   loading?: boolean;
+  submitting?: boolean;
   onAddComment: (content: string) => Promise<void>;
-  onToggleCommentReaction: (commentId: number) => void;
 }
 
 export const CommentModal: React.FC<CommentModalProps> = ({
@@ -25,28 +25,18 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   postTitle,
   comments,
   loading = false,
+  submitting = false,
   onAddComment,
-  onToggleCommentReaction,
 }) => {
   const scrollRef = useRef<ScrollView>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const handleSend = async (content: string) => {
-    setSubmitting(true);
-    try {
-      await onAddComment(content);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setSubmitting(false);
-    }
+    await onAddComment(content);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
-  const handleClose = () => onClose();
-
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-surface">
         <KeyboardAvoidingView 
           className="flex-1" 
@@ -60,7 +50,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                 {postTitle}
               </Text>
             </View>
-            <TouchableOpacity onPress={handleClose} className="p-1" activeOpacity={0.8}>
+            <TouchableOpacity onPress={onClose} className="p-1" activeOpacity={0.8}>
               <X size={20} color="#6B7280" />
             </TouchableOpacity>
           </View>
@@ -88,8 +78,7 @@ export const CommentModal: React.FC<CommentModalProps> = ({
                 {comments.map(comment => (
                   <CommentItem 
                     key={comment.comment_id} 
-                    comment={comment} 
-                    onToggleReaction={onToggleCommentReaction} 
+                    comment={comment}
                   />
                 ))}
               </View>
