@@ -1,168 +1,70 @@
+// HomeHeader.jsx - Enhanced with user avatar and better layout
 import React from 'react';
-import { Text, View, TouchableOpacity } from 'react-native';
-import { Bell, Sparkles, Sun, Moon } from 'lucide-react-native';
+import { Text, View, Image, TouchableOpacity } from 'react-native';
+import { Bell, Sparkles, User } from 'lucide-react-native';
 import { useCurrentUser } from '~/hooks/useAuth';
 
 export const HomeHeader = () => {
-  // Get user data from TanStack Query
-  const { data: user, isLoading, error } = useCurrentUser();
+  const { data: user } = useCurrentUser();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Morning" : hour < 18 ? "Afternoon" : "Evening";
 
-  console.log(user)
-
-  const today = new Date();
-  const hour = today.getHours();
-
-  const formattedDate = today.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  const getGreeting = () => {
-    if (hour < 12) return { text: 'Good Morning', icon: Sun };
-    if (hour < 18) return { text: 'Good Afternoon', icon: Sun };
-    return { text: 'Good Evening', icon: Moon };
+  const getMotivationalMessage = () => {
+    const messages = [
+      "Ready to create something beautiful?",
+      "Your next masterpiece awaits!",
+      "Transform waste into wonder!",
+      "Every craft makes a difference!",
+      "Let's build a greener world together!"
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
   };
 
-  const greeting = getGreeting();
-  const GreetingIcon = greeting.icon;
-
-  const inspirations = [
-    "Ready to create something beautiful?",
-    "What will you craft today?",
-    "Let your creativity flow naturally",
-    "Every idea starts with imagination",
-    "Your next masterpiece awaits"
-  ];
-
-  const todayInspiration = inspirations[today.getDate() % inspirations.length];
-
-  // Handle loading state
-  if (isLoading) {
-    return (
-      <View className="px-4 pt-4 bg-craftopia-surface border-b border-craftopia-light pb-16">
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="flex-1">
-            <View className="flex-row items-center mb-1 gap-2">
-              <GreetingIcon size={16} className="text-craftopia-primary" />
-              <Text className="text-base font-semibold text-craftopia-textPrimary">
-                {greeting.text}
-              </Text>
-            </View>
-            <Text className="text-sm text-craftopia-textSecondary">
-              {formattedDate}
-            </Text>
-          </View>
-          
-          <TouchableOpacity 
-            activeOpacity={0.8} 
-            className="relative bg-craftopia-light rounded-full p-2"
-          >
-            <Bell size={16} className="text-craftopia-primary" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Loading skeleton for inspiration */}
-        <View className="bg-craftopia-light rounded-lg p-3">
-          <View className="flex-row items-start">
-            <View className="bg-craftopia-accent/20 rounded-md p-1.5 mr-3">
-              <Sparkles size={14} className="text-craftopia-accent" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs uppercase tracking-wide font-medium text-craftopia-textSecondary mb-1">
-                Loading...
-              </Text>
-              <View className="h-4 bg-craftopia-textSecondary/20 rounded w-3/4" />
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  // Handle error state
-  if (error) {
-    return (
-      <View className="px-4 pt-4 bg-craftopia-surface border-b border-craftopia-light pb-16">
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="flex-1">
-            <View className="flex-row items-center mb-1 gap-2">
-              <GreetingIcon size={16} className="text-craftopia-primary" />
-              <Text className="text-base font-semibold text-craftopia-textPrimary">
-                {greeting.text}
-              </Text>
-            </View>
-            <Text className="text-sm text-craftopia-textSecondary">
-              {formattedDate}
-            </Text>
-          </View>
-          
-          <TouchableOpacity 
-            activeOpacity={0.8} 
-            className="relative bg-craftopia-light rounded-full p-2"
-          >
-            <Bell size={16} className="text-craftopia-primary" />
-          </TouchableOpacity>
-        </View>
-
-        <View className="bg-craftopia-light rounded-lg p-3">
-          <Text className="text-sm text-craftopia-textPrimary">
-            Welcome! Let's start crafting.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Safe access to user data with fallbacks
-  const username = user?.username || 'Crafter';
-  const userPoints = user?.totalPoints || 0;
-  console.log(userPoints)
-
   return (
-    <View className="px-4 pt-4 bg-craftopia-surface border-b border-craftopia-light pb-16">
-      {/* Header Row */}
+    <View className="px-5 pt-6 pb-6 bg-craftopia-surface border-b border-craftopia-light/30">
       <View className="flex-row justify-between items-center mb-4">
-        {/* Left: Greeting & Date */}
         <View className="flex-1">
-          <View className="flex-row items-center mb-1 gap-2">
-            <GreetingIcon size={16} className="text-craftopia-primary" />
-            <Text className="text-base font-semibold text-craftopia-textPrimary">
-              {greeting.text}, {username}!
-            </Text>
-          </View>
-          <Text className="text-sm text-craftopia-textSecondary">
-            {formattedDate}
+          <Text className="text-sm text-craftopia-textSecondary uppercase tracking-wider mb-1">
+            Good {greeting} 🌱
           </Text>
-          {userPoints > 0 && (
-            <Text className="text-xs text-craftopia-accent font-medium mt-0.5">
-              {userPoints} points earned
-            </Text>
-          )}
+          <Text className="text-2xl font-bold text-craftopia-textPrimary">
+            {user?.username || 'Crafter'}
+          </Text>
         </View>
-
-        {/* Right: Notification */}
-        <TouchableOpacity 
-          activeOpacity={0.8} 
-          className="relative bg-craftopia-light rounded-full p-2"
-        >
-          <Bell size={16} className="text-craftopia-primary" />
-          <View className="absolute top-1 right-1 w-2 h-2 bg-craftopia-accent rounded-full" />
-        </TouchableOpacity>
+        
+        <View className="flex-row items-center space-x-3">
+          <TouchableOpacity className="relative">
+            <View className="w-10 h-10 rounded-full bg-craftopia-light items-center justify-center">
+              <Bell size={20} className="text-craftopia-primary" />
+            </View>
+            <View className="absolute top-0 right-0 w-3 h-3 bg-craftopia-accent rounded-full border-2 border-craftopia-surface" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity className="w-10 h-10 rounded-full bg-gradient-to-r from-craftopia-primary to-craftopia-primaryLight items-center justify-center">
+            {user?.avatar ? (
+              <Image 
+                source={{ uri: user.avatar }} 
+                className="w-10 h-10 rounded-full"
+              />
+            ) : (
+              <User size={20} className="text-craftopia-surface" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Inspiration Section */}
-      <View className="bg-craftopia-light rounded-lg p-3">
-        <View className="flex-row items-start">
-          <View className="bg-craftopia-accent/20 rounded-md p-1.5 mr-3">
-            <Sparkles size={14} className="text-craftopia-accent" />
+      {/* Motivational Card */}
+      <View className="bg-gradient-to-r from-craftopia-accent/10 to-craftopia-primary/5 rounded-2xl px-4 py-4 border border-craftopia-accent/20">
+        <View className="flex-row items-center">
+          <View className="w-10 h-10 rounded-full bg-craftopia-accent/20 items-center justify-center mr-3">
+            <Sparkles size={18} className="text-craftopia-accent" />
           </View>
           <View className="flex-1">
-            <Text className="text-xs uppercase tracking-wide font-medium text-craftopia-textSecondary mb-1">
-              Today's Inspiration
+            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1">
+              {getMotivationalMessage()}
             </Text>
-            <Text className="text-sm text-craftopia-textPrimary font-medium">
-              {todayInspiration}
+            <Text className="text-xs text-craftopia-textSecondary">
+              Complete today's quests to unlock rewards
             </Text>
           </View>
         </View>

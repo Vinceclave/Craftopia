@@ -1,94 +1,49 @@
-// apps/mobile/src/components/home/HomeStats.tsx
+// HomeStats.jsx - Redesigned
 import React from 'react';
-import { Text, View, ActivityIndicator } from 'react-native';
-import { TrendingUp } from 'lucide-react-native';
-import { useAuth } from '~/context/AuthContext';
+import { Text, View } from 'react-native';
 import { useUserStats } from '~/hooks/useUserStats';
-import { HomeStatsSkeleton } from './HomeStatsSkeleton';
 
 export const HomeStats = () => {
-  const { user } = useAuth();
-  const { 
-    data: userStats, 
-    isLoading: statsLoading, 
-    error: statsError 
-  } = useUserStats();
+  const { data: userStats } = useUserStats();
 
-  // Loading state
-  if (statsLoading) {
-    return (
-      <HomeStatsSkeleton />
-    );
-  }
-
-  // Error state
-  if (statsError) {
-    return (
-      <View style={{ marginTop: -40 }} className="mx-4 bg-craftopia-primary rounded-2xl p-4 border border-craftopia-light">
-        <View className="flex-row items-center">
-          <View className="mr-3 bg-craftopia-secondary/20 p-2 rounded-full">
-            <TrendingUp size={20} color='#ffff' />
-          </View>
-          <View>
-            <Text className="text-lg font-extrabold text-craftopia-surface">
-              0.0kg
-            </Text>
-            <Text className="text-xs text-craftopia-surface/80 mt-0.5">
-              waste saved
-            </Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  console.log(userStats?.points)
-
-  // Use stats from the API or fallback to user profile
-  const totalPoints = user?.profile?.points || 0;
-  const craftsCount = userStats?.crafts_created || 0;
-
-  // Calculate waste saved (example: 0.1kg per point earned)
-  const wasteSaved = (totalPoints * 0.1).toFixed(1);
+  const stats = {
+    wasteSaved: ((userStats?.points || 0) * 0.1).toFixed(1),
+    points: userStats?.points || 0,
+    crafts: userStats?.crafts_created || 0
+  };
 
   return (
-    <View style={{ marginTop: -40 }} className="mx-4 bg-craftopia-primary rounded-2xl p-4 border border-craftopia-light">
-      <View className="flex-row items-center">
-        {/* Left: Waste Saved */}
-        <View className="flex-row items-center flex-1">
-          <View className="mr-3 bg-craftopia-secondary/20 p-2 rounded-full">
-            <TrendingUp size={20} color='#ffff' />
-          </View>
-          <View>
-            <Text className="text-lg font-extrabold text-craftopia-surface">
-              {wasteSaved}kg
+    <View className="mx-5 mt-4 mb-6">
+      <View className="bg-craftopia-surface rounded-3xl px-6 py-5 shadow-sm border border-craftopia-light/50">
+        <View className="flex-row justify-between items-start">
+          <View className="flex-1">
+            <Text className="text-xs font-medium text-craftopia-textSecondary uppercase tracking-wider mb-1">
+              Waste Saved
             </Text>
-            <Text className="text-xs text-craftopia-surface/80 mt-0.5">
-              waste saved
+            <Text className="text-3xl font-bold text-craftopia-primary mb-2">
+              {stats.wasteSaved}kg
             </Text>
-          </View>
-        </View>
-
-        {/* Right: Stats Grid */}
-        <View className="flex-row items-center gap-3">
-          {/* Points */}
-          <View className="items-center bg-craftopia-secondary/20 p-2 rounded-lg">
-            <Text className="text-sm font-bold text-craftopia-surface">
-              {totalPoints.toLocaleString()}
-            </Text>
-            <Text className="text-xs text-craftopia-surface/80 uppercase tracking-wide">
-              POINTS
-            </Text>
+            <View className="w-12 h-1 bg-craftopia-accent rounded-full" />
           </View>
           
-          {/* Crafts */}
-          <View className="items-center bg-craftopia-secondary/20 p-2 rounded-lg">
-            <Text className="text-sm font-bold text-craftopia-surface">
-              {craftsCount}
-            </Text>
-            <Text className="text-xs text-craftopia-surface/80 uppercase tracking-wide">
-              CRAFTS
-            </Text>
+          <View className="flex-row gap-2">
+            <View className="items-center">
+              <View className="w-10 h-10 rounded-full bg-craftopia-primary/10 items-center justify-center mb-2">
+                <Text className="text-lg font-bold text-craftopia-primary">
+                  {stats.points}
+                </Text>
+              </View>
+              <Text className="text-xs text-craftopia-textSecondary">Points</Text>
+            </View>
+            
+            <View className="items-center">
+              <View className="w-10 h-10 rounded-full bg-craftopia-accent/10 items-center justify-center mb-2">
+                <Text className="text-lg font-bold text-craftopia-accent">
+                  {stats.crafts}
+                </Text>
+              </View>
+              <Text className="text-xs text-craftopia-textSecondary">Crafts</Text>
+            </View>
           </View>
         </View>
       </View>

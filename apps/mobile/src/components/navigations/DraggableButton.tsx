@@ -1,4 +1,3 @@
-// apps/mobile/src/navigations/DraggableButton.tsx
 import React, { useRef, useState } from 'react';
 import { View, Dimensions, PanResponder, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,43 +10,50 @@ export default function DraggableButton() {
   const navigation = useNavigation();
 
   const buttonSize = 60;
-  const pan = useRef(new Animated.ValueXY({
-    x: width - buttonSize - 20,
-    y: height - 200 - insets.bottom
-  })).current;
-  
+  const pan = useRef(
+    new Animated.ValueXY({
+      x: width - buttonSize - 20,
+      y: height - 200 - insets.bottom,
+    })
+  ).current;
+
   const [isDragging, setIsDragging] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) =>
         Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3,
+
       onPanResponderGrant: () => {
         setIsDragging(true);
         pan.setOffset({ x: pan.x._value, y: pan.y._value });
+
+        // ✅ Navigate on touch (finger down) if not dragging
+        setTimeout(() => {
+          if (!isDragging) {
+            navigation.navigate('ChatbotScreen' as never);
+          }
+        }, 150); // slight delay to distinguish drag vs tap
       },
+
       onPanResponderMove: Animated.event(
         [null, { dx: pan.x, dy: pan.y }],
         { useNativeDriver: false }
       ),
-      onPanResponderRelease: (evt, gestureState) => {
+
+      onPanResponderRelease: () => {
         setIsDragging(false);
         pan.flattenOffset();
-        
-        // ✅ Tap detection → navigate
-        if (Math.abs(gestureState.dx) < 8 && Math.abs(gestureState.dy) < 8) {
-          navigation.navigate('ChatbotScreen' as never);
-          return;
-        }
-        
+
         // Constrain within screen bounds
         const maxX = width - buttonSize;
         const maxY = height - buttonSize - insets.bottom;
         const minY = insets.top;
-        
+
         const finalX = Math.min(Math.max(0, pan.x._value), maxX);
         const finalY = Math.min(Math.max(minY, pan.y._value), maxY);
-        
+
+        // Smooth spring animation
         Animated.spring(pan, {
           toValue: { x: finalX, y: finalY },
           useNativeDriver: false,
