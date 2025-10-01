@@ -15,7 +15,7 @@ import prisma from '../config/prisma';
 import aiCraftRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import aiImageRoutes from '../ai/routes/image.route';
-import chatbotRoutes from '../routes/chatbot.route'
+import chatbotRoutes from './chatbot.route'; 
 
 const router = Router();
 
