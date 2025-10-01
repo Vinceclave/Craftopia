@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,20 +7,18 @@ import {
   ScrollView, 
   KeyboardAvoidingView, 
   Platform,
-  ActivityIndicator 
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Send, Bot, User, ArrowLeft, Sparkles } from 'lucide-react-native';
+import { Send, Bot, User, ArrowLeft, Sparkles, Trash2 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { chatbotService, ChatMessage } from '~/services/chatbot.service';
+import { ChatMessage } from '~/services/chatbot.service';
 import { useAlert } from '~/hooks/useAlert';
-
-const INITIAL_MESSAGE: ChatMessage = {
-  id: '1',
-  text: "Hello! 👋 I'm your Craftopia AI assistant. I can help you with:\n\n• Creative craft ideas from recycled materials\n• Step-by-step crafting instructions\n• Tips for sustainable living\n• Guidance on eco-challenges\n\nWhat would you like to create today?",
-  isUser: false,
-  timestamp: new Date()
-};
+import { 
+  useChatHistory, 
+  useSendMessage, 
+  useClearHistory 
+} from '~/hooks/queries/useChatbot';
 
 const SUGGESTED_PROMPTS = [
   "💡 Craft ideas with plastic bottles",
@@ -31,11 +29,21 @@ const SUGGESTED_PROMPTS = [
 
 export const ChatBotScreen = () => {
   const navigation = useNavigation();
-  const { error } = useAlert();
-  const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
+  const { error, confirm } = useAlert();
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // TanStack Query hooks
+  const { 
+    data: messages = [], 
+    isLoading, 
+    error: historyError 
+  } = useChatHistory();
+
+  const sendMessageMutation = useSendMessage();
+  const clearHistoryMutation = useClearHistory();
+
+  const isTyping = sendMessageMutation.isPending;
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -43,52 +51,38 @@ export const ChatBotScreen = () => {
     }, 100);
   }, []);
 
+  // Auto-scroll when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
   const sendMessage = async (text?: string) => {
     const messageText = text || inputText.trim();
     if (!messageText || isTyping) return;
 
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: messageText,
-      isUser: true,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     setInputText('');
-    setIsTyping(true);
-    scrollToBottom();
-
+    
     try {
-      const response = await chatbotService.sendMessage(
-        messageText,
-        messages
-      );
-
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        isUser: false,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
+      await sendMessageMutation.mutateAsync(messageText);
       scrollToBottom();
     } catch (err: any) {
       console.error('Chat error:', err);
-      error('Error', err.message || 'Failed to get response. Please try again.');
-      
-      // Add error message to chat
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: "I apologize, but I'm having trouble connecting right now. Please try again in a moment.",
-        isUser: false,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
+      error('Error', err.message || 'Failed to send message. Please try again.');
     }
+  };
+
+  const handleClearHistory = () => {
+    confirm(
+      'Clear Conversation History',
+      'Are you sure you want to clear all messages? This action cannot be undone.',
+      async () => {
+        try {
+          await clearHistoryMutation.mutateAsync();
+        } catch (err: any) {
+          error('Error', 'Failed to clear conversation history');
+        }
+      }
+    );
   };
 
   const renderMessage = (message: ChatMessage) => (
@@ -136,33 +130,82 @@ export const ChatBotScreen = () => {
     </View>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-craftopia-surface" edges={['left', 'right']}>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#004E98" />
+          <Text className="text-craftopia-textSecondary mt-2 text-sm">
+            Loading conversation...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (historyError) {
+    return (
+      <SafeAreaView className="flex-1 bg-craftopia-surface" edges={['left', 'right']}>
+        <View className="flex-1 justify-center items-center px-4">
+          <Text className="text-craftopia-textPrimary text-base font-semibold mb-2">
+            Failed to Load Conversation
+          </Text>
+          <Text className="text-craftopia-textSecondary text-sm text-center">
+            {historyError.message || 'Something went wrong'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-craftopia-surface" edges={['left', 'right']}>
       {/* Header */}
       <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center mr-3"
-          >
-            <ArrowLeft size={16} color="#004E98" />
-          </TouchableOpacity>
+        <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
-            <View className="w-10 h-10 bg-craftopia-primary rounded-full items-center justify-center mr-3">
-              <Bot size={20} color="white" />
-            </View>
-            <View>
-              <View className="flex-row items-center">
-                <Text className="text-base font-semibold text-craftopia-textPrimary mr-1">
-                  Craftopia AI
-                </Text>
-                <Sparkles size={14} color="#FFD700" />
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center mr-3"
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={16} color="#004E98" />
+            </TouchableOpacity>
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 bg-craftopia-primary rounded-full items-center justify-center mr-3">
+                <Bot size={20} color="white" />
               </View>
-              <Text className="text-sm text-craftopia-textSecondary">
-                {isTyping ? 'Typing...' : 'Online'}
-              </Text>
+              <View>
+                <View className="flex-row items-center">
+                  <Text className="text-base font-semibold text-craftopia-textPrimary mr-1">
+                    Craftopia AI
+                  </Text>
+                  <Sparkles size={14} color="#FFD700" />
+                </View>
+                <Text className="text-sm text-craftopia-textSecondary">
+                  {isTyping ? 'Typing...' : 'Online'}
+                </Text>
+              </View>
             </View>
           </View>
+          
+          {/* Clear History Button */}
+          {messages.length > 1 && (
+            <TouchableOpacity
+              onPress={handleClearHistory}
+              disabled={clearHistoryMutation.isPending}
+              className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
+              activeOpacity={0.7}
+            >
+              {clearHistoryMutation.isPending ? (
+                <ActivityIndicator size="small" color="#004E98" />
+              ) : (
+                <Trash2 size={14} color="#004E98" />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -181,7 +224,7 @@ export const ChatBotScreen = () => {
           {messages.map(renderMessage)}
           
           {/* Suggested Prompts (show only at start) */}
-          {messages.length === 1 && !isTyping && (
+          {messages.length <= 1 && !isTyping && (
             <View className="mt-4">
               <Text className="text-xs font-medium text-craftopia-textSecondary mb-2 uppercase">
                 Try asking:
@@ -192,6 +235,7 @@ export const ChatBotScreen = () => {
                     key={index}
                     onPress={() => sendMessage(prompt)}
                     className="bg-craftopia-light px-3 py-2 rounded-full border border-craftopia-primary/20"
+                    activeOpacity={0.7}
                   >
                     <Text className="text-xs text-craftopia-textPrimary">
                       {prompt}
@@ -245,6 +289,7 @@ export const ChatBotScreen = () => {
                   ? 'bg-craftopia-primary'
                   : 'bg-craftopia-light'
               }`}
+              activeOpacity={0.8}
             >
               <Send
                 size={18}
