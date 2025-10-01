@@ -15,7 +15,7 @@ import prisma from '../config/prisma';
 import aiCraftRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import aiImageRoutes from '../ai/routes/image.route';
-import chatbotRoutes from '../ai/routes/chatbot.route'
+import chatbotRoutes from '../routes/chatbot.route'
 
 const router = Router();
 
@@ -32,12 +32,12 @@ router.use('/user-challenges', userChallengeRoutes);
 router.use('/moderation', moderationRoutes);
 router.use('/announcements', announcementRoutes);
 router.use('/reports', reportRoutes);
+router.use('/chatbot', chatbotRoutes);
 
 // AI Routes - Fixed paths
 router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
-router.use('/ai/chatbot', chatbotRoutes);
 
 // Health check - Fixed with database connectivity
 router.get('/health', async (req, res) => {

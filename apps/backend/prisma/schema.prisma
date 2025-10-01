@@ -153,8 +153,7 @@ model CraftIdea {
 
 model ChatbotConversation {
   conversation_id Int      @id @default(autoincrement())
-  user_id         Int
-  title           String?
+  user_id         Int      @unique
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now())
 
