@@ -1,13 +1,15 @@
-// EditProfileScreen.tsx - Updated with your colors
+// EditProfileScreen.tsx - Fixed version
 import React, { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 
 import Button from '~/components/common/Button';
 import { useAuth } from "~/context/AuthContext";
 import { apiService } from "~/services/base.service";
 import { useAlert } from '~/hooks/useAlert';
+import { authKeys } from "~/hooks/useAuth";
 
 import { EditProfileHeader } from "~/components/profile/edit/EditProfileHeader";
 import { AvatarSection } from "~/components/profile/edit/AvatarSection";
@@ -39,7 +41,8 @@ const validateProfile = (profile: UserProfile) => {
 
 export function EditProfileScreen() {
   const navigation = useNavigation();
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { success, error } = useAlert();
   const [loading, setLoading] = useState(false);
 
@@ -64,7 +67,10 @@ export function EditProfileScreen() {
   const handleBackPress = useCallback(() => navigation.goBack(), [navigation]);
 
   const handleSave = useCallback(async () => {
-    if (!validation.isValid) return error('Validation Error', validation.error!);
+    if (!validation.isValid) {
+      error('Validation Error', validation.error!);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -74,38 +80,56 @@ export function EditProfileScreen() {
         profile_picture_url: profile.avatar.startsWith('http') ? profile.avatar : null
       };
 
+      console.log('Updating profile with payload:', payload);
+
       const response = await apiService.request('/api/v1/users/profile', { 
         method: 'PUT', 
         data: payload 
       });
 
-      if (setUser && user) {
-        setUser(prev => ({
-          ...prev!,
-          profile: { 
-            ...prev!.profile, 
-            full_name: payload.full_name, 
-            bio: payload.bio,
-            profile_picture_url: payload.profile_picture_url
-          },
-        }));
-      }
+      console.log('Profile update response:', response);
 
-      success('Success', 'Profile updated successfully!', () => navigation.goBack());
+      // Update the user data in TanStack Query cache
+      queryClient.setQueryData(authKeys.user, (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return {
+          ...oldData,
+          profile: {
+            ...oldData.profile,
+            full_name: payload.full_name,
+            bio: payload.bio,
+            profile_picture_url: payload.profile_picture_url || oldData.profile?.profile_picture_url,
+          },
+        };
+      });
+
+      // Invalidate and refetch to ensure we have the latest data
+      await queryClient.invalidateQueries({ queryKey: authKeys.user });
+
+      success('Success', 'Profile updated successfully!', () => {
+        navigation.goBack();
+      });
     } catch (err: any) {
+      console.error('Profile update error:', err);
       const msg = err.response?.data?.error || err.message || 'Something went wrong.';
       error('Error', msg);
     } finally { 
       setLoading(false); 
     }
-  }, [validation, profile, error, setUser, user, success, navigation]);
+  }, [validation, profile, error, queryClient, success, navigation]);
 
   const handleAvatarChange = useCallback((url?: string) => {
     setProfile(p => ({ ...p, avatar: url || '🧑‍🎨' }));
   }, []);
 
-  const handleNameChange = useCallback((text: string) => setProfile(p => ({ ...p, name: text })), []);
-  const handleBioChange = useCallback((text: string) => setProfile(p => ({ ...p, bio: text })), []);
+  const handleNameChange = useCallback((text: string) => {
+    setProfile(p => ({ ...p, name: text }));
+  }, []);
+  
+  const handleBioChange = useCallback((text: string) => {
+    setProfile(p => ({ ...p, bio: text }));
+  }, []);
 
   const canSave = hasChanges && validation.isValid && !loading;
 
@@ -127,7 +151,11 @@ export function EditProfileScreen() {
           onNameChange={handleNameChange}
         />
         
-        <BioForm bio={profile.bio} onBioChange={handleBioChange} characterLimit={VALIDATION_RULES.BIO_MAX_LENGTH} />
+        <BioForm 
+          bio={profile.bio} 
+          onBioChange={handleBioChange} 
+          characterLimit={VALIDATION_RULES.BIO_MAX_LENGTH} 
+        />
         
         <EmailInfo email={profile.email} />
 
@@ -141,11 +169,15 @@ export function EditProfileScreen() {
           />
           
           {!hasChanges && !loading && (
-            <Text className="text-center text-xs text-craftopia-textSecondary mt-2">No changes to save</Text>
+            <Text className="text-center text-xs text-craftopia-textSecondary mt-2">
+              No changes to save
+            </Text>
           )}
           
           {!validation.isValid && (
-            <Text className="text-center text-xs text-red-500 mt-2">{validation.error}</Text>
+            <Text className="text-center text-xs text-red-500 mt-2">
+              {validation.error}
+            </Text>
           )}
         </View>
       </ScrollView>

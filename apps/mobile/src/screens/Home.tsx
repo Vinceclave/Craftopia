@@ -15,7 +15,7 @@ export const HomeScreen = () => {
   const navigation = useNavigation();
 
   const handleSeeAllQuests = () => {
-    navigation.navigate('Quests');
+    navigation.navigate('EcoQuest');
   };
 
   const handleQuestPress = (quest) => {

@@ -1,76 +1,63 @@
-// QuickActions.tsx
+// QuickActions.tsx - Ultra compact version
 import React from 'react'
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
+import { View, Text, TouchableOpacity } from 'react-native'
 import { LucideIcon } from 'lucide-react-native'
 
 interface QuickAction {
   label: string
   icon: LucideIcon
-  color: 'primary' | 'growth' | 'accent'  // Keep growth
+  color: 'primary' | 'accent' | 'success' | 'warning'
   onPress: () => void
   badge?: number
 }
-
 
 interface QuickActionsProps {
   actions: QuickAction[]
 }
 
-const colorMap = {
-  primary: {
-    bg: 'bg-craftopia-primary/10',
-    icon: 'text-craftopia-primary',
-    text: 'text-craftopia-textSecondary'
-  },
-  growth: {  // Add growth mapping
-    bg: 'bg-green-500/10',  // or use your growth color if defined
-    icon: 'text-green-500',
-    text: 'text-craftopia-textSecondary'
-  },
-  accent: {
-    bg: 'bg-craftopia-accent/10',
-    icon: 'text-craftopia-accent',
-    text: 'text-craftopia-textSecondary'
-  }
-}
-
 export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
-  const screenWidth = Dimensions.get('window').width
-  const itemWidth = (screenWidth - 32) / actions.length // Reduced padding
+  const getColorClasses = (color: string) => {
+    const colorMap = {
+      primary: { text: 'text-craftopia-primary', bg: 'bg-craftopia-primary/10' },
+      accent: { text: 'text-craftopia-accent', bg: 'bg-craftopia-accent/10' },
+      success: { text: 'text-craftopia-success', bg: 'bg-craftopia-success/10' },
+      warning: { text: 'text-craftopia-warning', bg: 'bg-craftopia-warning/10' },
+    }
+    return colorMap[color as keyof typeof colorMap] || colorMap.primary
+  }
 
   return (
-    <View className="py-3 px-4 bg-craftopia-surface border-b border-craftopia-primary/5">
+    <View className="px-4 py-2 bg-craftopia-surface border-b border-craftopia-light/30">
       <View className="flex-row justify-between items-center">
         {actions.map((action, index) => {
           const Icon = action.icon
-          const colors = colorMap[action.color] || colorMap.primary // Fallback to primary if color not found
+          const colorClasses = getColorClasses(action.color)
           
           return (
             <TouchableOpacity
               key={index}
-              className="items-center"
-              style={{ width: itemWidth }}
+              className="items-center flex-1 mx-0.5"
               onPress={action.onPress}
-              activeOpacity={0.6}
+              activeOpacity={0.7}
             >
               <View className="relative mb-1">
-                <View className={`w-11 h-11 rounded-full items-center justify-center ${colors.bg}`}>
-                  <Icon size={18} className={colors.icon} strokeWidth={1.8} />
+                <View className={`w-8 h-8 rounded-lg ${colorClasses.bg} items-center justify-center border border-craftopia-light/20`}>
+                  <Icon size={14} className={colorClasses.text} />
                 </View>
-
+                
                 {action.badge && action.badge > 0 && (
-                  <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-4 h-4 items-center justify-center">
-                    <Text className="text-craftopia-surface text-xs font-medium">
+                  <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full w-3 h-3 items-center justify-center border border-craftopia-surface">
+                    <Text className="text-craftopia-surface font-bold" style={{ fontSize: 8, lineHeight: 12 }}>
                       {action.badge > 9 ? '9+' : action.badge}
                     </Text>
                   </View>
                 )}
               </View>
-
+              
               <Text 
-                className={`text-xs text-center ${colors.text}`}
-                style={{ maxWidth: itemWidth - 4 }}
+                className="text-craftopia-textPrimary font-medium text-center px-0.5"
                 numberOfLines={1}
+                style={{ fontSize: 10, lineHeight: 12 }}
               >
                 {action.label}
               </Text>

@@ -8,23 +8,42 @@ interface PostContentProps {
   tags?: string[];
 }
 
-export const PostContent: React.FC<PostContentProps> = memo(({ title, content, image_url, tags = [] }) => (
+export const PostContent: React.FC<PostContentProps> = memo(({ 
+  title, 
+  content, 
+  image_url, 
+  tags = [] 
+}) => (
   <View className="mb-2">
-    <Text className="font-medium text-craftopia-textPrimary mb-1 text-sm">{title}</Text>
-    <Text className="text-craftopia-textSecondary text-sm leading-5 mb-2">{content}</Text>
+    {title && (
+      <Text className="font-semibold text-craftopia-textPrimary mb-1.5 text-sm">
+        {title}
+      </Text>
+    )}
+    
+    {content && (
+      <Text className="text-craftopia-textSecondary text-sm leading-5 mb-2">
+        {content}
+      </Text>
+    )}
 
     {image_url && (
       <Image
         source={{ uri: image_url }}
-        className="w-full h-40 rounded-lg mb-2"
-        style={{ resizeMode: 'cover' }}
+        className="w-full h-32 rounded-lg mb-2"
+        resizeMode="cover"
       />
     )}
 
     {tags.length > 0 && (
-      <View className="flex-row mb-2">
+      <View className="flex-row flex-wrap mb-1">
         {tags.slice(0, 3).map((tag, idx) => (
-          <Text key={`${tag}-${idx}`} className="text-xs text-craftopia-secondary mr-2">#{tag}</Text>
+          <View 
+            key={`${tag}-${idx}`} 
+            className="bg-craftopia-light rounded-full px-2 py-1 mr-2 mb-1"
+          >
+            <Text className="text-xs text-craftopia-primary">#{tag}</Text>
+          </View>
         ))}
       </View>
     )}

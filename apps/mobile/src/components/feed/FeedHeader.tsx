@@ -22,22 +22,27 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
   onSearchPress,
 }) => {
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
       <View className="flex-row justify-between items-center mb-3">
         <View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary">Feed</Text>
-          <Text className="text-sm text-craftopia-textSecondary">Discover amazing projects</Text>
+          <Text className="text-lg font-bold text-craftopia-textPrimary">Feed</Text>
+          <Text className="text-xs text-craftopia-textSecondary">Discover amazing projects</Text>
         </View>
         <TouchableOpacity 
           className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
           onPress={onSearchPress}
+          activeOpacity={0.7}
         >
-          <Search size={18} className="text-craftopia-textSecondary" />
+          <Search size={16} color="#5D6B5D" />
         </TouchableOpacity>
       </View>
 
       {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 16 }}
+      >
         {FEED_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           const IconComponent = tab.icon;
@@ -45,12 +50,13 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
             <TouchableOpacity
               key={tab.key}
               onPress={() => onTabChange(tab.key)}
-              className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+              className={`mr-3 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+              activeOpacity={0.7}
             >
               <View className="flex-row items-center">
                 <IconComponent 
-                  size={16} 
-                  className={isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'} 
+                  size={14} 
+                  color={isActive ? '#374A36' : '#5D6B5D'}
                 />
                 <Text 
                   className={`text-sm font-medium ml-1.5 ${

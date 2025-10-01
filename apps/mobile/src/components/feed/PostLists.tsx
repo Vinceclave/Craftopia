@@ -29,9 +29,7 @@ export const PostList: React.FC<PostListProps> = ({
       key={item.post_id}
       postId={item.post_id}
       {...item}
-      // Remove comment reaction handler since it doesn't exist in schema
       onLoadComments={async (postId: number) => {
-        // This will be handled by the useComments hook inside PostContainer
         return [];
       }}
       onAddComment={async (postId: number, content: string) => {
@@ -44,7 +42,7 @@ export const PostList: React.FC<PostListProps> = ({
     if (loadingMore) {
       return (
         <View className="py-3 items-center">
-          <ActivityIndicator size="small" color="#004E98" />
+          <ActivityIndicator size="small" color="#374A36" />
           <Text className="text-craftopia-textSecondary mt-1 text-xs">Loading more...</Text>
         </View>
       );
@@ -65,7 +63,7 @@ export const PostList: React.FC<PostListProps> = ({
     if (loading) {
       return (
         <View className="flex-1 justify-center items-center py-6">
-          <ActivityIndicator size="small" color="#004E98" />
+          <ActivityIndicator size="small" color="#374A36" />
           <Text className="text-craftopia-textSecondary text-sm mt-2">Loading posts...</Text>
         </View>
       );
@@ -77,8 +75,12 @@ export const PostList: React.FC<PostListProps> = ({
           <Text className="text-craftopia-textPrimary text-base font-semibold text-center mb-1">
             Something went wrong
           </Text>
-          <Text className="text-craftopia-textSecondary text-sm text-center mb-4">{error}</Text>
-          <TouchableOpacity onPress={onRefresh} className="bg-craftopia-primary px-4 py-2 rounded-lg">
+          <Text className="text-craftopia-textSecondary text-sm text-center mb-3">{error}</Text>
+          <TouchableOpacity 
+            onPress={onRefresh} 
+            className="bg-craftopia-primary px-4 py-2 rounded-lg"
+            activeOpacity={0.7}
+          >
             <Text className="text-craftopia-surface text-sm font-medium">Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -86,9 +88,15 @@ export const PostList: React.FC<PostListProps> = ({
     }
 
     return (
-      <View className="flex-1 justify-center items-center py-6">
-        <Text className="text-craftopia-textSecondary text-center text-base mb-3">No posts yet</Text>
-        <TouchableOpacity onPress={onRefresh} className="bg-craftopia-primary px-4 py-2 rounded-lg">
+      <View className="flex-1 justify-center items-center py-6 px-4">
+        <Text className="text-craftopia-textSecondary text-center text-sm mb-3">
+          No posts found
+        </Text>
+        <TouchableOpacity 
+          onPress={onRefresh} 
+          className="bg-craftopia-primary px-4 py-2 rounded-lg"
+          activeOpacity={0.7}
+        >
           <Text className="text-craftopia-surface text-sm font-medium">Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -108,7 +116,7 @@ export const PostList: React.FC<PostListProps> = ({
       onEndReachedThreshold={0.3}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ 
-        paddingBottom: 80,
+        paddingBottom: 20,
         flexGrow: 1 
       }}
     />

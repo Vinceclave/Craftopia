@@ -14,10 +14,10 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
 
   if (isLoading) {
     return (
-      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
         <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">Trending Tags</Text>
-        <View className="flex-row items-center py-2">
-          <ActivityIndicator size="small" color="#004E98" />
+        <View className="flex-row items-center py-1">
+          <ActivityIndicator size="small" color="#374A36" />
           <Text className="text-xs text-craftopia-textSecondary ml-2">Loading tags...</Text>
         </View>
       </View>
@@ -29,9 +29,13 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
   }
 
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
       <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">Trending Tags</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingRight: 16 }}
+      >
         {trendingTags.map((tag) => (
           <TrendingTagItem 
             key={tag.tag} 
@@ -39,7 +43,6 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
             count={tag.count}
             growth={tag.growth}
             onPress={() => {
-              // Handle tag press - could filter posts by tag
               console.log('Tag pressed:', tag.tag);
             }}
           />

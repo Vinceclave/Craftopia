@@ -3,10 +3,19 @@ import { FileText } from 'lucide-react-native';
 import { Input } from '~/components/common/TextInputField';
 import { FormSection } from './FormSection';
 
-interface Props { bio?: string; onBioChange: (text: string) => void; characterLimit?: number; }
+interface Props { 
+  bio?: string; 
+  onBioChange: (text: string) => void; 
+  characterLimit?: number; 
+}
 
 export const BioForm: React.FC<Props> = ({ bio, onBioChange, characterLimit }) => (
-  <FormSection title="About You" icon={FileText} iconColor="#00A896" iconBgColor="#00A896/10">
+  <FormSection 
+    title="About You" 
+    icon={FileText} 
+    iconColor="#6B8E6B" 
+    iconBgColor="#6B8E6B/10"
+  >
     <Input
       label="Bio"
       placeholder="Tell us about yourself..."

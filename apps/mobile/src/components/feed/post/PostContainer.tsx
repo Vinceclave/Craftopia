@@ -23,34 +23,23 @@ export const PostContainer: React.FC<PostContainerProps> = ({
   const addCommentMutation = useAddComment()
 
   const handleOpenComments = useCallback(() => {
-    console.log('Opening comments for post:', postId)
     setShowCommentModal(true)
-    // Comments will be loaded automatically by useComments hook
-  }, [postId])
+  }, [])
 
   const handleAddComment = useCallback(
     async (content: string) => {
-      if (!content.trim()) {
-        console.log('Empty comment content')
-        return
-      }
-      
-      console.log('Adding comment:', content, 'to post:', postId)
+      if (!content.trim()) return
       
       try {
         await addCommentMutation.mutateAsync({ postId, content })
-        console.log('Comment added successfully')
-        // The mutation will automatically update the cache
       } catch (error) {
         console.error('Failed to add comment:', error)
-        // You could show a toast notification here
       }
     },
     [addCommentMutation, postId]
   )
 
   const handleCloseModal = useCallback(() => {
-    console.log('Closing comment modal')
     setShowCommentModal(false)
   }, [])
 

@@ -15,17 +15,17 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function MainNavigator() {
   return (
     <SafeAreaProvider>
-      <SafeAreaView className="flex-1 bg-transparent" edges={['top', 'left', 'right']}>
+      <SafeAreaView className="flex-1 bg-transparent overflow-hidden" edges={['top', 'left', 'right']}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* Tabs wrapped in a stack */}
           <Stack.Screen name="MainTabs" component={MainNavigatorContent} />
-          
-          {/* Chatbot lives outside tabs */}
-          <Stack.Screen 
-            name="ChatbotScreen" 
-            component={ChatBotScreen} 
-            options={{ presentation: 'modal' }} // modal style, optional
-          />
+            
+            {/* Chatbot lives outside tabs */}
+            <Stack.Screen 
+              name="ChatbotScreen" 
+              component={ChatBotScreen} 
+              options={{ presentation: 'modal' }} // modal style, optional
+            />
         </Stack.Navigator>
       </SafeAreaView>
     </SafeAreaProvider>

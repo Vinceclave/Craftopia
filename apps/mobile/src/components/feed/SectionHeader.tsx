@@ -8,11 +8,16 @@ interface SectionHeaderProps {
   onPress: () => void;
 }
 
-export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, icon, isActive, onPress }) => (
+export const SectionHeader: React.FC<SectionHeaderProps> = ({ 
+  title, 
+  icon, 
+  isActive, 
+  onPress 
+}) => (
   <TouchableOpacity
     onPress={onPress}
-    activeOpacity={0.8}
-    className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
+    activeOpacity={0.7}
+    className={`mr-3 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
   >
     <View className="flex-row items-center">
       {icon}
