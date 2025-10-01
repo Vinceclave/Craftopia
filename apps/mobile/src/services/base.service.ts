@@ -47,20 +47,38 @@ class ApiService {
               body: JSON.stringify({ refreshToken }),
             });
 
-            if (!response.ok) throw new Error('Refresh failed');
+            if (!response.ok) {
+              const errorData = await response.json();
+              console.log('❌ Refresh failed:', errorData);
+              
+              // ✅ More specific error handling
+              if (errorData.error?.includes('Invalid or expired')) {
+                throw new Error('SESSION_EXPIRED');
+              }
+              throw new Error('REFRESH_FAILED');
+            }
 
             const data = await response.json();
-            const newToken = data.data?.accessToken || data.accessToken;
+            const newAccessToken = data.data?.accessToken || data.accessToken;
+            const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
-            if (newToken) {
-              await AsyncStorage.setItem('access_token', newToken);
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            if (newAccessToken && newRefreshToken) {
+              // ✅ Update BOTH tokens
+              await AsyncStorage.multiSet([
+                ['access_token', newAccessToken],
+                ['refresh_token', newRefreshToken] // Important!
+              ]);
+              
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               return this.axios(originalRequest);
             }
-          } catch (refreshError) {
-            // Clear tokens and redirect to login
-            await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
-            // You can emit an event here to trigger logout in your app
+          } catch (refreshError: any) {
+            console.log('❌ Auth refresh error:', refreshError.message);
+            
+            // ✅ Only clear tokens on specific errors
+            if (refreshError.message === 'SESSION_EXPIRED') {
+              await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
+            }
           }
         }
 

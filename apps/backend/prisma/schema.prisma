@@ -123,13 +123,18 @@ model UserProfile {
 }
 
 model RefreshToken {
-  token_id   Int      @id @default(autoincrement())
-  user_id    Int
-  token_hash String   @unique
-  expires_at DateTime
-  created_at DateTime @default(now())
-
-  user User @relation(fields: [user_id], references: [user_id])
+  token_id    Int       @id @default(autoincrement())
+  user_id     Int       
+  token_hash  String    @unique
+  expires_at  DateTime
+  created_at  DateTime  @default(now())
+  last_used   DateTime? 
+  
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([user_id])
+  @@index([expires_at]) 
+  @@map("refresh_tokens")
 }
 
 // ==========================

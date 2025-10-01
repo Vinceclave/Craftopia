@@ -8,6 +8,7 @@ import apiRoutes from './routes/api';
 import { errorHandler } from './middlewares/error.middleware';
 import { config } from './config';
 import '../src/cron/challenge.cron'
+import '../src/cron/cleanup.cron';
 import path from 'path';
 
 

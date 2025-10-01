@@ -141,7 +141,6 @@ export const FeedScreen = () => {
             <Search size={18} className="text-craftopia-textSecondary" />
           </TouchableOpacity>
         </View>
->
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {FEED_TABS.map(renderTab)}

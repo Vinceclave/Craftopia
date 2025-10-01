@@ -84,24 +84,26 @@ export const login = async (email: string, password: string) => {
   };
 };
 
-
 export const refreshTokens = async (rawRefreshToken: string) => {
-  if (!rawRefreshToken?.trim()) {
-    throw new AppError('Refresh token is required', 400);
-  }
-
   const storedToken = await verifyRefreshToken(rawRefreshToken);
   if (!storedToken) {
     throw new AppError('Invalid or expired refresh token', 401);
   }
 
-  await revokeRefreshToken(storedToken.token_id);
+  // ✅ DON'T revoke immediately - let it expire naturally or mark as "used"
+  // await revokeRefreshToken(storedToken.token_id); // ❌ Remove this
+  
+  // ✅ Optional: Mark as used instead of deleting
+  await prisma.refreshToken.update({
+    where: { token_id: storedToken.token_id },
+    data: { last_used: new Date() } // Add this field to schema
+  });
+
   const newRawToken = crypto.randomBytes(64).toString('hex');
   await createRefreshToken(storedToken.user_id, newRawToken);
 
   const user = await userService.findUserById(storedToken.user_id);
   
-  // Create properly typed payload
   const tokenPayload: AccessTokenPayload = {
     userId: storedToken.user_id,
     role: user?.role || 'user'

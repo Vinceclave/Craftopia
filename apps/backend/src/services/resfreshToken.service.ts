@@ -65,3 +65,19 @@ export const revokeRefreshToken = async (tokenIdOrRawToken: number | string) => 
     console.warn('Error revoking token:', error);
   }
 };
+
+export const cleanupOldTokens = async () => {
+  // Delete tokens older than 7 days OR marked as used and older than 1 hour
+  await prisma.refreshToken.deleteMany({
+    where: {
+      OR: [
+        { expires_at: { lt: new Date() } }, // Expired
+        { 
+          last_used: { 
+            lt: new Date(Date.now() - 60 * 60 * 1000) // Used over 1 hour ago
+          } 
+        }
+      ]
+    }
+  });
+};
