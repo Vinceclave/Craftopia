@@ -37,7 +37,7 @@ router.use('/reports', reportRoutes);
 router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
-router.use('/ai/bot', aiImageRoutes);
+router.use('/ai/chatbot', chatbotRoutes);
 
 // Health check - Fixed with database connectivity
 router.get('/health', async (req, res) => {

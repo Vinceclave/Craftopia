@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
     GENERATE_CRAFT: `${API_BASE_URL}/api/v1/ai/generate`,
     GENERATE_CHALLENGE: `${API_BASE_URL}/api/v1/craft/generate-challenge`,
     ANALYZE_IMAGE: `${API_BASE_URL}/api/v1/image/analyze`,
+    CHATBOT: `${API_BASE_URL}/api/v1/ai/chatbot/chat`,
   },
   CHALLENGES: {
     LIST: `/api/v1/challenges`,
