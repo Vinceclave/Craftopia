@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "EcoChallenge" ADD COLUMN     "expires_at" TIMESTAMP(3),
-ADD COLUMN     "start_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

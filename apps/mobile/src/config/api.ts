@@ -1,6 +1,6 @@
 // apps/mobile/src/config/api.ts
 export const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.1.6:3001' // Replace with YOUR computer's IP address
+  ? 'http://192.168.1.10:3001' // Replace with YOUR computer's IP address
   : 'https://your-production-api.com';
 
 export const API_ENDPOINTS = {
@@ -33,6 +33,10 @@ export const API_ENDPOINTS = {
     GENERATE_CHALLENGE: `${API_BASE_URL}/api/v1/craft/generate-challenge`,
     ANALYZE_IMAGE: `${API_BASE_URL}/api/v1/image/analyze`,
     CHATBOT: `${API_BASE_URL}/api/v1/ai/chatbot/chat`,
+
+    DETECT_MATERIALS: `${API_BASE_URL}/api/v1/ai/material/detect`,
+    GENERATE_PROJECTS: `${API_BASE_URL}/api/v1/ai/material/generate-projects`,
+    ANALYZE_AND_GENERATE: `${API_BASE_URL}/api/v1/ai/material/analyze`,
   },
   CHALLENGES: {
     LIST: `/api/v1/challenges`,
@@ -165,6 +169,50 @@ export const HTTP_STATUS = {
   INTERNAL_SERVER_ERROR: 500,
 } as const;
 
+
+export interface DetectedMaterial {
+  name: string;
+  materialType: 'plastic' | 'paper' | 'glass' | 'metal' | 'electronics' | 'organic' | 'textile' | 'mixed';
+  quantity: number;
+  condition: 'good' | 'fair' | 'poor';
+  characteristics: {
+    color: string;
+    size: 'small' | 'medium' | 'large';
+    shape: string;
+  };
+}
+
+export interface MaterialDetectionResult {
+  detectedMaterials: DetectedMaterial[];
+  imageDescription: string;
+  totalItemsDetected: number;
+  confidenceScore: number;
+  upcyclingPotential: 'high' | 'medium' | 'low';
+  suggestedCategories: string[];
+  notes: string;
+}
+
+export interface DIYProject {
+  title: string;
+  description: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  estimatedTime: string;
+  materials: Array<{
+    name: string;
+    quantity: string;
+    fromDetected: boolean;
+  }>;
+  additionalMaterials: Array<{
+    name: string;
+    quantity: string;
+    optional: boolean;
+  }>;
+  steps: string[];
+  tips: string[];
+  outcome: string;
+  sustainabilityImpact: string;
+  tags: string[];
+}
 // Common headers
 export const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',

@@ -16,6 +16,7 @@ export type CraftStackParamList = {
   Craft: undefined;
   CraftDetails: { craftId: string };
   CraftEditor: { craftId?: string };
+  CameraCraft: undefined; // 👈 Add this line
 };
 
 export type EcoQuestStackParamList = {

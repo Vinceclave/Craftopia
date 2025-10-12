@@ -22,6 +22,12 @@ CREATE TYPE "ChallengeSource" AS ENUM ('admin', 'ai');
 -- CreateEnum
 CREATE TYPE "MaterialType" AS ENUM ('plastic', 'paper', 'glass', 'metal', 'electronics', 'organic', 'textile', 'mixed');
 
+-- CreateEnum
+CREATE TYPE "ChallengeCategory" AS ENUM ('daily', 'weekly', 'monthly');
+
+-- CreateEnum
+CREATE TYPE "VerificationType" AS ENUM ('manual', 'ai');
+
 -- CreateTable
 CREATE TABLE "User" (
     "user_id" SERIAL NOT NULL,
@@ -50,14 +56,15 @@ CREATE TABLE "UserProfile" (
 );
 
 -- CreateTable
-CREATE TABLE "RefreshToken" (
+CREATE TABLE "refresh_tokens" (
     "token_id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
     "token_hash" TEXT NOT NULL,
     "expires_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "last_used" TIMESTAMP(3),
 
-    CONSTRAINT "RefreshToken_pkey" PRIMARY KEY ("token_id")
+    CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("token_id")
 );
 
 -- CreateTable
@@ -76,7 +83,6 @@ CREATE TABLE "CraftIdea" (
 CREATE TABLE "ChatbotConversation" (
     "conversation_id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
-    "title" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -144,10 +150,13 @@ CREATE TABLE "EcoChallenge" (
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "source" "ChallengeSource" NOT NULL DEFAULT 'admin',
     "material_type" "MaterialType" NOT NULL,
+    "category" "ChallengeCategory" NOT NULL,
     "created_by_admin_id" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(3),
+    "start_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expires_at" TIMESTAMP(3),
 
     CONSTRAINT "EcoChallenge_pkey" PRIMARY KEY ("challenge_id")
 );
@@ -162,6 +171,8 @@ CREATE TABLE "UserChallenge" (
     "completed_at" TIMESTAMP(3),
     "verified_at" TIMESTAMP(3),
     "verified_by_admin_id" INTEGER,
+    "verification_type" "VerificationType",
+    "ai_confidence_score" DOUBLE PRECISION,
     "points_awarded" INTEGER NOT NULL DEFAULT 0,
     "admin_notes" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +231,16 @@ CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "RefreshToken_token_hash_key" ON "RefreshToken"("token_hash");
+CREATE UNIQUE INDEX "refresh_tokens_token_hash_key" ON "refresh_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "refresh_tokens_user_id_idx" ON "refresh_tokens"("user_id");
+
+-- CreateIndex
+CREATE INDEX "refresh_tokens_expires_at_idx" ON "refresh_tokens"("expires_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ChatbotConversation_user_id_key" ON "ChatbotConversation"("user_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Like_post_id_user_id_key" ON "Like"("post_id", "user_id");
@@ -232,7 +252,7 @@ CREATE UNIQUE INDEX "UserChallenge_user_id_challenge_id_key" ON "UserChallenge"(
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("user_id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CraftIdea" ADD CONSTRAINT "CraftIdea_generated_by_user_id_fkey" FOREIGN KEY ("generated_by_user_id") REFERENCES "User"("user_id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -1,3 +1,5 @@
+// apps/backend/src/routes/api.ts - UPDATE THIS FILE
+
 import { Router } from 'express';
 import uploadRoutes from './upload.route'
 import authRoutes from './auth.route';
@@ -9,13 +11,14 @@ import moderationRoutes from './moderation.route';
 import announcementRoutes from './announcement.route';
 import reportRoutes from './report.route';
 import userRoutes from './user.route';
+import chatbotRoutes from './chatbot.route'; 
 import prisma from '../config/prisma';
 
-// AI Routes - Fixed imports and paths
+// AI Routes
 import aiCraftRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import aiImageRoutes from '../ai/routes/image.route';
-import chatbotRoutes from './chatbot.route'; 
+import aiMaterialRoutes from '../ai/routes/material.route'; // NEW
 
 const router = Router();
 
@@ -34,12 +37,13 @@ router.use('/announcements', announcementRoutes);
 router.use('/reports', reportRoutes);
 router.use('/chatbot', chatbotRoutes);
 
-// AI Routes - Fixed paths
+// AI Routes
 router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
+router.use('/ai/material', aiMaterialRoutes); // NEW: Material detection routes
 
-// Health check - Fixed with database connectivity
+// Health check
 router.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
