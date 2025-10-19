@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 // apps/backend/src/routes/api.ts - UPDATED
+=======
+// apps/backend/src/routes/api.ts - UPDATE THIS FILE
+>>>>>>> b0d183059e6ff4fac5a923bf8bfdaf85202ea3d0
 
 import { Router } from 'express';
 import uploadRoutes from './upload.route';
@@ -11,15 +15,23 @@ import moderationRoutes from './moderation.route';
 import announcementRoutes from './announcement.route';
 import reportRoutes from './report.route';
 import userRoutes from './user.route';
+<<<<<<< HEAD
 import chatbotRoutes from './chatbot.route';
 import adminRoutes from './admin'; // NEW: Admin routes
+=======
+import chatbotRoutes from './chatbot.route'; 
+>>>>>>> b0d183059e6ff4fac5a923bf8bfdaf85202ea3d0
 import prisma from '../config/prisma';
 
 // AI Routes
 import aiCraftRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import aiImageRoutes from '../ai/routes/image.route';
+<<<<<<< HEAD
 import aiMaterialRoutes from '../ai/routes/material.route';
+=======
+import aiMaterialRoutes from '../ai/routes/material.route'; // NEW
+>>>>>>> b0d183059e6ff4fac5a923bf8bfdaf85202ea3d0
 
 const router = Router();
 
@@ -42,11 +54,16 @@ router.use('/chatbot', chatbotRoutes);
 router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
+<<<<<<< HEAD
 router.use('/ai/material', aiMaterialRoutes);
 
 // NEW: Admin Routes (protected with requireAdmin middleware)
 router.use('/admin', adminRoutes);
 
+=======
+router.use('/ai/material', aiMaterialRoutes); // NEW: Material detection routes
+
+>>>>>>> b0d183059e6ff4fac5a923bf8bfdaf85202ea3d0
 // Health check
 router.get('/health', async (req, res) => {
   try {
