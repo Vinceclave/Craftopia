@@ -1,5 +1,7 @@
+// apps/backend/src/routes/api.ts - UPDATED
+
 import { Router } from 'express';
-import uploadRoutes from './upload.route'
+import uploadRoutes from './upload.route';
 import authRoutes from './auth.route';
 import postRoutes from './post.route';
 import craftRoutes from './craft.route';
@@ -9,13 +11,15 @@ import moderationRoutes from './moderation.route';
 import announcementRoutes from './announcement.route';
 import reportRoutes from './report.route';
 import userRoutes from './user.route';
+import chatbotRoutes from './chatbot.route';
+import adminRoutes from './admin'; // NEW: Admin routes
 import prisma from '../config/prisma';
 
-// AI Routes - Fixed imports and paths
+// AI Routes
 import aiCraftRoutes from '../ai/routes/craft.route';
 import aiChallengeRoutes from '../ai/routes/challenge.route';
 import aiImageRoutes from '../ai/routes/image.route';
-import chatbotRoutes from './chatbot.route'; 
+import aiMaterialRoutes from '../ai/routes/material.route';
 
 const router = Router();
 
@@ -23,7 +27,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 
 // Protected routes
-router.use('/upload', uploadRoutes)
+router.use('/upload', uploadRoutes);
 router.use('/users', userRoutes);
 router.use('/posts', postRoutes);
 router.use('/crafts', craftRoutes);
@@ -34,12 +38,16 @@ router.use('/announcements', announcementRoutes);
 router.use('/reports', reportRoutes);
 router.use('/chatbot', chatbotRoutes);
 
-// AI Routes - Fixed paths
+// AI Routes
 router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
+router.use('/ai/material', aiMaterialRoutes);
 
-// Health check - Fixed with database connectivity
+// NEW: Admin Routes (protected with requireAdmin middleware)
+router.use('/admin', adminRoutes);
+
+// Health check
 router.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

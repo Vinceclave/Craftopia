@@ -1,4 +1,5 @@
-import { Request, Response, NextFunction } from "express";
+// apps/backend/src/controllers/auth.controller.ts - FIXED VERSION
+import { Request, Response } from "express";
 import * as authService from '../services/auth.service';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess } from '../utils/response';
@@ -12,8 +13,35 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
+  
+  console.log('Login attempt for:', email);
+  
   const result = await authService.login(email, password);
-  sendSuccess(res, result, 'Login successful');
+  
+  console.log('Login result:', {
+    hasAccessToken: !!result.accessToken,
+    hasRefreshToken: !!result.refreshToken,
+    hasUser: !!result.user,
+    userId: result.user?.id
+  });
+  
+  // 🔧 FIX: Add verification warning in response
+  const message = result.user.isEmailVerified 
+    ? 'Login successful' 
+    : 'Login successful. Please verify your email to access all features.';
+  
+  // 🔧 FIX: Ensure consistent response structure
+  sendSuccess(res, {
+    accessToken: result.accessToken,
+    refreshToken: result.refreshToken,
+    user: {
+      id: result.user.id,
+      username: result.user.username,
+      email: result.user.email,
+      role: result.user.role,
+      isEmailVerified: result.user.isEmailVerified
+    }
+  }, message);
 });
 
 export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
@@ -39,25 +67,49 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   }
   
   try {
-    const user = await authService.verifyEmail(token);
+    const result = await authService.verifyEmail(token);
     
-    // For web browsers, redirect to success page
-    if (req.headers['user-agent']?.includes('Mobile')) {
-      sendSuccess(res, null, 'Email verified successfully');
+    // 🔧 FIX: Always return JSON for mobile/API requests
+    // Check if it's a browser request or API request
+    const isBrowser = req.headers.accept?.includes('text/html');
+    const isMobile = req.headers['user-agent']?.includes('Mobile') || !isBrowser;
+    
+    if (isMobile || !isBrowser) {
+      // Mobile/API: Return JSON response
+      return sendSuccess(res, {
+        verified: true,
+        alreadyVerified: result.is_email_verified,
+        user: {
+          id: result.user_id,
+          username: result.username,
+          email: result.email
+        }
+      }, result.is_email_verified
+        ? 'Email was already verified'
+        : 'Email verified successfully');
     } else {
-      // Redirect to frontend success page for web browsers
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?success=true`);
+      // Web Browser: Redirect to frontend success page
+      const successUrl = result.is_email_verified
+        ? `${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?already=true`
+        : `${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?success=true`;
+      res.redirect(successUrl);
     }
   } catch (error: any) {
     console.error('Email verification error:', error);
     
-    if (req.headers['user-agent']?.includes('Mobile')) {
+    // Check if it's a browser request
+    const isBrowser = req.headers.accept?.includes('text/html');
+    const isMobile = req.headers['user-agent']?.includes('Mobile') || !isBrowser;
+    
+    if (isMobile || !isBrowser) {
+      // Mobile/API: Return JSON error
       return res.status(400).json({
         success: false,
         error: error.message || 'Invalid or expired verification token',
         timestamp: new Date().toISOString()
       });
     } else {
+      // Web Browser: Redirect with error
       res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/email-verified?error=${encodeURIComponent(error.message)}`);
     }
   }
