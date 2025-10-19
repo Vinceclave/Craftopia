@@ -1,5 +1,6 @@
+// apps/web/src/hooks/usePosts.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moderationAPI } from '../lib/api';
+import { moderationAPI, Post, ApiResponse } from '../lib/api';
 import { useState } from 'react';
 
 export const usePosts = () => {
@@ -8,7 +9,7 @@ export const usePosts = () => {
   
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ApiResponse<{ posts: Post[]; comments: any[]; meta: any }>>({
     queryKey: ['content-review', page, limit],
     queryFn: () => moderationAPI.getContentForReview(page, limit),
   });
@@ -30,14 +31,14 @@ export const usePosts = () => {
   });
 
   const featurePostMutation = useMutation({
-    mutationFn: moderationAPI.featurePost,
+    mutationFn: (postId: number) => moderationAPI.featurePost(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
   });
 
   const restorePostMutation = useMutation({
-    mutationFn: moderationAPI.restorePost,
+    mutationFn: (postId: number) => moderationAPI.restorePost(postId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },

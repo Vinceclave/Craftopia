@@ -1,7 +1,22 @@
 // apps/web/src/lib/api.ts
 import axios, { AxiosError } from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+// ===== TYPE DEFINITIONS =====
+export interface IUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  isEmailVerified: boolean;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: IUser;
+}
+
+const API_BASE =  'http://localhost:3001/api/v1';
 
 // Create axios instance
 const api = axios.create({
@@ -135,22 +150,6 @@ export const challengesAPI = {
   
   getPendingVerifications: (page = 1, limit = 20) => 
     api.get(`/user-challenges/pending-verifications?page=${page}&limit=${limit}`)
-};
-
-// Announcements API
-export const announcementsAPI = {
-  getAll: (params: any) => {
-    const query = new URLSearchParams(params).toString();
-    return api.get(`/announcements?${query}`);
-  },
-
-  create: (data: any) => api.post('/announcements', data),
-
-  update: (id: number, data: any) => api.patch(`/announcements/${id}`, data),
-
-  delete: (id: number) => api.delete(`/announcements/${id}`),
-
-  toggleStatus: (id: number) => api.patch(`/announcements/${id}/toggle-status`)
 };
 
 export default api;

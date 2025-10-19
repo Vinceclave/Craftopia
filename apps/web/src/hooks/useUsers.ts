@@ -1,10 +1,21 @@
-// apps/web/src/hooks/useUsers.ts
+// apps/web/src/hooks/useUsers.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userAPI } from '../lib/api';
+import { userAPI, User, ApiResponse } from '../lib/api';
 import { useState } from 'react';
 
+interface UserFilters {
+  page: number;
+  limit: number;
+  search: string;
+  role: string;
+  isActive: string;
+  isVerified: string;
+  sortBy: string;
+  sortOrder: string;
+}
+
 export const useUsers = () => {
-  const [params, setParams] = useState({
+  const [params, setParams] = useState<UserFilters>({
     page: 1,
     limit: 20,
     search: '',
@@ -17,13 +28,13 @@ export const useUsers = () => {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ApiResponse<User[]>>({
     queryKey: ['users', params],
     queryFn: () => userAPI.getAll(params),
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: userAPI.toggleStatus,
+    mutationFn: (userId: number) => userAPI.toggleStatus(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
@@ -38,7 +49,7 @@ export const useUsers = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: userAPI.delete,
+    mutationFn: (userId: number) => userAPI.delete(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },

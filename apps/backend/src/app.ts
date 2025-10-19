@@ -46,6 +46,7 @@ const aiLimiter = rateLimit({
 // CORS - Only allow your frontend
 app.use(cors({
   origin: [
+    'http://localhost:5173',
     'http://localhost:3001',     // Frontend/Web app
     'http://localhost:8081',     // ✅ Mobile app (Expo dev server)
     'http://127.0.0.1:8081',     // Alternative localhost

@@ -1,9 +1,16 @@
+// apps/web/src/hooks/useReports.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { reportsAPI } from '../lib/api';
+import { reportsAPI, Report, ApiResponse } from '../lib/api';
 import { useState } from 'react';
 
+interface ReportFilters {
+  page: number;
+  limit: number;
+  status: string;
+}
+
 export const useReports = () => {
-  const [params, setParams] = useState({
+  const [params, setParams] = useState<ReportFilters>({
     page: 1,
     limit: 20,
     status: ''
@@ -11,7 +18,7 @@ export const useReports = () => {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ApiResponse<Report[]>>({
     queryKey: ['reports', params],
     queryFn: () => reportsAPI.getAll(params),
   });

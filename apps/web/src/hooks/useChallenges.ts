@@ -1,5 +1,6 @@
+// apps/web/src/hooks/useChallenges.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { challengesAPI } from '../lib/api';
+import { challengesAPI, Challenge, ApiResponse } from '../lib/api';
 import { useState } from 'react';
 
 export const useChallenges = () => {
@@ -7,20 +8,20 @@ export const useChallenges = () => {
   
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery<ApiResponse<Challenge[]>>({
     queryKey: ['challenges', category],
     queryFn: () => challengesAPI.getAll(category),
   });
 
   const createMutation = useMutation({
-    mutationFn: challengesAPI.create,
+    mutationFn: (challengeData: any) => challengesAPI.create(challengeData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
   });
 
   const generateAIMutation = useMutation({
-    mutationFn: challengesAPI.generateAI,
+    mutationFn: (category: string) => challengesAPI.generateAI(category),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },

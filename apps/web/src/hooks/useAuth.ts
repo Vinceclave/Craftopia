@@ -1,8 +1,13 @@
-// apps/web/src/hooks/useAuth.ts
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { authAPI, IUser } from '../lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { authAPI, LoginResponse } from '@/lib/api';
+
+interface ApiLoginResponse {
+  success: boolean;
+  message: string;
+  data: LoginResponse; // matches your API `data` object
+}
 
 export const useAuth = () => {
   const { user, isAuthenticated, isAdmin, setAuth, logout: storeLogout } = useAuthStore();
@@ -10,30 +15,37 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      setError(null);
+  const login = async (email: string, password: string): Promise<LoginResponse> => {
+    setLoading(true);
+    setError(null);
 
-      const response = await authAPI.login(email, password);
-      // response is already response.data thanks to interceptor
-      if (response.user.role !== 'admin') {
-        throw new Error('Access denied. Admin privileges required.');
+    try {
+      const response: ApiLoginResponse = await authAPI.login(email, password);
+      const { accessToken, refreshToken, user } = response.data; // <-- Correctly destructure
+
+      if (user.role !== 'admin') {
+        const msg = 'Access denied. Admin privileges required.';
+        setError(msg);
+        throw new Error(msg);
       }
 
       // Save token and user in localStorage
-      localStorage.setItem('adminToken', response.accessToken);
-      localStorage.setItem('adminUser', JSON.stringify(response.user));
+      localStorage.setItem('adminToken', accessToken);
+      localStorage.setItem('adminUser', JSON.stringify(user));
 
-      // Update store
-      setAuth(response.user, response.accessToken);
+      // Update auth store
+      setAuth(user, accessToken);
 
+      // Navigate to dashboard
       navigate('/admin/dashboard');
 
-      return response;
+      return { accessToken, refreshToken, user };
     } catch (err: any) {
-      const message = err.message || 'Login failed';
-      setError(message);
+      // Clear any previous login data
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminUser');
+
+      setError(err.message || 'Login failed');
       throw err;
     } finally {
       setLoading(false);
