@@ -77,6 +77,7 @@ export const getAllUsers = async (filters: UserFilter) => {
       prisma.user.count({ where })
     ]);
 
+    // ✅ CORRECT: Return data directly, not nested
     return {
       data: users,
       meta: {

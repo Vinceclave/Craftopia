@@ -1,6 +1,5 @@
-// apps/web/src/hooks/usePosts.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moderationAPI, Post, ApiResponse } from '../lib/api';
+import { moderationAPI} from '../lib/api';
 import { useState } from 'react';
 
 export const usePosts = () => {
@@ -9,47 +8,85 @@ export const usePosts = () => {
   
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<ApiResponse<{ posts: Post[]; comments: any[]; meta: any }>>({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['content-review', page, limit],
-    queryFn: () => moderationAPI.getContentForReview(page, limit),
+    queryFn: async () => {
+      console.log('🔍 Fetching content for review, page:', page);
+      const response = await moderationAPI.getContentForReview(page, limit);
+      console.log('✅ Content response:', response);
+      return response;
+    },
+    retry: 1,
   });
 
   const deletePostMutation = useMutation({
-    mutationFn: ({ postId, reason }: { postId: number; reason?: string }) =>
-      moderationAPI.deletePost(postId, reason),
-    onSuccess: () => {
+    mutationFn: async ({ postId, reason }: { postId: number; reason?: string }) => {
+      console.log('🗑️ Deleting post:', { postId, reason });
+      return await moderationAPI.deletePost(postId, reason);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Post deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Delete post error:', error);
+    }
   });
 
   const deleteCommentMutation = useMutation({
-    mutationFn: ({ commentId, reason }: { commentId: number; reason?: string }) =>
-      moderationAPI.deleteComment(commentId, reason),
-    onSuccess: () => {
+    mutationFn: async ({ commentId, reason }: { commentId: number; reason?: string }) => {
+      console.log('🗑️ Deleting comment:', { commentId, reason });
+      return await moderationAPI.deleteComment(commentId, reason);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Comment deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Delete comment error:', error);
+    }
   });
 
   const featurePostMutation = useMutation({
-    mutationFn: (postId: number) => moderationAPI.featurePost(postId),
-    onSuccess: () => {
+    mutationFn: async (postId: number) => {
+      console.log('⭐ Featuring post:', postId);
+      return await moderationAPI.featurePost(postId);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Post featured:', data);
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Feature post error:', error);
+    }
   });
 
   const restorePostMutation = useMutation({
-    mutationFn: (postId: number) => moderationAPI.restorePost(postId),
-    onSuccess: () => {
+    mutationFn: async (postId: number) => {
+      console.log('♻️ Restoring post:', postId);
+      return await moderationAPI.restorePost(postId);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Post restored:', data);
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Restore post error:', error);
+    }
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: ({ postIds, reason }: { postIds: number[]; reason?: string }) =>
-      moderationAPI.bulkDeletePosts(postIds, reason),
-    onSuccess: () => {
+    mutationFn: async ({ postIds, reason }: { postIds: number[]; reason?: string }) => {
+      console.log('🗑️ Bulk deleting posts:', { postIds, reason });
+      return await moderationAPI.bulkDeletePosts(postIds, reason);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Posts bulk deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Bulk delete error:', error);
+    }
   });
 
   return {
@@ -60,6 +97,7 @@ export const usePosts = () => {
     error,
     page,
     setPage,
+    refetch,
     deletePost: deletePostMutation.mutateAsync,
     deleteComment: deleteCommentMutation.mutateAsync,
     featurePost: featurePostMutation.mutateAsync,

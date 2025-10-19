@@ -1,6 +1,5 @@
-// apps/web/src/hooks/useUsers.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userAPI, User, ApiResponse } from '../lib/api';
+import { userAPI, User, ApiResponse, PaginatedResponse } from '../lib/api';
 import { useState } from 'react';
 
 interface UserFilters {
@@ -28,31 +27,80 @@ export const useUsers = () => {
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<ApiResponse<User[]>>({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['users', params],
-    queryFn: () => userAPI.getAll(params),
+    queryFn: async () => {
+      console.log('🔍 Fetching users with params:', params);
+      const response = await userAPI.getAll(params);
+      console.log('📦 Full response:', response);
+      
+      // ✅ FIX: Handle different response structures
+      // Backend might return: { success: true, data: [...], meta: {...} }
+      // OR: { success: true, data: { data: [...], meta: {...} } }
+      
+      let users, meta;
+      
+      if (response.data && Array.isArray(response.data)) {
+        // Format 1: { success: true, data: [...], meta: {...} }
+        users = response.data;
+        meta = response.meta;
+      } else if (response.data && response.data.data) {
+        // Format 2: { success: true, data: { data: [...], meta: {...} } }
+        users = response.data.data;
+        meta = response.data.meta;
+      } else {
+        console.error('❌ Unexpected response format:', response);
+        throw new Error('Invalid response format from server');
+      }
+      
+      console.log('✅ Extracted users:', users.length, 'items');
+      console.log('✅ Pagination meta:', meta);
+      
+      return { data: users, meta };
+    },
+    retry: 1,
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: (userId: number) => userAPI.toggleStatus(userId),
-    onSuccess: () => {
+    mutationFn: async (userId: number) => {
+      console.log('🔄 Toggling user status:', userId);
+      return await userAPI.toggleStatus(userId);
+    },
+    onSuccess: (data) => {
+      console.log('✅ User status toggled:', data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Toggle status error:', error);
+    }
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: number; role: string }) => 
-      userAPI.updateRole(userId, role),
-    onSuccess: () => {
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      console.log('🔄 Updating user role:', { userId, role });
+      return await userAPI.updateRole(userId, role);
+    },
+    onSuccess: (data) => {
+      console.log('✅ User role updated:', data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Update role error:', error);
+    }
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (userId: number) => userAPI.delete(userId),
-    onSuccess: () => {
+    mutationFn: async (userId: number) => {
+      console.log('🗑️ Deleting user:', userId);
+      return await userAPI.delete(userId);
+    },
+    onSuccess: (data) => {
+      console.log('✅ User deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Delete user error:', error);
+    }
   });
 
   return {
@@ -62,6 +110,7 @@ export const useUsers = () => {
     error,
     params,
     setParams,
+    refetch,
     toggleStatus: toggleStatusMutation.mutateAsync,
     updateRole: updateRoleMutation.mutateAsync,
     deleteUser: deleteMutation.mutateAsync,

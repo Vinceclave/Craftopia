@@ -1,6 +1,5 @@
-// apps/web/src/hooks/useChallenges.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { challengesAPI, Challenge, ApiResponse } from '../lib/api';
+import { challengesAPI} from '../lib/api';
 import { useState } from 'react';
 
 export const useChallenges = () => {
@@ -8,41 +7,69 @@ export const useChallenges = () => {
   
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<ApiResponse<Challenge[]>>({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['challenges', category],
-    queryFn: () => challengesAPI.getAll(category),
+    queryFn: async () => {
+      console.log('🔍 Fetching challenges, category:', category);
+      const response = await challengesAPI.getAll(category);
+      console.log('✅ Challenges response:', response);
+      return response;
+    },
+    retry: 1,
   });
 
   const createMutation = useMutation({
-    mutationFn: (challengeData: any) => challengesAPI.create(challengeData),
-    onSuccess: () => {
+    mutationFn: async (challengeData: any) => {
+      console.log('➕ Creating challenge:', challengeData);
+      return await challengesAPI.create(challengeData);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Challenge created:', data);
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Create challenge error:', error);
+    }
   });
 
   const generateAIMutation = useMutation({
-    mutationFn: (category: string) => challengesAPI.generateAI(category),
-    onSuccess: () => {
+    mutationFn: async (category: string) => {
+      console.log('🤖 Generating AI challenge, category:', category);
+      return await challengesAPI.generateAI(category);
+    },
+    onSuccess: (data) => {
+      console.log('✅ AI challenge generated:', data);
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
+    onError: (error: any) => {
+      console.error('❌ Generate AI challenge error:', error);
+    }
   });
 
-  const { data: pendingData, isLoading: isPendingLoading } = useQuery({
+  const { data: pendingData, isLoading: isPendingLoading, refetch: refetchPending } = useQuery({
     queryKey: ['pending-verifications'],
-    queryFn: () => challengesAPI.getPendingVerifications(),
+    queryFn: async () => {
+      console.log('🔍 Fetching pending verifications');
+      const response = await challengesAPI.getPendingVerifications();
+      console.log('✅ Pending verifications response:', response);
+      return response;
+    },
+    retry: 1,
   });
 
   return {
-    challenges: data?.data || [],
+    challenges: data?.data?.data || data?.data || [],
     isLoading,
     error,
     category,
     setCategory,
+    refetch,
     createChallenge: createMutation.mutateAsync,
     generateAIChallenge: generateAIMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isGenerating: generateAIMutation.isPending,
-    pendingVerifications: pendingData?.data || [],
+    pendingVerifications: pendingData?.data?.data || pendingData?.data || [],
     isPendingLoading,
+    refetchPending,
   };
 };

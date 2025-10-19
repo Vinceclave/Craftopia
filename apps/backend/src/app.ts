@@ -11,79 +11,108 @@ import '../src/cron/challenge.cron'
 import '../src/cron/cleanup.cron';
 import path from 'path';
 
-
 dotenv.config();
 
 const app = express();
 
-// Basic security headers (one-line solution)
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
 
-// Remove X-Powered-By header (hide Express)
 app.disable('x-powered-by');
 
-// Rate limiting (prevent DoS attacks)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     success: false,
     error: 'Too many requests, please try again later',
     timestamp: new Date().toISOString()
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, // stricter limit for AI endpoints
+  max: 20,
   message: {
     success: false,
     error: 'Too many AI requests, please try again later',
     timestamp: new Date().toISOString()
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// CORS - Only allow your frontend
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3001',     // Frontend/Web app
-    'http://localhost:8081',     // ✅ Mobile app (Expo dev server)
-    'http://127.0.0.1:8081',     // Alternative localhost
-    'http://192.168.1.10:8081',  // ✅ Your local network IP
-    config.frontend.url
-  ],
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:8081',
+      'http://127.0.0.1:8081',
+      'http://192.168.1.10:8081',
+      config.frontend.url
+    ];
+    
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400,
+};
 
-// Body parsing with reasonable limits
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Apply rate limiting
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
+
 app.use('/api/v1', limiter);
 app.use('/api/v1/ai', aiLimiter);
 
-// Logging
-app.use(morgan('combined'));
-
-// API routes
 app.use('/api/v1', apiRoutes);
 
-// 404 handler
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Craftopia API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Route not found',
+    path: req.originalUrl,
     timestamp: new Date().toISOString()
   });
 });
 
-// Error handler
 app.use(errorHandler);
 
 export default app;

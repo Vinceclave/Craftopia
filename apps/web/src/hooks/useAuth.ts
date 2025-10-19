@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { authAPI, LoginResponse } from '@/lib/api';
-
-interface ApiLoginResponse {
-  success: boolean;
-  message: string;
-  data: LoginResponse; // matches your API `data` object
-}
+import { authAPI, LoginResponse, ApiResponse, IUser } from '@/lib/api';
 
 export const useAuth = () => {
   const { user, isAuthenticated, isAdmin, setAuth, logout: storeLogout } = useAuthStore();
@@ -15,44 +9,79 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const login = async (email: string, password: string): Promise<LoginResponse> => {
+  const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     setError(null);
 
     try {
-      const response: ApiLoginResponse = await authAPI.login(email, password);
-      const { accessToken, refreshToken, user } = response.data; // <-- Correctly destructure
+      console.log('🔑 Starting login process...');
+      
+      const response: ApiResponse<LoginResponse> = await authAPI.login(email, password);
+      
+      console.log('📦 Login response:', response);
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Login failed');
+      }
+      
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
 
-      if (user.role !== 'admin') {
+      const { accessToken, refreshToken, user: userData } = response.data;
+      
+      if (!accessToken) {
+        throw new Error('No access token received');
+      }
+      
+      if (!userData) {
+        throw new Error('No user data received');
+      }
+      
+      console.log('👤 User data:', userData);
+      
+      if (userData.role !== 'admin') {
         const msg = 'Access denied. Admin privileges required.';
         setError(msg);
         throw new Error(msg);
       }
 
-      // Save token and user in localStorage
+      const normalizedUser: IUser = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email,
+        role: userData.role,
+        isEmailVerified: userData.isEmailVerified
+      };
+
+      console.log('✅ Normalized user:', normalizedUser);
+
       localStorage.setItem('adminToken', accessToken);
-      localStorage.setItem('adminUser', JSON.stringify(user));
+      localStorage.setItem('adminUser', JSON.stringify(normalizedUser));
 
-      // Update auth store
-      setAuth(user, accessToken);
+      setAuth(normalizedUser, accessToken);
 
-      // Navigate to dashboard
+      console.log('✅ Login successful, navigating to dashboard...');
+      
       navigate('/admin/dashboard');
-
-      return { accessToken, refreshToken, user };
+      
     } catch (err: any) {
-      // Clear any previous login data
+      console.error('❌ Login error:', err);
+      
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
 
-      setError(err.message || 'Login failed');
-      throw err;
+      const errorMessage = err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+      
     } finally {
       setLoading(false);
     }
   };
 
   const logout = () => {
+    console.log('👋 Logging out...');
     storeLogout();
     authAPI.logout();
     navigate('/admin/login');

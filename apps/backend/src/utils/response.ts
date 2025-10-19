@@ -44,21 +44,12 @@ export const sendPaginatedSuccess = (
   message?: string,
   statusCode = 200
 ) => {
-  // Ensure consistent meta structure
-  const enhancedMeta: PaginationMeta = {
-    total: meta.total,
-    page: meta.page,
-    lastPage: meta.lastPage,
-    limit: meta.limit,
-    hasNextPage: meta.page < meta.lastPage,
-    hasPrevPage: meta.page > 1,
-  };
-
+  // ✅ CORRECT FORMAT
   res.status(statusCode).json({
     success: true,
     message: message || undefined,
-    data,
-    meta: enhancedMeta, // Always use 'meta' not 'pagination'
+    data,  // Array of items
+    meta,  // Pagination info
     timestamp: new Date().toISOString()
   });
 };
