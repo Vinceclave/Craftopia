@@ -309,23 +309,86 @@ export const userAPI = {
 };
 
 export const moderationAPI = {
-  getContentForReview: (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> => 
-    api.get(`/admin/moderation/content/review`, { params: { page, limit } }),
+  getContentForReview: async (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> => {
+    console.log('🔍 Fetching content for review:', { page, limit });
+    try {
+      const response = await api.get('/admin/moderation/content/review', { 
+        params: { page, limit } 
+      });
+      console.log('✅ Content review response:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Content review error:', error);
+      throw error;
+    }
+  },
   
-  deletePost: (postId: number, reason?: string): Promise<ApiResponse<any>> => 
-    api.delete(`/admin/moderation/posts/${postId}`, { data: { reason } }),
+  deletePost: async (postId: number, reason?: string): Promise<ApiResponse<any>> => {
+    console.log('🗑️ Deleting post:', { postId, reason });
+    try {
+      const response = await api.delete(`/admin/moderation/posts/${postId}`, { 
+        data: { reason } 
+      });
+      console.log('✅ Post deleted:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Delete post error:', error);
+      throw error;
+    }
+  },
   
-  deleteComment: (commentId: number, reason?: string): Promise<ApiResponse<any>> => 
-    api.delete(`/admin/moderation/comments/${commentId}`, { data: { reason } }),
+  deleteComment: async (commentId: number, reason?: string): Promise<ApiResponse<any>> => {
+    console.log('🗑️ Deleting comment:', { commentId, reason });
+    try {
+      const response = await api.delete(`/admin/moderation/comments/${commentId}`, { 
+        data: { reason } 
+      });
+      console.log('✅ Comment deleted:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Delete comment error:', error);
+      throw error;
+    }
+  },
   
-  bulkDeletePosts: (postIds: number[], reason?: string): Promise<ApiResponse<any>> => 
-    api.post('/admin/moderation/posts/bulk-delete', { postIds, reason }),
+  bulkDeletePosts: async (postIds: number[], reason?: string): Promise<ApiResponse<any>> => {
+    console.log('🗑️ Bulk deleting posts:', { postIds, reason });
+    try {
+      const response = await api.post('/admin/moderation/posts/bulk-delete', { 
+        postIds, 
+        reason 
+      });
+      console.log('✅ Bulk delete successful:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Bulk delete error:', error);
+      throw error;
+    }
+  },
   
-  restorePost: (postId: number): Promise<ApiResponse<Post>> => 
-    api.patch(`/admin/moderation/posts/${postId}/restore`),
+  restorePost: async (postId: number): Promise<ApiResponse<Post>> => {
+    console.log('♻️ Restoring post:', postId);
+    try {
+      const response = await api.patch(`/admin/moderation/posts/${postId}/restore`);
+      console.log('✅ Post restored:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Restore post error:', error);
+      throw error;
+    }
+  },
   
-  featurePost: (postId: number): Promise<ApiResponse<Post>> => 
-    api.patch(`/admin/moderation/posts/${postId}/feature`)
+  featurePost: async (postId: number): Promise<ApiResponse<Post>> => {
+    console.log('⭐ Featuring post:', postId);
+    try {
+      const response = await api.patch(`/admin/moderation/posts/${postId}/feature`);
+      console.log('✅ Post feature toggled:', response);
+      return response;
+    } catch (error: any) {
+      console.error('❌ Feature post error:', error);
+      throw error;
+    }
+  }
 };
 
 export const reportsAPI = {

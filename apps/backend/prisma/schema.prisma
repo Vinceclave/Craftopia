@@ -1,5 +1,5 @@
 // ==========================
-// Prisma schema for Craftopia
+// Prisma schema for Craftopia (Soft Delete Enabled)
 // ==========================
 
 generator client {
@@ -93,6 +93,7 @@ model User {
   is_active         Boolean  @default(true)
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
+  deleted_at        DateTime? // 👈 soft delete field added
 
   profile              UserProfile?
   refreshTokens        RefreshToken[]
@@ -118,22 +119,24 @@ model UserProfile {
   profile_picture_url   String?
   points                Int     @default(0)
   home_dashboard_layout Json?
+  deleted_at            DateTime? // 👈 added for soft delete
 
   user User @relation(fields: [user_id], references: [user_id])
 }
 
 model RefreshToken {
   token_id    Int       @id @default(autoincrement())
-  user_id     Int       
+  user_id     Int
   token_hash  String    @unique
   expires_at  DateTime
   created_at  DateTime  @default(now())
-  last_used   DateTime? 
-  
+  last_used   DateTime?
+  deleted_at  DateTime? // 👈 added for soft delete
+
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  
+
   @@index([user_id])
-  @@index([expires_at]) 
+  @@index([expires_at])
   @@map("refresh_tokens")
 }
 
@@ -156,6 +159,7 @@ model ChatbotConversation {
   user_id         Int      @unique
   created_at      DateTime @default(now())
   updated_at      DateTime @default(now())
+  deleted_at      DateTime? // 👈 added for soft delete
 
   user     User               @relation(fields: [user_id], references: [user_id])
   messages ChatbotMessage[]
@@ -167,6 +171,7 @@ model ChatbotMessage {
   sender          MessageSender
   content         String
   created_at      DateTime      @default(now())
+  deleted_at      DateTime? // 👈 added for soft delete
 
   conversation ChatbotConversation @relation(fields: [conversation_id], references: [conversation_id])
 }
@@ -236,11 +241,8 @@ model EcoChallenge {
   created_at          DateTime          @default(now())
   updated_at          DateTime          @default(now())
   deleted_at          DateTime?
-
-  // Expiration fields (aligned with daily/weekly/monthly categories)
   start_at            DateTime          @default(now())
-  expires_at          DateTime?         
-
+  expires_at          DateTime?
 
   created_by_admin User?           @relation(fields: [created_by_admin_id], references: [user_id])
   participants     UserChallenge[]
@@ -256,7 +258,7 @@ model UserChallenge {
   verified_at          DateTime?
   verified_by_admin_id Int?
   verification_type    VerificationType?
-  ai_confidence_score  Float?            // 0.0 - 1.0 for AI verification
+  ai_confidence_score  Float?
   points_awarded       Int               @default(0)
   admin_notes          String?
   created_at           DateTime          @default(now())
@@ -283,6 +285,7 @@ model Report {
   resolved_by_admin_id Int?
   created_at           DateTime     @default(now())
   resolved_at          DateTime?
+  deleted_at           DateTime? // 👈 added
 
   reporter          User     @relation("reporter", fields: [reporter_id], references: [user_id])
   reported_post     Post?    @relation(fields: [reported_post_id], references: [post_id])
@@ -311,6 +314,7 @@ model ModerationLog {
   target_user_id Int?
   reason         String?
   created_at     DateTime         @default(now())
+  deleted_at     DateTime? // 👈 added
 
   admin       User? @relation("ModerationByAdmin", fields: [admin_id], references: [user_id])
   target_user User? @relation("ModerationTargetUser", fields: [target_user_id], references: [user_id])

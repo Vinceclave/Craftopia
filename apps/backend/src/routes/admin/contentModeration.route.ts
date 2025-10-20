@@ -1,4 +1,3 @@
-
 // apps/backend/src/routes/admin/contentModeration.route.ts
 
 import { Router } from "express";
@@ -18,12 +17,16 @@ const bulkDeleteSchema = Joi.object({
   reason: Joi.string().max(500).optional()
 });
 
+// Get all content for review
 router.get('/content/review', requireAdmin, contentModerationController.getContentForReview);
+
+// Delete operations
 router.delete('/posts/:postId', requireAdmin, validate(deleteContentSchema), contentModerationController.deletePost);
 router.delete('/comments/:commentId', requireAdmin, validate(deleteContentSchema), contentModerationController.deleteComment);
 router.post('/posts/bulk-delete', requireAdmin, validate(bulkDeleteSchema), contentModerationController.bulkDeletePosts);
+
+// Restore and feature
 router.patch('/posts/:postId/restore', requireAdmin, contentModerationController.restorePost);
 router.patch('/posts/:postId/feature', requireAdmin, contentModerationController.featurePost);
 
 export default router;
-

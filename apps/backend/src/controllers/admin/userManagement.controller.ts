@@ -18,7 +18,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
   };
 
   const result = await userManagementService.getAllUsers(filters);
-  sendSuccess(res, result.data, 'Users retrieved successfully', 200);
+  sendSuccess(res, result, 'Users retrieved successfully', 200);
 });
 
 export const getUserDetails = asyncHandler(async (req: Request, res: Response) => {

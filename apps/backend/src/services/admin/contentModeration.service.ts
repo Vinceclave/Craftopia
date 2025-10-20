@@ -1,8 +1,147 @@
-// apps/backend/src/services/admin/contentModeration.service.ts
+// apps/backend/src/services/admin/contentModeration.service.ts - COMPLETE FIXED VERSION
 
 import prisma from "../../config/prisma";
 import { AppError } from "../../utils/error";
 import { ModerationAction } from "../../generated/prisma";
+
+// ✅ FIX: Get ALL posts for moderation (not just reported ones)
+export const getContentForReview = async (page: number = 1, limit: number = 20) => {
+  if (page < 1) page = 1;
+  if (limit < 1 || limit > 100) limit = 20;
+
+  const skip = (page - 1) * limit;
+
+  try {
+    console.log('📊 Fetching content for review - page:', page, 'limit:', limit);
+
+    // Get ALL posts with their engagement data
+    const [posts, comments, totalPosts, totalComments] = await Promise.all([
+      // Get all posts (not just reported ones)
+      prisma.post.findMany({
+        where: {
+          deleted_at: null, // Only non-deleted posts
+        },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: { 
+              user_id: true, 
+              username: true 
+            }
+          },
+          reports: {
+            where: { 
+              status: { in: ['pending', 'in_review'] } 
+            },
+            select: {
+              report_id: true,
+              reason: true,
+              status: true,
+              created_at: true,
+              reporter: {
+                select: { 
+                  user_id: true, 
+                  username: true 
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              reports: true,
+              likes: { where: { deleted_at: null } },
+              comments: { where: { deleted_at: null } }
+            }
+          }
+        },
+        orderBy: [
+          { created_at: 'desc' } // Newest first
+        ]
+      }),
+      
+      // Get all comments
+      prisma.comment.findMany({
+        where: {
+          deleted_at: null,
+        },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: { 
+              user_id: true, 
+              username: true 
+            }
+          },
+          post: {
+            select: { 
+              post_id: true, 
+              title: true 
+            }
+          },
+          reports: {
+            where: { 
+              status: { in: ['pending', 'in_review'] } 
+            },
+            select: {
+              report_id: true,
+              reason: true,
+              status: true,
+              created_at: true,
+              reporter: {
+                select: { 
+                  user_id: true, 
+                  username: true 
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              reports: true
+            }
+          }
+        },
+        orderBy: { 
+          created_at: 'desc' 
+        }
+      }),
+      
+      // Count total posts
+      prisma.post.count({
+        where: { deleted_at: null }
+      }),
+      
+      // Count total comments
+      prisma.comment.count({
+        where: { deleted_at: null }
+      })
+    ]);
+
+    console.log('✅ Content fetched:', {
+      postsCount: posts.length,
+      commentsCount: comments.length,
+      totalPosts,
+      totalComments
+    });
+
+    return {
+      posts,
+      comments,
+      meta: {
+        totalPosts,
+        totalComments,
+        page,
+        lastPage: Math.ceil(totalPosts / limit),
+        limit
+      }
+    };
+  } catch (error) {
+    console.error('❌ Error fetching content for review:', error);
+    throw new AppError('Failed to fetch content for review', 500);
+  }
+};
 
 export const deletePost = async (postId: number, adminId: number, reason?: string) => {
   if (!postId || postId <= 0) {
@@ -35,6 +174,7 @@ export const deletePost = async (postId: number, adminId: number, reason?: strin
       }
     });
 
+    console.log('✅ Post deleted:', postId);
     return deletedPost;
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -74,6 +214,7 @@ export const deleteComment = async (commentId: number, adminId: number, reason?:
       }
     });
 
+    console.log('✅ Comment deleted:', commentId);
     return deletedComment;
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -121,6 +262,8 @@ export const bulkDeletePosts = async (postIds: number[], adminId: number, reason
       }))
     });
 
+    console.log('✅ Bulk deleted posts:', posts.length);
+
     return {
       deletedCount: posts.length,
       message: `Successfully deleted ${posts.length} posts`
@@ -166,124 +309,12 @@ export const restorePost = async (postId: number, adminId: number) => {
       }
     });
 
+    console.log('✅ Post restored:', postId);
     return restoredPost;
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error('Error restoring post:', error);
     throw new AppError('Failed to restore post', 500);
-  }
-};
-
-export const getContentForReview = async (page: number = 1, limit: number = 20) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 20;
-
-  const skip = (page - 1) * limit;
-
-  try {
-    // Get posts with reports or high negative engagement
-    const [reportedPosts, flaggedComments] = await Promise.all([
-      prisma.post.findMany({
-        where: {
-          deleted_at: null,
-          reports: {
-            some: {
-              status: { in: ['pending', 'in_review'] }
-            }
-          }
-        },
-        skip,
-        take: limit,
-        include: {
-          user: {
-            select: { user_id: true, username: true }
-          },
-          reports: {
-            where: { status: { in: ['pending', 'in_review'] } },
-            select: {
-              report_id: true,
-              reason: true,
-              status: true,
-              created_at: true,
-              reporter: {
-                select: { user_id: true, username: true }
-              }
-            }
-          },
-          _count: {
-            select: {
-              reports: true,
-              likes: { where: { deleted_at: null } },
-              comments: { where: { deleted_at: null } }
-            }
-          }
-        },
-        orderBy: { created_at: 'desc' }
-      }),
-      prisma.comment.findMany({
-        where: {
-          deleted_at: null,
-          reports: {
-            some: {
-              status: { in: ['pending', 'in_review'] }
-            }
-          }
-        },
-        skip,
-        take: limit,
-        include: {
-          user: {
-            select: { user_id: true, username: true }
-          },
-          post: {
-            select: { post_id: true, title: true }
-          },
-          reports: {
-            where: { status: { in: ['pending', 'in_review'] } },
-            select: {
-              report_id: true,
-              reason: true,
-              status: true,
-              created_at: true,
-              reporter: {
-                select: { user_id: true, username: true }
-              }
-            }
-          }
-        },
-        orderBy: { created_at: 'desc' }
-      })
-    ]);
-
-    const [totalPosts, totalComments] = await Promise.all([
-      prisma.post.count({
-        where: {
-          deleted_at: null,
-          reports: { some: { status: { in: ['pending', 'in_review'] } } }
-        }
-      }),
-      prisma.comment.count({
-        where: {
-          deleted_at: null,
-          reports: { some: { status: { in: ['pending', 'in_review'] } } }
-        }
-      })
-    ]);
-
-    return {
-      posts: reportedPosts,
-      comments: flaggedComments,
-      meta: {
-        totalPosts,
-        totalComments,
-        page,
-        lastPage: Math.ceil((totalPosts + totalComments) / limit),
-        limit
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching content for review:', error);
-    throw new AppError('Failed to fetch content for review', 500);
   }
 };
 
@@ -317,6 +348,7 @@ export const featurePost = async (postId: number, adminId: number) => {
       }
     });
 
+    console.log('✅ Post feature toggled:', postId, 'featured:', updatedPost.featured);
     return updatedPost;
   } catch (error) {
     if (error instanceof AppError) throw error;

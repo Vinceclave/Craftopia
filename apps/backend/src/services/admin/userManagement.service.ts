@@ -290,54 +290,54 @@ export const deleteUser = async (userId: number, adminId: number) => {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { user_id: userId }
+      where: { user_id: userId },
     });
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    // Soft delete user's content
+    // Soft delete all related content and mark user inactive
     await prisma.$transaction([
       // Soft delete posts
       prisma.post.updateMany({
         where: { user_id: userId },
-        data: { deleted_at: new Date() }
+        data: { deleted_at: new Date() },
       }),
       // Soft delete comments
       prisma.comment.updateMany({
         where: { user_id: userId },
-        data: { deleted_at: new Date() }
+        data: { deleted_at: new Date() },
       }),
       // Soft delete craft ideas
       prisma.craftIdea.updateMany({
         where: { generated_by_user_id: userId },
-        data: { deleted_at: new Date() }
+        data: { deleted_at: new Date() },
       }),
       // Soft delete user challenges
       prisma.userChallenge.updateMany({
         where: { user_id: userId },
-        data: { deleted_at: new Date() }
+        data: { deleted_at: new Date() },
       }),
-      // Deactivate user
+      // ✅ Soft delete the user and mark inactive
       prisma.user.update({
         where: { user_id: userId },
-        data: { 
-          is_active: false,
-          email: `deleted_${userId}_${user.email}` // Prevent email reuse
-        }
-      })
+        data: {
+          is_active: false,         // 👈 sets user inactive
+          deleted_at: new Date(),   // 👈 soft delete timestamp
+        },
+      }),
     ]);
 
-    // Log the action
+    // Log the action in moderation logs
     await prisma.moderationLog.create({
       data: {
         admin_id: adminId,
         action: 'ban_user',
         target_id: userId.toString(),
         target_user_id: userId,
-        reason: 'User account deleted by admin'
-      }
+        reason: 'User account deleted by admin',
+      },
     });
 
     return { message: 'User and associated content deleted successfully' };
@@ -347,6 +347,7 @@ export const deleteUser = async (userId: number, adminId: number) => {
     throw new AppError('Failed to delete user', 500);
   }
 };
+
 
 export const getUserStatistics = async (userId: number) => {
   if (!userId || userId <= 0) {

@@ -1,5 +1,7 @@
+// apps/web/src/hooks/usePosts.ts - COMPLETE FIXED VERSION
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moderationAPI} from '../lib/api';
+import { moderationAPI } from '../lib/api';
 import { useState } from 'react';
 
 export const usePosts = () => {
@@ -11,88 +13,126 @@ export const usePosts = () => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['content-review', page, limit],
     queryFn: async () => {
-      console.log('🔍 Fetching content for review, page:', page);
+      console.log('🔍 Frontend: Fetching content, page:', page, 'limit:', limit);
+      
       const response = await moderationAPI.getContentForReview(page, limit);
-      console.log('✅ Content response:', response);
-      return response;
+      
+      console.log('📦 Frontend: Raw API response:', response);
+      
+      // ✅ FIX: Extract data properly from nested response structure
+      // Handle both formats: { data: { posts, comments, meta } } and { success: true, data: {...} }
+      let posts, comments, meta;
+      
+      if (response.data) {
+        if (response.data.posts) {
+          // Format 1: { data: { posts, comments, meta } }
+          posts = response.data.posts;
+          comments = response.data.comments;
+          meta = response.data.meta;
+        } else if (Array.isArray(response.data)) {
+          // Format 2: { data: [...] } (unlikely but handle it)
+          posts = response.data;
+          comments = [];
+          meta = {};
+        }
+      } else {
+        // Format 3: Direct structure
+        posts = response.posts || [];
+        comments = response.comments || [];
+        meta = response.meta || {};
+      }
+      
+      console.log('✅ Frontend: Extracted data:', { 
+        postsCount: posts?.length || 0, 
+        commentsCount: comments?.length || 0,
+        meta 
+      });
+      
+      return { 
+        posts: posts || [], 
+        comments: comments || [], 
+        meta: meta || {} 
+      };
     },
     retry: 1,
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
   });
 
   const deletePostMutation = useMutation({
     mutationFn: async ({ postId, reason }: { postId: number; reason?: string }) => {
-      console.log('🗑️ Deleting post:', { postId, reason });
+      console.log('🗑️ Frontend: Deleting post:', { postId, reason });
       return await moderationAPI.deletePost(postId, reason);
     },
     onSuccess: (data) => {
-      console.log('✅ Post deleted:', data);
+      console.log('✅ Frontend: Post deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
     onError: (error: any) => {
-      console.error('❌ Delete post error:', error);
+      console.error('❌ Frontend: Delete post error:', error);
     }
   });
 
   const deleteCommentMutation = useMutation({
     mutationFn: async ({ commentId, reason }: { commentId: number; reason?: string }) => {
-      console.log('🗑️ Deleting comment:', { commentId, reason });
+      console.log('🗑️ Frontend: Deleting comment:', { commentId, reason });
       return await moderationAPI.deleteComment(commentId, reason);
     },
     onSuccess: (data) => {
-      console.log('✅ Comment deleted:', data);
+      console.log('✅ Frontend: Comment deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
     onError: (error: any) => {
-      console.error('❌ Delete comment error:', error);
+      console.error('❌ Frontend: Delete comment error:', error);
     }
   });
 
   const featurePostMutation = useMutation({
     mutationFn: async (postId: number) => {
-      console.log('⭐ Featuring post:', postId);
+      console.log('⭐ Frontend: Toggling post feature:', postId);
       return await moderationAPI.featurePost(postId);
     },
     onSuccess: (data) => {
-      console.log('✅ Post featured:', data);
+      console.log('✅ Frontend: Post feature status toggled');
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
     onError: (error: any) => {
-      console.error('❌ Feature post error:', error);
+      console.error('❌ Frontend: Feature post error:', error);
     }
   });
 
   const restorePostMutation = useMutation({
     mutationFn: async (postId: number) => {
-      console.log('♻️ Restoring post:', postId);
+      console.log('♻️ Frontend: Restoring post:', postId);
       return await moderationAPI.restorePost(postId);
     },
     onSuccess: (data) => {
-      console.log('✅ Post restored:', data);
+      console.log('✅ Frontend: Post restored successfully');
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
     onError: (error: any) => {
-      console.error('❌ Restore post error:', error);
+      console.error('❌ Frontend: Restore post error:', error);
     }
   });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async ({ postIds, reason }: { postIds: number[]; reason?: string }) => {
-      console.log('🗑️ Bulk deleting posts:', { postIds, reason });
+      console.log('🗑️ Frontend: Bulk deleting posts:', { count: postIds.length, reason });
       return await moderationAPI.bulkDeletePosts(postIds, reason);
     },
     onSuccess: (data) => {
-      console.log('✅ Posts bulk deleted:', data);
+      console.log('✅ Frontend: Posts bulk deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['content-review'] });
     },
     onError: (error: any) => {
-      console.error('❌ Bulk delete error:', error);
+      console.error('❌ Frontend: Bulk delete error:', error);
     }
   });
 
   return {
-    posts: data?.data?.posts || [],
-    comments: data?.data?.comments || [],
-    meta: data?.data?.meta,
+    posts: data?.posts || [],
+    comments: data?.comments || [],
+    meta: data?.meta || {},
     isLoading,
     error,
     page,

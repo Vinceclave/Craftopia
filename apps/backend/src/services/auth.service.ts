@@ -51,6 +51,11 @@ export const login = async (email: string, password: string) => {
     throw new AppError('Invalid email or password', 401);
   }
 
+  // 🚫 Block login if user is soft-deleted
+  if (user.deleted_at !== null) {
+    throw new AppError('This account has been deleted. Please contact support.', 403);
+  }
+
   const isValid = await comparePassword(password, user.password_hash);
   if (!isValid) {
     throw new AppError('Invalid email or password', 401);
@@ -61,7 +66,7 @@ export const login = async (email: string, password: string) => {
     throw new AppError('Please verify your email before logging in.', 403);
   }
 
-  // Create properly typed payload
+  // ✅ Create properly typed payload
   const tokenPayload: AccessTokenPayload = {
     userId: user.user_id,
     role: user.role || 'user'
@@ -71,12 +76,12 @@ export const login = async (email: string, password: string) => {
   const rawRefreshToken = crypto.randomBytes(64).toString('hex');
   await createRefreshToken(user.user_id, rawRefreshToken);
 
-  return { 
+  return {
     accessToken,
     refreshToken: rawRefreshToken,
-    user: { 
-      id: user.user_id, 
-      username: user.username, 
+    user: {
+      id: user.user_id,
+      username: user.username,
       email: user.email,
       role: user.role,
       isEmailVerified: user.is_email_verified

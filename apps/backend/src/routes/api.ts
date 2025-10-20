@@ -23,6 +23,9 @@ import aiMaterialRoutes from '../ai/routes/material.route'; // NEW
 
 const router = Router();
 
+// NEW: Admin Routes (protected with requireAdmin middleware)
+router.use('/admin', adminRoutes);
+
 // Public routes
 router.use('/auth', authRoutes);
 
@@ -43,8 +46,7 @@ router.use('/ai/craft', aiCraftRoutes);
 router.use('/ai/challenge', aiChallengeRoutes);
 router.use('/ai/image', aiImageRoutes);
 router.use('/ai/material', aiMaterialRoutes); // NEW: Material detection routes
-// NEW: Admin Routes (protected with requireAdmin middleware)
-router.use('/admin', adminRoutes);
+
 
 // Health check
 router.get('/health', async (req, res) => {
