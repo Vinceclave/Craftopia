@@ -1,4 +1,4 @@
-// apps/backend/src/services/admin/userManagement.service.ts
+// apps/backend/src/services/admin/userManagement.service.ts - FIXED VERSION
 
 import prisma from "../../config/prisma";
 import { AppError } from "../../utils/error";
@@ -31,7 +31,9 @@ export const getAllUsers = async (filters: UserFilter) => {
   if (limit < 1 || limit > 100) throw new AppError('Limit must be between 1 and 100', 400);
 
   const skip = (page - 1) * limit;
-  const where: any = {};
+  const where: any = {
+    deleted_at: null // Only show non-deleted users
+  };
 
   if (search) {
     where.OR = [
@@ -77,7 +79,6 @@ export const getAllUsers = async (filters: UserFilter) => {
       prisma.user.count({ where })
     ]);
 
-    // ✅ CORRECT: Return data directly, not nested
     return {
       data: users,
       meta: {
@@ -99,8 +100,12 @@ export const getUserDetails = async (userId: number) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
+    const user = await prisma.user.findFirst({
+      where: { 
+        user_id: userId,
+        deleted_at: null,
+        is_active: true // Only get non-deleted users
+      },
       include: {
         profile: true,
         _count: {
@@ -179,6 +184,7 @@ export const getUserDetails = async (userId: number) => {
   }
 };
 
+// ✅ FIX: Separate ban/unban from delete
 export const toggleUserStatus = async (userId: number, adminId: number) => {
   if (!userId || userId <= 0) {
     throw new AppError('Invalid user ID', 400);
@@ -189,22 +195,29 @@ export const toggleUserStatus = async (userId: number, adminId: number) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId }
+    const user = await prisma.user.findFirst({
+      where: { 
+        user_id: userId,
+        deleted_at: null // Only toggle status for non-deleted users
+      }
     });
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
+    const newStatus = !user.is_active;
+
+    // Update user status
     const updatedUser = await prisma.user.update({
       where: { user_id: userId },
-      data: { is_active: !user.is_active },
+      data: { is_active: newStatus },
       select: {
         user_id: true,
         username: true,
         email: true,
-        is_active: true
+        is_active: true,
+        role: true
       }
     });
 
@@ -212,10 +225,12 @@ export const toggleUserStatus = async (userId: number, adminId: number) => {
     await prisma.moderationLog.create({
       data: {
         admin_id: adminId,
-        action: user.is_active ? 'ban_user' : 'warn_user',
+        action: newStatus ? 'warn_user' : 'ban_user',
         target_id: userId.toString(),
         target_user_id: userId,
-        reason: user.is_active ? 'Account suspended by admin' : 'Account reactivated by admin'
+        reason: newStatus 
+          ? 'Account reactivated by admin' 
+          : 'Account suspended by admin'
       }
     });
 
@@ -241,8 +256,11 @@ export const updateUserRole = async (userId: number, newRole: UserRole, adminId:
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId }
+    const user = await prisma.user.findFirst({
+      where: { 
+        user_id: userId,
+        deleted_at: null
+      }
     });
 
     if (!user) {
@@ -279,6 +297,7 @@ export const updateUserRole = async (userId: number, newRole: UserRole, adminId:
   }
 };
 
+// ✅ FIX: Hard delete with proper cascade
 export const deleteUser = async (userId: number, adminId: number) => {
   if (!userId || userId <= 0) {
     throw new AppError('Invalid user ID', 400);
@@ -289,65 +308,93 @@ export const deleteUser = async (userId: number, adminId: number) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
-    });
-
-    if (!user) {
-      throw new AppError('User not found', 404);
-    }
-
-    // Soft delete all related content and mark user inactive
-    await prisma.$transaction([
-      // Soft delete posts
-      prisma.post.updateMany({
-        where: { user_id: userId },
-        data: { deleted_at: new Date() },
-      }),
-      // Soft delete comments
-      prisma.comment.updateMany({
-        where: { user_id: userId },
-        data: { deleted_at: new Date() },
-      }),
-      // Soft delete craft ideas
-      prisma.craftIdea.updateMany({
-        where: { generated_by_user_id: userId },
-        data: { deleted_at: new Date() },
-      }),
-      // Soft delete user challenges
-      prisma.userChallenge.updateMany({
-        where: { user_id: userId },
-        data: { deleted_at: new Date() },
-      }),
-      // ✅ Soft delete the user and mark inactive
-      prisma.user.update({
-        where: { user_id: userId },
-        data: {
-          is_active: false,         // 👈 sets user inactive
-          deleted_at: new Date(),   // 👈 soft delete timestamp
-        },
-      }),
-    ]);
-
-    // Log the action in moderation logs
-    await prisma.moderationLog.create({
-      data: {
-        admin_id: adminId,
-        action: 'ban_user',
-        target_id: userId.toString(),
-        target_user_id: userId,
-        reason: 'User account deleted by admin',
+    const user = await prisma.user.findFirst({
+      where: { 
+        user_id: userId,
+        deleted_at: null
       },
     });
 
-    return { message: 'User and associated content deleted successfully' };
+    if (!user) {
+      throw new AppError('User not found or already deleted', 404);
+    }
+
+    // Use transaction for cascade delete
+    await prisma.$transaction(async (tx) => {
+      // 1. Soft delete user's content (keep for records)
+      await tx.post.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      await tx.comment.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      await tx.craftIdea.updateMany({
+        where: { generated_by_user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      await tx.userChallenge.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      await tx.chatbotConversation.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      await tx.like.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      // 2. Hard delete refresh tokens (no longer needed)
+      await tx.refreshToken.deleteMany({
+        where: { user_id: userId }
+      });
+
+      // 3. Mark user profile as deleted
+      await tx.userProfile.updateMany({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
+      });
+
+      // 4. Finally, soft delete the user account
+      await tx.user.update({
+        where: { user_id: userId },
+        data: {
+          is_active: false,
+          deleted_at: new Date()
+        }
+      });
+
+      // 5. Log the action
+      await tx.moderationLog.create({
+        data: {
+          admin_id: adminId,
+          action: 'ban_user',
+          target_id: userId.toString(),
+          target_user_id: userId,
+          reason: 'User account permanently deleted by admin'
+        }
+      });
+    });
+
+    return { 
+      success: true,
+      message: 'User account and associated content deleted successfully',
+      userId 
+    };
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error('Error deleting user:', error);
     throw new AppError('Failed to delete user', 500);
   }
 };
-
 
 export const getUserStatistics = async (userId: number) => {
   if (!userId || userId <= 0) {
@@ -365,23 +412,51 @@ export const getUserStatistics = async (userId: number) => {
       reportsFiled,
       reportsReceived
     ] = await Promise.all([
-      prisma.post.count({ where: { user_id: userId, deleted_at: null } }),
-      prisma.comment.count({ where: { user_id: userId, deleted_at: null } }),
-      prisma.like.count({ where: { user_id: userId, deleted_at: null } }),
-      prisma.craftIdea.count({ where: { generated_by_user_id: userId, deleted_at: null } }),
+      prisma.post.count({ 
+        where: { user_id: userId, deleted_at: null } 
+      }),
+      prisma.comment.count({ 
+        where: { user_id: userId, deleted_at: null } 
+      }),
+      prisma.like.count({ 
+        where: { user_id: userId, deleted_at: null } 
+      }),
+      prisma.craftIdea.count({ 
+        where: { generated_by_user_id: userId, deleted_at: null } 
+      }),
       prisma.userChallenge.count({ 
-        where: { user_id: userId, status: 'completed', deleted_at: null } 
+        where: { 
+          user_id: userId, 
+          status: 'completed', 
+          deleted_at: null 
+        } 
       }),
       prisma.userChallenge.aggregate({
-        where: { user_id: userId, status: 'completed' },
+        where: { 
+          user_id: userId, 
+          status: 'completed',
+          deleted_at: null 
+        },
         _sum: { points_awarded: true }
       }),
-      prisma.report.count({ where: { reporter_id: userId } }),
+      prisma.report.count({ 
+        where: { reporter_id: userId } 
+      }),
       prisma.report.count({
         where: {
           OR: [
-            { reported_post: { user_id: userId } },
-            { reported_comment: { user_id: userId } }
+            { 
+              reported_post: { 
+                user_id: userId,
+                deleted_at: null 
+              } 
+            },
+            { 
+              reported_comment: { 
+                user_id: userId,
+                deleted_at: null 
+              } 
+            }
           ]
         }
       })

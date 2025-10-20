@@ -1,3 +1,5 @@
+// apps/web/src/hooks/useUsers.ts - FIXED VERSION
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userAPI, User, ApiResponse, PaginatedResponse } from '../lib/api';
 import { useState } from 'react';
@@ -34,33 +36,37 @@ export const useUsers = () => {
       const response = await userAPI.getAll(params);
       console.log('📦 Full response:', response);
       
-      // ✅ FIX: Handle different response structures
-      // Backend might return: { success: true, data: [...], meta: {...} }
-      // OR: { success: true, data: { data: [...], meta: {...} } }
-      
+      // ✅ FIX: Handle nested response structure
       let users, meta;
       
-      if (response.data && Array.isArray(response.data)) {
-        // Format 1: { success: true, data: [...], meta: {...} }
-        users = response.data;
-        meta = response.meta;
-      } else if (response.data && response.data.data) {
-        // Format 2: { success: true, data: { data: [...], meta: {...} } }
-        users = response.data.data;
-        meta = response.data.meta;
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          // Format 1: { success: true, data: [...], meta: {...} }
+          users = response.data;
+          meta = response.meta;
+        } else if (response.data.data) {
+          // Format 2: { success: true, data: { data: [...], meta: {...} } }
+          users = response.data.data;
+          meta = response.data.meta;
+        } else {
+          console.error('❌ Unexpected response format:', response);
+          throw new Error('Invalid response format from server');
+        }
       } else {
-        console.error('❌ Unexpected response format:', response);
-        throw new Error('Invalid response format from server');
+        console.error('❌ No data in response:', response);
+        throw new Error('No data received from server');
       }
       
-      console.log('✅ Extracted users:', users.length, 'items');
+      console.log('✅ Extracted users:', users?.length || 0, 'items');
       console.log('✅ Pagination meta:', meta);
       
-      return { data: users, meta };
+      return { data: users || [], meta: meta || {} };
     },
     retry: 1,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
+  // ✅ Toggle user ban status (not delete)
   const toggleStatusMutation = useMutation({
     mutationFn: async (userId: number) => {
       console.log('🔄 Toggling user status:', userId);
@@ -75,6 +81,7 @@ export const useUsers = () => {
     }
   });
 
+  // ✅ Update user role
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
       console.log('🔄 Updating user role:', { userId, role });
@@ -89,13 +96,14 @@ export const useUsers = () => {
     }
   });
 
+  // ✅ Permanent delete user
   const deleteMutation = useMutation({
     mutationFn: async (userId: number) => {
-      console.log('🗑️ Deleting user:', userId);
+      console.log('🗑️ Permanently deleting user:', userId);
       return await userAPI.delete(userId);
     },
     onSuccess: (data) => {
-      console.log('✅ User deleted:', data);
+      console.log('✅ User permanently deleted:', data);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error: any) => {
@@ -111,9 +119,13 @@ export const useUsers = () => {
     params,
     setParams,
     refetch,
+    
+    // Actions
     toggleStatus: toggleStatusMutation.mutateAsync,
     updateRole: updateRoleMutation.mutateAsync,
     deleteUser: deleteMutation.mutateAsync,
+    
+    // Loading states
     isToggling: toggleStatusMutation.isPending,
     isUpdating: updateRoleMutation.isPending,
     isDeleting: deleteMutation.isPending,
