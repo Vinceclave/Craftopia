@@ -1,358 +1,352 @@
-// apps/backend/src/services/admin/contentModeration.service.ts - COMPLETE FIXED VERSION
+// apps/backend/src/services/admin/contentModeration.service.ts - COMPLETE CORRECTED VERSION
 
 import prisma from "../../config/prisma";
-import { AppError } from "../../utils/error";
+import { BaseService } from "../base.service";
+import { AppError, ValidationError } from "../../utils/error";
 import { ModerationAction } from "../../generated/prisma";
+import { logger } from "../../utils/logger";
 
-// ✅ FIX: Get ALL posts for moderation (not just reported ones)
-export const getContentForReview = async (page: number = 1, limit: number = 20) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 20;
+// Interface for type safety
+interface PostIdentifier {
+  post_id: number;
+  user_id: number;
+}
 
-  const skip = (page - 1) * limit;
+class ContentModerationService extends BaseService {
+  async getContentForReview(page: number = 1, limit: number = 20) {
+    if (page < 1) page = 1;
+    if (limit < 1 || limit > 100) limit = 20;
 
-  try {
-    console.log('📊 Fetching content for review - page:', page, 'limit:', limit);
+    const skip = (page - 1) * limit;
 
-    // Get ALL posts with their engagement data
-    const [posts, comments, totalPosts, totalComments] = await Promise.all([
-      // Get all posts (not just reported ones)
-      prisma.post.findMany({
-        where: {
-          deleted_at: null, // Only non-deleted posts
-        },
-        skip,
-        take: limit,
-        include: {
-          user: {
-            select: { 
-              user_id: true, 
-              username: true 
-            }
-          },
-          reports: {
-            where: { 
-              status: { in: ['pending', 'in_review'] } 
+    logger.debug('Fetching content for review', { page, limit });
+
+    try {
+      const [posts, comments, totalPosts, totalComments] = await Promise.all([
+        prisma.post.findMany({
+          where: { deleted_at: null },
+          skip,
+          take: limit,
+          include: {
+            user: {
+              select: { user_id: true, username: true }
             },
-            select: {
-              report_id: true,
-              reason: true,
-              status: true,
-              created_at: true,
-              reporter: {
-                select: { 
-                  user_id: true, 
-                  username: true 
+            reports: {
+              where: { status: { in: ['pending', 'in_review'] } },
+              select: {
+                report_id: true,
+                reason: true,
+                status: true,
+                created_at: true,
+                reporter: {
+                  select: { user_id: true, username: true }
                 }
+              }
+            },
+            _count: {
+              select: {
+                reports: true,
+                likes: { where: { deleted_at: null } },
+                comments: { where: { deleted_at: null } }
               }
             }
           },
-          _count: {
-            select: {
-              reports: true,
-              likes: { where: { deleted_at: null } },
-              comments: { where: { deleted_at: null } }
-            }
-          }
-        },
-        orderBy: [
-          { created_at: 'desc' } // Newest first
-        ]
-      }),
-      
-      // Get all comments
-      prisma.comment.findMany({
-        where: {
-          deleted_at: null,
-        },
-        skip,
-        take: limit,
-        include: {
-          user: {
-            select: { 
-              user_id: true, 
-              username: true 
-            }
-          },
-          post: {
-            select: { 
-              post_id: true, 
-              title: true 
-            }
-          },
-          reports: {
-            where: { 
-              status: { in: ['pending', 'in_review'] } 
+          orderBy: { created_at: 'desc' }
+        }),
+        prisma.comment.findMany({
+          where: { deleted_at: null },
+          skip,
+          take: limit,
+          include: {
+            user: {
+              select: { user_id: true, username: true }
             },
-            select: {
-              report_id: true,
-              reason: true,
-              status: true,
-              created_at: true,
-              reporter: {
-                select: { 
-                  user_id: true, 
-                  username: true 
+            post: {
+              select: { post_id: true, title: true }
+            },
+            reports: {
+              where: { status: { in: ['pending', 'in_review'] } },
+              select: {
+                report_id: true,
+                reason: true,
+                status: true,
+                created_at: true,
+                reporter: {
+                  select: { user_id: true, username: true }
                 }
               }
+            },
+            _count: {
+              select: { reports: true }
             }
           },
-          _count: {
-            select: {
-              reports: true
-            }
-          }
-        },
-        orderBy: { 
-          created_at: 'desc' 
+          orderBy: { created_at: 'desc' }
+        }),
+        prisma.post.count({ where: { deleted_at: null } }),
+        prisma.comment.count({ where: { deleted_at: null } })
+      ]);
+
+      logger.info('Content for review fetched successfully', {
+        postsCount: posts.length,
+        commentsCount: comments.length
+      });
+
+      return {
+        posts,
+        comments,
+        meta: {
+          totalPosts,
+          totalComments,
+          page,
+          lastPage: Math.ceil(totalPosts / limit),
+          limit
         }
-      }),
-      
-      // Count total posts
-      prisma.post.count({
-        where: { deleted_at: null }
-      }),
-      
-      // Count total comments
-      prisma.comment.count({
-        where: { deleted_at: null }
-      })
-    ]);
-
-    console.log('✅ Content fetched:', {
-      postsCount: posts.length,
-      commentsCount: comments.length,
-      totalPosts,
-      totalComments
-    });
-
-    return {
-      posts,
-      comments,
-      meta: {
-        totalPosts,
-        totalComments,
-        page,
-        lastPage: Math.ceil(totalPosts / limit),
-        limit
-      }
-    };
-  } catch (error) {
-    console.error('❌ Error fetching content for review:', error);
-    throw new AppError('Failed to fetch content for review', 500);
-  }
-};
-
-export const deletePost = async (postId: number, adminId: number, reason?: string) => {
-  if (!postId || postId <= 0) {
-    throw new AppError('Invalid post ID', 400);
+      };
+    } catch (error) {
+      logger.error('Error fetching content for review', error);
+      throw new AppError('Failed to fetch content for review', 500);
+    }
   }
 
-  try {
-    const post = await prisma.post.findFirst({
-      where: { post_id: postId, deleted_at: null }
-    });
+  async deletePost(postId: number, adminId: number, reason?: string) {
+    this.validateId(postId, 'Post ID');
+    this.validateId(adminId, 'Admin ID');
 
-    if (!post) {
-      throw new AppError('Post not found', 404);
+    logger.info('Deleting post', { postId, adminId });
+
+    try {
+      return await this.executeTransaction(async (tx) => {
+        const post = await tx.post.findFirst({
+          where: { post_id: postId, deleted_at: null }
+        });
+
+        if (!post) {
+          throw new AppError('Post not found', 404);
+        }
+
+        const deletedPost = await tx.post.update({
+          where: { post_id: postId },
+          data: { deleted_at: new Date() }
+        });
+
+        await tx.moderationLog.create({
+          data: {
+            admin_id: adminId,
+            action: ModerationAction.delete_post,
+            target_id: postId.toString(),
+            target_user_id: post.user_id,
+            reason: reason?.trim() || 'Post removed by moderator'
+          }
+        });
+
+        logger.info('Post deleted successfully', { postId });
+
+        return deletedPost;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error deleting post', error);
+      throw new AppError('Failed to delete post', 500);
+    }
+  }
+
+  async deleteComment(commentId: number, adminId: number, reason?: string) {
+    this.validateId(commentId, 'Comment ID');
+    this.validateId(adminId, 'Admin ID');
+
+    logger.info('Deleting comment', { commentId, adminId });
+
+    try {
+      return await this.executeTransaction(async (tx) => {
+        const comment = await tx.comment.findFirst({
+          where: { comment_id: commentId, deleted_at: null }
+        });
+
+        if (!comment) {
+          throw new AppError('Comment not found', 404);
+        }
+
+        const deletedComment = await tx.comment.update({
+          where: { comment_id: commentId },
+          data: { deleted_at: new Date() }
+        });
+
+        await tx.moderationLog.create({
+          data: {
+            admin_id: adminId,
+            action: ModerationAction.delete_comment,
+            target_id: commentId.toString(),
+            target_user_id: comment.user_id,
+            reason: reason?.trim() || 'Comment removed by moderator'
+          }
+        });
+
+        logger.info('Comment deleted successfully', { commentId });
+
+        return deletedComment;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error deleting comment', error);
+      throw new AppError('Failed to delete comment', 500);
+    }
+  }
+
+  async bulkDeletePosts(postIds: number[], adminId: number, reason?: string) {
+    if (!Array.isArray(postIds) || postIds.length === 0) {
+      throw new ValidationError('Post IDs array is required');
     }
 
-    // Soft delete the post
-    const deletedPost = await prisma.post.update({
-      where: { post_id: postId },
-      data: { deleted_at: new Date() }
-    });
-
-    // Log moderation action
-    await prisma.moderationLog.create({
-      data: {
-        admin_id: adminId,
-        action: ModerationAction.delete_post,
-        target_id: postId.toString(),
-        target_user_id: post.user_id,
-        reason: reason || 'Post removed by moderator'
-      }
-    });
-
-    console.log('✅ Post deleted:', postId);
-    return deletedPost;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error('Error deleting post:', error);
-    throw new AppError('Failed to delete post', 500);
-  }
-};
-
-export const deleteComment = async (commentId: number, adminId: number, reason?: string) => {
-  if (!commentId || commentId <= 0) {
-    throw new AppError('Invalid comment ID', 400);
-  }
-
-  try {
-    const comment = await prisma.comment.findFirst({
-      where: { comment_id: commentId, deleted_at: null }
-    });
-
-    if (!comment) {
-      throw new AppError('Comment not found', 404);
+    if (postIds.length > 100) {
+      throw new ValidationError('Cannot delete more than 100 posts at once');
     }
 
-    // Soft delete the comment
-    const deletedComment = await prisma.comment.update({
-      where: { comment_id: commentId },
-      data: { deleted_at: new Date() }
-    });
+    this.validateId(adminId, 'Admin ID');
 
-    // Log moderation action
-    await prisma.moderationLog.create({
-      data: {
-        admin_id: adminId,
-        action: ModerationAction.delete_comment,
-        target_id: commentId.toString(),
-        target_user_id: comment.user_id,
-        reason: reason || 'Comment removed by moderator'
-      }
-    });
+    logger.info('Bulk deleting posts', { count: postIds.length, adminId });
 
-    console.log('✅ Comment deleted:', commentId);
-    return deletedComment;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error('Error deleting comment:', error);
-    throw new AppError('Failed to delete comment', 500);
-  }
-};
+    try {
+      return await this.executeTransaction(async (tx) => {
+        const posts: PostIdentifier[] = await tx.post.findMany({
+          where: {
+            post_id: { in: postIds },
+            deleted_at: null
+          },
+          select: { post_id: true, user_id: true }
+        });
 
-export const bulkDeletePosts = async (postIds: number[], adminId: number, reason?: string) => {
-  if (!Array.isArray(postIds) || postIds.length === 0) {
-    throw new AppError('Post IDs array is required', 400);
-  }
+        if (posts.length === 0) {
+          throw new AppError('No valid posts found', 404);
+        }
 
-  if (postIds.length > 100) {
-    throw new AppError('Cannot delete more than 100 posts at once', 400);
-  }
+        await tx.post.updateMany({
+          where: { post_id: { in: posts.map(p => p.post_id) } },
+          data: { deleted_at: new Date() }
+        });
 
-  try {
-    const posts = await prisma.post.findMany({
-      where: {
-        post_id: { in: postIds },
-        deleted_at: null
-      },
-      select: { post_id: true, user_id: true }
-    });
+        await tx.moderationLog.createMany({
+          data: posts.map(post => ({
+            admin_id: adminId,
+            action: ModerationAction.delete_post,
+            target_id: post.post_id.toString(),
+            target_user_id: post.user_id,
+            reason: reason?.trim() || 'Bulk post deletion by moderator'
+          }))
+        });
 
-    if (posts.length === 0) {
-      throw new AppError('No valid posts found', 404);
+        logger.info('Posts bulk deleted successfully', { count: posts.length });
+
+        return {
+          deletedCount: posts.length,
+          message: `Successfully deleted ${posts.length} posts`
+        };
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error bulk deleting posts', error);
+      throw new AppError('Failed to bulk delete posts', 500);
     }
-
-    // Soft delete posts
-    await prisma.post.updateMany({
-      where: { post_id: { in: posts.map(p => p.post_id) } },
-      data: { deleted_at: new Date() }
-    });
-
-    // Log moderation actions
-    await prisma.moderationLog.createMany({
-      data: posts.map(post => ({
-        admin_id: adminId,
-        action: ModerationAction.delete_post,
-        target_id: post.post_id.toString(),
-        target_user_id: post.user_id,
-        reason: reason || 'Bulk post deletion by moderator'
-      }))
-    });
-
-    console.log('✅ Bulk deleted posts:', posts.length);
-
-    return {
-      deletedCount: posts.length,
-      message: `Successfully deleted ${posts.length} posts`
-    };
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error('Error bulk deleting posts:', error);
-    throw new AppError('Failed to bulk delete posts', 500);
-  }
-};
-
-export const restorePost = async (postId: number, adminId: number) => {
-  if (!postId || postId <= 0) {
-    throw new AppError('Invalid post ID', 400);
   }
 
-  try {
-    const post = await prisma.post.findUnique({
-      where: { post_id: postId }
-    });
+  async restorePost(postId: number, adminId: number) {
+    this.validateId(postId, 'Post ID');
+    this.validateId(adminId, 'Admin ID');
 
-    if (!post) {
-      throw new AppError('Post not found', 404);
+    logger.info('Restoring post', { postId, adminId });
+
+    try {
+      return await this.executeTransaction(async (tx) => {
+        const post = await tx.post.findUnique({
+          where: { post_id: postId }
+        });
+
+        if (!post) {
+          throw new AppError('Post not found', 404);
+        }
+
+        if (!post.deleted_at) {
+          throw new ValidationError('Post is not deleted');
+        }
+
+        const restoredPost = await tx.post.update({
+          where: { post_id: postId },
+          data: { deleted_at: null }
+        });
+
+        await tx.moderationLog.create({
+          data: {
+            admin_id: adminId,
+            action: ModerationAction.warn_user,
+            target_id: postId.toString(),
+            target_user_id: post.user_id,
+            reason: 'Post restored by moderator'
+          }
+        });
+
+        logger.info('Post restored successfully', { postId });
+
+        return restoredPost;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error restoring post', error);
+      throw new AppError('Failed to restore post', 500);
     }
+  }
 
-    if (!post.deleted_at) {
-      throw new AppError('Post is not deleted', 400);
+  async featurePost(postId: number, adminId: number) {
+    this.validateId(postId, 'Post ID');
+    this.validateId(adminId, 'Admin ID');
+
+    logger.info('Toggling post feature status', { postId, adminId });
+
+    try {
+      return await this.executeTransaction(async (tx) => {
+        const post = await tx.post.findFirst({
+          where: { post_id: postId, deleted_at: null }
+        });
+
+        if (!post) {
+          throw new AppError('Post not found', 404);
+        }
+
+        const updatedPost = await tx.post.update({
+          where: { post_id: postId },
+          data: { featured: !post.featured }
+        });
+
+        await tx.moderationLog.create({
+          data: {
+            admin_id: adminId,
+            action: ModerationAction.warn_user,
+            target_id: postId.toString(),
+            target_user_id: post.user_id,
+            reason: post.featured ? 'Post unfeatured' : 'Post featured'
+          }
+        });
+
+        logger.info('Post feature status toggled', { 
+          postId, 
+          featured: updatedPost.featured 
+        });
+
+        return updatedPost;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error featuring post', error);
+      throw new AppError('Failed to feature post', 500);
     }
-
-    const restoredPost = await prisma.post.update({
-      where: { post_id: postId },
-      data: { deleted_at: null }
-    });
-
-    // Log moderation action
-    await prisma.moderationLog.create({
-      data: {
-        admin_id: adminId,
-        action: ModerationAction.warn_user,
-        target_id: postId.toString(),
-        target_user_id: post.user_id,
-        reason: 'Post restored by moderator'
-      }
-    });
-
-    console.log('✅ Post restored:', postId);
-    return restoredPost;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error('Error restoring post:', error);
-    throw new AppError('Failed to restore post', 500);
   }
-};
+}
 
-export const featurePost = async (postId: number, adminId: number) => {
-  if (!postId || postId <= 0) {
-    throw new AppError('Invalid post ID', 400);
-  }
+// Export singleton instance
+export const contentModerationService = new ContentModerationService();
 
-  try {
-    const post = await prisma.post.findFirst({
-      where: { post_id: postId, deleted_at: null }
-    });
-
-    if (!post) {
-      throw new AppError('Post not found', 404);
-    }
-
-    const updatedPost = await prisma.post.update({
-      where: { post_id: postId },
-      data: { featured: !post.featured }
-    });
-
-    // Log moderation action
-    await prisma.moderationLog.create({
-      data: {
-        admin_id: adminId,
-        action: ModerationAction.warn_user,
-        target_id: postId.toString(),
-        target_user_id: post.user_id,
-        reason: post.featured ? 'Post unfeatured' : 'Post featured'
-      }
-    });
-
-    console.log('✅ Post feature toggled:', postId, 'featured:', updatedPost.featured);
-    return updatedPost;
-  } catch (error) {
-    if (error instanceof AppError) throw error;
-    console.error('Error featuring post:', error);
-    throw new AppError('Failed to feature post', 500);
-  }
-};
+// Export individual functions for backward compatibility
+export const getContentForReview = contentModerationService.getContentForReview.bind(contentModerationService);
+export const deletePost = contentModerationService.deletePost.bind(contentModerationService);
+export const deleteComment = contentModerationService.deleteComment.bind(contentModerationService);
+export const bulkDeletePosts = contentModerationService.bulkDeletePosts.bind(contentModerationService);
+export const restorePost = contentModerationService.restorePost.bind(contentModerationService);
+export const featurePost = contentModerationService.featurePost.bind(contentModerationService);
