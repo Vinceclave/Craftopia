@@ -1,4 +1,3 @@
-// apps/mobile/src/navigations/MainNavigatorContent.tsx
 import React from 'react';
 import { View, StatusBar, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,8 +9,11 @@ export default function MainNavigatorContent() {
 
   return (
     <View
-      className="flex-1 bg-transparent"
-      style={{ marginBottom: Platform.OS === 'android' ? insets.bottom : 0 }}
+      style={{
+        flex: 1,
+        backgroundColor: 'transparent',
+        marginBottom: Platform.OS === 'android' ? insets.bottom : 0
+      }}
     >
       <StatusBar
         barStyle="dark-content"

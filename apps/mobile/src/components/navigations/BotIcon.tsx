@@ -1,25 +1,48 @@
-// apps/mobile/src/navigations/BotIcon.tsx
 import React from 'react';
 import { View } from 'react-native';
 
-export default function BotIcon() {
+interface BotIconProps {
+  size?: number;
+}
+
+export default function BotIcon({ size = 32 }: BotIconProps) {
+  const scale = size / 32;
+  
   return (
-    <View className="w-8 h-8 items-center justify-center">
+    <View style={{ 
+      width: size, 
+      height: size, 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      transform: [{ scale }]
+    }}>
       {/* Bot head */}
-      <View className="w-6 h-5 bg-white rounded-lg mb-0.5">
+      <View style={{ 
+        width: 24, 
+        height: 20, 
+        backgroundColor: 'white', 
+        borderRadius: 8, 
+        marginBottom: 2 
+      }}>
         {/* Eyes */}
-        <View className="flex-row justify-around items-center flex-1 px-1">
-          <View className="w-1 h-1 bg-craftopia-primary rounded-full" />
-          <View className="w-1 h-1 bg-craftopia-primary rounded-full" />
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-around', 
+          alignItems: 'center', 
+          flex: 1, 
+          paddingHorizontal: 4 
+        }}>
+          <View style={{ width: 4, height: 4, backgroundColor: '#004E98', borderRadius: 2 }} />
+          <View style={{ width: 4, height: 4, backgroundColor: '#004E98', borderRadius: 2 }} />
         </View>
       </View>
       
       {/* Bot body */}
-      <View className="w-5 h-2 bg-white rounded" />
+      <View style={{ width: 20, height: 8, backgroundColor: 'white', borderRadius: 4 }} />
       
       {/* Antenna */}
-      <View className="absolute -top-0.5 left-3.5 w-0.5 h-1.5 bg-white">
-        <View className="absolute -top-0.5 -left-0.5 w-1 h-1 bg-white rounded-full" />
+      <View style={{ position: 'absolute', top: -2, left: 14, width: 2, height: 6, backgroundColor: 'white' }}>
+        <View style={{ position: 'absolute', top: -2, left: -2, width: 4, height: 4, backgroundColor: 'white', borderRadius: 2 }} />
       </View>
     </View>
   );
