@@ -1,10 +1,10 @@
 import Joi from 'joi';
 import { ModerationAction } from '../generated/prisma';
+import { commonSchemas } from '../utils/validation';
 
 export const createModerationLogSchema = Joi.object({
-  adminId: Joi.number().positive().required(),
-  action: Joi.string().valid(...Object.values(ModerationAction)).required(),
-  targetId: Joi.string().required(),
-  targetUserId: Joi.number().positive().optional(),
-  reason: Joi.string().max(500).optional()
+  action: commonSchemas.enum(Object.values(ModerationAction)),
+  targetId: commonSchemas.requiredString(1, 255),
+  targetUserId: commonSchemas.optionalPositiveId,
+  reason: commonSchemas.optionalString(500)
 });

@@ -1,18 +1,54 @@
-import { Router } from 'express';
 import * as userController from '../controllers/user.controller';
-import { requireAuth } from '../middlewares/rolebase.middleware';
+import { updateProfileSchema, deleteAccountSchema, updateEmailSchema } from '../schemas/user.schema';
+import { Router } from 'express';
 import { validate } from '../utils/validation';
-import { updateProfileSchema } from '../schemas/user.schema';
+import { requireAuth } from '../middlewares/rolebase.middleware';
 
-const router = Router();
+const userRouter = Router();
 
-// Profile routes
-router.get('/profile', requireAuth, userController.getProfile);
-router.put('/profile', requireAuth, validate(updateProfileSchema), userController.updateProfile);
-router.get('/stats', requireAuth, userController.getUserStats);
+// Profile routes (authenticated users only)
+userRouter.get(
+  '/profile', 
+  requireAuth, 
+  userController.getProfile
+);
+
+userRouter.put(
+  '/profile', 
+  requireAuth, 
+  validate(updateProfileSchema), 
+  userController.updateProfile
+);
+
+userRouter.get(
+  '/stats', 
+  requireAuth, 
+  userController.getUserStats
+);
+
+userRouter.delete(
+  '/account',
+  requireAuth,
+  validate(deleteAccountSchema),
+  userController.deleteAccount
+);
+
+userRouter.put(
+  '/email',
+  requireAuth,
+  validate(updateEmailSchema),
+  userController.updateEmail
+);
 
 // Public routes
-router.get('/leaderboard', userController.getLeaderboard);
-router.get('/:userId', userController.getUserById);
+userRouter.get(
+  '/leaderboard', 
+  userController.getLeaderboard
+);
 
-export default router;
+userRouter.get(
+  '/:userId', 
+  userController.getUserById
+);
+
+export default userRouter;

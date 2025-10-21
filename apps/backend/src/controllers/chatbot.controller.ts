@@ -1,89 +1,54 @@
-import { Request, Response } from "express";
-import { asyncHandler } from "../utils/asyncHandler";
-import { 
-  createChatConversation, 
-  createChatMessage, 
-  getConversationWithMessages 
-} from "../services/chatbot.service";
-import { 
-  chatAiResponse, 
-  getConversationContext 
-} from "../ai/services/chatbot.service";
-import { sendSuccess } from "../utils/response";
-import { AuthRequest } from "../middlewares/auth.middleware";
+import * as chatbotService from "../services/chatbot.service";
+import { chatAiResponse, getConversationContext } from "../ai/services/chatbot.service";
 import prisma from "../config/prisma";
+import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
+import { AuthRequest } from '../middlewares/auth.middleware';
+import { asyncHandler } from '../utils/asyncHandler';
+import { Request, Response } from "express";
 
-// ⭐ MAIN ENDPOINT: Chat with AI (with conversation history)
 export const handleChatWithAI = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { message } = req.body;
   const userId = req.user!.userId;
 
-  // Validation
-  if (!message || !message.trim()) {
-    return res.status(400).json({
-      success: false,
-      message: "Message content is required"
-    });
-  }
-
-  if (message.length > 2000) {
-    return res.status(400).json({
-      success: false,
-      message: "Message too long (max 2000 characters)"
-    });
-  }
-
-  console.log(`💬 User ${userId} sent message: "${message.substring(0, 50)}..."`);
-
-  // 1. Get or create conversation for this user
+  // Get or create conversation
   let conversation = await prisma.chatbotConversation.findUnique({
     where: { user_id: userId }
   });
 
   if (!conversation) {
-    console.log("📝 Creating new conversation...");
-    conversation = await createChatConversation({ user_id: userId });
+    conversation = await chatbotService.createChatConversation({ user_id: userId });
   }
 
-  // 2. Get conversation history for context (last 10 messages)
+  // Get conversation history
   const conversationHistory = await getConversationContext(
-    conversation.conversation_id, 
+    conversation.conversation_id,
     10
   );
 
-  console.log(`📚 Retrieved ${conversationHistory.length} previous messages`);
-
-  // 3. Save user's message to database
-  const userMessage = await createChatMessage({
+  // Save user message
+  const userMessage = await chatbotService.createChatMessage({
     conversation_id: conversation.conversation_id,
     sender: "user",
     content: message.trim()
   });
 
-  console.log(`✅ User message saved (ID: ${userMessage.message_id})`);
-
-  // 4. Generate AI response with conversation context
+  // Generate AI response
   const aiResponseText = await chatAiResponse(message, conversationHistory);
 
-  console.log(`🤖 AI response: "${aiResponseText.substring(0, 100)}..."`);
-
-  // 5. Save AI's response to database
-  const aiMessage = await createChatMessage({
+  // Save AI message
+  const aiMessage = await chatbotService.createChatMessage({
     conversation_id: conversation.conversation_id,
     sender: "ai",
     content: aiResponseText
   });
 
-  console.log(`✅ AI message saved (ID: ${aiMessage.message_id})`);
-
-  // 6. Update conversation timestamp
+  // Update conversation timestamp
   await prisma.chatbotConversation.update({
     where: { conversation_id: conversation.conversation_id },
     data: { updated_at: new Date() }
   });
 
-  // 7. Return both messages
-  return sendSuccess(res, {
+  sendSuccess(res, {
     conversation_id: conversation.conversation_id,
     userMessage: {
       message_id: userMessage.message_id,
@@ -101,11 +66,8 @@ export const handleChatWithAI = asyncHandler(async (req: AuthRequest, res: Respo
   }, "Chat completed successfully");
 });
 
-// Get full conversation history
 export const handleGetConversation = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
-
-  console.log(`📖 Fetching conversation for user ${userId}`);
 
   const conversation = await prisma.chatbotConversation.findUnique({
     where: { user_id: userId },
@@ -131,7 +93,7 @@ export const handleGetConversation = asyncHandler(async (req: AuthRequest, res: 
     }, "No conversation found");
   }
 
-  return sendSuccess(res, {
+  sendSuccess(res, {
     conversation_id: conversation.conversation_id,
     user_id: conversation.user_id,
     created_at: conversation.created_at,
@@ -141,45 +103,23 @@ export const handleGetConversation = asyncHandler(async (req: AuthRequest, res: 
   }, "Conversation loaded successfully");
 });
 
-// Clear conversation history
 export const handleClearConversation = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
-
-  console.log(`🗑️ Clearing conversation for user ${userId}`);
 
   const conversation = await prisma.chatbotConversation.findUnique({
     where: { user_id: userId }
   });
 
   if (!conversation) {
-    return res.status(404).json({
-      success: false,
-      message: "No conversation found"
-    });
+    return sendSuccess(res, null, "No conversation found", 404);
   }
 
-  // Delete all messages in this conversation
   await prisma.chatbotMessage.deleteMany({
     where: { conversation_id: conversation.conversation_id }
   });
 
-  console.log(`✅ Conversation cleared for user ${userId}`);
-
-  return sendSuccess(res, {
+  sendSuccess(res, {
     conversation_id: conversation.conversation_id,
     messages_deleted: true
   }, "Conversation cleared successfully");
-});
-
-// Legacy endpoints (keep for backward compatibility)
-export const handleCreateConversation = asyncHandler(async (req: Request, res: Response) => {
-  const { user_id } = req.body;
-  const conversation = await createChatConversation({ user_id });
-  return sendSuccess(res, conversation, "Conversation ready");
-});
-
-export const handleCreateMessage = asyncHandler(async (req: Request, res: Response) => {
-  const { conversation_id, sender, content } = req.body;
-  const message = await createChatMessage({ conversation_id, sender, content });
-  return sendSuccess(res, message, "Message created successfully");
 });

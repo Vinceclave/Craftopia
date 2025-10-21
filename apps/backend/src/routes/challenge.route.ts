@@ -2,13 +2,49 @@ import { Router } from "express";
 import * as challengeController from "../controllers/challenge.controller";
 import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
 import { validate } from "../utils/validation";
-import { createChallengeSchema, generateChallengeSchema } from "../schemas/challenge.schema";
+import { createChallengeSchema, updateChallengeSchema, generateChallengeSchema } from "../schemas/challenge.schema";
 
 const router = Router();
 
-router.post('/', requireAdmin, validate(createChallengeSchema), challengeController.createChallenge);
-router.post('/generate', requireAdmin, validate(generateChallengeSchema), challengeController.generateChallenge);
-router.get('/', requireAuth, challengeController.getAllChallenges);
-router.get('/:challengeId', requireAuth, challengeController.getChallengeById);
+// Admin routes
+router.post(
+  '/',
+  requireAdmin,
+  validate(createChallengeSchema),
+  challengeController.createChallenge
+);
+
+router.post(
+  '/generate',
+  requireAdmin,
+  validate(generateChallengeSchema),
+  challengeController.generateChallenge
+);
+
+router.put(
+  '/:challengeId',
+  requireAdmin,
+  validate(updateChallengeSchema),
+  challengeController.updateChallenge
+);
+
+router.delete(
+  '/:challengeId',
+  requireAdmin,
+  challengeController.deleteChallenge
+);
+
+// Public/User routes
+router.get(
+  '/',
+  requireAuth,
+  challengeController.getAllChallenges
+);
+
+router.get(
+  '/:challengeId',
+  requireAuth,
+  challengeController.getChallengeById
+);
 
 export default router;

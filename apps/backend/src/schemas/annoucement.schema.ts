@@ -1,17 +1,25 @@
 import Joi from 'joi';
+import { commonSchemas } from '../utils/validation';
+import { VALIDATION_LIMITS } from '../constats';
 
 export const createAnnouncementSchema = Joi.object({
-  title: Joi.string().min(5).max(200).required(),
-  content: Joi.string().min(10).max(2000).required(),
-  expires_at: Joi.date().iso().greater('now').optional()
+  title: commonSchemas.requiredString(
+    VALIDATION_LIMITS.ANNOUNCEMENT.TITLE_MIN,
+    VALIDATION_LIMITS.ANNOUNCEMENT.TITLE_MAX
+  ),
+  content: commonSchemas.requiredString(
+    VALIDATION_LIMITS.ANNOUNCEMENT.CONTENT_MIN,
+    VALIDATION_LIMITS.ANNOUNCEMENT.CONTENT_MAX
+  ),
+  expires_at: commonSchemas.futureDate.optional()
 });
 
 export const updateAnnouncementSchema = Joi.object({
-  title: Joi.string().min(5).max(200).optional(),
-  content: Joi.string().min(10).max(2000).optional(),
-  is_active: Joi.boolean().optional(),
+  title: commonSchemas.optionalString(VALIDATION_LIMITS.ANNOUNCEMENT.TITLE_MAX),
+  content: commonSchemas.optionalString(VALIDATION_LIMITS.ANNOUNCEMENT.CONTENT_MAX),
+  is_active: commonSchemas.optionalBoolean,
   expires_at: Joi.alternatives().try(
-    Joi.date().iso().greater('now'),
+    commonSchemas.futureDate,
     Joi.valid(null)
   ).optional()
 });
@@ -19,5 +27,5 @@ export const updateAnnouncementSchema = Joi.object({
 export const getAnnouncementsQuerySchema = Joi.object({
   page: Joi.number().min(1).default(1),
   limit: Joi.number().min(1).max(100).default(10),
-  includeExpired: Joi.boolean().default(false)
+  includeExpired: commonSchemas.optionalBoolean
 });

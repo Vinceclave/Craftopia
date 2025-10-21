@@ -1,20 +1,37 @@
 import Joi from 'joi';
 import { MaterialType, ChallengeCategory } from '../generated/prisma';
+import { commonSchemas } from '../utils/validation';
+import { VALIDATION_LIMITS, POINTS } from '../constats';
 
 export const createChallengeSchema = Joi.object({
-  title: Joi.string().min(5).max(100).required(),
-  description: Joi.string().min(10).max(500).required(),
-  points_reward: Joi.number().min(1).max(1000).required(),
-  material_type: Joi.string().valid(...Object.values(MaterialType)).required(),
-  category: Joi.string().valid(...Object.values(ChallengeCategory)).default('daily'),
-  created_by_admin_id: Joi.number().positive().optional()
+  title: commonSchemas.requiredString(
+    VALIDATION_LIMITS.CHALLENGE.TITLE_MIN,
+    VALIDATION_LIMITS.CHALLENGE.TITLE_MAX
+  ),
+  description: commonSchemas.requiredString(
+    VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MIN,
+    VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MAX
+  ),
+  points_reward: Joi.number()
+    .min(POINTS.CHALLENGE.MIN)
+    .max(POINTS.CHALLENGE.MAX)
+    .required(),
+  material_type: commonSchemas.enum(Object.values(MaterialType)),
+  category: commonSchemas.enum(Object.values(ChallengeCategory))
+});
+
+export const updateChallengeSchema = Joi.object({
+  title: commonSchemas.optionalString(VALIDATION_LIMITS.CHALLENGE.TITLE_MAX),
+  description: commonSchemas.optionalString(VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MAX),
+  points_reward: Joi.number()
+    .min(POINTS.CHALLENGE.MIN)
+    .max(POINTS.CHALLENGE.MAX)
+    .optional(),
+  material_type: commonSchemas.optionalEnum(Object.values(MaterialType)),
+  category: commonSchemas.optionalEnum(Object.values(ChallengeCategory)),
+  is_active: commonSchemas.optionalBoolean
 });
 
 export const generateChallengeSchema = Joi.object({
-  category: Joi.string().valid(...Object.values(ChallengeCategory)).default('daily')
+  category: commonSchemas.enum(Object.values(ChallengeCategory))
 });
-
-export const joinChallengeSchema = Joi.object({
-  user_id: Joi.number().positive().required(),
-  challenge_id: Joi.number().positive().required()
-}); 

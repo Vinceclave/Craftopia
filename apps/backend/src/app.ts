@@ -1,3 +1,4 @@
+// apps/backend/src/app.ts - ENHANCED VERSION
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -5,49 +6,38 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api';
-import { errorHandler } from './middlewares/error.middleware';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { config } from './config';
-import '../src/cron/challenge.cron'
-import '../src/cron/cleanup.cron';
+import { logger } from './utils/logger';
+import { RATE_LIMITS } from './constats';
 import path from 'path';
 
+// Load environment variables
 dotenv.config();
 
+// Initialize express app
 const app = express();
 
+// ============================================
+// SECURITY MIDDLEWARE
+// ============================================
+
+// Helmet for security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: false,
 }));
 
+// Remove X-Powered-By header
 app.disable('x-powered-by');
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: {
-    success: false,
-    error: 'Too many requests, please try again later',
-    timestamp: new Date().toISOString()
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const aiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: {
-    success: false,
-    error: 'Too many AI requests, please try again later',
-    timestamp: new Date().toISOString()
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// ============================================
+// CORS CONFIGURATION
+// ============================================
 
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
@@ -59,6 +49,7 @@ const corsOptions = {
       config.frontend.url
     ];
     
+    // Allow all localhost origins in development
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);
     }
@@ -66,7 +57,7 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn('⚠️ CORS blocked origin:', origin);
+      logger.logSecurityEvent('CORS Blocked Origin', 'low', { origin });
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -80,39 +71,151 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
+// ============================================
+// BODY PARSING
+// ============================================
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ============================================
+// STATIC FILES
+// ============================================
+
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// ============================================
+// LOGGING
+// ============================================
+
+// Development logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
-  app.use(morgan('combined'));
+  // Production logging
+  app.use(morgan('combined', {
+    skip: (req, res) => res.statusCode < 400, // Only log errors in production
+    stream: {
+      write: (message) => logger.info(message.trim())
+    }
+  }));
 }
 
-app.use('/api/v1', limiter);
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// General rate limiter
+const generalLimiter = rateLimit({
+  windowMs: RATE_LIMITS.GENERAL.WINDOW_MS,
+  max: RATE_LIMITS.GENERAL.MAX,
+  message: {
+    success: false,
+    error: 'Too many requests, please try again later',
+    timestamp: new Date().toISOString()
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.logSecurityEvent(
+      'Rate Limit Exceeded',
+      'medium',
+      { ip: req.ip, url: req.url }
+    );
+    res.status(429).json({
+      success: false,
+      error: 'Too many requests, please try again later',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// AI endpoints rate limiter
+const aiLimiter = rateLimit({
+  windowMs: RATE_LIMITS.AI.WINDOW_MS,
+  max: RATE_LIMITS.AI.MAX,
+  message: {
+    success: false,
+    error: 'Too many AI requests, please try again later',
+    timestamp: new Date().toISOString()
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Auth endpoints rate limiter (stricter)
+const authLimiter = rateLimit({
+  windowMs: RATE_LIMITS.AUTH.WINDOW_MS,
+  max: RATE_LIMITS.AUTH.MAX,
+  message: {
+    success: false,
+    error: 'Too many authentication attempts, please try again later',
+    timestamp: new Date().toISOString()
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiters
+app.use('/api/v1', generalLimiter);
 app.use('/api/v1/ai', aiLimiter);
+app.use('/api/v1/auth/login', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+
+// ============================================
+// HEALTH CHECK
+// ============================================
+
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// ============================================
+// API ROUTES
+// ============================================
 
 app.use('/api/v1', apiRoutes);
+
+// ============================================
+// ROOT ENDPOINT
+// ============================================
 
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Craftopia API is running',
+    message: 'Craftopia API',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    endpoints: {
+      health: '/health',
+      api: '/api/v1',
+      docs: '/api/v1/docs' // TODO: Add API documentation
+    }
   });
 });
 
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Route not found',
-    path: req.originalUrl,
-    timestamp: new Date().toISOString()
-  });
-});
+// ============================================
+// ERROR HANDLING
+// ============================================
 
+// 404 Not Found handler
+app.use(notFoundHandler);
+
+// Global error handler (must be last)
 app.use(errorHandler);
+
+// ============================================
+// CRON JOBS (import after app setup)
+// ============================================
+
+import './cron/challenge.cron';
+import './cron/cleanup.cron';
+
+logger.info('Application initialized successfully');
 
 export default app;

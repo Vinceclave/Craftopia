@@ -1,399 +1,542 @@
-// apps/backend/src/services/userChallenge.service.ts - FIXED VERSION
-import { verifyChallengeAI } from "../ai/services/image.service";
+// apps/backend/src/services/userChallenge.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { ChallengeStatus } from "../generated/prisma";
-import { AppError } from "../utils/error";
+import { ChallengeStatus, VerificationType } from "../generated/prisma";
+import { BaseService } from "./base.service";
+import { ValidationError, NotFoundError, ConflictError } from "../utils/error";
+import { logger } from "../utils/logger";
+import { verifyChallengeAI } from "../ai/services/image.service";
 
-export const joinChallenge = async (user_id: number, challenge_id: number) => {
-  if (!user_id || user_id <= 0) {
-    throw new AppError('Invalid user ID', 400);
-  }
+class UserChallengeService extends BaseService {
+  // Join challenge
+  async joinChallenge(userId: number, challengeId: number) {
+    this.validateId(userId, 'User ID');
+    this.validateId(challengeId, 'Challenge ID');
 
-  if (!challenge_id || challenge_id <= 0) {
-    throw new AppError('Invalid challenge ID', 400);
-  }
+    logger.info('User joining challenge', { userId, challengeId });
 
-  return await prisma.$transaction(async (tx) => {
-    // Check if challenge exists and is active
-    const challenge = await tx.ecoChallenge.findFirst({
-      where: { 
-        challenge_id,
-        is_active: true,
-        deleted_at: null
+    return await this.executeTransaction(async (tx) => {
+      // Check if challenge exists and is active
+      const challenge = await tx.ecoChallenge.findFirst({
+        where: { 
+          challenge_id: challengeId,
+          is_active: true,
+          deleted_at: null
+        }
+      });
+
+      if (!challenge) {
+        throw new NotFoundError('Challenge');
       }
-    });
 
-    if (!challenge) {
-      throw new AppError('Challenge not found or inactive', 404);
-    }
+      // Check if user already joined
+      const existing = await tx.userChallenge.findFirst({
+        where: { 
+          user_id: userId, 
+          challenge_id: challengeId,
+          deleted_at: null
+        }
+      });
 
-    // Check if user already joined this challenge
-    const existing = await tx.userChallenge.findFirst({
-      where: { 
-        user_id, 
-        challenge_id,
-        deleted_at: null
+      if (existing) {
+        throw new ConflictError('You have already joined this challenge');
       }
-    });
 
-    if (existing) {
-      throw new AppError('You have already joined this challenge', 400);
-    }
-
-    return tx.userChallenge.create({
-      data: {
-        user_id,
-        challenge_id,
-        status: ChallengeStatus.in_progress
-      },
-      include: {
-        challenge: {
-          select: {
-            challenge_id: true,
-            title: true,
-            description: true,
-            points_reward: true,
-            material_type: true
+      const userChallenge = await tx.userChallenge.create({
+        data: {
+          user_id: userId,
+          challenge_id: challengeId,
+          status: ChallengeStatus.in_progress
+        },
+        include: {
+          challenge: {
+            select: {
+              challenge_id: true,
+              title: true,
+              description: true,
+              points_reward: true,
+              material_type: true
+            }
           }
         }
-      }
-    });
-  });
-};
+      });
 
-// FIXED: Use transaction for challenge completion
-export const completeChallenge = async (userChallengeId: number, userId: number, proofUrl?: string) => {
-  if (!userChallengeId || userChallengeId <= 0) {
-    throw new AppError('Invalid user challenge ID', 400);
+      logger.info('User joined challenge successfully', { 
+        userId, 
+        challengeId,
+        userChallengeId: userChallenge.user_challenge_id 
+      });
+
+      return userChallenge;
+    });
   }
 
-  return await prisma.$transaction(async (tx) => {
-    const userChallenge = await tx.userChallenge.findFirst({
-      where: { 
-        user_challenge_id: userChallengeId,
-        user_id: userId,
-        deleted_at: null
-      },
-      include: {
-        challenge: true
-      }
-    });
+  // Complete challenge (submit proof)
+  async completeChallenge(userChallengeId: number, userId: number, proofUrl?: string) {
+    this.validateId(userChallengeId, 'User Challenge ID');
+    this.validateId(userId, 'User ID');
 
-    if (!userChallenge) {
-      throw new AppError('User challenge not found', 404);
-    }
-
-    if (userChallenge.status === ChallengeStatus.completed) {
-      throw new AppError('Challenge is already marked as completed', 400);
-    }
-
-    if (userChallenge.status === ChallengeStatus.rejected) {
-      throw new AppError('This challenge was rejected. Please start a new attempt.', 400);
-    }
-
-    // Validate proof URL if provided
     if (proofUrl) {
       try {
         new URL(proofUrl);
-      } catch (error) {
-        throw new AppError('Invalid proof URL format', 400);
+      } catch {
+        throw new ValidationError('Invalid proof URL format');
       }
     }
 
-    return tx.userChallenge.update({
+    logger.info('User completing challenge', { userChallengeId, userId });
+
+    return await this.executeTransaction(async (tx) => {
+      const userChallenge = await tx.userChallenge.findFirst({
+        where: { 
+          user_challenge_id: userChallengeId,
+          user_id: userId,
+          deleted_at: null
+        },
+        include: { challenge: true }
+      });
+
+      if (!userChallenge) {
+        throw new NotFoundError('User challenge');
+      }
+
+      if (userChallenge.status === ChallengeStatus.completed) {
+        throw new ValidationError('Challenge is already marked as completed');
+      }
+
+      if (userChallenge.status === ChallengeStatus.rejected) {
+        throw new ValidationError('This challenge was rejected. Please start a new attempt.');
+      }
+
+      const updated = await tx.userChallenge.update({
+        where: { user_challenge_id: userChallengeId },
+        data: {
+          status: ChallengeStatus.pending_verification,
+          completed_at: new Date(),
+          proof_url: proofUrl?.trim() || null
+        },
+        include: {
+          challenge: true,
+          user: {
+            select: { user_id: true, username: true, email: true }
+          }
+        }
+      });
+
+      logger.info('Challenge marked as pending verification', { 
+        userChallengeId,
+        userId 
+      });
+
+      return updated;
+    });
+  }
+
+  // Verify challenge (AI or manual)
+  async verifyChallenge(
+    userChallengeId: number,
+    imageUri: string,
+    description: string,
+    points: number,
+    challengeId: number,
+    userId: number
+  ) {
+    this.validateId(userChallengeId, 'User Challenge ID');
+    this.validateId(userId, 'User ID');
+    this.validateRequiredString(description, 'Challenge description', 1, 500);
+
+    if (points <= 0) {
+      throw new ValidationError('Points must be greater than 0');
+    }
+
+    logger.info('Starting AI challenge verification', { 
+      userChallengeId, 
+      userId,
+      challengeId 
+    });
+
+    // Step 1: Run AI verification
+    const aiVerification = await verifyChallengeAI(
+      description, 
+      imageUri, 
+      points, 
+      userId
+    );
+
+    const { 
+      status, 
+      points_awarded, 
+      ai_confidence_score, 
+      verification_type, 
+      admin_notes, 
+      completed_at, 
+      verified_at
+    } = aiVerification;
+
+    logger.info('AI verification completed', { 
+      userChallengeId,
+      status,
+      confidence: ai_confidence_score 
+    });
+
+    // Step 2: Update userChallenge
+    const verified = await prisma.userChallenge.update({
       where: { user_challenge_id: userChallengeId },
       data: {
-        status: ChallengeStatus.completed,
-        completed_at: new Date(),
-        proof_url: proofUrl?.trim() || null
+        status,
+        proof_url: imageUri,
+        verified_at,
+        points_awarded,
+        ai_confidence_score,
+        verification_type,
+        admin_notes,
+        completed_at,
+        user_id: userId,
+        challenge_id: challengeId
       },
       include: {
         challenge: true,
         user: {
           select: { user_id: true, username: true, email: true }
+        },
+        verified_by: {
+          select: { user_id: true, username: true }
         }
       }
     });
-  });
-};
 
-export const verifyChallenge = async (
-  userChallengeId: number, 
-  imageUri: string,
-  description: string,
-  points: number,
-  challenge_id: number,
-  userId: number
-) => {
-  if (!userChallengeId || userChallengeId <= 0) {
-    throw new AppError('Invalid user challenge ID', 400);
-  }
+    // Step 3: Increment user score if completed
+    if (status === 'completed' && points_awarded) {
+      await prisma.userProfile.upsert({
+        where: { user_id: userId },
+        update: {
+          points: { increment: points_awarded }
+        },
+        create: {
+          user_id: userId,
+          points: points_awarded
+        }
+      });
 
-  // Step 1: Run AI verification
-  const aiVerification = await verifyChallengeAI(description, imageUri, points, userId);
-
-  const { 
-    status, 
-    points_awarded, 
-    ai_confidence_score, 
-    verification_type, 
-    admin_notes, 
-    completed_at, 
-    verified_at,
-    user_id
-  } = aiVerification;
-
-  console.log(status)
-
-  console.log("verifyChallenge params:", { userChallengeId, userId, challenge_id });
-  console.log("AI verification result:", aiVerification);
-
-  // Step 2: Update userChallenge using Prisma
-  const verify = await prisma.userChallenge.update({
-    where: { user_challenge_id: userChallengeId },
-    data: {
-      status: status,
-      proof_url: imageUri,
-      verified_at,
-      points_awarded,
-      ai_confidence_score,
-      verification_type,
-      admin_notes,
-      completed_at,
-      user_id: userId,
-      challenge_id
-    },
-    include: {
-      challenge: true,
-      user: {
-        select: { user_id: true, username: true, email: true, },
-      },
-      verified_by: {
-        select: { user_id: true, username: true },
-      }
+      logger.info('User points awarded', { 
+        userId, 
+        pointsAwarded: points_awarded 
+      });
     }
-  });
 
-  console.log("Prisma update result:", verify);
+    return verified;
+  }
 
- // Step 3: Increment user score if status is 'completed'
-  if (status === 'completed' && points_awarded) {
-    await prisma.userProfile.upsert({
-      where: { user_id: userId },
-      update: {
-        points: {
-          increment: points_awarded,
+  // Get user challenges
+  async getUserChallenges(userId: number, status?: ChallengeStatus) {
+    this.validateId(userId, 'User ID');
+
+    if (status) {
+      this.validateEnum(status, ChallengeStatus, 'status');
+    }
+
+    logger.debug('Fetching user challenges', { userId, status });
+
+    const where: any = { 
+      user_id: userId,
+      deleted_at: null
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    const challenges = await prisma.userChallenge.findMany({
+      where,
+      include: { 
+        challenge: {
+          include: {
+            created_by_admin: {
+              select: { user_id: true, username: true }
+            }
+          }
         },
+        verified_by: {
+          select: { user_id: true, username: true }
+        }
       },
-      create: {
-        user_id: userId,
-        points: points_awarded,
-      },
+      orderBy: { created_at: 'desc' }
     });
-    console.log(`User ${userId} score incremented by ${points_awarded}`);
+
+    return challenges;
   }
 
-  return verify;
-};
+  // Get user challenge by ID
+  async getUserChallengeById(userId: number, challengeId: number) {
+    this.validateId(userId, 'User ID');
+    this.validateId(challengeId, 'Challenge ID');
 
+    logger.debug('Fetching user challenge', { userId, challengeId });
 
-export const getUserChallengeById = async (user_id: number, challenge_id: number) => {
-  if (!user_id || user_id <= 0) {
-    throw new AppError("Invalid user ID", 400);
-  }
-
-  if (!challenge_id || challenge_id <= 0) {
-    throw new AppError("Invalid challenge ID", 400);
-  }
-
-  const userChallenge = await prisma.userChallenge.findUnique({
-    where: {
-      user_id_challenge_id: {
-        user_id,
-        challenge_id,
+    const userChallenge = await prisma.userChallenge.findUnique({
+      where: {
+        user_id_challenge_id: {
+          user_id: userId,
+          challenge_id: challengeId
+        }
       },
-    },
-    include: {
-      challenge: {
-        include: {
-          created_by_admin: {
-            select: { user_id: true, username: true },
-          },
+      include: {
+        challenge: {
+          include: {
+            created_by_admin: {
+              select: { user_id: true, username: true }
+            }
+          }
         },
-      },
-      verified_by: {
-        select: { user_id: true, username: true },
-      },
-    },
-  });
+        verified_by: {
+          select: { user_id: true, username: true }
+        }
+      }
+    });
 
-  if (!userChallenge || userChallenge.deleted_at) {
-    throw new AppError("User challenge not found", 404);
-  }
+    if (!userChallenge || userChallenge.deleted_at) {
+      throw new NotFoundError('User challenge');
+    }
 
-  const now = new Date();
-
-  // Check if the challenge has expired
-  if (userChallenge.challenge.expires_at && userChallenge.challenge.expires_at < now) {
-    // Automatically update the userChallenge status to "rejected" if not already
-    if (userChallenge.status !== "rejected") {
+    // Check if challenge expired and auto-reject
+    const now = new Date();
+    if (userChallenge.challenge.expires_at && 
+        userChallenge.challenge.expires_at < now &&
+        userChallenge.status !== ChallengeStatus.rejected) {
+      
       await prisma.userChallenge.update({
         where: {
           user_id_challenge_id: {
-            user_id,
-            challenge_id,
-          },
+            user_id: userId,
+            challenge_id: challengeId
+          }
         },
-        data: {
-          status: "rejected",
-        },
+        data: { status: ChallengeStatus.rejected }
       });
-      // Also update the local object so the returned value reflects it
-      userChallenge.status = "rejected";
+
+      userChallenge.status = ChallengeStatus.rejected;
+      
+      logger.info('Auto-rejected expired challenge', { 
+        userId, 
+        challengeId 
+      });
     }
+
+    return userChallenge;
   }
 
-  return userChallenge;
-};
-
-export const getUserChallenges = async (user_id: number, status?: ChallengeStatus) => {
-  if (!user_id || user_id <= 0) {
-    throw new AppError('Invalid user ID', 400);
-  }
-
-  console.log(user_id)
-  console.log(status)
-
-  const where: any = { 
-    user_id,
-    deleted_at: null
-  };
-
-  // Only apply status filter if it exists in the enum
-  if (status) {
-    if (!Object.values(ChallengeStatus).includes(status)) {
-      throw new AppError(`Invalid challenge status: ${status}`, 400);
+  // Get challenge leaderboard
+  async getChallengeLeaderboard(challengeId?: number, limit: number = 10) {
+    if (limit < 1 || limit > 100) {
+      throw new ValidationError('Limit must be between 1 and 100');
     }
-    where.status = status;
-  }
 
-  const challenges = await prisma.userChallenge.findMany({
-    where,
-    include: { 
-      challenge: {
-        include: {
-          created_by_admin: {
-            select: { user_id: true, username: true }
-          }
-        }
-      },
-      verified_by: {
-        select: { user_id: true, username: true }
-      }
-    },
-    orderBy: { created_at: 'desc' }
-  });
+    if (challengeId) {
+      this.validateId(challengeId, 'Challenge ID');
+    }
 
-  return challenges;
-};
+    logger.debug('Fetching challenge leaderboard', { challengeId, limit });
 
-export const getChallengeLeaderboard = async (challengeId?: number, limit: number = 10) => {
-  if (limit < 1 || limit > 100) {
-    throw new AppError('Limit must be between 1 and 100', 400);
-  }
+    const where: any = {
+      status: ChallengeStatus.completed,
+      deleted_at: null,
+      verified_at: { not: null }
+    };
 
-  if (challengeId && challengeId <= 0) {
-    throw new AppError('Invalid challenge ID', 400);
-  }
+    if (challengeId) {
+      where.challenge_id = challengeId;
+    }
 
-  const where: any = {
-    status: ChallengeStatus.completed,
-    deleted_at: null,
-    verified_at: { not: null } // Only include verified challenges
-  };
-
-  if (challengeId) {
-    where.challenge_id = challengeId;
-  }
-
-  return prisma.userChallenge.findMany({
-    where,
-    include: {
-      user: {
-        select: {
-          user_id: true,
-          username: true,
-          profile: {
-            select: {
-              points: true,
-              profile_picture_url: true
-            }
-          }
-        }
-      },
-      challenge: {
-        select: {
-          title: true,
-          points_reward: true,
-          material_type: true
-        }
-      }
-    },
-    orderBy: [
-      { verified_at: 'asc' }, // Earlier completions rank higher
-      { completed_at: 'asc' }
-    ],
-    take: limit
-  });
-};
-
-export const getPendingVerifications = async (page: number = 1, limit: number = 20) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 20;
-
-  const skip = (page - 1) * limit;
-
-  const [data, total] = await Promise.all([
-    prisma.userChallenge.findMany({
-      where: {
-        status: ChallengeStatus.completed,
-        verified_at: null, // Not yet verified
-        deleted_at: null
-      },
-      skip,
-      take: limit,
+    return prisma.userChallenge.findMany({
+      where,
       include: {
         user: {
-          select: { user_id: true, username: true, email: true }
+          select: {
+            user_id: true,
+            username: true,
+            profile: {
+              select: {
+                points: true,
+                profile_picture_url: true
+              }
+            }
+          }
         },
         challenge: {
           select: {
-            challenge_id: true,
             title: true,
-            description: true,
             points_reward: true,
             material_type: true
           }
         }
       },
-      orderBy: { completed_at: 'asc' } // Oldest first
-    }),
-    prisma.userChallenge.count({
+      orderBy: [
+        { verified_at: 'asc' },
+        { completed_at: 'asc' }
+      ],
+      take: limit
+    });
+  }
+
+  // Get pending verifications (Admin)
+  async getPendingVerifications(page: number = 1, limit: number = 20) {
+    logger.debug('Fetching pending verifications', { page, limit });
+
+    return this.paginate(prisma.userChallenge, {
+      page,
+      limit,
       where: {
-        status: ChallengeStatus.completed,
+        status: ChallengeStatus.pending_verification,
         verified_at: null,
         deleted_at: null
-      }
-    })
-  ]);
+      },
+      orderBy: { completed_at: 'asc' }
+    });
+  }
 
-  return {
-    data,
-    meta: {
+  // Manually verify challenge (Admin)
+  async manualVerify(
+    userChallengeId: number,
+    adminId: number,
+    approved: boolean,
+    notes?: string
+  ) {
+    this.validateId(userChallengeId, 'User Challenge ID');
+    this.validateId(adminId, 'Admin ID');
+
+    logger.info('Manual verification by admin', { 
+      userChallengeId, 
+      adminId, 
+      approved 
+    });
+
+    return await this.executeTransaction(async (tx) => {
+      const userChallenge = await tx.userChallenge.findFirst({
+        where: { 
+          user_challenge_id: userChallengeId,
+          deleted_at: null
+        },
+        include: { challenge: true }
+      });
+
+      if (!userChallenge) {
+        throw new NotFoundError('User challenge');
+      }
+
+      const status = approved ? ChallengeStatus.completed : ChallengeStatus.rejected;
+      const pointsAwarded = approved ? userChallenge.challenge.points_reward : 0;
+
+      const updated = await tx.userChallenge.update({
+        where: { user_challenge_id: userChallengeId },
+        data: {
+          status,
+          verified_by_admin_id: adminId,
+          verified_at: new Date(),
+          verification_type: VerificationType.manual,
+          points_awarded: pointsAwarded,
+          admin_notes: notes?.trim() || null
+        },
+        include: {
+          challenge: true,
+          user: {
+            select: { user_id: true, username: true, email: true }
+          },
+          verified_by: {
+            select: { user_id: true, username: true }
+          }
+        }
+      });
+
+      // Award points if approved
+      if (approved && pointsAwarded > 0) {
+        await tx.userProfile.upsert({
+          where: { user_id: userChallenge.user_id },
+          update: {
+            points: { increment: pointsAwarded }
+          },
+          create: {
+            user_id: userChallenge.user_id,
+            points: pointsAwarded
+          }
+        });
+
+        logger.info('Points awarded via manual verification', { 
+          userId: userChallenge.user_id, 
+          points: pointsAwarded 
+        });
+      }
+
+      return updated;
+    });
+  }
+
+  // Get user challenge statistics
+  async getUserChallengeStats(userId: number) {
+    this.validateId(userId, 'User ID');
+
+    const [total, inProgress, pending, completed, rejected] = await Promise.all([
+      prisma.userChallenge.count({
+        where: { user_id: userId, deleted_at: null }
+      }),
+      prisma.userChallenge.count({
+        where: { 
+          user_id: userId, 
+          status: ChallengeStatus.in_progress,
+          deleted_at: null 
+        }
+      }),
+      prisma.userChallenge.count({
+        where: { 
+          user_id: userId, 
+          status: ChallengeStatus.pending_verification,
+          deleted_at: null 
+        }
+      }),
+      prisma.userChallenge.count({
+        where: { 
+          user_id: userId, 
+          status: ChallengeStatus.completed,
+          deleted_at: null 
+        }
+      }),
+      prisma.userChallenge.count({
+        where: { 
+          user_id: userId, 
+          status: ChallengeStatus.rejected,
+          deleted_at: null 
+        }
+      })
+    ]);
+
+    const totalPoints = await prisma.userChallenge.aggregate({
+      where: { 
+        user_id: userId, 
+        status: ChallengeStatus.completed,
+        deleted_at: null 
+      },
+      _sum: { points_awarded: true }
+    });
+
+    return {
       total,
-      page,
-      lastPage: Math.ceil(total / limit),
-      limit
-    }
-  };
-};
+      inProgress,
+      pending,
+      completed,
+      rejected,
+      totalPointsEarned: totalPoints._sum.points_awarded || 0
+    };
+  }
+}
+
+// Export singleton instance
+export const userChallengeService = new UserChallengeService();
+
+// Export individual functions for backward compatibility
+export const joinChallenge = userChallengeService.joinChallenge.bind(userChallengeService);
+export const completeChallenge = userChallengeService.completeChallenge.bind(userChallengeService);
+export const verifyChallenge = userChallengeService.verifyChallenge.bind(userChallengeService);
+export const getUserChallenges = userChallengeService.getUserChallenges.bind(userChallengeService);
+export const getUserChallengeById = userChallengeService.getUserChallengeById.bind(userChallengeService);
+export const getChallengeLeaderboard = userChallengeService.getChallengeLeaderboard.bind(userChallengeService);
+export const getPendingVerifications = userChallengeService.getPendingVerifications.bind(userChallengeService);
+export const manualVerify = userChallengeService.manualVerify.bind(userChallengeService);
+export const getUserChallengeStats = userChallengeService.getUserChallengeStats.bind(userChallengeService);

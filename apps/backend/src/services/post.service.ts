@@ -1,319 +1,364 @@
+// apps/backend/src/services/post.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { AppError } from '../utils/error';
+import { BaseService } from "./base.service";
+import { 
+  ValidationError, 
+  NotFoundError, 
+  ForbiddenError 
+} from "../utils/error";
+import { VALIDATION_LIMITS } from "../constats";
+import { Category } from "../generated/prisma";
 
-export const createPost = async ({
-  user_id,
-  title,
-  content,
-  imageUrl,
-  tags,
-  category,
-  featured,
-}: {
-  user_id: number;
-  title: string;
-  content: string;
-  imageUrl?: string;
-  tags?: string[];
-  category: 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other';
-  featured?: boolean;
-  points?: number;
-}) => {
-  if (!title?.trim()) throw new AppError('Post title cannot be empty', 400);
-  if (!content?.trim()) throw new AppError('Post content cannot be empty', 400);
-  if (content.length > 1000) throw new AppError('Post content cannot exceed 1000 characters', 400);
+type FeedType = 'all' | 'trending' | 'popular' | 'featured';
 
-  return prisma.post.create({
-    data: {
-      user_id,
-      title: title.trim(),
-      content: content.trim(),
-      image_url: imageUrl || null,
-      tags: tags || [],
-      category,
-      featured: featured || false,
-    },
-    include: {
-      user: {
-        select: { user_id: true, username: true }
+class PostService extends BaseService {
+  // Create post
+  async createPost(data: {
+    user_id: number;
+    title: string;
+    content: string;
+    imageUrl?: string;
+    tags?: string[];
+    category: Category;
+    featured?: boolean;
+  }) {
+    // Validate
+    this.validateId(data.user_id, 'User ID');
+    this.validateRequiredString(
+      data.title, 
+      'Post title', 
+      1, 
+      VALIDATION_LIMITS.POST.TITLE_MAX
+    );
+    this.validateRequiredString(
+      data.content, 
+      'Post content', 
+      1, 
+      VALIDATION_LIMITS.POST.CONTENT_MAX
+    );
+    this.validateEnum(data.category, Category, 'category');
+
+    return prisma.post.create({
+      data: {
+        user_id: data.user_id,
+        title: data.title.trim(),
+        content: data.content.trim(),
+        image_url: data.imageUrl || null,
+        tags: data.tags || [],
+        category: data.category,
+        featured: data.featured || false,
+      },
+      include: {
+        user: {
+          select: { user_id: true, username: true }
+        }
       }
-    }
-  });
-};
-
-export const getPosts = async (
-  feedType?: 'all' | 'trending' | 'popular' | 'featured',
-  page = 1,
-  limit = 10,
-  userId?: number // Add userId parameter to check user's reactions
-) => {
-  if (page < 1) page = 1;
-  if (limit < 1 || limit > 100) limit = 10;
-
-  const skip = (page - 1) * limit;
-
-  // Define dynamic filters & sorting based on feedType
-  let where: any = { deleted_at: null };
-  let orderBy: any = { created_at: 'desc' };
-
-  switch (feedType) {
-    case 'all':
-      where = { deleted_at: null };
-      orderBy = { created_at: 'desc' };
-      break;
-
-    case 'trending':
-      orderBy = [
-        { likes: { _count: 'desc' } },
-        { comments: { _count: 'desc' } },
-        { created_at: 'desc' }
-      ];
-      break;
-
-    case 'popular':
-      orderBy = [
-        { likes: { _count: 'desc' } },
-        { created_at: 'desc' }
-      ];
-      break;
-
-    case 'featured':
-      where.featured = true;
-      orderBy = { created_at: 'desc' };
-      break;
-
-    default:
-      orderBy = { created_at: 'desc' };
-      break;
+    });
   }
 
-  const [posts, total] = await Promise.all([
-    prisma.post.findMany({
+  // Get posts with feed type
+  async getPosts(
+    feedType: FeedType = 'all',
+    page = 1,
+    limit = 10,
+    userId?: number
+  ) {
+    // Define filters based on feed type
+    let where: any = { deleted_at: null };
+    let orderBy: any = { created_at: 'desc' };
+
+    switch (feedType) {
+      case 'trending':
+        orderBy = [
+          { likes: { _count: 'desc' } },
+          { comments: { _count: 'desc' } },
+          { created_at: 'desc' }
+        ];
+        break;
+      case 'popular':
+        orderBy = [
+          { likes: { _count: 'desc' } },
+          { created_at: 'desc' }
+        ];
+        break;
+      case 'featured':
+        where.featured = true;
+        break;
+      default:
+        // 'all' - use default ordering
+        break;
+    }
+
+    const result = await this.paginate<any>(prisma.post, {
+      page,
+      limit,
       where,
-      skip,
-      take: limit,
-      orderBy,
-      include: {
-        user: { 
-          select: { 
-            user_id: true, 
-            username: true 
-          } 
-        },
-        comments: { 
-          where: { deleted_at: null }, 
-          select: { comment_id: true } 
-        },
-        likes: { 
-          where: { deleted_at: null }, 
-          select: { like_id: true, user_id: true } 
-        },
-      },
-    }),
-    prisma.post.count({ where })
-  ]);
+      orderBy
+    });
 
-  // Transform the data to include user's reaction status
-  const transformedPosts = posts.map(post => {
-    const tagScore = post.tags.length * 1;
-    const commentScore = post.comments.length * 2;
-    const likeScore = post.likes.length * 1;
-    const trendingScore = tagScore + commentScore + likeScore;
+    // Transform posts to include user reaction status
+    const transformedPosts = await Promise.all(
+      result.data.map(async (post) => {
+        const [commentCount, likeCount, isLiked] = await Promise.all([
+          prisma.comment.count({ 
+            where: { post_id: post.post_id, deleted_at: null } 
+          }),
+          prisma.like.count({ 
+            where: { post_id: post.post_id, deleted_at: null } 
+          }),
+          userId 
+            ? prisma.like.findFirst({
+                where: { 
+                  post_id: post.post_id, 
+                  user_id: userId, 
+                  deleted_at: null 
+                }
+              }).then(like => !!like)
+            : Promise.resolve(false)
+        ]);
 
-    // Check if current user has liked this post
-    const isLiked = userId ? post.likes.some(like => like.user_id === userId) : false;
+        const tagScore = post.tags.length * 1;
+        const commentScore = commentCount * 2;
+        const likeScore = likeCount * 1;
+
+        return {
+          ...post,
+          commentCount,
+          likeCount,
+          isLiked,
+          trendingScore: tagScore + commentScore + likeScore
+        };
+      })
+    );
+
+    // Additional sorting for trending
+    if (feedType === 'trending') {
+      transformedPosts.sort((a, b) => {
+        if (b.trendingScore !== a.trendingScore) {
+          return b.trendingScore - a.trendingScore;
+        }
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    }
+
+    return {
+      data: transformedPosts,
+      meta: result.meta
+    };
+  }
+
+  // Get trending tags
+  async getTrendingTags(limit: number = 10) {
+    const posts = await prisma.post.findMany({
+      where: { deleted_at: null },
+      select: { tags: true }
+    });
+
+    const tagCounts: Record<string, number> = {};
+    posts.forEach(post => {
+      post.tags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+    });
+
+    return Object.entries(tagCounts)
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  }
+
+  // Get post by ID
+  async getPostById(postId: number) {
+    this.validateId(postId, 'Post ID');
+
+    const post = await this.checkNotDeleted(
+      prisma.post,
+      { post_id: postId },
+      'Post'
+    );
+
+    const [comments, likes] = await Promise.all([
+      prisma.comment.findMany({
+        where: { post_id: postId, deleted_at: null },
+        include: { user: { select: { user_id: true, username: true } } },
+        orderBy: { created_at: 'asc' }
+      }),
+      prisma.like.findMany({
+        where: { post_id: postId, deleted_at: null },
+        include: { user: { select: { user_id: true, username: true } } }
+      })
+    ]);
 
     return {
       ...post,
-      commentCount: post.comments.length,
-      likeCount: post.likes.length,
-      trendingScore,
-      isLiked, // Include user's reaction status
-      comments: undefined, // Remove to reduce payload
-      likes: undefined, // Remove to reduce payload
+      comments,
+      likes
     };
-  });
+  }
 
-  // For trending, sort by trending score after fetching
-  if (feedType === 'trending') {
-    transformedPosts.sort((a, b) => {
-      if (b.trendingScore !== a.trendingScore) {
-        return b.trendingScore - a.trendingScore;
+  // Delete post
+  async deletePost(postId: number, userId: number) {
+    this.validateId(postId, 'Post ID');
+
+    const post = await this.checkNotDeleted(
+      prisma.post,
+      { post_id: postId },
+      'Post'
+    );
+
+    this.checkOwnership(post.user_id, userId, 'posts');
+
+    return this.softDelete(prisma.post, postId, 'post_id');
+  }
+
+  // Add comment
+  async addComment(data: { postId: number; userId: number; content: string }) {
+    this.validateId(data.postId, 'Post ID');
+    this.validateId(data.userId, 'User ID');
+    this.validateRequiredString(
+      data.content, 
+      'Comment content', 
+      1, 
+      VALIDATION_LIMITS.COMMENT.MAX
+    );
+
+    // Check post exists
+    await this.checkNotDeleted(
+      prisma.post,
+      { post_id: data.postId },
+      'Post'
+    );
+
+    return prisma.comment.create({
+      data: { 
+        post_id: data.postId, 
+        user_id: data.userId, 
+        content: data.content.trim() 
+      },
+      include: { 
+        user: { select: { user_id: true, username: true } } 
       }
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }
 
-  return {
-    data: transformedPosts,
-    meta: {
-      total,
-      page,
-      lastPage: Math.ceil(total / limit),
-      limit
-    }
-  };
-};
+  // Get comments by post
+  async getCommentsByPost(postId: number) {
+    this.validateId(postId, 'Post ID');
 
-export const getTrendingTags = async () => {
-  // Fetch all posts (or limit to last N days for trending)
-  const posts = await prisma.post.findMany({
-    where: { deleted_at: null },
-    select: { tags: true },
-  })
+    // Check post exists
+    await this.checkNotDeleted(
+      prisma.post,
+      { post_id: postId },
+      'Post'
+    );
 
-  // Flatten tags and count occurrences
-  const tagCounts: Record<string, number> = {}
-  posts.forEach(post => {
-    post.tags.forEach(tag => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1
-    })
-  })
+    return prisma.comment.findMany({
+      where: { post_id: postId, deleted_at: null },
+      include: { user: { select: { user_id: true, username: true } } },
+      orderBy: { created_at: 'asc' }
+    });
+  }
 
-  // Convert to array and sort by count descending
-  const trendingTags = Object.entries(tagCounts)
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10) // top 10 tags
+  // Delete comment
+  async deleteComment(commentId: number, userId: number) {
+    this.validateId(commentId, 'Comment ID');
 
-  return trendingTags
+    const comment = await this.checkNotDeleted(
+      prisma.comment,
+      { comment_id: commentId },
+      'Comment'
+    );
+
+    this.checkOwnership(comment.user_id, userId, 'comments');
+
+    return this.softDelete(prisma.comment, commentId, 'comment_id');
+  }
+
+  // Toggle post reaction
+  async togglePostReaction(postId: number, userId: number) {
+    this.validateId(postId, 'Post ID');
+    this.validateId(userId, 'User ID');
+
+    // Check post exists
+    await this.checkNotDeleted(
+      prisma.post,
+      { post_id: postId },
+      'Post'
+    );
+
+    return await this.executeTransaction(async (tx) => {
+      // Check if user already has a reaction
+      const existing = await tx.like.findFirst({
+        where: { post_id: postId, user_id: userId }
+      });
+
+      if (!existing) {
+        // Create new like
+        await tx.like.create({
+          data: { post_id: postId, user_id: userId }
+        });
+      } else {
+        // Toggle existing like (soft delete/restore)
+        await tx.like.update({
+          where: { like_id: existing.like_id },
+          data: { deleted_at: existing.deleted_at ? null : new Date() }
+        });
+      }
+
+      // Get updated counts and status
+      const [likeCount, userReaction] = await Promise.all([
+        tx.like.count({ where: { post_id: postId, deleted_at: null } }),
+        tx.like.findFirst({
+          where: { post_id: postId, user_id: userId, deleted_at: null }
+        })
+      ]);
+
+      return {
+        isLiked: !!userReaction,
+        likeCount,
+        postId,
+        userId
+      };
+    });
+  }
+
+  // Count reactions
+  async countReactions(postId: number) {
+    this.validateId(postId, 'Post ID');
+    return prisma.like.count({ 
+      where: { post_id: postId, deleted_at: null } 
+    });
+  }
+
+  // Get user's reaction status
+  async getUserReactionStatus(postId: number, userId: number) {
+    this.validateId(postId, 'Post ID');
+    this.validateId(userId, 'User ID');
+
+    const reaction = await prisma.like.findFirst({
+      where: {
+        post_id: postId,
+        user_id: userId,
+        deleted_at: null
+      }
+    });
+
+    return !!reaction;
+  }
 }
 
+// Export singleton instance
+export const postService = new PostService();
 
-export const getPostById = async (postId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-
-  const post = await prisma.post.findFirst({
-    where: { post_id: postId, deleted_at: null },
-    include: {
-      user: { select: { user_id: true, username: true } },
-      comments: {
-        where: { deleted_at: null },
-        include: { user: { select: { user_id: true, username: true } } },
-        orderBy: { created_at: 'asc' }
-      },
-      likes: {
-        where: { deleted_at: null },
-        include: { user: { select: { user_id: true, username: true } } }
-      }
-    }
-  });
-
-  if (!post) throw new AppError('Post not found', 404);
-  return post;
-};
-
-export const deletePost = async (postId: number, userId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-
-  const post = await prisma.post.findFirst({
-    where: { post_id: postId, deleted_at: null }
-  });
-  if (!post) throw new AppError('Post not found', 404);
-  if (post.user_id !== userId) throw new AppError('You can only delete your own posts', 403);
-
-  return prisma.post.update({
-    where: { post_id: postId },
-    data: { deleted_at: new Date() },
-  });
-};
-
-export const addComment = async ({ postId, userId, content }: { postId: number; userId: number; content: string }) => {
-  if (!content?.trim()) throw new AppError('Comment content cannot be empty', 400);
-  if (content.length > 500) throw new AppError('Comment cannot exceed 500 characters', 400);
-
-  const post = await prisma.post.findFirst({ where: { post_id: postId, deleted_at: null } });
-  if (!post) throw new AppError('Post not found', 404);
-
-  return prisma.comment.create({
-    data: { post_id: postId, user_id: userId, content: content.trim() },
-    include: { user: { select: { user_id: true, username: true } } }
-  });
-};
-
-export const getCommentsByPost = async (postId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-
-  const post = await prisma.post.findFirst({ where: { post_id: postId, deleted_at: null } });
-  if (!post) throw new AppError('Post not found', 404);
-
-  return prisma.comment.findMany({
-    where: { post_id: postId, deleted_at: null },
-    include: { user: { select: { user_id: true, username: true } } },
-    orderBy: { created_at: 'asc' }
-  });
-};
-
-export const deleteComment = async (commentId: number, userId: number) => {
-  if (!commentId || commentId <= 0) throw new AppError('Invalid comment ID', 400);
-
-  const comment = await prisma.comment.findFirst({ where: { comment_id: commentId, deleted_at: null } });
-  if (!comment) throw new AppError('Comment not found', 404);
-  if (comment.user_id !== userId) throw new AppError('You can only delete your own comments', 403);
-
-  return prisma.comment.update({ where: { comment_id: commentId }, data: { deleted_at: new Date() } });
-};
-
-export const togglePostReaction = async (postId: number, userId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-
-  const post = await prisma.post.findFirst({ where: { post_id: postId, deleted_at: null } });
-  if (!post) throw new AppError('Post not found', 404);
-
-  // Check if user already has a reaction
-  const existing = await prisma.like.findFirst({ 
-    where: { post_id: postId, user_id: userId } 
-  });
-
-  let reactionResult;
-  
-  if (!existing) {
-    // Create new like
-    reactionResult = await prisma.like.create({ 
-      data: { post_id: postId, user_id: userId } 
-    });
-  } else {
-    // Toggle existing like (soft delete/restore)
-    reactionResult = await prisma.like.update({
-      where: { like_id: existing.like_id },
-      data: { deleted_at: existing.deleted_at ? null : new Date() }
-    });
-  }
-
-  // Get updated like count and user's current reaction status
-  const [likeCount, userReaction] = await Promise.all([
-    prisma.like.count({ where: { post_id: postId, deleted_at: null } }),
-    prisma.like.findFirst({ 
-      where: { post_id: postId, user_id: userId, deleted_at: null } 
-    })
-  ]);
-
-  // Return consistent response format
-  return {
-    isLiked: !!userReaction, // true if user has active like
-    likeCount: likeCount,
-    postId: postId,
-    userId: userId,
-    reactionId: reactionResult.like_id
-  };
-};
-
-export const countReactions = async (postId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-  return prisma.like.count({ where: { post_id: postId, deleted_at: null } });
-};
-
-// NEW: Get user's reaction status for a post
-export const getUserReactionStatus = async (postId: number, userId: number) => {
-  if (!postId || postId <= 0) throw new AppError('Invalid post ID', 400);
-  
-  const reaction = await prisma.like.findFirst({
-    where: { 
-      post_id: postId, 
-      user_id: userId, 
-      deleted_at: null 
-    }
-  });
-  
-  return !!reaction;
-};
+// Export individual functions for backward compatibility
+export const createPost = postService.createPost.bind(postService);
+export const getPosts = postService.getPosts.bind(postService);
+export const getTrendingTags = postService.getTrendingTags.bind(postService);
+export const getPostById = postService.getPostById.bind(postService);
+export const deletePost = postService.deletePost.bind(postService);
+export const addComment = postService.addComment.bind(postService);
+export const getCommentsByPost = postService.getCommentsByPost.bind(postService);
+export const deleteComment = postService.deleteComment.bind(postService);
+export const togglePostReaction = postService.togglePostReaction.bind(postService);
+export const countReactions = postService.countReactions.bind(postService);
+export const getUserReactionStatus = postService.getUserReactionStatus.bind(postService);

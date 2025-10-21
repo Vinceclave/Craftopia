@@ -3,7 +3,7 @@ import { Router } from 'express';
 import * as postController from '../controllers/post.controller';
 import { requireAuth } from '../middlewares/rolebase.middleware';
 import { validate } from '../utils/validation';
-import { createPostSchema, createCommentSchema, reactionSchema } from '../schemas/post.schema';
+import { createPostSchema, createCommentSchema } from '../schemas/post.schema';
 
 const router = Router();
 

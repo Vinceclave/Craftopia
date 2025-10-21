@@ -1,34 +1,35 @@
 import Joi from 'joi';
+import { commonSchemas } from '../utils/validation';
 
 export const registerSchema = Joi.object({
-  username: Joi.string().min(3).max(30).required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required()
+  username: commonSchemas.username,
+  email: commonSchemas.email,
+  password: commonSchemas.password
 });
 
 export const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: commonSchemas.email,
   password: Joi.string().required()
 });
 
 export const refreshTokenSchema = Joi.object({
-  refreshToken: Joi.string().required()
+  refreshToken: commonSchemas.requiredString(1, 500)
 });
 
 export const resendVerificationSchema = Joi.object({
-  email: Joi.string().email().required()
+  email: commonSchemas.email
 });
 
 export const changePasswordSchema = Joi.object({
   currentPassword: Joi.string().required(),
-  newPassword: Joi.string().min(6).required()
+  newPassword: commonSchemas.password
 });
 
 export const forgotPasswordSchema = Joi.object({
-  email: Joi.string().email().required()
+  email: commonSchemas.email
 });
 
 export const resetPasswordSchema = Joi.object({
-  token: Joi.string().required(),
-  newPassword: Joi.string().min(6).required()
+  token: commonSchemas.requiredString(1, 500),
+  newPassword: commonSchemas.password
 });

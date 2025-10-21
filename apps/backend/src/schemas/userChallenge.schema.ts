@@ -1,29 +1,34 @@
 import Joi from 'joi';
 import { ChallengeStatus } from '../generated/prisma';
+import { commonSchemas } from '../utils/validation';
 
 export const joinChallengeSchema = Joi.object({
-  challenge_id: Joi.number().positive().required()
+  challenge_id: commonSchemas.positiveId
 });
 
 export const completeChallengeSchema = Joi.object({
-  proof_url: Joi.string().uri().optional()
+  proof_url: commonSchemas.optionalUrl
 });
 
 export const verifyChallengeSchema = Joi.object({
-  approved: Joi.boolean().default(true),
-  notes: Joi.string().max(500).optional()
+  proof_url: commonSchemas.url,
+  description: commonSchemas.requiredString(1, 500),
+  points: Joi.number().positive().required(),
+  challenge_id: commonSchemas.positiveId,
+  userId: commonSchemas.positiveId
+});
+
+export const manualVerifySchema = Joi.object({
+  approved: commonSchemas.boolean,
+  notes: commonSchemas.optionalString(500)
 });
 
 export const getUserChallengesQuerySchema = Joi.object({
-  status: Joi.string().valid(...Object.values(ChallengeStatus)).optional(),
-  userId: Joi.number().positive().optional()
-});
-
-export const getUserChallengeByIdParamsSchema = Joi.object({
-  challengeId: Joi.number().positive().required()
+  status: commonSchemas.optionalEnum(Object.values(ChallengeStatus)),
+  userId: commonSchemas.optionalPositiveId
 });
 
 export const leaderboardQuerySchema = Joi.object({
-  challengeId: Joi.number().positive().optional(),
+  challengeId: commonSchemas.optionalPositiveId,
   limit: Joi.number().min(1).max(50).default(10)
 });

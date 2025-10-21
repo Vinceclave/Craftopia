@@ -1,13 +1,29 @@
-import { Router } from "express";
 import * as moderationController from "../controllers/moderation.controller";
-import { requireAdmin } from "../middlewares/rolebase.middleware";
-import { validate } from "../utils/validation";
 import { createModerationLogSchema } from "../schemas/moderation.schema";
+import { Router } from "express";
+import { validate } from "../utils/validation";
+import { requireAdmin } from "../middlewares/rolebase.middleware";
 
-const router = Router();
+const moderationRouter = Router();
 
-router.post('/', requireAdmin, validate(createModerationLogSchema), moderationController.createLog);
-router.get('/', requireAdmin, moderationController.getLogs);
-router.get('/:logId', requireAdmin, moderationController.getLogById);
+// All routes require admin
+moderationRouter.post(
+  '/',
+  requireAdmin,
+  validate(createModerationLogSchema),
+  moderationController.createLog
+);
 
-export default router;
+moderationRouter.get(
+  '/',
+  requireAdmin,
+  moderationController.getLogs
+);
+
+moderationRouter.get(
+  '/:logId',
+  requireAdmin,
+  moderationController.getLogById
+);
+
+export default moderationRouter;

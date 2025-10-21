@@ -1,29 +1,70 @@
-import { Router } from "express";
 import * as userChallengeController from "../controllers/userChallenge.controller";
-import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
-import { validate, validateQuery } from "../utils/validation";
 import { 
   joinChallengeSchema, 
   completeChallengeSchema,
   verifyChallengeSchema,
-  getUserChallengesQuerySchema,
-  leaderboardQuerySchema
+  manualVerifySchema
 } from "../schemas/userChallenge.schema";
+import { Router } from "express";
+import { validate } from "../utils/validation";
+import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
 
-const router = Router();
+const ucRouter = Router();
 
 // User actions
-router.post('/join', requireAuth, validate(joinChallengeSchema), userChallengeController.joinChallenge);
-router.post('/:userChallengeId/complete', requireAuth, validate(completeChallengeSchema), userChallengeController.completeChallenge);
+ucRouter.post(
+  '/join',
+  requireAuth,
+  validate(joinChallengeSchema),
+  userChallengeController.joinChallenge
+);
+
+ucRouter.post(
+  '/:userChallengeId/complete',
+  requireAuth,
+  validate(completeChallengeSchema),
+  userChallengeController.completeChallenge
+);
+
+// AI verification
+ucRouter.post(
+  '/:userChallengeId/verify',
+  requireAuth,
+  validate(verifyChallengeSchema),
+  userChallengeController.verifyChallenge
+);
 
 // Admin actions
-router.post('/:userChallengeId/verify', requireAuth, validate(verifyChallengeSchema), userChallengeController.verifyChallenge);
-router.get('/pending-verifications', requireAdmin, userChallengeController.getPendingVerifications);
-
-// Public/User queries
-router.get('/:challengeId', requireAuth, validate(getUserChallengesQuerySchema), userChallengeController.getUserChallengeById
+ucRouter.post(
+  '/:userChallengeId/manual-verify',
+  requireAdmin,
+  validate(manualVerifySchema),
+  userChallengeController.manualVerify
 );
-router.get('/user/:userId?', requireAuth, validateQuery(getUserChallengesQuerySchema), userChallengeController.getUserChallenges);
-router.get('/leaderboard', requireAuth, validateQuery(leaderboardQuerySchema), userChallengeController.getChallengeLeaderboard);
 
-export default router;
+ucRouter.get(
+  '/pending-verifications',
+  requireAdmin,
+  userChallengeController.getPendingVerifications
+);
+
+// User queries
+ucRouter.get(
+  '/user/:userId?',
+  requireAuth,
+  userChallengeController.getUserChallenges
+);
+
+ucRouter.get(
+  '/:challengeId',
+  requireAuth,
+  userChallengeController.getUserChallengeById
+);
+
+ucRouter.get(
+  '/leaderboard',
+  requireAuth,
+  userChallengeController.getChallengeLeaderboard
+);
+
+export default ucRouter;
