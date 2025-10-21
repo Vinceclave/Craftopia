@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Posts.tsx - ELEVATED DESIGN with GAPS
-import { useState } from 'react';
+// apps/web/src/pages/admin/Posts.tsx - WITH WEBSOCKET
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,9 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Trash2, Star, Loader2, RefreshCw, Undo2,
   MessageCircle, AlertCircle, Eye, CheckSquare, Image as ImageIcon,
-  Calendar, MoreHorizontal
+  Calendar, MoreHorizontal, Wifi
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
+import { useWebSocketPosts, useWebSocket } from '@/hooks/useWebSocket';
+import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Post, Comment } from '@/lib/api';
 
@@ -34,8 +36,32 @@ export default function AdminPosts() {
     isBulkDeleting
   } = usePosts();
 
+  const { isConnected } = useWebSocket();
+  const { success, info } = useToast();
+
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<string>('posts');
+
+  // WebSocket real-time updates
+  useWebSocketPosts({
+    onCreated: useCallback((data) => {
+      console.log('📝 New post created:', data);
+      info('New post created: ' + (data.title || 'Untitled'));
+      refetch();
+    }, [info, refetch]),
+    
+    onUpdated: useCallback((data) => {
+      console.log('✏️ Post updated:', data);
+      info('Post updated');
+      refetch();
+    }, [info, refetch]),
+    
+    onDeleted: useCallback((data) => {
+      console.log('🗑️ Post deleted:', data);
+      info('Post removed');
+      refetch();
+    }, [info, refetch]),
+  });
 
   // Stats
   const totalPosts = posts.length;
@@ -51,7 +77,7 @@ export default function AdminPosts() {
     if (!window.confirm('Are you sure you want to delete this post?')) return;
     try {
       await deletePost({ postId, reason: 'Deleted by admin via moderation' });
-      alert('Post deleted successfully!');
+      success('Post deleted successfully!');
     } catch (err: any) {
       alert('Error deleting post: ' + err.message);
     }
@@ -61,7 +87,7 @@ export default function AdminPosts() {
     if (!window.confirm('Are you sure you want to delete this comment?')) return;
     try {
       await deleteComment({ commentId, reason: 'Deleted by admin via moderation' });
-      alert('Comment deleted successfully!');
+      success('Comment deleted successfully!');
     } catch (err: any) {
       alert('Error deleting comment: ' + err.message);
     }
@@ -70,7 +96,7 @@ export default function AdminPosts() {
   const handleFeaturePost = async (postId: number) => {
     try {
       await featurePost(postId);
-      alert('Feature status updated!');
+      success('Feature status updated!');
     } catch (err: any) {
       alert('Error updating feature status: ' + err.message);
     }
@@ -79,7 +105,7 @@ export default function AdminPosts() {
   const handleRestorePost = async (postId: number) => {
     try {
       await restorePost(postId);
-      alert('Post restored!');
+      success('Post restored!');
     } catch (err: any) {
       alert('Error restoring post: ' + err.message);
     }
@@ -90,7 +116,7 @@ export default function AdminPosts() {
     if (!window.confirm(`Delete ${selectedPosts.length} selected posts?`)) return;
     try {
       await bulkDeletePosts({ postIds: selectedPosts, reason: 'Bulk deletion by admin' });
-      alert('Posts deleted!');
+      success('Posts deleted!');
       setSelectedPosts([]);
     } catch (err: any) {
       alert('Error deleting posts: ' + err.message);
@@ -152,8 +178,15 @@ export default function AdminPosts() {
               <h1 className="text-3xl font-light tracking-tight text-foreground">
                 Content Moderation
               </h1>
+              {/* Real-time indicator */}
+              {isConnected && (
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse">
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Live
+                </Badge>
+              )}
             </div>
-            <p className="text-muted-foreground text-sm">Manage and moderate platform content</p>
+            <p className="text-muted-foreground text-sm">Manage and moderate platform content in real-time</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -183,12 +216,13 @@ export default function AdminPosts() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
           {[
             { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-foreground' },
             { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-foreground' },
-            { label: 'Featured Posts', value: featuredPosts, icon: Star, color: 'text-yellow-600' },
-            { label: 'Flagged Content', value: flaggedPosts + flaggedComments, icon: AlertCircle, color: 'text-rose-600' }
+            { label: 'Featured', value: featuredPosts, icon: Star, color: 'text-yellow-600' },
+            { label: 'Flagged Posts', value: flaggedPosts, icon: AlertCircle, color: 'text-rose-600' },
+            { label: 'Flagged Comments', value: flaggedComments, icon: AlertCircle, color: 'text-orange-600' }
           ].map((stat, i) => (
             <Card key={i} className="border-0 bg-background shadow-xs hover:shadow-sm transition-shadow">
               <CardContent className="p-6">
@@ -239,7 +273,7 @@ export default function AdminPosts() {
             <Card className="border-0 shadow-xs">
               <CardHeader className="p-6 pb-4 flex flex-col gap-1">
                 <CardTitle className="text-lg font-semibold">All Posts</CardTitle>
-                <CardDescription className="text-muted-foreground">Manage all platform posts</CardDescription>
+                <CardDescription className="text-muted-foreground">Manage all platform posts with real-time updates</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 {posts.length === 0 ? (
@@ -338,6 +372,7 @@ export default function AdminPosts() {
                               onClick={() => handleFeaturePost(post.post_id)}
                               disabled={isFeaturing}
                               className="h-8 w-8 p-0"
+                              title="Toggle Featured"
                             >
                               <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
                             </Button>
@@ -347,6 +382,7 @@ export default function AdminPosts() {
                               onClick={() => handleDeletePost(post.post_id)}
                               disabled={isDeleting}
                               className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                              title="Delete Post"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -398,6 +434,7 @@ export default function AdminPosts() {
                           onClick={() => handleDeleteComment(comment.comment_id)}
                           disabled={isDeleting}
                           className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                          title="Delete Comment"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -476,33 +513,35 @@ export default function AdminPosts() {
         </Tabs>
 
         {/* Pagination */}
-        <Card className="border-0 shadow-xs">
-          <CardContent className="p-4">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                Page {meta.page} of {meta.totalPages} ({meta.totalItems} items)
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  disabled={page === 1}
-                >
-                  Prev
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setPage(prev => Math.min(meta.totalPages, prev + 1))}
-                  disabled={page === meta.totalPages}
-                >
-                  Next
-                </Button>
+        {meta && meta.totalPages > 1 && (
+          <Card className="border-0 shadow-xs">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Page {meta.page} of {meta.totalPages} ({meta.totalItems} items)
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    disabled={page === 1}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPage(prev => Math.min(meta.totalPages, prev + 1))}
+                    disabled={page === meta.totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

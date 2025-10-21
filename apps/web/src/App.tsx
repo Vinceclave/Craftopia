@@ -1,8 +1,9 @@
-// apps/web/src/App.tsx
+// apps/web/src/App.tsx - WITH WEBSOCKET
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
+import { WebSocketToastProvider } from './components/ToastNotification';
 
 // Pages
 import AdminLogin from './pages/admin/Login';
@@ -27,6 +28,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        {/* WebSocket Toast Notifications */}
+        <WebSocketToastProvider />
+
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/admin/login" replace />} />

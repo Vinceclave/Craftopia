@@ -5,6 +5,7 @@ import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError } from "../utils/error";
 import { VALIDATION_LIMITS, POINTS } from "../constats";
 import { logger } from "../utils/logger";
+import { WebSocketEmitter } from "../websocket/events"; // ADD THIS
 
 interface CreateChallengeData {
   title: string;
@@ -67,7 +68,16 @@ class ChallengeService extends BaseService {
     logger.info('Challenge created successfully', { 
       challengeId: challenge.challenge_id 
     });
-
+     // 🔥 WEBSOCKET: Broadcast new challenge to all users
+    WebSocketEmitter.challengeCreated({
+      challenge_id: challenge.challenge_id,
+      title: challenge.title,
+      description: challenge.description,
+      points_reward: challenge.points_reward,
+      material_type: challenge.material_type,
+      category: challenge.category,
+      created_by: challenge.created_by_admin?.username || 'AI'
+    });
     return challenge;
   }
 
@@ -239,6 +249,16 @@ class ChallengeService extends BaseService {
     });
 
     logger.info('Challenge updated successfully', { challengeId });
+    // 🔥 WEBSOCKET: Notify all users of challenge update
+    WebSocketEmitter.challengeCreated({
+      challenge_id: updated.challenge_id,
+      title: updated.title,
+      description: updated.description,
+      points_reward: updated.points_reward,
+      material_type: updated.material_type,
+      category: updated.category,
+      isUpdate: true
+    });
 
     return updated;
   }
@@ -255,6 +275,10 @@ class ChallengeService extends BaseService {
 
     logger.info('Deleting challenge', { challengeId });
 
+    WebSocketEmitter.broadcast('challenge:deleted', {
+      challengeId,
+      message: 'A challenge has been removed'
+    });
     return this.softDelete(prisma.ecoChallenge, challengeId, 'challenge_id');
   }
 

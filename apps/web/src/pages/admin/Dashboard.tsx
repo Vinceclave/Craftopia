@@ -1,14 +1,16 @@
-// apps/web/src/pages/admin/Dashboard.tsx - MINIMALIST SHADCN + RECHARTS DESIGN
-import React from 'react';
+// apps/web/src/pages/admin/Dashboard.tsx - WITH WEBSOCKET
+import React, { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Users, FileText, Trophy, TrendingUp, Loader2, ChevronRight,
-  BarChart3, Recycle, Package, Leaf, Calendar, MoreHorizontal, Heart,
+  BarChart3, Recycle, Package, Leaf, Calendar, MoreHorizontal, Heart, Wifi, Bell,
 } from 'lucide-react';
 import { useDashboardStats } from '@/hooks/useDashboard';
+import { useWebSocket, useWebSocketChallenges, useWebSocketPosts, useWebSocketAdminAlerts } from '@/hooks/useWebSocket';
+import { useToast } from '@/hooks/useToast';
 import { DashboardStats } from '@/lib/api';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -215,11 +217,53 @@ const TopPerformers: React.FC = () => (
 );
 
 // ===============================
-// MAIN DASHBOARD
+// MAIN DASHBOARD WITH WEBSOCKET
 // ===============================
 export default function AdminDashboard() {
-  const { data, isLoading, error } = useDashboardStats();
+  const { data, isLoading, error, refetch } = useDashboardStats();
   const stats: DashboardStats | undefined = data?.data;
+  const { isConnected } = useWebSocket();
+  const { info, warning, success } = useToast();
+
+  // WebSocket real-time event handlers
+  useWebSocketChallenges({
+    onCreated: useCallback((data) => {
+      console.log('🎯 New challenge created:', data);
+      info('New challenge created!');
+      refetch();
+    }, [info, refetch]),
+    
+    onCompleted: useCallback((data) => {
+      console.log('✅ Challenge completed:', data);
+      success('A user completed a challenge!');
+      refetch();
+    }, [success, refetch]),
+    
+    onVerified: useCallback((data) => {
+      console.log('✓ Challenge verified:', data);
+      success(`Challenge verified! ${data.points_awarded} points awarded`);
+      refetch();
+    }, [success, refetch]),
+  });
+
+  useWebSocketPosts({
+    onCreated: useCallback((data) => {
+      console.log('📝 New post created:', data);
+      info('New post created on the platform');
+      refetch();
+    }, [info, refetch]),
+  });
+
+  useWebSocketAdminAlerts(useCallback((data) => {
+    console.log('🚨 Admin alert:', data);
+    
+    if (data.type === 'challenge_pending') {
+      warning('New challenge pending verification');
+      refetch();
+    } else {
+      info(data.message || 'Admin alert received');
+    }
+  }, [warning, info, refetch]));
 
   if (isLoading) {
     return (
@@ -246,7 +290,7 @@ export default function AdminDashboard() {
                 {(error as Error).message || 'Please try again.'}
               </p>
             </div>
-            <Button>Retry</Button>
+            <Button onClick={() => refetch()}>Retry</Button>
           </CardContent>
         </Card>
       </div>
@@ -259,14 +303,23 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-light">Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-light">Dashboard</h1>
+              {isConnected && (
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse">
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Live
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground">
-              Platform overview and analytics
+              Platform overview and real-time analytics
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
-              Live
+            <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+              <Bell className="w-3 h-3 mr-1" />
+              Real-time
             </Badge>
             <Button variant="outline" className="gap-2">
               <Calendar className="w-4 h-4" />
@@ -309,7 +362,7 @@ export default function AdminDashboard() {
                     <div className="flex flex-col gap-1">
                       <MetricRow label="Posts Today" value={stats?.content?.postsToday} trend={18} />
                       <MetricRow label="Total Comments" value={stats?.content?.totalComments} trend={22} />
-                      <MetricRow label="Avg Engagement" value={stats?.engagement?.average} trend={6} />
+                      <MetricRow label="Total Crafts" value={stats?.content?.totalCrafts} trend={6} />
                     </div>
                   </MetricCard>
                 </div>
@@ -330,8 +383,8 @@ export default function AdminDashboard() {
                   <MetricCard title="Environmental Impact" icon={Leaf}>
                     <div className="flex flex-col gap-1">
                       <MetricRow label="Trees Saved" value={42} trend={15} />
-                      <MetricRow label="CO₂ Reduction" value={12} trend={10} />
-                      <MetricRow label="Energy Saved" value={3.2} trend={8} />
+                      <MetricRow label="CO₂ Reduction (tons)" value={12} trend={10} />
+                      <MetricRow label="Energy Saved (MWh)" value={3.2} trend={8} />
                     </div>
                   </MetricCard>
                 </div>
@@ -343,7 +396,8 @@ export default function AdminDashboard() {
                   <div className="flex flex-col gap-1">
                     <MetricRow label="Total Likes" value={stats?.engagement?.totalLikes} trend={22} />
                     <MetricRow label="Total Comments" value={stats?.content?.totalComments} trend={18} />
-                    <MetricRow label="Active Sessions" value={stats?.engagement?.sessions} trend={15} />
+                    <MetricRow label="Avg Posts/User" value={stats?.engagement?.avgPostsPerUser} trend={15} />
+                    <MetricRow label="Avg Challenges/User" value={stats?.engagement?.avgChallengesPerUser} trend={10} />
                   </div>
                 </MetricCard>
               </TabsContent>
@@ -378,12 +432,30 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <p className="text-xl font-light">18k</p>
-                    <p className="text-xs text-muted-foreground">Water</p>
+                    <p className="text-xs text-muted-foreground">Water (L)</p>
                   </div>
                   <div>
                     <p className="text-xl font-light">3.2</p>
-                    <p className="text-xs text-muted-foreground">Energy</p>
+                    <p className="text-xs text-muted-foreground">Energy (MWh)</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Real-time Activity Feed */}
+            <Card className="border-border/50">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold">Live Activity</CardTitle>
+                  <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
+                    <Wifi className="w-3 h-3 mr-1 animate-pulse" />
+                    Live
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  Real-time updates will appear here
                 </div>
               </CardContent>
             </Card>
@@ -393,4 +465,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-  

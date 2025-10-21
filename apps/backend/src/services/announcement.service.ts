@@ -3,6 +3,7 @@ import { ValidationError } from '../utils/error';
 import { logger } from "../utils/logger";
 import prisma from "../config/prisma";
 import { VALIDATION_LIMITS } from "../constats";
+import { WebSocketEmitter } from "../websocket/events";
 
 class AnnouncementService extends BaseService {
   // Create announcement
@@ -47,6 +48,15 @@ class AnnouncementService extends BaseService {
     });
 
     logger.info('Announcement created', { announcementId: announcement.announcement_id });
+
+    // 🔥 WEBSOCKET: Broadcast announcement to all users
+    WebSocketEmitter.announcementCreated({
+      announcement_id: announcement.announcement_id,
+      title: announcement.title,
+      content: announcement.content,
+      expires_at: announcement.expires_at,
+      created_by: announcement.admin!.username
+    });
 
     return announcement;
   }
@@ -152,6 +162,15 @@ class AnnouncementService extends BaseService {
     });
 
     logger.info('Announcement updated', { announcementId });
+
+    // 🔥 WEBSOCKET: Notify users of announcement update
+    WebSocketEmitter.broadcast('announcement:updated', {
+      announcement_id: updated.announcement_id,
+      title: updated.title,
+      content: updated.content,
+      is_active: updated.is_active,
+      expires_at: updated.expires_at
+    });
 
     return updated;
   }

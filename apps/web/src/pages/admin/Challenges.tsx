@@ -1,4 +1,5 @@
-import { useState } from 'react';
+// apps/web/src/pages/admin/Challenges.tsx - WITH WEBSOCKET
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trophy, Plus, Loader2, RefreshCw, Sparkles, Clock, Users } from 'lucide-react';
+import { Trophy, Plus, Loader2, RefreshCw, Sparkles, Clock, Users, Zap } from 'lucide-react';
 import { useChallenges } from '@/hooks/useChallenges';
+import { useWebSocketChallenges } from '@/hooks/useWebSocket';
+import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminChallenges() {
@@ -27,6 +30,48 @@ export default function AdminChallenges() {
     refetchPending
   } = useChallenges();
 
+  const { success, info } = useToast();
+
+  // WebSocket handlers
+  const handleChallengeCreated = useCallback((data: any) => {
+    console.log('✅ New challenge created:', data);
+    success(data.message || 'New challenge available!');
+    refetch();
+  }, [refetch, success]);
+
+  const handleChallengeUpdated = useCallback((data: any) => {
+    console.log('✅ Challenge updated:', data);
+    info(data.message || 'A challenge was updated');
+    refetch();
+  }, [refetch, info]);
+
+  const handleChallengeDeleted = useCallback((data: any) => {
+    console.log('✅ Challenge deleted:', data);
+    info(data.message || 'A challenge was removed');
+    refetch();
+  }, [refetch, info]);
+
+  const handleChallengeCompleted = useCallback((data: any) => {
+    console.log('✅ Challenge completed:', data);
+    info('New challenge submission pending verification!');
+    refetchPending();
+  }, [refetchPending, info]);
+
+  const handleChallengeVerified = useCallback((data: any) => {
+    console.log('✅ Challenge verified:', data);
+    success('Challenge verification completed!');
+    refetchPending();
+  }, [refetchPending, success]);
+
+  // Subscribe to WebSocket events
+  useWebSocketChallenges({
+    onCreated: handleChallengeCreated,
+    onUpdated: handleChallengeUpdated,
+    onDeleted: handleChallengeDeleted,
+    onCompleted: handleChallengeCompleted,
+    onVerified: handleChallengeVerified,
+  });
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -41,7 +86,7 @@ export default function AdminChallenges() {
     
     try {
       await createChallenge(formData);
-      alert('Challenge created successfully!');
+      success('Challenge created successfully!');
       setCreateDialogOpen(false);
       setFormData({
         title: '',
@@ -51,7 +96,7 @@ export default function AdminChallenges() {
         category: 'daily'
       });
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      console.error('Error creating challenge:', error);
     }
   };
 
@@ -60,9 +105,9 @@ export default function AdminChallenges() {
     
     try {
       await generateAIChallenge(category);
-      alert('AI challenge generated successfully!');
+      success('AI challenge generated successfully!');
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      console.error('Error generating AI challenge:', error);
     }
   };
 
@@ -104,7 +149,15 @@ export default function AdminChallenges() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 mb-2">
               <Trophy className="w-8 h-8 text-purple-600" />
-              <h1 className="text-3xl font-bold text-gray-900">Challenges Management</h1>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Challenges Management</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Real-time Updates
+                  </Badge>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => refetch()}>
@@ -213,7 +266,7 @@ export default function AdminChallenges() {
               </Dialog>
             </div>
           </div>
-          <p className="text-gray-600">Manage eco-challenges and verifications</p>
+          <p className="text-gray-600">Manage eco-challenges with real-time updates</p>
         </div>
 
         {/* Stats Cards */}
@@ -337,7 +390,7 @@ export default function AdminChallenges() {
             ) : (
               <div className="space-y-4">
                 {challenges.map((challenge) => (
-                  <div key={challenge.challenge_id} className="p-4 border rounded-lg hover:bg-gray-50">
+                  <div key={challenge.challenge_id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -415,7 +468,7 @@ export default function AdminChallenges() {
                   </div>
                 ) : (
                   pendingVerifications.slice(0, 5).map((verification: any) => (
-                    <div key={verification.user_challenge_id} className="p-3 border rounded-lg">
+                    <div key={verification.user_challenge_id} className="p-3 border rounded-lg bg-orange-50 border-orange-200">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium text-sm">

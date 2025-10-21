@@ -1,7 +1,8 @@
-// apps/web/src/components/AdminLayout.tsx
+// apps/web/src/components/AdminLayout.tsx - WITH WEBSOCKET STATUS
 import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,6 +17,8 @@ import {
   Shield,
   Settings,
   ChevronRight,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -23,13 +26,14 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { isConnected, ping } = useWebSocket();
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3, badge: null },
-    { name: 'Users', href: '/admin/users', icon: Users, badge: 8 },
-    { name: 'Content', href: '/admin/posts', icon: FileText, badge: 23 },
+    { name: 'Users', href: '/admin/users', icon: Users, badge: null },
+    { name: 'Content', href: '/admin/posts', icon: FileText, badge: null },
     { name: 'Challenges', href: '/admin/challenges', icon: Trophy, badge: null },
-    { name: 'Reports', href: '/admin/reports', icon: AlertCircle, badge: 15 },
+    { name: 'Reports', href: '/admin/reports', icon: AlertCircle, badge: null },
   ];
 
   const handleLogout = () => {
@@ -108,6 +112,36 @@ const AdminLayout = () => {
             })}
           </nav>
 
+          {/* WebSocket Status */}
+          {sidebarOpen && (
+            <div className="px-4 py-3 border-t border-gray-100">
+              <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  {isConnected ? (
+                    <>
+                      <Wifi className="w-4 h-4 text-green-600" />
+                      <span className="text-xs text-green-700 font-medium">Connected</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-4 h-4 text-rose-600" />
+                      <span className="text-xs text-rose-700 font-medium">Disconnected</span>
+                    </>
+                  )}
+                </div>
+                {isConnected && (
+                  <button
+                    onClick={ping}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                    title="Test connection"
+                  >
+                    Ping
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* User Section */}
           <div className="p-4 border-t border-gray-100">
             {sidebarOpen ? (
@@ -172,6 +206,21 @@ const AdminLayout = () => {
                   {location.pathname.split('/').pop() || 'Dashboard'}
                 </span>
               </div>
+            </div>
+
+            {/* WebSocket Status Badge (Desktop) */}
+            <div className="hidden lg:flex items-center gap-2">
+              {isConnected ? (
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Live
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="bg-rose-50 text-rose-700 border-rose-200">
+                  <WifiOff className="w-3 h-3 mr-1" />
+                  Offline
+                </Badge>
+              )}
             </div>
           </div>
         </header>

@@ -11,7 +11,7 @@ const log = (message: string, level: 'info' | 'error' = 'info') => {
 };
 
 // Daily challenges - Every day at 6:00 AM
-cron.schedule('10 11 * * *', async () => {
+cron.schedule('13 18 * * *', async () => {
   log('Starting daily challenge generation...');
   
   try {
@@ -31,7 +31,7 @@ cron.schedule('10 11 * * *', async () => {
 });
 
 // Weekly challenges - Every Monday at 7:00 AM
-cron.schedule('10 11 * * 2', async () => {
+cron.schedule('13 18 * * 2', async () => {
   log('Starting weekly challenge generation...');
   
   try {
@@ -49,7 +49,7 @@ cron.schedule('10 11 * * 2', async () => {
 });
 
 // Monthly challenges - 1st of every month at 8:00 AM
-cron.schedule('10 11 21 * *', async () => {
+cron.schedule('13 18 21 * *', async () => {
   log('Starting monthly challenge generation...');
   
   try {

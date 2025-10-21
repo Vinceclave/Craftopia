@@ -5,6 +5,7 @@ import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { VALIDATION_LIMITS } from "../constats";
+import WebSocketEmitter from "../websocket/events";
 
 interface CreateReportData {
   reporter_id: number;
@@ -120,6 +121,15 @@ class ReportService extends BaseService {
       });
 
       logger.info('Report created', { reportId: report.report_id });
+
+      // 🔥 WEBSOCKET: Notify admins of new report
+      WebSocketEmitter.reportCreated({
+        report_id: report.report_id,
+        reporter: report.reporter.username,
+        type: data.reported_post_id ? 'post' : 'comment',
+        reason: report.reason.substring(0, 100),
+        status: report.status
+      });
 
       return report;
     });
@@ -250,6 +260,14 @@ class ReportService extends BaseService {
     });
 
     logger.info('Report status updated', { reportId, status });
+
+    // 🔥 WEBSOCKET: Notify reporter of status update
+    WebSocketEmitter.reportUpdated(report.reporter_id, {
+      report_id: updated.report_id,
+      status: updated.status,
+      moderator_notes: updated.moderator_notes,
+      resolved_by: updated.resolver?.username
+    });
 
     return updated;
   }

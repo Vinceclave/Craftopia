@@ -5,6 +5,8 @@ import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { verifyChallengeAI } from "../ai/services/image.service";
+import { WebSocketEmitter } from '../websocket/events';
+
 
 class UserChallengeService extends BaseService {
   // Join challenge
@@ -66,6 +68,13 @@ class UserChallengeService extends BaseService {
         userChallengeId: userChallenge.user_challenge_id 
       });
 
+      // 🔥 WEBSOCKET: Notify user they joined
+      WebSocketEmitter.challengeJoined(userId, {
+        challenge: userChallenge.challenge,
+        userChallengeId: userChallenge.user_challenge_id,
+        status: userChallenge.status
+      });
+
       return userChallenge;
     });
   }
@@ -125,6 +134,14 @@ class UserChallengeService extends BaseService {
       logger.info('Challenge marked as pending verification', { 
         userChallengeId,
         userId 
+      });
+
+       // 🔥 WEBSOCKET: Notify user and admins
+      WebSocketEmitter.challengeCompleted(userId, {
+        userChallengeId: updated.user_challenge_id,
+        challenge: updated.challenge,
+        status: updated.status,
+        completedAt: updated.completed_at
       });
 
       return updated;
@@ -220,6 +237,56 @@ class UserChallengeService extends BaseService {
       logger.info('User points awarded', { 
         userId, 
         pointsAwarded: points_awarded 
+      });
+    }
+
+    // 🔥 WEBSOCKET: Notify based on verification result
+    if (status === 'completed' && points_awarded) {
+      await prisma.userProfile.upsert({
+        where: { user_id: userId },
+        update: {
+          points: { increment: points_awarded }
+        },
+        create: {
+          user_id: userId,
+          points: points_awarded
+        }
+      });
+
+      logger.info('User points awarded', { 
+        userId, 
+        pointsAwarded: points_awarded 
+      });
+
+      // Notify user of success
+      WebSocketEmitter.challengeVerified(userId, {
+        userChallengeId,
+        challenge: verified.challenge,
+        points_awarded,
+        ai_confidence_score,
+        status
+      });
+
+      // Award points notification
+      WebSocketEmitter.pointsAwarded(userId, {
+        amount: points_awarded,
+        reason: 'Challenge completed',
+        challengeTitle: verified.challenge.title
+      });
+
+      // Update leaderboard for everyone
+      const leaderboard = await this.getChallengeLeaderboard(challengeId, 10);
+      WebSocketEmitter.leaderboardUpdated({
+        challengeId,
+        leaderboard
+      });
+    } else if (status === 'rejected') {
+      // Notify user of rejection
+      WebSocketEmitter.challengeRejected(userId, {
+        userChallengeId,
+        challenge: verified.challenge,
+        admin_notes,
+        ai_confidence_score
       });
     }
 
@@ -463,8 +530,37 @@ class UserChallengeService extends BaseService {
           userId: userChallenge.user_id, 
           points: pointsAwarded 
         });
-      }
 
+        WebSocketEmitter.challengeVerified(userChallenge.user_id, {
+          userChallengeId,
+          challenge: updated.challenge,
+          points_awarded: pointsAwarded,
+          status,
+          verifiedBy: updated.verified_by?.username,
+          admin_notes: notes
+        });
+        
+        WebSocketEmitter.pointsAwarded(userChallenge.user_id, {
+          amount: pointsAwarded,
+          reason: 'Challenge manually approved',
+          challengeTitle: updated.challenge.title
+        });
+
+        // Update leaderboard
+        const leaderboard = await this.getChallengeLeaderboard(userChallenge.challenge_id, 10);
+        WebSocketEmitter.leaderboardUpdated({
+          challengeId: userChallenge.challenge_id,
+          leaderboard
+        });
+      } else {
+        // 🔥 WEBSOCKET: Notify user of rejection
+        WebSocketEmitter.challengeRejected(userChallenge.user_id, {
+          userChallengeId,
+          challenge: updated.challenge,
+          admin_notes: notes,
+          verifiedBy: updated.verified_by?.username
+        });
+      }
       return updated;
     });
   }

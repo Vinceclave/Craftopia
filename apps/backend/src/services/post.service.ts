@@ -1,13 +1,9 @@
 // apps/backend/src/services/post.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
-import { 
-  ValidationError, 
-  NotFoundError, 
-  ForbiddenError 
-} from "../utils/error";
 import { VALIDATION_LIMITS } from "../constats";
 import { Category } from "../generated/prisma";
+import { WebSocketEmitter } from "../websocket/events";
 
 type FeedType = 'all' | 'trending' | 'popular' | 'featured';
 
@@ -22,7 +18,6 @@ class PostService extends BaseService {
     category: Category;
     featured?: boolean;
   }) {
-    // Validate
     this.validateId(data.user_id, 'User ID');
     this.validateRequiredString(
       data.title, 
@@ -38,7 +33,7 @@ class PostService extends BaseService {
     );
     this.validateEnum(data.category, Category, 'category');
 
-    return prisma.post.create({
+    const post = await prisma.post.create({
       data: {
         user_id: data.user_id,
         title: data.title.trim(),
@@ -54,7 +49,20 @@ class PostService extends BaseService {
         }
       }
     });
+
+    // 🔥 WEBSOCKET: Broadcast new post to community
+    WebSocketEmitter.postCreated({
+      post_id: post.post_id,
+      title: post.title,
+      content: post.content.substring(0, 100),
+      category: post.category,
+      author: post.user.username,
+      tags: post.tags
+    });
+
+    return post;
   }
+
 
   // Get posts with feed type
   async getPosts(
@@ -208,11 +216,14 @@ class PostService extends BaseService {
 
     this.checkOwnership(post.user_id, userId, 'posts');
 
+     // 🔥 WEBSOCKET: Notify that post was deleted
+    WebSocketEmitter.postDeleted(postId);
+
     return this.softDelete(prisma.post, postId, 'post_id');
   }
 
   // Add comment
-  async addComment(data: { postId: number; userId: number; content: string }) {
+ async addComment(data: { postId: number; userId: number; content: string }) {
     this.validateId(data.postId, 'Post ID');
     this.validateId(data.userId, 'User ID');
     this.validateRequiredString(
@@ -222,24 +233,42 @@ class PostService extends BaseService {
       VALIDATION_LIMITS.COMMENT.MAX
     );
 
-    // Check post exists
-    await this.checkNotDeleted(
+    const post = await this.checkNotDeleted(
       prisma.post,
       { post_id: data.postId },
       'Post'
     );
 
-    return prisma.comment.create({
-      data: { 
-        post_id: data.postId, 
-        user_id: data.userId, 
-        content: data.content.trim() 
-      },
-      include: { 
-        user: { select: { user_id: true, username: true } } 
-      }
-    });
-  }
+    const [comment, commenter] = await Promise.all([
+      prisma.comment.create({
+        data: { 
+          post_id: data.postId, 
+          user_id: data.userId, 
+          content: data.content.trim() 
+        },
+        include: { 
+          user: { select: { user_id: true, username: true } } 
+        }
+      }),
+      prisma.user.findUnique({
+        where: { user_id: data.userId },
+        select: { username: true }
+      })
+    ]);
+
+    // 🔥 WEBSOCKET: Notify post owner (if not commenting on own post)
+    if (post.user_id !== data.userId) {
+      WebSocketEmitter.postCommented(post.user_id, {
+        postId: data.postId,
+        commentId: comment.comment_id,
+        username: commenter?.username || 'Someone',
+        content: comment.content.substring(0, 50)
+      });
+    }
+
+    return comment;
+}
+
 
   // Get comments by post
   async getCommentsByPost(postId: number) {
@@ -279,39 +308,47 @@ class PostService extends BaseService {
     this.validateId(postId, 'Post ID');
     this.validateId(userId, 'User ID');
 
-    // Check post exists
-    await this.checkNotDeleted(
+    const post = await this.checkNotDeleted(
       prisma.post,
       { post_id: postId },
       'Post'
     );
 
     return await this.executeTransaction(async (tx) => {
-      // Check if user already has a reaction
       const existing = await tx.like.findFirst({
         where: { post_id: postId, user_id: userId }
       });
 
       if (!existing) {
-        // Create new like
         await tx.like.create({
           data: { post_id: postId, user_id: userId }
         });
       } else {
-        // Toggle existing like (soft delete/restore)
         await tx.like.update({
           where: { like_id: existing.like_id },
           data: { deleted_at: existing.deleted_at ? null : new Date() }
         });
       }
 
-      // Get updated counts and status
-      const [likeCount, userReaction] = await Promise.all([
+      const [likeCount, userReaction, liker] = await Promise.all([
         tx.like.count({ where: { post_id: postId, deleted_at: null } }),
         tx.like.findFirst({
           where: { post_id: postId, user_id: userId, deleted_at: null }
+        }),
+        tx.user.findUnique({
+          where: { user_id: userId },
+          select: { username: true }
         })
       ]);
+
+      // 🔥 WEBSOCKET: Notify post owner (if not liking own post)
+      if (post.user_id !== userId && userReaction) {
+        WebSocketEmitter.postLiked(post.user_id, {
+          postId,
+          username: liker?.username || 'Someone',
+          likeCount
+        });
+      }
 
       return {
         isLiked: !!userReaction,
@@ -321,6 +358,7 @@ class PostService extends BaseService {
       };
     });
   }
+
 
   // Count reactions
   async countReactions(postId: number) {

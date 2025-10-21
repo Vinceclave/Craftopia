@@ -5,6 +5,7 @@ import { BaseService } from "../base.service";
 import { AppError, ValidationError } from "../../utils/error";
 import { UserRole, ModerationAction } from "../../generated/prisma";
 import { logger } from "../../utils/logger";
+import WebSocketEmitter from "../../websocket/events";
 
 export interface UserFilter {
   page?: number;
@@ -261,6 +262,15 @@ class UserManagementService extends BaseService {
           newStatus: newStatus ? 'active' : 'banned' 
         });
 
+        // 🔥 WEBSOCKET: Notify user of status change
+        if (newStatus) {
+          WebSocketEmitter.userUnbanned(userId);
+        } else {
+          WebSocketEmitter.userBanned(userId, {
+            reason: 'Account suspended by admin',
+            suspendedBy: adminId
+          });
+        }
         return updatedUser;
       });
     } catch (error) {
@@ -315,6 +325,13 @@ class UserManagementService extends BaseService {
 
         logger.info('User role updated successfully', { userId, newRole });
 
+        // 🔥 WEBSOCKET: Notify user of role change
+        WebSocketEmitter.notification(userId, {
+          type: 'role_changed',
+          title: 'Role Updated',
+          message: `Your role has been changed to ${newRole}`,
+          data: { newRole }
+        });
         return updatedUser;
       });
     } catch (error) {
@@ -404,6 +421,12 @@ class UserManagementService extends BaseService {
         });
 
         logger.info('User deleted successfully', { userId });
+
+        // 🔥 WEBSOCKET: Force disconnect user
+        WebSocketEmitter.userBanned(userId, {
+          reason: 'Account permanently deleted',
+          permanent: true
+        });
 
         return { 
           success: true,

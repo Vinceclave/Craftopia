@@ -39,6 +39,7 @@ CREATE TABLE "User" (
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("user_id")
 );
@@ -51,6 +52,7 @@ CREATE TABLE "UserProfile" (
     "profile_picture_url" TEXT,
     "points" INTEGER NOT NULL DEFAULT 0,
     "home_dashboard_layout" JSONB,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "UserProfile_pkey" PRIMARY KEY ("user_id")
 );
@@ -63,6 +65,7 @@ CREATE TABLE "refresh_tokens" (
     "expires_at" TIMESTAMP(3) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "last_used" TIMESTAMP(3),
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "refresh_tokens_pkey" PRIMARY KEY ("token_id")
 );
@@ -85,6 +88,7 @@ CREATE TABLE "ChatbotConversation" (
     "user_id" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "ChatbotConversation_pkey" PRIMARY KEY ("conversation_id")
 );
@@ -96,6 +100,7 @@ CREATE TABLE "ChatbotMessage" (
     "sender" "MessageSender" NOT NULL,
     "content" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "ChatbotMessage_pkey" PRIMARY KEY ("message_id")
 );
@@ -193,6 +198,7 @@ CREATE TABLE "Report" (
     "resolved_by_admin_id" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "resolved_at" TIMESTAMP(3),
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "Report_pkey" PRIMARY KEY ("report_id")
 );
@@ -220,6 +226,7 @@ CREATE TABLE "ModerationLog" (
     "target_user_id" INTEGER,
     "reason" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
 
     CONSTRAINT "ModerationLog_pkey" PRIMARY KEY ("log_id")
 );

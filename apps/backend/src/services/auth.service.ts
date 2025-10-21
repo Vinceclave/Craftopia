@@ -80,6 +80,11 @@ class AuthService {
       throw new ForbiddenError('This account has been deleted. Please contact support.');
     }
 
+    // Check if account is not active
+    if (!user.is_active) {
+      throw new ForbiddenError('This account has been banned. Please contact support.');
+    }
+
     // Verify password
     const isValid = await comparePassword(password, user.password_hash);
     if (!isValid) {
