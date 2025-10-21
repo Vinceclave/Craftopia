@@ -1,4 +1,4 @@
-// apps/backend/src/services/admin/dashboard.service.ts
+// apps/backend/src/services/admin/dashboard.service.ts - FIXED VERSION
 
 import prisma from "../../config/prisma";
 import { AppError } from "../../utils/error";
@@ -27,13 +27,15 @@ export interface DashboardStats {
   reports: {
     total: number;
     pending: number;
-    inReview: number;
+    in_review: number;
     resolved: number;
   };
   engagement: {
     totalLikes: number;
     avgPostsPerUser: number;
     avgChallengesPerUser: number;
+    average?: number; // Add this for frontend compatibility
+    sessions?: number; // Add this for frontend compatibility
   };
 }
 
@@ -52,11 +54,11 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
   try {
     // Users stats
     const [totalUsers, activeUsers, newUsersToday, newUsersWeek, verifiedUsers] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { is_active: true } }),
-      prisma.user.count({ where: { created_at: { gte: startOfToday } } }),
-      prisma.user.count({ where: { created_at: { gte: sevenDaysAgo } } }),
-      prisma.user.count({ where: { is_email_verified: true } })
+      prisma.user.count({ where: { deleted_at: null } }),
+      prisma.user.count({ where: { is_active: true, deleted_at: null } }),
+      prisma.user.count({ where: { created_at: { gte: startOfToday }, deleted_at: null } }),
+      prisma.user.count({ where: { created_at: { gte: sevenDaysAgo }, deleted_at: null } }),
+      prisma.user.count({ where: { is_email_verified: true, deleted_at: null } })
     ]);
 
     // Content stats
@@ -87,16 +89,32 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
 
     // Report stats
     const [totalReports, pendingReports, inReviewReports, resolvedReports] = await Promise.all([
-      prisma.report.count(),
-      prisma.report.count({ where: { status: 'pending' } }),
-      prisma.report.count({ where: { status: 'in_review' } }),
-      prisma.report.count({ where: { status: 'resolved' } })
+      prisma.report.count({ where: { deleted_at: null } }),
+      prisma.report.count({ where: { status: 'pending', deleted_at: null } }),
+      prisma.report.count({ where: { status: 'in_review', deleted_at: null } }),
+      prisma.report.count({ where: { status: 'resolved', deleted_at: null } })
     ]);
 
     // Engagement stats
     const totalLikes = await prisma.like.count({ where: { deleted_at: null } });
+    
+    // Calculate averages
     const avgPostsPerUser = totalUsers > 0 ? totalPosts / totalUsers : 0;
     const avgChallengesPerUser = totalUsers > 0 ? completedChallenges / totalUsers : 0;
+    
+    // Calculate average engagement (likes + comments per post)
+    const avgEngagement = totalPosts > 0 
+      ? (totalLikes + totalComments) / totalPosts 
+      : 0;
+
+    // Calculate active sessions (users active in last 24 hours)
+    const activeSessions = await prisma.user.count({
+      where: {
+        is_active: true,
+        deleted_at: null,
+        updated_at: { gte: subDays(today, 1) }
+      }
+    });
 
     return {
       users: {
@@ -121,13 +139,15 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       reports: {
         total: totalReports,
         pending: pendingReports,
-        inReview: inReviewReports,
+        in_review: inReviewReports,
         resolved: resolvedReports
       },
       engagement: {
         totalLikes,
         avgPostsPerUser: Number(avgPostsPerUser.toFixed(2)),
-        avgChallengesPerUser: Number(avgChallengesPerUser.toFixed(2))
+        avgChallengesPerUser: Number(avgChallengesPerUser.toFixed(2)),
+        average: Number(avgEngagement.toFixed(2)), // ✅ Added for frontend
+        sessions: activeSessions // ✅ Added for frontend
       }
     };
   } catch (error) {
@@ -151,7 +171,10 @@ export const getActivityLogs = async (days: number = 7): Promise<ActivityLog[]> 
 
       const [users, posts, challenges] = await Promise.all([
         prisma.user.count({
-          where: { created_at: { gte: dayStart, lte: dayEnd } }
+          where: { 
+            created_at: { gte: dayStart, lte: dayEnd },
+            deleted_at: null 
+          }
         }),
         prisma.post.count({
           where: { 
@@ -189,6 +212,13 @@ export const getTopUsers = async (limit: number = 10) => {
 
   try {
     const users = await prisma.userProfile.findMany({
+      where: {
+        deleted_at: null,
+        user: {
+          deleted_at: null,
+          is_active: true
+        }
+      },
       take: limit,
       orderBy: { points: 'desc' },
       include: {
@@ -269,6 +299,7 @@ export const getRecentActivity = async (limit: number = 20) => {
       }),
       prisma.report.findMany({
         take: limit,
+        where: { deleted_at: null },
         orderBy: { created_at: 'desc' },
         select: {
           report_id: true,

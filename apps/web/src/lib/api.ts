@@ -1,3 +1,4 @@
+// apps/web/src/lib/api.ts - COMPLETE WITH REFRESH TOKEN
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
 const isDevelopment = import.meta.env.DEV;
@@ -20,6 +21,11 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   user: IUser;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
 export interface ApiResponse<T = any> {
@@ -172,6 +178,63 @@ export interface DashboardStats {
   };
 }
 
+// ===== TOKEN REFRESH LOGIC =====
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+const subscribeTokenRefresh = (callback: (token: string) => void) => {
+  refreshSubscribers.push(callback);
+};
+
+const onTokenRefreshed = (token: string) => {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+};
+
+const refreshAccessToken = async (): Promise<string> => {
+  try {
+    const refreshToken = localStorage.getItem('adminRefreshToken');
+    
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    console.log('🔄 Refreshing access token...');
+
+    const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
+      `${API_BASE_URL}/auth/refresh-token`,
+      { refreshToken },
+      {
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+
+    if (!response.data.success || !response.data.data) {
+      throw new Error('Failed to refresh token');
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+
+    // Save new tokens
+    localStorage.setItem('adminToken', accessToken);
+    localStorage.setItem('adminRefreshToken', newRefreshToken);
+
+    console.log('✅ Token refreshed successfully');
+    return accessToken;
+  } catch (error) {
+    console.error('❌ Token refresh failed:', error);
+    
+    // Clear tokens and redirect to login
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRefreshToken');
+    localStorage.removeItem('adminUser');
+    window.location.href = '/admin/login';
+    
+    throw error;
+  }
+};
+
+// ===== AXIOS INSTANCE =====
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -181,6 +244,7 @@ const api: AxiosInstance = axios.create({
   withCredentials: false,
 });
 
+// ===== REQUEST INTERCEPTOR =====
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('adminToken');
@@ -202,6 +266,7 @@ api.interceptors.request.use(
   }
 );
 
+// ===== RESPONSE INTERCEPTOR WITH REFRESH TOKEN =====
 api.interceptors.response.use(
   (response) => {
     console.log('✅ API Response:', {
@@ -212,18 +277,63 @@ api.interceptors.response.use(
     
     return response.data;
   },
-  (error: AxiosError<ApiResponse>) => {
+  async (error: AxiosError<ApiResponse>) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    
     console.error('❌ Response Error:', {
-      url: error.config?.url,
+      url: originalRequest?.url,
       status: error.response?.status,
       message: error.response?.data?.error || error.message
     });
     
-    if (error.response?.status === 401) {
-      console.warn('🔐 Unauthorized - Clearing auth and redirecting to login');
-      localStorage.removeItem('adminToken');
-      localStorage.removeItem('adminUser');
-      window.location.href = '/admin/login';
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      
+      // Check if this is a login or refresh-token endpoint (don't retry these)
+      if (originalRequest.url?.includes('/auth/login') || 
+          originalRequest.url?.includes('/auth/refresh-token')) {
+        console.warn('🔐 Auth endpoint failed - redirecting to login');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminRefreshToken');
+        localStorage.removeItem('adminUser');
+        window.location.href = '/admin/login';
+        return Promise.reject(error);
+      }
+
+      // If already refreshing, wait for the new token
+      if (isRefreshing) {
+        console.log('⏳ Waiting for token refresh...');
+        return new Promise((resolve) => {
+          subscribeTokenRefresh((token: string) => {
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      // Mark as retrying and start refresh
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        isRefreshing = false;
+        
+        // Notify all waiting requests
+        onTokenRefreshed(newToken);
+        
+        // Retry original request with new token
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
+        return api(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        refreshSubscribers = [];
+        return Promise.reject(refreshError);
+      }
     }
     
     const message = 
@@ -236,31 +346,76 @@ api.interceptors.response.use(
   }
 );
 
+// ===== AUTH API =====
 export const authAPI = {
-  login: async (email: string, password: string): Promise<ApiResponse<LoginResponse>> => {
+  login: async (email: string, password: string): Promise<LoginResponse> => {
     try {
       console.log('🔑 Attempting login for:', email);
+      
       const response = await api.post<ApiResponse<LoginResponse>>('/auth/login', { 
         email, 
         password 
       });
       
-      if (response.success && response.data) {
-        console.log('✅ Login successful');
-        return response;
-      } else {
+      console.log('📦 Login response received');
+      
+      if (!response.success || !response.data) {
         throw new Error(response.error || 'Login failed');
       }
+      
+      const { accessToken, refreshToken, user } = response.data;
+      
+      if (!accessToken || !refreshToken || !user) {
+        throw new Error('Incomplete login response');
+      }
+      
+      // ✅ Save both tokens
+      localStorage.setItem('adminToken', accessToken);
+      localStorage.setItem('adminRefreshToken', refreshToken);
+      
+      console.log('✅ Login successful');
+      return response.data;
     } catch (error: any) {
       console.error('❌ Login error:', error);
       throw error;
     }
   },
   
-  logout: () => {
-    console.log('👋 Logging out');
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminUser');
+  logout: async () => {
+    try {
+      const refreshToken = localStorage.getItem('adminRefreshToken');
+      
+      if (refreshToken) {
+        console.log('👋 Logging out from backend...');
+        await api.post('/auth/logout', { refreshToken });
+      }
+    } catch (error) {
+      console.warn('⚠️ Backend logout failed:', error);
+    } finally {
+      // Always clear local storage
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('adminRefreshToken');
+      localStorage.removeItem('adminUser');
+    }
+  },
+  
+  refreshToken: async (): Promise<RefreshTokenResponse> => {
+    const refreshToken = localStorage.getItem('adminRefreshToken');
+    
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await api.post<ApiResponse<RefreshTokenResponse>>(
+      '/auth/refresh-token',
+      { refreshToken }
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error('Failed to refresh token');
+    }
+
+    return response.data;
   },
   
   getCurrentUser: (): IUser | null => {
@@ -271,9 +426,14 @@ export const authAPI = {
       console.error('❌ Error getting current user:', error);
       return null;
     }
+  },
+  
+  hasValidToken: (): boolean => {
+    return !!localStorage.getItem('adminToken');
   }
 };
 
+// ===== DASHBOARD API =====
 export const dashboardAPI = {
   getStats: (): Promise<ApiResponse<DashboardStats>> => 
     api.get('/admin/dashboard/stats'),
@@ -288,6 +448,7 @@ export const dashboardAPI = {
     api.get(`/admin/dashboard/recent-activity`, { params: { limit } })
 };
 
+// ===== USER API =====
 export const userAPI = {
   getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<User>>> => 
     api.get('/admin/management/users', { params }),
@@ -308,6 +469,7 @@ export const userAPI = {
     api.delete(`/admin/management/users/${userId}`)
 };
 
+// ===== MODERATION API =====
 export const moderationAPI = {
   getContentForReview: async (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> => {
     console.log('🔍 Fetching content for review:', { page, limit });
@@ -391,6 +553,7 @@ export const moderationAPI = {
   }
 };
 
+// ===== REPORTS API =====
 export const reportsAPI = {
   getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<Report>>> => 
     api.get('/reports', { params }),
@@ -405,6 +568,7 @@ export const reportsAPI = {
     api.get('/reports/stats')
 };
 
+// ===== CHALLENGES API =====
 export const challengesAPI = {
   getAll: (category?: string): Promise<ApiResponse<PaginatedResponse<Challenge>>> => {
     const params = category ? { category } : {};
@@ -421,6 +585,7 @@ export const challengesAPI = {
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } })
 };
 
+// ===== HEALTH CHECK =====
 export const healthCheck = async (): Promise<boolean> => {
   try {
     console.log('🏥 Checking API health...');
