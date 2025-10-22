@@ -1,4 +1,4 @@
-// screens/Feed.tsx - FIXED VERSION (WebSocket events handled in WebSocketContext)
+// apps/mobile/src/screens/Feed.tsx - ENHANCED WITH PROPER WEBSOCKET INTEGRATION
 import React, { useState, useEffect } from 'react';
 import {
   Text,
@@ -7,12 +7,13 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus, Wifi, WifiOff } from 'lucide-react-native';
+import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus, Wifi, WifiOff, RefreshCw } from 'lucide-react-native';
 import { PostContainer } from '~/components/feed/post/PostContainer';
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native';
 import { FeedStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
 
@@ -31,6 +32,7 @@ export const FeedScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const [activeTab, setActiveTab] = useState<FeedType>('all');
   const { isConnected } = useWebSocket();
+  const [connectionPulse] = useState(new Animated.Value(1));
 
   // TanStack Query hooks
   const { 
@@ -38,10 +40,9 @@ export const FeedScreen = () => {
     isLoading, 
     error, 
     refetch,
-    isRefetching 
+    isRefetching,
+    dataUpdatedAt
   } = usePosts(activeTab);
-
-  console.log('📊 Posts data:', posts);
 
   const { 
     data: trendingTags = [], 
@@ -50,22 +51,48 @@ export const FeedScreen = () => {
 
   const toggleReactionMutation = useTogglePostReaction();
 
-  // NOTE: WebSocket event handlers are now in WebSocketContext.tsx
-  // This prevents duplicate listeners and ensures consistent cache updates
-
+  // Pulse animation for connection status
   useEffect(() => {
-  console.log('📊 Feed data updated:', {
-    count: posts.length,
-    activeTab,
-    isLoading,
-    isConnected,
-    posts: posts.map(p => ({ id: p.post_id, title: p.title, likes: p.likeCount }))
-  });
-}, [posts, activeTab, isLoading, isConnected]);
+    if (isConnected) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(connectionPulse, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(connectionPulse, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      connectionPulse.setValue(1);
+    }
+  }, [isConnected]);
+
+  // Log data updates for debugging
+  useEffect(() => {
+    console.log('📊 Feed data updated:', {
+      count: posts.length,
+      activeTab,
+      isLoading,
+      isConnected,
+      dataUpdatedAt: new Date(dataUpdatedAt).toISOString(),
+      posts: posts.slice(0, 3).map(p => ({ 
+        id: p.post_id, 
+        title: p.title, 
+        likes: p.likeCount,
+        isLiked: p.isLiked
+      }))
+    });
+  }, [posts, activeTab, isLoading, isConnected, dataUpdatedAt]);
 
   const handleToggleReaction = async (postId: number) => {
     try {
-      console.log('🔵 Frontend: Toggling reaction for post:', postId);
+      console.log('🔵 User toggling reaction for post:', postId);
       await toggleReactionMutation.mutateAsync(postId);
     } catch (error) {
       console.error('❌ Failed to toggle reaction:', error);
@@ -73,6 +100,7 @@ export const FeedScreen = () => {
   };
 
   const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
     refetch();
   };
 
@@ -86,7 +114,10 @@ export const FeedScreen = () => {
     return (
       <TouchableOpacity
         key={tab.key}
-        onPress={() => setActiveTab(tab.key)}
+        onPress={() => {
+          console.log('📑 Switching to tab:', tab.key);
+          setActiveTab(tab.key);
+        }}
         className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
         activeOpacity={0.7}
       >
@@ -95,11 +126,32 @@ export const FeedScreen = () => {
             size={16} 
             color={isActive ? '#374A36' : '#5D6B5D'} 
           />
-          <Text className={`text-sm font-medium ml-1.5 ${isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'}`}>
+          <Text className={`text-sm font-medium ml-1.5 ${
+            isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
+          }`}>
             {tab.label}
           </Text>
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderConnectionStatus = () => {
+    return (
+      <View className="flex-row items-center">
+        <Animated.View style={{ transform: [{ scale: connectionPulse }] }}>
+          {isConnected ? (
+            <Wifi size={14} color="#10B981" />
+          ) : (
+            <WifiOff size={14} color="#EF4444" />
+          )}
+        </Animated.View>
+        <Text className={`text-xs ml-1 ${
+          isConnected ? 'text-green-600' : 'text-red-600'
+        }`}>
+          {isConnected ? 'Live' : 'Offline'}
+        </Text>
+      </View>
     );
   };
 
@@ -116,10 +168,19 @@ export const FeedScreen = () => {
     if (error) {
       return (
         <View className="flex-1 justify-center items-center py-6 px-4">
-          <Text className="text-craftopia-textPrimary text-base font-semibold text-center mb-1">Something went wrong</Text>
-          <Text className="text-craftopia-textSecondary text-sm text-center mb-4">{(error as Error).message}</Text>
-          <TouchableOpacity onPress={handleRefresh} className="bg-craftopia-primary px-4 py-2 rounded-lg" activeOpacity={0.7}>
-            <Text className="text-craftopia-surface text-sm font-medium">Try Again</Text>
+          <Text className="text-craftopia-textPrimary text-base font-semibold text-center mb-1">
+            Something went wrong
+          </Text>
+          <Text className="text-craftopia-textSecondary text-sm text-center mb-4">
+            {(error as Error).message}
+          </Text>
+          <TouchableOpacity 
+            onPress={handleRefresh} 
+            className="bg-craftopia-primary px-4 py-2 rounded-lg flex-row items-center" 
+            activeOpacity={0.7}
+          >
+            <RefreshCw size={16} color="white" />
+            <Text className="text-craftopia-surface text-sm font-medium ml-2">Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -128,9 +189,20 @@ export const FeedScreen = () => {
     if (posts.length === 0) {
       return (
         <View className="flex-1 justify-center items-center py-6">
-          <Text className="text-craftopia-textSecondary text-center text-base mb-3">No posts yet</Text>
-          <TouchableOpacity onPress={handleRefresh} className="bg-craftopia-primary px-4 py-2 rounded-lg" activeOpacity={0.7}>
-            <Text className="text-craftopia-surface text-sm font-medium">Refresh</Text>
+          <Text className="text-craftopia-textPrimary text-base font-semibold mb-1">No posts yet</Text>
+          <Text className="text-craftopia-textSecondary text-center text-sm mb-3">
+            {activeTab === 'all' 
+              ? 'Be the first to share something!' 
+              : `No ${activeTab} posts available`
+            }
+          </Text>
+          <TouchableOpacity 
+            onPress={handleCreatePost} 
+            className="bg-craftopia-primary px-4 py-2 rounded-lg flex-row items-center" 
+            activeOpacity={0.7}
+          >
+            <Plus size={16} color="white" />
+            <Text className="text-craftopia-surface text-sm font-medium ml-2">Create Post</Text>
           </TouchableOpacity>
         </View>
       );
@@ -138,11 +210,18 @@ export const FeedScreen = () => {
 
     return (
       <View className="pb-16">
-        {posts.map(post => {
-          console.log('🔍 Rendering post:', post.post_id, 'User:', post.user);
+        {posts.map((post, index) => {
+          console.log(`🔍 Rendering post ${index + 1}/${posts.length}:`, {
+            id: post.post_id,
+            title: post.title,
+            likes: post.likeCount,
+            isLiked: post.isLiked,
+            username: post.user?.username
+          });
+          
           return (
             <PostContainer
-              key={post.post_id}
+              key={`${post.post_id}-${post.updated_at}`} // Include timestamp to force re-render on updates
               postId={post.post_id}
               {...post}
               onToggleReaction={() => handleToggleReaction(post.post_id)}
@@ -163,23 +242,30 @@ export const FeedScreen = () => {
               <Text className="text-base font-semibold text-craftopia-textPrimary">Feed</Text>
               {/* Connection Status Indicator */}
               <View className="ml-2">
-                {isConnected ? (
-                  <Wifi size={14} color="#10B981" />
-                ) : (
-                  <WifiOff size={14} color="#EF4444" />
-                )}
+                {renderConnectionStatus()}
               </View>
             </View>
-            <Text className="text-sm text-craftopia-textSecondary">
-              {isConnected ? 'Live updates active' : 'Reconnecting...'}
+            <Text className="text-xs text-craftopia-textSecondary">
+              {isConnected 
+                ? '✨ Real-time updates enabled' 
+                : '⚠️ Reconnecting to server...'
+              }
             </Text>
           </View>
-          <TouchableOpacity className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center" activeOpacity={0.7}>
+          <TouchableOpacity 
+            className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center" 
+            activeOpacity={0.7}
+          >
             <Search size={18} color="#5D6B5D" />
           </TouchableOpacity>
         </View>
+        
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={{ paddingRight: 16 }}
+        >
           {FEED_TABS.map(renderTab)}
         </ScrollView>
       </View>
@@ -194,20 +280,27 @@ export const FeedScreen = () => {
             onRefresh={handleRefresh} 
             colors={['#374A36']}
             tintColor="#374A36"
+            title={isConnected ? "Pull to refresh" : "Reconnecting..."}
           />
         }
       >
         {/* Trending Tags */}
         {activeTab === 'trending' && (
           <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">Trending Tags</Text>
+            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
+              🔥 Trending Tags
+            </Text>
             {tagsLoading ? (
               <View className="flex-row items-center py-2">
                 <ActivityIndicator size="small" color="#374A36" />
                 <Text className="text-xs text-craftopia-textSecondary ml-2">Loading tags...</Text>
               </View>
             ) : trendingTags.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 16 }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ paddingRight: 16 }}
+              >
                 {trendingTags.map(tag => (
                   <TrendingTagItem 
                     key={tag.tag} 
@@ -218,8 +311,20 @@ export const FeedScreen = () => {
                 ))}
               </ScrollView>
             ) : (
-              <Text className="text-xs text-craftopia-textSecondary">No trending tags available</Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                No trending tags available
+              </Text>
             )}
+          </View>
+        )}
+
+        {/* Real-time indicator */}
+        {isRefetching && (
+          <View className="bg-craftopia-primary/10 px-4 py-2 flex-row items-center justify-center">
+            <ActivityIndicator size="small" color="#374A36" />
+            <Text className="text-craftopia-primary text-xs font-medium ml-2">
+              Updating feed...
+            </Text>
           </View>
         )}
 

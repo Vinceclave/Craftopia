@@ -1,7 +1,8 @@
-// apps/mobile/src/hooks/queries/usePosts.ts - FIXED VERSION
+// apps/mobile/src/hooks/queries/usePosts.ts - FIXED WITH DEBOUNCING
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { postService } from '~/services/post.service';
 import { useAuth } from '~/context/AuthContext';
+import { useRef } from 'react';
 
 export type FeedType = 'all' | 'trending' | 'popular' | 'featured';
 
@@ -91,12 +92,12 @@ export const useInfinitePosts = (feedType: FeedType) => {
  */
 export const usePosts = (feedType: FeedType, page: number = 1) => {
   return useQuery({
-    queryKey: [...postKeys.list(feedType), { page }], // Include page in key
+    queryKey: [...postKeys.list(feedType), { page }],
     queryFn: async () => {
       const response = await postService.getPosts(feedType, page);
       return response.data || [];
     },
-    staleTime: 30 * 1000, // Reduced from 2 minutes to 30 seconds for faster updates
+    staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 };
@@ -143,12 +144,10 @@ export const useCreatePost = () => {
       return response.data;
     },
     onSuccess: (newPost) => {
-      // Invalidate all post lists to refetch with new post
       queryClient.invalidateQueries({
         queryKey: postKeys.lists(),
       });
 
-      // Add the new post to the cache
       if (newPost?.post_id) {
         queryClient.setQueryData(postKeys.detail(newPost.post_id), newPost);
       }
@@ -160,20 +159,63 @@ export const useCreatePost = () => {
 };
 
 /**
- * Toggle post reaction (like/unlike) with optimistic updates
+ * Toggle post reaction (like/unlike) with debouncing and deduplication
  */
 export const useTogglePostReaction = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  
+  // Track pending mutations per post to prevent duplicates
+  const pendingMutations = useRef<Map<number, Promise<any>>>(new Map());
+  // Track last mutation time to prevent rapid-fire
+  const lastMutationTime = useRef<Map<number, number>>(new Map());
+  const DEBOUNCE_MS = 500; // Minimum 500ms between mutations for same post
 
   return useMutation({
     mutationFn: async (postId: number) => {
-      console.log('🔵 Frontend: Toggling reaction for post:', postId);
-      const response = await postService.toggleReaction(postId.toString());
-      console.log('🔵 Frontend: Toggle response:', response.data);
-      return { postId, ...response.data };
+      console.log('🔵 Frontend: Toggle reaction requested for post:', postId);
+      
+      // Check if there's already a pending mutation for this post
+      const existingMutation = pendingMutations.current.get(postId);
+      if (existingMutation) {
+        console.log('⚠️ Mutation already in progress for post:', postId, '- reusing existing promise');
+        return existingMutation;
+      }
+
+      // Check if we're being rate limited (too many requests too fast)
+      const lastTime = lastMutationTime.current.get(postId) || 0;
+      const now = Date.now();
+      const timeSinceLastMutation = now - lastTime;
+      
+      if (timeSinceLastMutation < DEBOUNCE_MS) {
+        const waitTime = DEBOUNCE_MS - timeSinceLastMutation;
+        console.log(`⏳ Debouncing: Waiting ${waitTime}ms before next mutation for post ${postId}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+
+      // Update last mutation time
+      lastMutationTime.current.set(postId, Date.now());
+
+      // Create and track the mutation promise
+      const mutationPromise = (async () => {
+        try {
+          console.log('🔵 Frontend: Executing toggle reaction for post:', postId);
+          const response = await postService.toggleReaction(postId.toString());
+          console.log('🔵 Frontend: Toggle response:', response.data);
+          return { postId, ...response.data };
+        } finally {
+          // Clean up after mutation completes (success or failure)
+          pendingMutations.current.delete(postId);
+        }
+      })();
+
+      pendingMutations.current.set(postId, mutationPromise);
+      return mutationPromise;
     },
+    
     onMutate: async (postId) => {
+      console.log('🔄 Optimistic update for post:', postId);
+      
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: postKeys.lists() });
 
@@ -209,12 +251,10 @@ export const useTogglePostReaction = () => {
             };
           };
 
-          // Handle array structure
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
           }
 
-          // Handle infinite query structure
           if (oldData.pages) {
             return {
               ...oldData,
@@ -231,16 +271,29 @@ export const useTogglePostReaction = () => {
 
       return { previousLists };
     },
-    onError: (err, postId, context) => {
+    
+    onError: (err: any, postId, context) => {
       console.error('❌ Toggle reaction failed:', err);
       
-      // Revert on error
+      // Clean up pending mutation tracking
+      pendingMutations.current.delete(postId);
+      
+      // Check if it's a rate limit error
+      if (err.message?.includes('Too many requests') || err.message?.includes('rate limit')) {
+        console.warn('⚠️ Rate limited! Please wait before trying again.');
+        // Don't revert optimistic update for rate limit - it will sync when backend catches up
+        return;
+      }
+      
+      // For other errors, revert optimistic update
       if (context?.previousLists) {
+        console.log('↩️ Reverting optimistic update due to error');
         context.previousLists.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
     },
+    
     onSuccess: (data, postId) => {
       console.log('✅ Toggle reaction success:', {
         postId,
@@ -248,7 +301,7 @@ export const useTogglePostReaction = () => {
         likeCount: data.likeCount
       });
       
-      // Update with server response
+      // Update with server response (confirming optimistic update)
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
@@ -280,7 +333,24 @@ export const useTogglePostReaction = () => {
           return oldData;
         }
       );
+      
+      // Clean up tracking
+      pendingMutations.current.delete(postId);
+      // Keep last mutation time for debouncing
     },
+    
+    // Prevent automatic retries on rate limit
+    retry: (failureCount, error: any) => {
+      // Don't retry if rate limited
+      if (error.message?.includes('Too many requests') || error.message?.includes('rate limit')) {
+        console.log('⚠️ Rate limit detected - not retrying');
+        return false;
+      }
+      // Retry other errors up to 2 times
+      return failureCount < 2;
+    },
+    
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -296,18 +366,15 @@ export const useDeletePost = () => {
       return postId;
     },
     onSuccess: (postId) => {
-      // Remove from all cached lists
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
           if (!oldData) return oldData;
 
-          // Handle array structure
           if (Array.isArray(oldData)) {
             return oldData.filter((post: Post) => post.post_id !== postId);
           }
 
-          // Handle infinite query structure
           if (oldData.pages) {
             return {
               ...oldData,
@@ -322,7 +389,6 @@ export const useDeletePost = () => {
         }
       );
 
-      // Remove individual post from cache
       queryClient.removeQueries({ queryKey: postKeys.detail(postId) });
     },
   });
@@ -361,16 +427,13 @@ export const useAddComment = () => {
       return { postId, comment: response.data };
     },
     onMutate: async ({ postId, content }) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: postKeys.comments(postId) });
 
-      // Snapshot previous value
       const previousComments = queryClient.getQueryData(postKeys.comments(postId));
 
-      // Optimistically add new comment
       if (user) {
         const optimisticComment: Comment = {
-          comment_id: Date.now(), // Temporary ID
+          comment_id: Date.now(),
           user_id: user.id,
           content,
           created_at: new Date().toISOString(),
@@ -391,23 +454,19 @@ export const useAddComment = () => {
     onError: (err, { postId }, context) => {
       console.error('Failed to add comment:', err);
       
-      // Revert optimistic update
       if (context?.previousComments) {
         queryClient.setQueryData(postKeys.comments(postId), context.previousComments);
       }
     },
     onSuccess: ({ postId, comment }) => {
-      // Replace optimistic comment with real one
       queryClient.setQueryData(
         postKeys.comments(postId),
         (oldComments: Comment[] = []) => {
-          // Remove optimistic comment and add real one
           const withoutOptimistic = oldComments.filter(c => c.comment_id < 1000000000000);
           return [...withoutOptimistic, comment];
         }
       );
 
-      // Update comment count in posts
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
@@ -418,12 +477,10 @@ export const useAddComment = () => {
               ? { ...post, commentCount: post.commentCount + 1 }
               : post;
 
-          // Handle array structure
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
           }
 
-          // Handle infinite query structure
           if (oldData.pages) {
             return {
               ...oldData,

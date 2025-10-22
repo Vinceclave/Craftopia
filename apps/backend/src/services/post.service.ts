@@ -1,4 +1,4 @@
-// apps/backend/src/services/post.service.ts - FIXED VERSION WITH ENHANCED LOGGING
+// apps/backend/src/services/post.service.ts - FIXED WITH PROPER BROADCASTS
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
 import { VALIDATION_LIMITS } from "../constats";
@@ -54,20 +54,39 @@ class PostService extends BaseService {
               }
             }
           }
+        },
+        _count: {
+          select: {
+            likes: { where: { deleted_at: null } },
+            comments: { where: { deleted_at: null } }
+          }
         }
       }
     });
 
     console.log('📝 Post created:', post.post_id);
 
-    // 🔥 WEBSOCKET: Broadcast new post to community
-    WebSocketEmitter.postCreated({
+    // 🔥 BROADCAST TO ALL CLIENTS - This makes posts appear on all devices
+    WebSocketEmitter.broadcast('post:created', {
       post_id: post.post_id,
+      user_id: post.user_id,
       title: post.title,
-      content: post.content.substring(0, 100),
+      content: post.content,
+      image_url: post.image_url,
       category: post.category,
+      tags: post.tags,
+      featured: post.featured,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
       author: post.user.username,
-      tags: post.tags
+      user: {
+        user_id: post.user.user_id,
+        username: post.user.username,
+        profile_picture_url: post.user.profile?.profile_picture_url || null
+      },
+      commentCount: post._count.comments,
+      likeCount: post._count.likes,
+      isLiked: false
     });
 
     return post;
@@ -80,7 +99,6 @@ class PostService extends BaseService {
     limit = 10,
     userId?: number
   ) {
-    // Define filters based on feed type
     let where: any = { deleted_at: null };
     let orderBy: any = { created_at: 'desc' };
 
@@ -102,11 +120,9 @@ class PostService extends BaseService {
         where.featured = true;
         break;
       default:
-        // 'all' - use default ordering
         break;
     }
 
-    // Fetch posts with user information
     const skip = (page - 1) * limit;
     const [posts, total] = await Promise.all([
       prisma.post.findMany({
@@ -139,7 +155,6 @@ class PostService extends BaseService {
 
     const lastPage = Math.max(1, Math.ceil(total / limit));
 
-    // Transform posts to include user reaction status and enhanced data
     const transformedPosts = await Promise.all(
       posts.map(async (post) => {
         const [isLiked] = await Promise.all([
@@ -175,7 +190,6 @@ class PostService extends BaseService {
       })
     );
 
-    // Additional sorting for trending
     if (feedType === 'trending') {
       transformedPosts.sort((a, b) => {
         if (b.trendingScore !== a.trendingScore) {
@@ -228,7 +242,6 @@ class PostService extends BaseService {
       'Post'
     );
 
-    // Get enhanced post data with user information
     const [postWithUser, comments, likes] = await Promise.all([
       prisma.post.findFirst({
         where: { post_id: postId, deleted_at: null },
@@ -317,8 +330,10 @@ class PostService extends BaseService {
 
     console.log('🗑️ Deleting post:', postId);
 
-    // 🔥 WEBSOCKET: Notify that post was deleted
-    WebSocketEmitter.postDeleted(postId);
+    // 🔥 BROADCAST TO ALL CLIENTS - Post deletion syncs everywhere
+    WebSocketEmitter.broadcast('post:deleted', {
+      postId
+    });
 
     return this.softDelete(prisma.post, postId, 'post_id');
   }
@@ -367,21 +382,37 @@ class PostService extends BaseService {
       })
     ]);
 
+    // Get updated comment count
+    const commentCount = await prisma.comment.count({
+      where: { post_id: data.postId, deleted_at: null }
+    });
+
     console.log('💬 Comment added to post:', data.postId);
 
-    // 🔥 WEBSOCKET: Notify post owner (if not commenting on own post)
+    // 🔥 BROADCAST TO ALL CLIENTS - Comment count updates everywhere
+    WebSocketEmitter.broadcast('post:commented', {
+      postId: data.postId,
+      commentId: comment.comment_id,
+      username: commenter?.username || 'Someone',
+      content: comment.content.substring(0, 50),
+      userId: data.userId,
+      commentCount // Include updated count
+    });
+
+    // 🔥 NOTIFY POST OWNER (if not commenting on own post)
     if (post.user_id !== data.userId) {
-      console.log('📡 Emitting POST_COMMENTED event to user:', post.user_id);
-      WebSocketEmitter.postCommented(post.user_id, {
+      console.log('📡 Notifying post owner:', post.user_id);
+      WebSocketEmitter.emitToUser(post.user_id, 'post:commented', {
         postId: data.postId,
         commentId: comment.comment_id,
         username: commenter?.username || 'Someone',
         content: comment.content.substring(0, 50),
-        userId: data.userId
+        userId: data.userId,
+        commentCount,
+        notification: true // Flag for notification
       });
     }
 
-    // Transform response to flatten user data
     return {
       ...comment,
       user: {
@@ -396,7 +427,6 @@ class PostService extends BaseService {
   async getCommentsByPost(postId: number) {
     this.validateId(postId, 'Post ID');
 
-    // Check post exists
     await this.checkNotDeleted(
       prisma.post,
       { post_id: postId },
@@ -421,7 +451,6 @@ class PostService extends BaseService {
       orderBy: { created_at: 'asc' }
     });
 
-    // Transform comments to flatten user data
     return comments.map(comment => ({
       ...comment,
       user: {
@@ -467,24 +496,26 @@ class PostService extends BaseService {
 
       console.log('🔍 Existing like:', existing ? 'Found' : 'Not found', existing?.deleted_at ? '(soft deleted)' : '');
 
+      let isLiked: boolean;
+
       if (!existing) {
         console.log('➕ Creating new like');
         await tx.like.create({
           data: { post_id: postId, user_id: userId }
         });
+        isLiked = true;
       } else {
         console.log('🔄 Toggling existing like');
+        const newDeletedAt = existing.deleted_at ? null : new Date();
         await tx.like.update({
           where: { like_id: existing.like_id },
-          data: { deleted_at: existing.deleted_at ? null : new Date() }
+          data: { deleted_at: newDeletedAt }
         });
+        isLiked = newDeletedAt === null;
       }
 
-      const [likeCount, userReaction, liker] = await Promise.all([
+      const [likeCount, liker] = await Promise.all([
         tx.like.count({ where: { post_id: postId, deleted_at: null } }),
-        tx.like.findFirst({
-          where: { post_id: postId, user_id: userId, deleted_at: null }
-        }),
         tx.user.findUnique({
           where: { user_id: userId },
           select: { username: true }
@@ -492,7 +523,7 @@ class PostService extends BaseService {
       ]);
 
       const result = {
-        isLiked: !!userReaction,
+        isLiked,
         likeCount,
         postId,
         userId
@@ -500,14 +531,25 @@ class PostService extends BaseService {
 
       console.log('✅ Backend result:', result);
 
-      // 🔥 WEBSOCKET: Emit event (only if user liked, not unliked)
-      if (post.user_id !== userId && userReaction) {
-        console.log('📡 Emitting POST_LIKED event to user:', post.user_id);
-        WebSocketEmitter.postLiked(post.user_id, {
+      // 🔥 BROADCAST TO ALL CLIENTS - Like count updates everywhere
+      WebSocketEmitter.broadcast('post:liked', {
+        postId,
+        username: liker?.username || 'Someone',
+        likeCount,
+        userId,
+        isLiked
+      });
+
+      // 🔥 NOTIFY POST OWNER (only if user liked, not unliked, and not own post)
+      if (post.user_id !== userId && isLiked) {
+        console.log('📡 Notifying post owner about like:', post.user_id);
+        WebSocketEmitter.emitToUser(post.user_id, 'post:liked', {
           postId,
           username: liker?.username || 'Someone',
           likeCount,
-          userId
+          userId,
+          isLiked,
+          notification: true // Flag for notification
         });
       }
 
