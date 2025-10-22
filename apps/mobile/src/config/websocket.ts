@@ -12,43 +12,43 @@ export enum WebSocketEvent {
   CHALLENGE_COMPLETED = 'challenge:completed',
   CHALLENGE_VERIFIED = 'challenge:verified',
   CHALLENGE_REJECTED = 'challenge:rejected',
-  
+
   // Points Events
   POINTS_AWARDED = 'points:awarded',
   POINTS_UPDATED = 'points:updated',
   LEADERBOARD_UPDATED = 'leaderboard:updated',
-  
+
   // Post Events
   POST_CREATED = 'post:created',
   POST_UPDATED = 'post:updated',
   POST_DELETED = 'post:deleted',
   POST_LIKED = 'post:liked',
   POST_COMMENTED = 'post:commented',
-  
+
   // Comment Events
   COMMENT_CREATED = 'comment:created',
   COMMENT_DELETED = 'comment:deleted',
-  
+
   // Report Events
   REPORT_CREATED = 'report:created',
   REPORT_UPDATED = 'report:updated',
   REPORT_RESOLVED = 'report:resolved',
-  
+
   // Announcement Events
   ANNOUNCEMENT_CREATED = 'announcement:created',
   ANNOUNCEMENT_UPDATED = 'announcement:updated',
   ANNOUNCEMENT_DELETED = 'announcement:deleted',
-  
+
   // Moderation Events
   CONTENT_MODERATED = 'content:moderated',
   USER_BANNED = 'user:banned',
   USER_UNBANNED = 'user:unbanned',
   USER_ROLE_CHANGED = 'user:role_changed',
   USER_DELETED = 'user:deleted',
-  
+
   // Notification Events
   NOTIFICATION = 'notification',
-  
+
   // System Events
   SYSTEM_MAINTENANCE = 'system:maintenance',
   SYSTEM_UPDATE = 'system:update',
@@ -62,22 +62,25 @@ export interface WebSocketConfig {
     reconnectionAttempts: number;
     reconnectionDelay: number;
     timeout: number;
+    auth: {
+      token: string;
+    };
   };
 }
 
 export const getWebSocketConfig = async (): Promise<WebSocketConfig> => {
   const token = await AsyncStorage.getItem('accessToken');
-  
+
   return {
     url: API_BASE_URL,
     options: {
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       timeout: 10000,
       auth: {
-        token: token || '',
+        token: token ?? '',
       },
     },
   };
@@ -106,7 +109,7 @@ export class WebSocketManager {
 
     try {
       const config = await getWebSocketConfig();
-      
+
       this.socket = io(config.url, config.options);
 
       this.socket.on('connect', () => {
@@ -114,29 +117,18 @@ export class WebSocketManager {
         this.isConnected = true;
       });
 
-      this.socket.on('connected', (data) => {
-        console.log('✅ Server confirmed connection:', data);
-      });
-
       this.socket.on('disconnect', (reason) => {
         console.log('❌ WebSocket disconnected:', reason);
         this.isConnected = false;
       });
 
-      this.socket.on('error', (error) => {
-        console.error('❌ WebSocket error:', error);
-      });
-
       this.socket.on('connect_error', (error) => {
         console.error('❌ Connection error:', error.message);
+        if (error.message.includes('Authentication')) {
+          console.warn('⚠️ Token invalid or expired, re-authenticating...');
+        }
       });
 
-      // Setup ping/pong
-      this.socket.on('pong', (data) => {
-        console.log('🏓 Pong received:', data);
-      });
-
-      // Listen to all registered events
       this.setupEventListeners();
 
     } catch (error) {
@@ -160,7 +152,6 @@ export class WebSocketManager {
     }
     this.listeners.get(event)!.add(callback);
 
-    // If already connected, setup listener immediately
     if (this.socket) {
       this.socket.on(event, (data) => callback(data));
     }
@@ -187,7 +178,6 @@ export class WebSocketManager {
 
   private setupEventListeners(): void {
     if (!this.socket) return;
-
     this.listeners.forEach((callbacks, event) => {
       callbacks.forEach((callback) => {
         this.socket?.on(event, (data) => callback(data));
@@ -197,12 +187,6 @@ export class WebSocketManager {
 
   getConnectionStatus(): boolean {
     return this.isConnected;
-  }
-
-  ping(): void {
-    if (this.socket?.connected) {
-      this.socket.emit('ping');
-    }
   }
 }
 

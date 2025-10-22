@@ -1,4 +1,4 @@
-// apps/backend/src/services/post.service.ts - REFACTORED VERSION
+// apps/backend/src/services/post.service.ts - FIXED VERSION WITH USERNAME
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
 import { VALIDATION_LIMITS } from "../constats";
@@ -45,7 +45,15 @@ class PostService extends BaseService {
       },
       include: {
         user: {
-          select: { user_id: true, username: true }
+          select: { 
+            user_id: true, 
+            username: true,
+            profile: {
+              select: {
+                profile_picture_url: true
+              }
+            }
+          }
         }
       }
     });
@@ -97,23 +105,43 @@ class PostService extends BaseService {
         break;
     }
 
-    const result = await this.paginate<any>(prisma.post, {
-      page,
-      limit,
-      where,
-      orderBy
-    });
+    // Fetch posts with user information
+    const skip = (page - 1) * limit;
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              username: true,
+              profile: {
+                select: {
+                  profile_picture_url: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              likes: { where: { deleted_at: null } },
+              comments: { where: { deleted_at: null } }
+            }
+          }
+        }
+      }),
+      prisma.post.count({ where })
+    ]);
 
-    // Transform posts to include user reaction status
+    const lastPage = Math.max(1, Math.ceil(total / limit));
+
+    // Transform posts to include user reaction status and enhanced data
     const transformedPosts = await Promise.all(
-      result.data.map(async (post) => {
-        const [commentCount, likeCount, isLiked] = await Promise.all([
-          prisma.comment.count({ 
-            where: { post_id: post.post_id, deleted_at: null } 
-          }),
-          prisma.like.count({ 
-            where: { post_id: post.post_id, deleted_at: null } 
-          }),
+      posts.map(async (post) => {
+        const [isLiked] = await Promise.all([
           userId 
             ? prisma.like.findFirst({
                 where: { 
@@ -125,12 +153,19 @@ class PostService extends BaseService {
             : Promise.resolve(false)
         ]);
 
+        const commentCount = post._count.comments;
+        const likeCount = post._count.likes;
         const tagScore = post.tags.length * 1;
         const commentScore = commentCount * 2;
         const likeScore = likeCount * 1;
 
         return {
           ...post,
+          user: {
+            user_id: post.user.user_id,
+            username: post.user.username,
+            profile_picture_url: post.user.profile?.profile_picture_url || null
+          },
           commentCount,
           likeCount,
           isLiked,
@@ -151,7 +186,14 @@ class PostService extends BaseService {
 
     return {
       data: transformedPosts,
-      meta: result.meta
+      meta: {
+        total,
+        page,
+        lastPage,
+        limit,
+        hasNextPage: page < lastPage,
+        hasPrevPage: page > 1
+      }
     };
   }
 
@@ -185,22 +227,78 @@ class PostService extends BaseService {
       'Post'
     );
 
-    const [comments, likes] = await Promise.all([
+    // Get enhanced post data with user information
+    const [postWithUser, comments, likes] = await Promise.all([
+      prisma.post.findFirst({
+        where: { post_id: postId, deleted_at: null },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              username: true,
+              profile: {
+                select: {
+                  profile_picture_url: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              likes: { where: { deleted_at: null } },
+              comments: { where: { deleted_at: null } }
+            }
+          }
+        }
+      }),
       prisma.comment.findMany({
         where: { post_id: postId, deleted_at: null },
-        include: { user: { select: { user_id: true, username: true } } },
+        include: { 
+          user: { 
+            select: { 
+              user_id: true, 
+              username: true,
+              profile: {
+                select: {
+                  profile_picture_url: true
+                }
+              }
+            } 
+          } 
+        },
         orderBy: { created_at: 'asc' }
       }),
       prisma.like.findMany({
         where: { post_id: postId, deleted_at: null },
-        include: { user: { select: { user_id: true, username: true } } }
+        include: { 
+          user: { 
+            select: { 
+              user_id: true, 
+              username: true 
+            } 
+          } 
+        }
       })
     ]);
 
     return {
-      ...post,
-      comments,
-      likes
+      ...postWithUser,
+      user: {
+        user_id: postWithUser!.user.user_id,
+        username: postWithUser!.user.username,
+        profile_picture_url: postWithUser!.user.profile?.profile_picture_url || null
+      },
+      comments: comments.map(comment => ({
+        ...comment,
+        user: {
+          user_id: comment.user.user_id,
+          username: comment.user.username,
+          profile_picture_url: comment.user.profile?.profile_picture_url || null
+        }
+      })),
+      likes,
+      commentCount: postWithUser!._count.comments,
+      likeCount: postWithUser!._count.likes
     };
   }
 
@@ -247,7 +345,17 @@ class PostService extends BaseService {
           content: data.content.trim() 
         },
         include: { 
-          user: { select: { user_id: true, username: true } } 
+          user: { 
+            select: { 
+              user_id: true, 
+              username: true,
+              profile: {
+                select: {
+                  profile_picture_url: true
+                }
+              }
+            } 
+          } 
         }
       }),
       prisma.user.findUnique({
@@ -266,7 +374,15 @@ class PostService extends BaseService {
       });
     }
 
-    return comment;
+    // Transform response to flatten user data
+    return {
+      ...comment,
+      user: {
+        user_id: comment.user.user_id,
+        username: comment.user.username,
+        profile_picture_url: comment.user.profile?.profile_picture_url || null
+      }
+    };
 }
 
 
@@ -281,11 +397,33 @@ class PostService extends BaseService {
       'Post'
     );
 
-    return prisma.comment.findMany({
+    const comments = await prisma.comment.findMany({
       where: { post_id: postId, deleted_at: null },
-      include: { user: { select: { user_id: true, username: true } } },
+      include: { 
+        user: { 
+          select: { 
+            user_id: true, 
+            username: true,
+            profile: {
+              select: {
+                profile_picture_url: true
+              }
+            }
+          } 
+        } 
+      },
       orderBy: { created_at: 'asc' }
     });
+
+    // Transform comments to flatten user data
+    return comments.map(comment => ({
+      ...comment,
+      user: {
+        user_id: comment.user.user_id,
+        username: comment.user.username,
+        profile_picture_url: comment.user.profile?.profile_picture_url || null
+      }
+    }));
   }
 
   // Delete comment

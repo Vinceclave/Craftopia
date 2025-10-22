@@ -143,17 +143,23 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Auth endpoints rate limiter (stricter)
 const authLimiter = rateLimit({
   windowMs: RATE_LIMITS.AUTH.WINDOW_MS,
   max: RATE_LIMITS.AUTH.MAX,
-  message: {
-    success: false,
-    error: 'Too many authentication attempts, please try again later',
-    timestamp: new Date().toISOString()
+  keyGenerator: (req, res) => {
+    // Use email (or username) if provided, fallback to IP
+    const email = req.body?.email?.toLowerCase();
+    return email || req.ip;
   },
-  standardHeaders: true,
-  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      error: 'Too many authentication attempts, please try again later.',
+      timestamp: new Date().toISOString(),
+    });
+  },
+  standardHeaders: true, // adds RateLimit-* headers
+  legacyHeaders: false, // disables X-RateLimit-* headers
 });
 
 // Apply rate limiters

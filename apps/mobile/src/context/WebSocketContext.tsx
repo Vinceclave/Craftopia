@@ -1,4 +1,4 @@
-// apps/mobile/src/context/WebSocketContext.tsx
+// apps/mobile/src/context/WebSocketContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { wsManager, WebSocketEvent } from '~/config/websocket';
 import { useAuth } from './AuthContext';
@@ -26,10 +26,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       wsManager.connect()
         .then(() => {
           setIsConnected(true);
-          console.log('WebSocket connected for user:', user.id);
+          console.log('✅ WebSocket connected for user:', user.id);
         })
         .catch((error) => {
-          console.error('WebSocket connection failed:', error);
+          console.error('❌ WebSocket connection failed:', error);
           setIsConnected(false);
         });
 
@@ -44,44 +44,162 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (!isConnected) return;
 
-    // Post Events
+    // ========================================
+    // POST EVENTS - REAL-TIME UPDATES
+    // ========================================
+    
     const handlePostCreated = (data: any) => {
       console.log('📢 New post created:', data);
-      queryClient.invalidateQueries({ queryKey: postKeys.lists() });
       
-      // Optionally show notification
+      // Force immediate refetch of all post lists
+      queryClient.invalidateQueries({ 
+        queryKey: postKeys.lists(),
+        refetchType: 'active' // Force active queries to refetch immediately
+      });
+      
+      // Optionally show notification if from another user
       if (data.author !== user?.username) {
-        // Show toast notification
+        // Could show a toast notification here
+        console.log(`New post from ${data.author}: ${data.title}`);
       }
     };
 
     const handlePostDeleted = (data: any) => {
       console.log('🗑️ Post deleted:', data);
-      queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+      
+      // Remove from cache immediately for instant UI update
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          // Handle array structure (regular query)
+          if (Array.isArray(oldData)) {
+            return oldData.filter((post: any) => post.post_id !== data.postId);
+          }
+          
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.filter((post: any) => post.post_id !== data.postId) || [],
+              })),
+            };
+          }
+          
+          return oldData;
+        }
+      );
+      
+      // Remove individual post from cache
       queryClient.removeQueries({ queryKey: postKeys.detail(data.postId) });
     };
 
     const handlePostLiked = (data: any) => {
       console.log('❤️ Post liked:', data);
-      // Optionally update cache or show notification
+      
+      // Update like count in all post lists immediately
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          const updatePost = (post: any) =>
+            post.post_id === data.postId
+              ? { 
+                  ...post, 
+                  likeCount: data.likeCount,
+                  // Only update isLiked if this is the user who liked it
+                  ...(data.userId === user?.id ? { isLiked: true } : {})
+                }
+              : post;
+          
+          // Handle array structure
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+          
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+          
+          return oldData;
+        }
+      );
+      
+      // Show notification to post owner
+      if (data.userId !== user?.id && user?.id) {
+        // Optional: Show toast notification
+        console.log(`${data.username} liked your post`);
+      }
     };
 
     const handlePostCommented = (data: any) => {
-      console.log('💬 New comment:', data);
-      queryClient.invalidateQueries({ queryKey: postKeys.comments(data.postId) });
+      console.log('💬 New comment on post:', data);
       
-      // Show notification to post owner
-      Alert.alert(
-        'New Comment',
-        `${data.username} commented on your post`,
-        [{ text: 'OK' }]
+      // Invalidate comments for specific post
+      queryClient.invalidateQueries({ 
+        queryKey: postKeys.comments(data.postId),
+        refetchType: 'active'
+      });
+      
+      // Update comment count in posts list immediately
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          const updatePost = (post: any) =>
+            post.post_id === data.postId
+              ? { ...post, commentCount: (post.commentCount || 0) + 1 }
+              : post;
+          
+          // Handle array structure
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+          
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+          
+          return oldData;
+        }
       );
+      
+      // Show notification to post owner (not to commenter themselves)
+      if (data.userId !== user?.id) {
+        Alert.alert(
+          'New Comment',
+          `${data.username} commented: "${data.content}"`,
+          [{ text: 'OK' }]
+        );
+      }
     };
 
-    // Challenge Events
+    // ========================================
+    // CHALLENGE EVENTS
+    // ========================================
+    
     const handleChallengeCreated = (data: any) => {
       console.log('🏆 New challenge:', data);
-      // Invalidate challenges list
+      queryClient.invalidateQueries({ queryKey: ['challenges', 'list'], refetchType: 'active' });
     };
 
     const handleChallengeVerified = (data: any) => {
@@ -91,6 +209,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         `You earned ${data.points_awarded} points!`,
         [{ text: 'Awesome!' }]
       );
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
     };
 
     const handleChallengeRejected = (data: any) => {
@@ -102,19 +221,24 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
     };
 
-    // Points Events
+    // ========================================
+    // POINTS & LEADERBOARD EVENTS
+    // ========================================
+    
     const handlePointsAwarded = (data: any) => {
       console.log('⭐ Points awarded:', data);
-      // Update user profile cache
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
     };
 
     const handleLeaderboardUpdated = (data: any) => {
       console.log('📊 Leaderboard updated:', data);
-      // Update leaderboard cache
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
     };
 
-    // Announcement Events
+    // ========================================
+    // ANNOUNCEMENT EVENTS
+    // ========================================
+    
     const handleAnnouncementCreated = (data: any) => {
       console.log('📢 New announcement:', data);
       Alert.alert(
@@ -124,15 +248,21 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
     };
 
-    // Moderation Events
+    // ========================================
+    // MODERATION EVENTS
+    // ========================================
+    
     const handleUserBanned = (data: any) => {
       console.log('⚠️ User banned:', data);
       Alert.alert(
         'Account Suspended',
         data.message,
-        [{ text: 'OK', onPress: () => {
-          // Force logout
-        }}]
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            // Force logout - implement your logout logic here
+          }
+        }]
       );
     };
 
@@ -143,15 +273,26 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         `Your ${data.content_type} was removed: ${data.reason}`,
         [{ text: 'OK' }]
       );
+      
+      // Refresh relevant queries
+      if (data.content_type === 'post') {
+        queryClient.invalidateQueries({ queryKey: postKeys.lists() });
+      }
     };
 
-    // Notification Events
+    // ========================================
+    // NOTIFICATION EVENTS
+    // ========================================
+    
     const handleNotification = (data: any) => {
       console.log('🔔 Notification:', data);
-      // Show in-app notification
+      // Show in-app notification or toast
     };
 
-    // Register all event listeners
+    // ========================================
+    // REGISTER ALL EVENT LISTENERS
+    // ========================================
+    
     wsManager.on(WebSocketEvent.POST_CREATED, handlePostCreated);
     wsManager.on(WebSocketEvent.POST_DELETED, handlePostDeleted);
     wsManager.on(WebSocketEvent.POST_LIKED, handlePostLiked);
@@ -166,7 +307,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     wsManager.on(WebSocketEvent.CONTENT_MODERATED, handleContentModerated);
     wsManager.on(WebSocketEvent.NOTIFICATION, handleNotification);
 
-    // Cleanup
+    // ========================================
+    // CLEANUP ON UNMOUNT
+    // ========================================
+    
     return () => {
       wsManager.off(WebSocketEvent.POST_CREATED, handlePostCreated);
       wsManager.off(WebSocketEvent.POST_DELETED, handlePostDeleted);

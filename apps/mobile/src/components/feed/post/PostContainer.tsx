@@ -2,7 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { Post } from './Post';
 import { CommentModal } from './comment/CommentModal';
 import { useComments, useAddComment } from '~/hooks/queries/usePosts';
-import type { PostProps } from './type';
 
 interface PostContainerProps {
   postId: number;

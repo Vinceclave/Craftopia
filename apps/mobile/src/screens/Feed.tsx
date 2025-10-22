@@ -1,5 +1,5 @@
-// screens/Feed.tsx - Updated with WebSocket integration
-import React, { useState, useEffect } from 'react';
+// screens/Feed.tsx - FIXED VERSION (WebSocket events handled in WebSocketContext)
+import React, { useState } from 'react';
 import {
   Text,
   View,
@@ -19,7 +19,6 @@ import { useNavigation } from '@react-navigation/native';
 // Import TanStack Query hooks
 import { usePosts, useTogglePostReaction, useTrendingTags, type FeedType } from '~/hooks/queries/usePosts';
 import { useWebSocket } from '~/context/WebSocketContext';
-import { WebSocketEvent } from '~/config/websocket';
 
 const FEED_TABS = [
   { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
@@ -31,7 +30,7 @@ const FEED_TABS = [
 export const FeedScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const [activeTab, setActiveTab] = useState<FeedType>('all');
-  const { isConnected, on, off } = useWebSocket();
+  const { isConnected } = useWebSocket();
 
   // TanStack Query hooks
   const { 
@@ -42,8 +41,8 @@ export const FeedScreen = () => {
     isRefetching 
   } = usePosts(activeTab);
 
+  console.log('📊 Posts data:', posts);
 
-  console.log(posts)
   const { 
     data: trendingTags = [], 
     isLoading: tagsLoading 
@@ -51,36 +50,8 @@ export const FeedScreen = () => {
 
   const toggleReactionMutation = useTogglePostReaction();
 
-  // WebSocket listeners for real-time updates
-  useEffect(() => {
-    const handleNewPost = (data: any) => {
-      console.log('📢 New post received via WebSocket:', data);
-      // Refetch posts to show new content
-      refetch();
-    };
-
-    const handlePostDeleted = (data: any) => {
-      console.log('🗑️ Post deleted via WebSocket:', data);
-      refetch();
-    };
-
-    const handlePostUpdated = (data: any) => {
-      console.log('📝 Post updated via WebSocket:', data);
-      refetch();
-    };
-
-    // Subscribe to events
-    on(WebSocketEvent.POST_CREATED, handleNewPost);
-    on(WebSocketEvent.POST_DELETED, handlePostDeleted);
-    on(WebSocketEvent.POST_UPDATED, handlePostUpdated);
-
-    // Cleanup
-    return () => {
-      off(WebSocketEvent.POST_CREATED, handleNewPost);
-      off(WebSocketEvent.POST_DELETED, handlePostDeleted);
-      off(WebSocketEvent.POST_UPDATED, handlePostUpdated);
-    };
-  }, [on, off, refetch]);
+  // NOTE: WebSocket event handlers are now in WebSocketContext.tsx
+  // This prevents duplicate listeners and ensures consistent cache updates
 
   const handleToggleReaction = async (postId: number) => {
     try {
@@ -157,14 +128,17 @@ export const FeedScreen = () => {
 
     return (
       <View className="pb-16">
-        {posts.map(post => (
-          <PostContainer
-            key={post.post_id}
-            postId={post.post_id}
-            {...post}
-            onToggleReaction={() => handleToggleReaction(post.post_id)}
-          />
-        ))}
+        {posts.map(post => {
+          console.log('🔍 Rendering post:', post.post_id, 'User:', post.user);
+          return (
+            <PostContainer
+              key={post.post_id}
+              postId={post.post_id}
+              {...post}
+              onToggleReaction={() => handleToggleReaction(post.post_id)}
+            />
+          );
+        })}
       </View>
     );
   };
@@ -186,7 +160,9 @@ export const FeedScreen = () => {
                 )}
               </View>
             </View>
-            <Text className="text-sm text-craftopia-textSecondary">Discover amazing projects</Text>
+            <Text className="text-sm text-craftopia-textSecondary">
+              {isConnected ? 'Live updates active' : 'Reconnecting...'}
+            </Text>
           </View>
           <TouchableOpacity className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center" activeOpacity={0.7}>
             <Search size={18} color="#5D6B5D" />
