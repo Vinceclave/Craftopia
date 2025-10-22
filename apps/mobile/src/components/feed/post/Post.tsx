@@ -18,6 +18,7 @@ export const Post: React.FC<PostProps> = memo((props) => {
         user={props.user} 
         featured={props.featured} 
         created_at={props.created_at} 
+        onOptionsPress={props.onOptionsPress} // <-- wire it
       />
       <PostContent
         title={props.title}

@@ -19,17 +19,21 @@ export interface PostProps {
   user_id: number;
   title: string;
   content: string;
-  image_url?: string | null;  // ✅ Allow undefined and null
-  category: string;
-  tags?: string[];  // ✅ Make optional
-  featured?: boolean;  // ✅ Make optional
-  commentCount: number;
-  likeCount: number;
-  isLiked?: boolean;  // ✅ Make optional
+  image_url?: string | null;
+  category?: string;
+  tags?: string[];
+  featured?: boolean;
+  commentCount?: number;
+  likeCount?: number;
+  isLiked?: boolean;
   created_at: string;
-  updated_at: string;
-  deleted_at?: string | null;  // ✅ Allow null
-  user?: User;  // ✅ Make optional
+  updated_at?: string;
+  deleted_at?: string | null;
+  user?: {
+    user_id: number;
+    username: string;
+  };
   onToggleReaction?: () => void;
   onOpenComments?: () => void;
+  onOptionsPress?: () => void;  // <-- new
 }
