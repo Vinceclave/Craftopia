@@ -4,6 +4,7 @@ import * as postService from '../services/post.service';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
+ 
 
 export const createPost = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { title, content, imageUrl, tags, category, featured } = req.body;

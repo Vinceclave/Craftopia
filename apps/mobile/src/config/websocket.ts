@@ -69,7 +69,7 @@ export interface WebSocketConfig {
 }
 
 export const getWebSocketConfig = async (): Promise<WebSocketConfig> => {
-  const token = await AsyncStorage.getItem('accessToken');
+  const token = await AsyncStorage.getItem('access_token');
 
   return {
     url: API_BASE_URL,

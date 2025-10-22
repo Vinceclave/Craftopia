@@ -1,4 +1,4 @@
-// hooks/queries/usePosts.ts - Complete implementation with fixed backend integration
+// apps/mobile/src/hooks/queries/usePosts.ts - FIXED VERSION
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { postService } from '~/services/post.service';
 import { useAuth } from '~/context/AuthContext';
@@ -81,8 +81,8 @@ export const useInfinitePosts = (feedType: FeedType) => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 };
 
@@ -91,12 +91,12 @@ export const useInfinitePosts = (feedType: FeedType) => {
  */
 export const usePosts = (feedType: FeedType, page: number = 1) => {
   return useQuery({
-    queryKey: [...postKeys.list(feedType), page],
+    queryKey: [...postKeys.list(feedType), { page }], // Include page in key
     queryFn: async () => {
       const response = await postService.getPosts(feedType, page);
       return response.data || [];
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000, // Reduced from 2 minutes to 30 seconds for faster updates
     gcTime: 5 * 60 * 1000,
   });
 };
@@ -164,92 +164,50 @@ export const useCreatePost = () => {
  */
 export const useTogglePostReaction = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (postId: number) => {
       console.log('🔵 Frontend: Toggling reaction for post:', postId);
       const response = await postService.toggleReaction(postId.toString());
-      console.log('🔵 Frontend: Response:', response);
+      console.log('🔵 Frontend: Toggle response:', response.data);
       return { postId, ...response.data };
     },
     onMutate: async (postId) => {
-      // Cancel outgoing refetches
+      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: postKeys.lists() });
 
-      // Snapshot previous values
+      // Get current state
       const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
 
-      // Optimistically update all lists
+      // Optimistically update
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
           if (!oldData) return oldData;
 
-          // Handle array structure (regular query)
-          if (Array.isArray(oldData)) {
-            return oldData.map((post: Post) =>
-              post.post_id === postId
-                ? {
-                    ...post,
-                    isLiked: !post.isLiked,
-                    likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
-                  }
-                : post
-            );
-          }
-
-          // Handle infinite query structure
-          if (oldData.pages) {
+          const updatePost = (post: any) => {
+            if (post.post_id !== postId) return post;
+            
+            const newIsLiked = !post.isLiked;
+            const newLikeCount = newIsLiked 
+              ? post.likeCount + 1 
+              : Math.max(0, post.likeCount - 1);
+            
+            console.log('🔄 Optimistic update:', {
+              postId,
+              oldLiked: post.isLiked,
+              newLiked: newIsLiked,
+              oldCount: post.likeCount,
+              newCount: newLikeCount
+            });
+            
             return {
-              ...oldData,
-              pages: oldData.pages.map((page: any) => ({
-                ...page,
-                posts: page.posts?.map((post: Post) =>
-                  post.post_id === postId
-                    ? {
-                        ...post,
-                        isLiked: !post.isLiked,
-                        likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
-                      }
-                    : post
-                ) || [],
-              })),
+              ...post,
+              isLiked: newIsLiked,
+              likeCount: newLikeCount,
             };
-          }
-
-          return oldData;
-        }
-      );
-
-      return { previousLists };
-    },
-    onError: (err, postId, context) => {
-      console.error('❌ Failed to toggle reaction:', err);
-      
-      // Revert optimistic updates
-      if (context?.previousLists) {
-        context.previousLists.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
-      }
-    },
-    onSuccess: (data, postId) => {
-      console.log('✅ Reaction toggled successfully:', data);
-      
-      // Update all lists with server response
-      queryClient.setQueriesData(
-        { queryKey: postKeys.lists() },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-
-          const updatePost = (post: Post) =>
-            post.post_id === postId
-              ? {
-                  ...post,
-                  isLiked: data.isLiked,
-                  likeCount: data.likeCount,
-                }
-              : post;
+          };
 
           // Handle array structure
           if (Array.isArray(oldData)) {
@@ -270,10 +228,58 @@ export const useTogglePostReaction = () => {
           return oldData;
         }
       );
+
+      return { previousLists };
     },
-    onSettled: (data, error, postId) => {
-      // Always refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
+    onError: (err, postId, context) => {
+      console.error('❌ Toggle reaction failed:', err);
+      
+      // Revert on error
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSuccess: (data, postId) => {
+      console.log('✅ Toggle reaction success:', {
+        postId,
+        isLiked: data.isLiked,
+        likeCount: data.likeCount
+      });
+      
+      // Update with server response
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          const updatePost = (post: any) =>
+            post.post_id === postId
+              ? {
+                  ...post,
+                  isLiked: data.isLiked,
+                  likeCount: data.likeCount,
+                }
+              : post;
+
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+
+          return oldData;
+        }
+      );
     },
   });
 };
@@ -383,6 +389,8 @@ export const useAddComment = () => {
       return { previousComments };
     },
     onError: (err, { postId }, context) => {
+      console.error('Failed to add comment:', err);
+      
       // Revert optimistic update
       if (context?.previousComments) {
         queryClient.setQueryData(postKeys.comments(postId), context.previousComments);

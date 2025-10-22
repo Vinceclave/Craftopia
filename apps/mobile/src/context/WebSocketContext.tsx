@@ -49,27 +49,34 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // ========================================
     
     const handlePostCreated = (data: any) => {
-      console.log('📢 New post created:', data);
-      
-      // Force immediate refetch of all post lists
-      queryClient.invalidateQueries({ 
-        queryKey: postKeys.lists(),
-        refetchType: 'active' // Force active queries to refetch immediately
-      });
-      
-      // Optionally show notification if from another user
-      if (data.author !== user?.username) {
-        // Could show a toast notification here
-        console.log(`New post from ${data.author}: ${data.title}`);
-      }
-    };
+    console.log('📢 New post created:', data);
+    
+    // Invalidate ALL post queries (broader pattern)
+    queryClient.invalidateQueries({ 
+      queryKey: ['posts'],
+      refetchType: 'all' // Changed from 'active' to 'all'
+    });
+    
+    // Also invalidate trending tags
+    queryClient.invalidateQueries({
+      queryKey: postKeys.trendingTags(),
+      refetchType: 'active'
+    });
+    
+    // Show notification if from another user
+    if (data.userId !== user?.id) {
+      console.log(`✨ New post from ${data.username}: ${data.title}`);
+      // Optional: Add toast notification here
+    }
+  };
+
 
     const handlePostDeleted = (data: any) => {
       console.log('🗑️ Post deleted:', data);
       
-      // Remove from cache immediately for instant UI update
+      // Immediately remove from ALL cached queries
       queryClient.setQueriesData(
-        { queryKey: postKeys.lists() },
+        { queryKey: ['posts'] }, // Match ANY posts query
         (oldData: any) => {
           if (!oldData) return oldData;
           
@@ -95,103 +102,112 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // Remove individual post from cache
       queryClient.removeQueries({ queryKey: postKeys.detail(data.postId) });
+      
+      // Force refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'all' });
     };
+
 
     const handlePostLiked = (data: any) => {
-      console.log('❤️ Post liked:', data);
+  console.log('❤️ Post liked:', data);
+  
+  // Update like count in ALL post lists immediately
+  queryClient.setQueriesData(
+    { queryKey: ['posts'] }, // Broader pattern
+    (oldData: any) => {
+      if (!oldData) return oldData;
       
-      // Update like count in all post lists immediately
-      queryClient.setQueriesData(
-        { queryKey: postKeys.lists() },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          
-          const updatePost = (post: any) =>
-            post.post_id === data.postId
-              ? { 
-                  ...post, 
-                  likeCount: data.likeCount,
-                  // Only update isLiked if this is the user who liked it
-                  ...(data.userId === user?.id ? { isLiked: true } : {})
-                }
-              : post;
-          
-          // Handle array structure
-          if (Array.isArray(oldData)) {
-            return oldData.map(updatePost);
-          }
-          
-          // Handle infinite query structure
-          if (oldData.pages) {
-            return {
-              ...oldData,
-              pages: oldData.pages.map((page: any) => ({
-                ...page,
-                posts: page.posts?.map(updatePost) || [],
-              })),
-            };
-          }
-          
-          return oldData;
-        }
-      );
+      const updatePost = (post: any) => {
+        if (post.post_id !== data.postId) return post;
+        
+        return {
+          ...post,
+          likeCount: data.likeCount,
+          // Only update isLiked if this is the current user's action
+          ...(data.userId === user?.id ? { isLiked: data.isLiked } : {})
+        };
+      };
       
-      // Show notification to post owner
-      if (data.userId !== user?.id && user?.id) {
-        // Optional: Show toast notification
-        console.log(`${data.username} liked your post`);
+      // Handle array structure
+      if (Array.isArray(oldData)) {
+        return oldData.map(updatePost);
       }
-    };
+      
+      // Handle infinite query structure
+      if (oldData.pages) {
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts?.map(updatePost) || [],
+          })),
+        };
+      }
+      
+      return oldData;
+    }
+  );
+  
+  // Update individual post cache
+  queryClient.setQueryData(
+    postKeys.detail(data.postId),
+    (oldPost: any) => {
+      if (!oldPost) return oldPost;
+      return {
+        ...oldPost,
+        likeCount: data.likeCount,
+        ...(data.userId === user?.id ? { isLiked: data.isLiked } : {})
+      };
+    }
+  );
+};
 
     const handlePostCommented = (data: any) => {
-      console.log('💬 New comment on post:', data);
-      
-      // Invalidate comments for specific post
-      queryClient.invalidateQueries({ 
-        queryKey: postKeys.comments(data.postId),
-        refetchType: 'active'
-      });
-      
-      // Update comment count in posts list immediately
-      queryClient.setQueriesData(
-        { queryKey: postKeys.lists() },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-          
-          const updatePost = (post: any) =>
-            post.post_id === data.postId
-              ? { ...post, commentCount: (post.commentCount || 0) + 1 }
-              : post;
-          
-          // Handle array structure
-          if (Array.isArray(oldData)) {
-            return oldData.map(updatePost);
-          }
-          
-          // Handle infinite query structure
-          if (oldData.pages) {
-            return {
-              ...oldData,
-              pages: oldData.pages.map((page: any) => ({
-                ...page,
-                posts: page.posts?.map(updatePost) || [],
-              })),
-            };
-          }
-          
-          return oldData;
+    console.log('💬 New comment on post:', data);
+    
+    // Invalidate comments for specific post
+    queryClient.invalidateQueries({ 
+      queryKey: postKeys.comments(data.postId),
+      refetchType: 'active'
+    });
+    
+    // Update comment count immediately in ALL post lists
+    queryClient.setQueriesData(
+      { queryKey: ['posts'] },
+      (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        const updatePost = (post: any) =>
+          post.post_id === data.postId
+            ? { ...post, commentCount: data.commentCount || (post.commentCount + 1) }
+            : post;
+        
+        // Handle array structure
+        if (Array.isArray(oldData)) {
+          return oldData.map(updatePost);
         }
-      );
-      
-      // Show notification to post owner (not to commenter themselves)
-      if (data.userId !== user?.id) {
-        Alert.alert(
-          'New Comment',
-          `${data.username} commented: "${data.content}"`,
-          [{ text: 'OK' }]
-        );
+        
+        // Handle infinite query structure
+        if (oldData.pages) {
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: any) => ({
+              ...page,
+              posts: page.posts?.map(updatePost) || [],
+            })),
+          };
+        }
+        
+        return oldData;
       }
-    };
+    );
+    
+    // Show notification to post owner (not to commenter)
+    if (data.userId !== user?.id) {
+      console.log(`💬 ${data.username} commented: "${data.content}"`);
+      // Optional: Add toast notification
+    }
+  };
 
     // ========================================
     // CHALLENGE EVENTS

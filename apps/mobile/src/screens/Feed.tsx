@@ -1,5 +1,5 @@
 // screens/Feed.tsx - FIXED VERSION (WebSocket events handled in WebSocketContext)
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Text,
   View,
@@ -52,6 +52,16 @@ export const FeedScreen = () => {
 
   // NOTE: WebSocket event handlers are now in WebSocketContext.tsx
   // This prevents duplicate listeners and ensures consistent cache updates
+
+  useEffect(() => {
+  console.log('📊 Feed data updated:', {
+    count: posts.length,
+    activeTab,
+    isLoading,
+    isConnected,
+    posts: posts.map(p => ({ id: p.post_id, title: p.title, likes: p.likeCount }))
+  });
+}, [posts, activeTab, isLoading, isConnected]);
 
   const handleToggleReaction = async (postId: number) => {
     try {

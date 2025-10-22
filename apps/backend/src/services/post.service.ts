@@ -1,4 +1,4 @@
-// apps/backend/src/services/post.service.ts - FIXED VERSION WITH USERNAME
+// apps/backend/src/services/post.service.ts - FIXED VERSION WITH ENHANCED LOGGING
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
 import { VALIDATION_LIMITS } from "../constats";
@@ -58,6 +58,8 @@ class PostService extends BaseService {
       }
     });
 
+    console.log('📝 Post created:', post.post_id);
+
     // 🔥 WEBSOCKET: Broadcast new post to community
     WebSocketEmitter.postCreated({
       post_id: post.post_id,
@@ -70,7 +72,6 @@ class PostService extends BaseService {
 
     return post;
   }
-
 
   // Get posts with feed type
   async getPosts(
@@ -314,14 +315,16 @@ class PostService extends BaseService {
 
     this.checkOwnership(post.user_id, userId, 'posts');
 
-     // 🔥 WEBSOCKET: Notify that post was deleted
+    console.log('🗑️ Deleting post:', postId);
+
+    // 🔥 WEBSOCKET: Notify that post was deleted
     WebSocketEmitter.postDeleted(postId);
 
     return this.softDelete(prisma.post, postId, 'post_id');
   }
 
   // Add comment
- async addComment(data: { postId: number; userId: number; content: string }) {
+  async addComment(data: { postId: number; userId: number; content: string }) {
     this.validateId(data.postId, 'Post ID');
     this.validateId(data.userId, 'User ID');
     this.validateRequiredString(
@@ -364,13 +367,17 @@ class PostService extends BaseService {
       })
     ]);
 
+    console.log('💬 Comment added to post:', data.postId);
+
     // 🔥 WEBSOCKET: Notify post owner (if not commenting on own post)
     if (post.user_id !== data.userId) {
+      console.log('📡 Emitting POST_COMMENTED event to user:', post.user_id);
       WebSocketEmitter.postCommented(post.user_id, {
         postId: data.postId,
         commentId: comment.comment_id,
         username: commenter?.username || 'Someone',
-        content: comment.content.substring(0, 50)
+        content: comment.content.substring(0, 50),
+        userId: data.userId
       });
     }
 
@@ -383,8 +390,7 @@ class PostService extends BaseService {
         profile_picture_url: comment.user.profile?.profile_picture_url || null
       }
     };
-}
-
+  }
 
   // Get comments by post
   async getCommentsByPost(postId: number) {
@@ -446,6 +452,8 @@ class PostService extends BaseService {
     this.validateId(postId, 'Post ID');
     this.validateId(userId, 'User ID');
 
+    console.log('🔵 Backend: Toggle reaction', { postId, userId });
+
     const post = await this.checkNotDeleted(
       prisma.post,
       { post_id: postId },
@@ -457,11 +465,15 @@ class PostService extends BaseService {
         where: { post_id: postId, user_id: userId }
       });
 
+      console.log('🔍 Existing like:', existing ? 'Found' : 'Not found', existing?.deleted_at ? '(soft deleted)' : '');
+
       if (!existing) {
+        console.log('➕ Creating new like');
         await tx.like.create({
           data: { post_id: postId, user_id: userId }
         });
       } else {
+        console.log('🔄 Toggling existing like');
         await tx.like.update({
           where: { like_id: existing.like_id },
           data: { deleted_at: existing.deleted_at ? null : new Date() }
@@ -479,24 +491,29 @@ class PostService extends BaseService {
         })
       ]);
 
-      // 🔥 WEBSOCKET: Notify post owner (if not liking own post)
-      if (post.user_id !== userId && userReaction) {
-        WebSocketEmitter.postLiked(post.user_id, {
-          postId,
-          username: liker?.username || 'Someone',
-          likeCount
-        });
-      }
-
-      return {
+      const result = {
         isLiked: !!userReaction,
         likeCount,
         postId,
         userId
       };
+
+      console.log('✅ Backend result:', result);
+
+      // 🔥 WEBSOCKET: Emit event (only if user liked, not unliked)
+      if (post.user_id !== userId && userReaction) {
+        console.log('📡 Emitting POST_LIKED event to user:', post.user_id);
+        WebSocketEmitter.postLiked(post.user_id, {
+          postId,
+          username: liker?.username || 'Someone',
+          likeCount,
+          userId
+        });
+      }
+
+      return result;
     });
   }
-
 
   // Count reactions
   async countReactions(postId: number) {
