@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { 
   Users, Search, Ban, UserCog, Trash2, Shield, CheckCircle, 
-  Loader2, Lock, Unlock, AlertCircle, Eye, TrendingUp, FileText,
+  Loader2, Lock, Unlock, AlertCircle, Eye, FileText,
   MessageSquare, Trophy, Calendar, Mail, RefreshCw
 } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';

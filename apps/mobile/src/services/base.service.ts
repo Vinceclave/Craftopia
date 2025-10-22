@@ -1,10 +1,15 @@
-// apps/mobile/src/services/base.service.ts - Improved error handling
+// apps/mobile/src/services/base.service.ts - Enhanced version with WebSocket support
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '~/config/api';
 
 class ApiService {
   private axios: AxiosInstance;
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   constructor() {
     this.axios = axios.create({
@@ -28,18 +33,32 @@ class ApiService {
       return config;
     });
 
-    // Response interceptor - Handle token refresh
+    // Response interceptor - Handle token refresh with queue
     this.axios.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // If already refreshing, queue this request
+          if (this.isRefreshing) {
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            })
+              .then(() => {
+                return this.axios(originalRequest);
+              })
+              .catch((err) => {
+                return Promise.reject(err);
+              });
+          }
+
           originalRequest._retry = true;
+          this.isRefreshing = true;
 
           try {
             const refreshToken = await AsyncStorage.getItem('refresh_token');
-            if (!refreshToken) throw new Error('No refresh token');
+            if (!refreshToken) throw new Error('SESSION_EXPIRED');
 
             const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh-token`, {
               method: 'POST',
@@ -51,7 +70,7 @@ class ApiService {
               const errorData = await response.json();
               console.log('❌ Refresh failed:', errorData);
               
-              // ✅ More specific error handling
+              // More specific error handling
               if (errorData.error?.includes('Invalid or expired')) {
                 throw new Error('SESSION_EXPIRED');
               }
@@ -62,23 +81,41 @@ class ApiService {
             const newAccessToken = data.data?.accessToken || data.accessToken;
             const newRefreshToken = data.data?.refreshToken || data.refreshToken;
 
-            if (newAccessToken && newRefreshToken) {
-              // ✅ Update BOTH tokens
-              await AsyncStorage.multiSet([
-                ['access_token', newAccessToken],
-                ['refresh_token', newRefreshToken] // Important!
-              ]);
-              
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              return this.axios(originalRequest);
+            if (!newAccessToken || !newRefreshToken) {
+              throw new Error('INVALID_REFRESH_RESPONSE');
             }
+
+            // Update BOTH tokens
+            await AsyncStorage.multiSet([
+              ['access_token', newAccessToken],
+              ['refresh_token', newRefreshToken],
+            ]);
+
+            console.log('✅ Tokens refreshed successfully');
+            
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+            // Process all queued requests
+            this.failedQueue.forEach((promise) => promise.resolve());
+            this.failedQueue = [];
+
+            return this.axios(originalRequest);
           } catch (refreshError: any) {
             console.log('❌ Auth refresh error:', refreshError.message);
             
-            // ✅ Only clear tokens on specific errors
-            if (refreshError.message === 'SESSION_EXPIRED') {
-              await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
+            // Reject all queued requests
+            this.failedQueue.forEach((promise) => promise.reject(refreshError));
+            this.failedQueue = [];
+            
+            // Only clear tokens on specific errors
+            if (refreshError.message === 'SESSION_EXPIRED' || refreshError.message === 'REFRESH_FAILED') {
+              await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+              console.log('🔒 Tokens cleared - session expired');
             }
+            
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
           }
         }
 
@@ -97,30 +134,83 @@ class ApiService {
         const status = error.response.status;
         const errorData = error.response.data;
         
+        let errorMessage: string;
+        
         switch (status) {
           case 404:
-            throw new Error(errorData?.error || 'Resource not found');
+            errorMessage = errorData?.error || 'Resource not found';
+            break;
           case 400:
-            throw new Error(errorData?.error || 'Bad request');
+            errorMessage = errorData?.error || 'Bad request';
+            break;
           case 401:
-            throw new Error(errorData?.error || 'Unauthorized');
+            errorMessage = errorData?.error || 'Unauthorized';
+            break;
           case 403:
-            throw new Error(errorData?.error || 'Forbidden');
+            errorMessage = errorData?.error || 'Forbidden';
+            break;
+          case 409:
+            errorMessage = errorData?.error || 'Conflict';
+            break;
           case 422:
-            throw new Error(errorData?.error || 'Validation error');
+            errorMessage = errorData?.error || 'Validation error';
+            break;
           case 500:
-            throw new Error(errorData?.error || 'Internal server error');
+            errorMessage = errorData?.error || 'Internal server error';
+            break;
           default:
-            throw new Error(errorData?.error || `Request failed with status ${status}`);
+            errorMessage = errorData?.error || `Request failed with status ${status}`;
         }
+        
+        const enhancedError = new Error(errorMessage) as any;
+        enhancedError.status = status;
+        enhancedError.data = errorData;
+        throw enhancedError;
       } else if (error.request) {
         // Network error
-        throw new Error('Network error. Please check your connection.');
+        const networkError = new Error('Network error. Please check your connection.') as any;
+        networkError.isNetworkError = true;
+        throw networkError;
       } else {
         // Other error
         throw new Error(error.message || 'Request failed');
       }
     }
+  }
+
+  // Convenience methods
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'GET' });
+  }
+
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'POST', data });
+  }
+
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'PUT', data });
+  }
+
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'PATCH', data });
+  }
+
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    return this.request<T>(url, { ...config, method: 'DELETE' });
+  }
+
+  // Utility methods
+  getInstance(): AxiosInstance {
+    return this.axios;
+  }
+
+  async clearAuth(): Promise<void> {
+    await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
+  }
+
+  async isAuthenticated(): Promise<boolean> {
+    const token = await AsyncStorage.getItem('access_token');
+    return !!token;
   }
 }
 

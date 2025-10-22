@@ -1,3 +1,5 @@
+
+// apps/mobile/src/components/feed/post/PostActions.tsx - Fixed
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Heart, MessageCircle } from 'lucide-react-native';
@@ -11,9 +13,9 @@ interface PostActionsProps {
 }
 
 export const PostActions: React.FC<PostActionsProps> = memo(({ 
-  likeCount, 
-  commentCount, 
-  isLiked, 
+  likeCount = 0, 
+  commentCount = 0, 
+  isLiked = false, 
   onToggleReaction, 
   onOpenComments 
 }) => (
@@ -22,6 +24,7 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
       className="flex-row items-center" 
       onPress={onToggleReaction}
       activeOpacity={0.7}
+      disabled={!onToggleReaction}
     >
       <Heart 
         size={14} 
@@ -37,6 +40,7 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
       className="flex-row items-center" 
       onPress={onOpenComments}
       activeOpacity={0.7}
+      disabled={!onOpenComments}
     >
       <MessageCircle size={14} color="#5D6B5D" />
       <Text className="ml-1 text-xs text-craftopia-textSecondary">
@@ -45,3 +49,5 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
     </TouchableOpacity>
   </View>
 ));
+
+PostActions.displayName = 'PostActions';

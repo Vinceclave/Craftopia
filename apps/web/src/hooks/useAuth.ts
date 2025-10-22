@@ -11,9 +11,6 @@ export const useAuth = () => {
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   
-  // ✅ Clear error when component unmounts or user types
-  const clearError = () => setError(null);
-
   // ✅ Initialize auth state from localStorage on mount
   useEffect(() => {
     const initAuth = () => {

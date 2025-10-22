@@ -1,5 +1,3 @@
-// apps/web/src/components/ToastNotifications.tsx
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { useWebSocketNotifications, useWebSocketAdminAlerts } from '@/hooks/useWebSocket';
 import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';

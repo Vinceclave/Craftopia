@@ -4,7 +4,7 @@ import { View, Text, Image } from 'react-native';
 interface PostContentProps {
   title: string;
   content: string;
-  image_url?: string;
+  image_url?: string | null;
   tags?: string[];
 }
 
@@ -35,7 +35,7 @@ export const PostContent: React.FC<PostContentProps> = memo(({
       />
     )}
 
-    {tags.length > 0 && (
+    {tags && tags.length > 0 && (
       <View className="flex-row flex-wrap mb-1">
         {tags.slice(0, 3).map((tag, idx) => (
           <View 
@@ -49,3 +49,5 @@ export const PostContent: React.FC<PostContentProps> = memo(({
     )}
   </View>
 ));
+
+PostContent.displayName = 'PostContent';

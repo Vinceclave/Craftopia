@@ -1,4 +1,4 @@
-// hooks/queries/usePosts.ts - Complete implementation
+// hooks/queries/usePosts.ts - Complete implementation with fixed backend integration
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { postService } from '~/services/post.service';
 import { useAuth } from '~/context/AuthContext';
@@ -75,8 +75,8 @@ export const useInfinitePosts = (feedType: FeedType) => {
       const response = await postService.getPosts(feedType, pageParam);
       return {
         posts: response.data || [],
-        meta: response.meta,
-        nextPage: response.meta && pageParam < response.meta.lastPage ? pageParam + 1 : undefined,
+        meta: response.pagination,
+        nextPage: response.pagination && pageParam < response.pagination.lastPage ? pageParam + 1 : undefined,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
@@ -148,7 +148,7 @@ export const useCreatePost = () => {
         queryKey: postKeys.lists(),
       });
 
-      // Optionally add the new post to the cache immediately
+      // Add the new post to the cache
       if (newPost?.post_id) {
         queryClient.setQueryData(postKeys.detail(newPost.post_id), newPost);
       }
@@ -160,28 +160,43 @@ export const useCreatePost = () => {
 };
 
 /**
- * Toggle post reaction (like/unlike)
+ * Toggle post reaction (like/unlike) with optimistic updates
  */
 export const useTogglePostReaction = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (postId: number) => {
+      console.log('🔵 Frontend: Toggling reaction for post:', postId);
       const response = await postService.toggleReaction(postId.toString());
+      console.log('🔵 Frontend: Response:', response);
       return { postId, ...response.data };
     },
     onMutate: async (postId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: postKeys.detail(postId) });
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: postKeys.lists() });
 
-      // Snapshot the previous value
-      const previousPost = queryClient.getQueryData(postKeys.detail(postId));
+      // Snapshot previous values
+      const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
 
-      // Optimistically update the cache
+      // Optimistically update all lists
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
           if (!oldData) return oldData;
+
+          // Handle array structure (regular query)
+          if (Array.isArray(oldData)) {
+            return oldData.map((post: Post) =>
+              post.post_id === postId
+                ? {
+                    ...post,
+                    isLiked: !post.isLiked,
+                    likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
+                  }
+                : post
+            );
+          }
 
           // Handle infinite query structure
           if (oldData.pages) {
@@ -202,34 +217,62 @@ export const useTogglePostReaction = () => {
             };
           }
 
-          // Handle regular array structure
+          return oldData;
+        }
+      );
+
+      return { previousLists };
+    },
+    onError: (err, postId, context) => {
+      console.error('❌ Failed to toggle reaction:', err);
+      
+      // Revert optimistic updates
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSuccess: (data, postId) => {
+      console.log('✅ Reaction toggled successfully:', data);
+      
+      // Update all lists with server response
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          const updatePost = (post: Post) =>
+            post.post_id === postId
+              ? {
+                  ...post,
+                  isLiked: data.isLiked,
+                  likeCount: data.likeCount,
+                }
+              : post;
+
+          // Handle array structure
           if (Array.isArray(oldData)) {
-            return oldData.map((post: Post) =>
-              post.post_id === postId
-                ? {
-                    ...post,
-                    isLiked: !post.isLiked,
-                    likeCount: post.isLiked ? post.likeCount - 1 : post.likeCount + 1,
-                  }
-                : post
-            );
+            return oldData.map(updatePost);
+          }
+
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
           }
 
           return oldData;
         }
       );
-
-      return { previousPost };
-    },
-    onError: (err, postId, context) => {
-      // Revert the optimistic update
-      if (context?.previousPost) {
-        queryClient.setQueryData(postKeys.detail(postId), context.previousPost);
-      }
-      queryClient.invalidateQueries({ queryKey: postKeys.lists() });
     },
     onSettled: (data, error, postId) => {
-      // Always refetch after error or success
+      // Always refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
     },
   });
@@ -247,11 +290,16 @@ export const useDeletePost = () => {
       return postId;
     },
     onSuccess: (postId) => {
-      // Remove the post from all cached lists
+      // Remove from all cached lists
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
           if (!oldData) return oldData;
+
+          // Handle array structure
+          if (Array.isArray(oldData)) {
+            return oldData.filter((post: Post) => post.post_id !== postId);
+          }
 
           // Handle infinite query structure
           if (oldData.pages) {
@@ -264,16 +312,11 @@ export const useDeletePost = () => {
             };
           }
 
-          // Handle regular array structure
-          if (Array.isArray(oldData)) {
-            return oldData.filter((post: Post) => post.post_id !== postId);
-          }
-
           return oldData;
         }
       );
 
-      // Remove the individual post from cache
+      // Remove individual post from cache
       queryClient.removeQueries({ queryKey: postKeys.detail(postId) });
     },
   });
@@ -291,7 +334,6 @@ export const useComments = (postId: number) => {
         return response.data || [];
       } catch (error) {
         console.error('Failed to load comments:', error);
-        // Return empty array if API fails
         return [];
       }
     },
@@ -312,14 +354,52 @@ export const useAddComment = () => {
       const response = await postService.addComment({ postId, content });
       return { postId, comment: response.data };
     },
+    onMutate: async ({ postId, content }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: postKeys.comments(postId) });
+
+      // Snapshot previous value
+      const previousComments = queryClient.getQueryData(postKeys.comments(postId));
+
+      // Optimistically add new comment
+      if (user) {
+        const optimisticComment: Comment = {
+          comment_id: Date.now(), // Temporary ID
+          user_id: user.id,
+          content,
+          created_at: new Date().toISOString(),
+          user: {
+            user_id: user.id,
+            username: user.username,
+          },
+        };
+
+        queryClient.setQueryData(
+          postKeys.comments(postId),
+          (old: Comment[] = []) => [...old, optimisticComment]
+        );
+      }
+
+      return { previousComments };
+    },
+    onError: (err, { postId }, context) => {
+      // Revert optimistic update
+      if (context?.previousComments) {
+        queryClient.setQueryData(postKeys.comments(postId), context.previousComments);
+      }
+    },
     onSuccess: ({ postId, comment }) => {
-      // Add the new comment to the cache
+      // Replace optimistic comment with real one
       queryClient.setQueryData(
         postKeys.comments(postId),
-        (oldComments: Comment[] = []) => [...oldComments, comment]
+        (oldComments: Comment[] = []) => {
+          // Remove optimistic comment and add real one
+          const withoutOptimistic = oldComments.filter(c => c.comment_id < 1000000000000);
+          return [...withoutOptimistic, comment];
+        }
       );
 
-      // Update the post's comment count
+      // Update comment count in posts
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
@@ -329,6 +409,11 @@ export const useAddComment = () => {
             post.post_id === postId
               ? { ...post, commentCount: post.commentCount + 1 }
               : post;
+
+          // Handle array structure
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
 
           // Handle infinite query structure
           if (oldData.pages) {
@@ -341,17 +426,9 @@ export const useAddComment = () => {
             };
           }
 
-          // Handle regular array structure
-          if (Array.isArray(oldData)) {
-            return oldData.map(updatePost);
-          }
-
           return oldData;
         }
       );
-    },
-    onError: (error) => {
-      console.error('Failed to add comment:', error);
     },
   });
 };
