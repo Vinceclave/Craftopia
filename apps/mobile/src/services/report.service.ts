@@ -1,8 +1,8 @@
-// apps/mobile/src/services/report.service.ts
+// apps/mobile/src/services/report.service.ts - FIXED VERSION
 import { apiService } from './base.service';
 import { API_ENDPOINTS, ApiResponse } from '~/config/api';
 
-export type ReportType = 'post' | 'comment' | 'user';
+export type ReportType = 'post' | 'comment';
 
 export type ReportReason = 
   | 'spam'
@@ -23,34 +23,78 @@ export interface CreateReportPayload {
 export interface Report {
   report_id: number;
   reporter_id: number;
-  type: ReportType;
-  target_id: number;
-  reason: ReportReason;
-  details?: string;
-  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  reported_post_id?: number;
+  reported_comment_id?: number;
+  reason: string;
+  status: 'pending' | 'in_review' | 'resolved';
+  moderator_notes?: string;
+  resolved_by_admin_id?: number;
   created_at: string;
-  updated_at: string;
+  resolved_at?: string;
 }
 
 class ReportService {
   /**
-   * Submit a report
+   * Submit a report - matches backend schema
    */
   async submitReport(payload: CreateReportPayload): Promise<ApiResponse<Report>> {
     try {
       console.log('📝 Submitting report:', payload);
       
+      // Transform payload to match backend schema
+      const backendPayload: any = {
+        reason: this.formatReasonForBackend(payload.reason, payload.details),
+      };
+
+      // Add the appropriate ID field based on type
+      if (payload.type === 'post') {
+        backendPayload.reported_post_id = payload.targetId;
+      } else if (payload.type === 'comment') {
+        backendPayload.reported_comment_id = payload.targetId;
+      }
+
+      console.log('📤 Backend payload:', backendPayload);
+      
       const response = await apiService.post<ApiResponse<Report>>(
-        '/api/v1/reports',
-        payload
+        API_ENDPOINTS.REPORTS.CREATE,
+        backendPayload
       );
       
-      console.log('✅ Report submitted successfully');
+      console.log('✅ Report submitted successfully:', response);
       return response;
-    } catch (error) {
-      console.error('Failed to submit report:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('❌ Failed to submit report:', error);
+      
+      // Enhance error message
+      if (error.message?.includes('already reported')) {
+        throw new Error('You have already reported this content.');
+      }
+      
+      throw new Error(error.message || 'Failed to submit report. Please try again.');
     }
+  }
+
+  /**
+   * Format reason for backend (combines reason type with details)
+   */
+  private formatReasonForBackend(reason: ReportReason, details?: string): string {
+    const reasonLabels: Record<ReportReason, string> = {
+      spam: 'Spam',
+      harassment: 'Harassment or Bullying',
+      inappropriate: 'Inappropriate Content',
+      misinformation: 'False Information',
+      violence: 'Violence or Dangerous Content',
+      copyright: 'Copyright Violation',
+      other: 'Other',
+    };
+
+    const baseReason = reasonLabels[reason] || 'Other';
+    
+    if (details && details.trim()) {
+      return `${baseReason}: ${details.trim()}`;
+    }
+    
+    return baseReason;
   }
 
   /**
@@ -58,7 +102,7 @@ class ReportService {
    */
   async getMyReports(): Promise<ApiResponse<Report[]>> {
     try {
-      return await apiService.get<ApiResponse<Report[]>>('/api/v1/reports/my-reports');
+      return await apiService.get<ApiResponse<Report[]>>(API_ENDPOINTS.REPORTS.MY_REPORTS);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       throw error;

@@ -497,3 +497,107 @@ export const useAddComment = () => {
     },
   });
 };
+
+export const useUpdatePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      postId, 
+      title, 
+      content, 
+      tags 
+    }: { 
+      postId: number; 
+      title: string; 
+      content: string; 
+      tags?: string[] 
+    }) => {
+      const response = await postService.updatePost(postId.toString(), {
+        title,
+        content,
+        tags,
+      });
+      return { postId, ...response.data };
+    },
+    onMutate: async ({ postId, title, content, tags }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: postKeys.lists() });
+
+      // Snapshot previous value
+      const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
+
+      // Optimistically update
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          const updatePost = (post: any) => {
+            if (post.post_id !== postId) return post;
+            return {
+              ...post,
+              title,
+              content,
+              tags: tags || post.tags,
+              updated_at: new Date().toISOString(),
+            };
+          };
+
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+
+          return oldData;
+        }
+      );
+
+      // Update individual post cache
+      queryClient.setQueryData(
+        postKeys.detail(postId),
+        (oldPost: any) => {
+          if (!oldPost) return oldPost;
+          return {
+            ...oldPost,
+            title,
+            content,
+            tags: tags || oldPost.tags,
+            updated_at: new Date().toISOString(),
+          };
+        }
+      );
+
+      return { previousLists };
+    },
+    onError: (err, { postId }, context) => {
+      console.error('Failed to update post:', err);
+      
+      // Revert on error
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSuccess: ({ postId }) => {
+      // Invalidate to ensure we have latest data
+      queryClient.invalidateQueries({ 
+        queryKey: postKeys.detail(postId) 
+      });
+      
+      console.log('✅ Post updated successfully:', postId);
+    },
+  });
+};
+
+

@@ -35,5 +35,8 @@ export interface PostProps {
   };
   onToggleReaction?: () => void;
   onOpenComments?: () => void;
-  onOptionsPress?: () => void;  // <-- new
+  onOptionsPress?: () => void;
+  onShare?: () => void;  // NEW: Share handler
 }
+
+

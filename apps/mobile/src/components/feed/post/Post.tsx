@@ -1,3 +1,4 @@
+// apps/mobile/src/components/feed/post/Post.tsx - UPDATED WITH SHARE
 import React, { memo } from 'react';
 import { View } from 'react-native';
 import type { PostProps } from './type';
@@ -18,7 +19,7 @@ export const Post: React.FC<PostProps> = memo((props) => {
         user={props.user} 
         featured={props.featured} 
         created_at={props.created_at} 
-        onOptionsPress={props.onOptionsPress} // <-- wire it
+        onOptionsPress={props.onOptionsPress}
       />
       <PostContent
         title={props.title}
@@ -32,7 +33,10 @@ export const Post: React.FC<PostProps> = memo((props) => {
         isLiked={props.isLiked || false}
         onToggleReaction={props.onToggleReaction}
         onOpenComments={props.onOpenComments}
+        onShare={props.onShare} 
       />
     </View>
   );
 });
+
+Post.displayName = 'Post';

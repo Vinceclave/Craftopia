@@ -218,6 +218,30 @@ class PostService {
     }
   }
 
+  async updatePost(
+  postId: string,
+  data: {
+    title: string;
+    content: string;
+    tags?: string[];
+  }
+): Promise<ApiResponse<Post>> {
+  try {
+    console.log('✏️ Updating post:', postId, data);
+    
+    return await apiService.put<ApiResponse<Post>>(
+      `/api/v1/posts/${postId}`,
+      data
+    );
+  } catch (error) {
+    console.error('Failed to update post:', error);
+    throw error;
+  }
+}
+
+
+
+
   /**
    * Delete post
    */

@@ -1,7 +1,7 @@
-// apps/mobile/src/components/feed/ReportModal.tsx
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput } from 'react-native';
-import { X, Flag, AlertTriangle } from 'lucide-react-native';
+// apps/mobile/src/components/feed/ReportModal.tsx - IMPROVED VERSION
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { X, Flag, AlertTriangle, CheckCircle } from 'lucide-react-native';
 import Button from '~/components/common/Button';
 
 export type ReportReason = 
@@ -68,7 +68,7 @@ const REPORT_OPTIONS: ReportOption[] = [
 interface ReportModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (reason: ReportReason, details: string) => void;
+  onSubmit: (reason: ReportReason, details: string) => Promise<void> | void;
   contentType: 'post' | 'comment';
   contentId: number;
   loading?: boolean;
@@ -85,31 +85,73 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState('');
   const [step, setStep] = useState<'select' | 'details'>('select');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (visible) {
+      setSelectedReason(null);
+      setDetails('');
+      setStep('select');
+      setError(null);
+      setIsSubmitting(false);
+    }
+  }, [visible]);
 
   const handleReasonSelect = (reason: ReportReason) => {
+    console.log('📢 Reason selected:', reason);
     setSelectedReason(reason);
+    setError(null);
     setStep('details');
   };
 
   const handleBack = () => {
     if (step === 'details') {
       setStep('select');
+      setError(null);
     } else {
       handleClose();
     }
   };
 
   const handleClose = () => {
-    setSelectedReason(null);
-    setDetails('');
-    setStep('select');
-    onClose();
+    if (!isSubmitting) {
+      onClose();
+    }
   };
 
-  const handleSubmit = () => {
-    if (selectedReason) {
-      onSubmit(selectedReason, details.trim());
-      handleClose();
+  const handleSubmit = async () => {
+    if (!selectedReason) {
+      setError('Please select a reason');
+      return;
+    }
+
+    // Validate that details are provided for 'other' category
+    if (selectedReason === 'other' && !details.trim()) {
+      setError('Please provide details for your report');
+      return;
+    }
+
+    // Validate details length
+    if (details.length > 500) {
+      setError('Details cannot exceed 500 characters');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      console.log('📢 Submitting report:', { selectedReason, details: details.trim(), contentId });
+      await onSubmit(selectedReason, details.trim());
+      console.log('✅ Report submitted successfully');
+      // Modal will be closed by parent component on success
+    } catch (err: any) {
+      console.error('❌ Report submission error:', err);
+      setError(err.message || 'Failed to submit report');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -130,6 +172,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               onPress={handleBack}
               className="w-8 h-8 items-center justify-center"
               activeOpacity={0.7}
+              disabled={isSubmitting}
             >
               <X size={20} color="#1A1A1A" />
             </TouchableOpacity>
@@ -141,6 +184,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             </View>
             <View className="w-8" />
           </View>
+
+          {/* Error Message */}
+          {error && (
+            <View className="bg-red-50 border border-red-200 mx-4 mt-4 p-3 rounded-lg flex-row items-center">
+              <AlertTriangle size={16} color="#EF4444" />
+              <Text className="text-sm text-red-800 ml-2 flex-1">{error}</Text>
+            </View>
+          )}
 
           {/* Content */}
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -158,7 +209,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   <TouchableOpacity
                     key={option.id}
                     onPress={() => handleReasonSelect(option.id)}
-                    className="bg-craftopia-light p-4 rounded-lg mb-2 flex-row items-center"
+                    className="bg-craftopia-light p-4 rounded-lg mb-2 flex-row items-center active:bg-craftopia-light/70"
                     activeOpacity={0.7}
                   >
                     <Text className="text-2xl mr-3">{option.icon}</Text>
@@ -198,35 +249,55 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   </Text>
                   <TextInput
                     value={details}
-                    onChangeText={setDetails}
+                    onChangeText={(text) => {
+                      setDetails(text);
+                      setError(null);
+                    }}
                     placeholder="Please provide more information..."
                     placeholderTextColor="#9CA3AF"
                     multiline
                     numberOfLines={4}
+                    maxLength={500}
                     textAlignVertical="top"
                     className="bg-craftopia-light border border-craftopia-light rounded-lg p-3 text-craftopia-textPrimary"
                     style={{ minHeight: 100 }}
+                    editable={!isSubmitting}
                   />
-                  <Text className="text-xs text-craftopia-textSecondary mt-1">
+                  <Text className={`text-xs mt-1 ${details.length > 450 ? 'text-orange-600' : 'text-craftopia-textSecondary'}`}>
                     {details.length}/500 characters
                   </Text>
                 </View>
 
                 {/* Info Box */}
                 <View className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
-                  <Text className="text-sm text-blue-800">
-                    ℹ️ Your report will be reviewed by our moderation team. We'll take appropriate action if this violates our community guidelines.
-                  </Text>
+                  <View className="flex-row items-start">
+                    <CheckCircle size={16} color="#3B82F6" className="mt-0.5" />
+                    <Text className="text-sm text-blue-800 ml-2 flex-1">
+                      Your report will be reviewed by our moderation team. We'll take appropriate action if this violates our community guidelines.
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Submit Button */}
                 <Button
-                  title={loading ? 'Submitting...' : 'Submit Report'}
+                  title={isSubmitting ? 'Submitting...' : 'Submit Report'}
                   onPress={handleSubmit}
-                  disabled={!canSubmit || loading}
-                  loading={loading}
+                  disabled={!canSubmit || isSubmitting || loading}
+                  loading={isSubmitting || loading}
                   size="md"
                 />
+
+                {/* Cancel Button */}
+                <TouchableOpacity
+                  onPress={handleBack}
+                  className="mt-3 py-3 items-center"
+                  activeOpacity={0.7}
+                  disabled={isSubmitting}
+                >
+                  <Text className="text-craftopia-textSecondary font-medium">
+                    Back
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </ScrollView>

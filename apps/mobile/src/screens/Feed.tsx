@@ -13,13 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, TrendingUp, Star, Flame, LayoutGrid, Plus, Wifi, WifiOff, RefreshCw } from 'lucide-react-native';
 import { PostContainer } from '~/components/feed/post/PostContainer';
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem';
-import type { NativeStackNavigationProp } from '@react-navigation/native';
 import { FeedStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
 
 // Import TanStack Query hooks
 import { usePosts, useTogglePostReaction, useTrendingTags, type FeedType } from '~/hooks/queries/usePosts';
 import { useWebSocket } from '~/context/WebSocketContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const FEED_TABS = [
   { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
