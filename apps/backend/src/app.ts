@@ -1,10 +1,10 @@
-// apps/backend/src/app.ts - ENHANCED VERSION
+// apps/backend/src/app.ts - ENHANCED VERSION WITH FIXED IPv6 HANDLING
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import apiRoutes from './routes/api';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { config } from './config';
@@ -143,23 +143,37 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// FIXED: Auth rate limiter using ipKeyGenerator for proper IPv6 support
 const authLimiter = rateLimit({
   windowMs: RATE_LIMITS.AUTH.WINDOW_MS,
   max: RATE_LIMITS.AUTH.MAX,
   keyGenerator: (req, res) => {
-    // Use email (or username) if provided, fallback to IP
+    // Use email (or username) if provided
     const email = req.body?.email?.toLowerCase();
-    return email || req.ip;
+    if (email && email.trim()) {
+      return `email:${email}`;
+    }
+    // Use the official ipKeyGenerator helper for proper IPv4/IPv6 handling
+    // Note: ipKeyGenerator only takes the request object
+    return ipKeyGenerator(req.ip || '');
   },
   handler: (req, res) => {
+    logger.logSecurityEvent(
+      'Auth Rate Limit Exceeded',
+      'high',
+      { 
+        email: req.body?.email,
+        url: req.url 
+      }
+    );
     res.status(429).json({
       success: false,
       error: 'Too many authentication attempts, please try again later.',
       timestamp: new Date().toISOString(),
     });
   },
-  standardHeaders: true, // adds RateLimit-* headers
-  legacyHeaders: false, // disables X-RateLimit-* headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Apply rate limiters

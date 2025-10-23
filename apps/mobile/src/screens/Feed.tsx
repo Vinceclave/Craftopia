@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Feed.tsx - WITH SEARCH & CATEGORY FILTERING
+// apps/mobile/src/screens/Feed.tsx - FIXED VERSION WITH PROPER KEYS
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Text,
@@ -249,14 +249,30 @@ export const FeedScreen = () => {
     );
   };
 
-  const renderPost = useCallback(({ item }: { item: Post }) => (
-    <PostContainer
-      key={`${item.post_id}-${item.updated_at}`}
-      postId={item.post_id}
-      {...item}
-      onToggleReaction={() => handleToggleReaction(item.post_id)}
-    />
-  ), []);
+  // FIXED: Generate unique, stable key for each post
+  const getPostKey = (item: Post, index: number) => {
+    // Use post_id as primary key, fallback to index if somehow missing
+    const postId = item?.post_id || `temp-${index}`;
+    const timestamp = item?.updated_at || item?.created_at || '';
+    return `post-${postId}-${timestamp}`;
+  };
+
+  const renderPost = useCallback(({ item, index }: { item: Post; index: number }) => {
+    // Validate post has required data
+    if (!item || !item.post_id || !item.title) {
+      console.warn('⚠️ Invalid post data:', item);
+      return null;
+    }
+
+    return (
+      <PostContainer
+        key={getPostKey(item, index)}
+        postId={item.post_id}
+        {...item}
+        onToggleReaction={() => handleToggleReaction(item.post_id)}
+      />
+    );
+  }, []);
 
   const renderFooter = () => {
     if (isFetchingNextPage) {
@@ -510,7 +526,7 @@ export const FeedScreen = () => {
       <FlatList
         data={posts}
         renderItem={renderPost}
-        keyExtractor={(item) => `${item.post_id}-${item.updated_at}`}
+        keyExtractor={getPostKey}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}

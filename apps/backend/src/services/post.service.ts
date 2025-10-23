@@ -1,4 +1,4 @@
-// apps/backend/src/services/post.service.ts - COMPLETE FIXED VERSION
+// apps/backend/src/services/post.service.ts - FIXED VERSION WITH USER DATA
 import { Post, Comment, Category } from '../generated/prisma';
 import prisma from '../config/prisma';
 import { AppError } from '../utils/error';
@@ -9,31 +9,36 @@ import { AppError } from '../utils/error';
 
 // PostWithAuthor type - inline definition
 interface PostWithAuthor {
-  postId: number;
+  post_id: number;
   title: string;
   content: string;
-  imageUrl: string | null;
+  image_url: string | null;
   tags: string[];
   category: Category;
   featured: boolean;
-  createdAt: Date;
-  userId: number;
-  username: string;
-  profilePictureUrl: string | null;
-  commentCount: number;
-  likeCount: number;
-  isLiked: boolean;
+  created_at: Date;
+  updated_at: Date;
+  user_id: number;
+  user: {
+    user_id: number;
+    username: string;
+  };
+  comment_count: number;
+  like_count: number;
+  is_liked: boolean;
 }
 
 // CommentWithAuthor type - inline definition
 interface CommentWithAuthor {
-  commentId: number;
-  postId: number;
+  comment_id: number;
+  post_id: number;
   content: string;
-  createdAt: Date;
-  userId: number;
-  username: string;
-  profilePictureUrl: string | null;
+  created_at: Date;
+  user_id: number;
+  user: {
+    user_id: number;
+    username: string;
+  };
 }
 
 // Input types
@@ -65,6 +70,32 @@ interface SearchPostsParams {
 }
 
 // ============================================
+// HELPER FUNCTION TO TRANSFORM POSTS
+// ============================================
+
+function transformPostToResponse(post: any, userId?: number): PostWithAuthor {
+  return {
+    post_id: post.post_id,
+    title: post.title,
+    content: post.content,
+    image_url: post.image_url,
+    tags: post.tags,
+    category: post.category,
+    featured: post.featured,
+    created_at: post.created_at,
+    updated_at: post.updated_at,
+    user_id: post.user.user_id,
+    user: {
+      user_id: post.user.user_id,
+      username: post.user.username,
+    },
+    comment_count: post._count.comments,
+    like_count: post._count.likes,
+    is_liked: userId ? (post.likes as any[]).length > 0 : false,
+  };
+}
+
+// ============================================
 // POST SERVICE CLASS
 // ============================================
 
@@ -92,8 +123,9 @@ export class PostService {
       },
       include: {
         user: {
-          include: {
-            profile: true,
+          select: {
+            user_id: true,
+            username: true,
           },
         },
         _count: {
@@ -105,22 +137,7 @@ export class PostService {
       },
     });
 
-    return {
-      postId: post.post_id,
-      title: post.title,
-      content: post.content,
-      imageUrl: post.image_url,
-      tags: post.tags,
-      category: post.category,
-      featured: post.featured,
-      createdAt: post.created_at,
-      userId: post.user.user_id,
-      username: post.user.username,
-      profilePictureUrl: post.user.profile?.profile_picture_url || null,
-      commentCount: post._count.comments,
-      likeCount: post._count.likes,
-      isLiked: false,
-    };
+    return transformPostToResponse({ ...post, likes: [] });
   }
 
   async getPosts(
@@ -154,8 +171,9 @@ export class PostService {
         take: limit,
         include: {
           user: {
-            include: {
-              profile: true,
+            select: {
+              user_id: true,
+              username: true,
             },
           },
           _count: {
@@ -173,22 +191,7 @@ export class PostService {
       prisma.post.count({ where }),
     ]);
 
-    const postsWithAuthor = posts.map((post) => ({
-      postId: post.post_id,
-      title: post.title,
-      content: post.content,
-      imageUrl: post.image_url,
-      tags: post.tags,
-      category: post.category,
-      featured: post.featured,
-      createdAt: post.created_at,
-      userId: post.user.user_id,
-      username: post.user.username,
-      profilePictureUrl: post.user.profile?.profile_picture_url || null,
-      commentCount: post._count.comments,
-      likeCount: post._count.likes,
-      isLiked: userId ? (post.likes as any[]).length > 0 : false,
-    }));
+    const postsWithAuthor = posts.map((post) => transformPostToResponse(post, userId));
 
     return {
       data: postsWithAuthor,
@@ -230,8 +233,9 @@ export class PostService {
         take: params.limit,
         include: {
           user: {
-            include: {
-              profile: true,
+            select: {
+              user_id: true,
+              username: true,
             },
           },
           _count: {
@@ -249,22 +253,7 @@ export class PostService {
       prisma.post.count({ where }),
     ]);
 
-    const postsWithAuthor = posts.map((post) => ({
-      postId: post.post_id,
-      title: post.title,
-      content: post.content,
-      imageUrl: post.image_url,
-      tags: post.tags,
-      category: post.category,
-      featured: post.featured,
-      createdAt: post.created_at,
-      userId: post.user.user_id,
-      username: post.user.username,
-      profilePictureUrl: post.user.profile?.profile_picture_url || null,
-      commentCount: post._count.comments,
-      likeCount: post._count.likes,
-      isLiked: params.userId ? (post.likes as any[]).length > 0 : false,
-    }));
+    const postsWithAuthor = posts.map((post) => transformPostToResponse(post, params.userId));
 
     return {
       data: postsWithAuthor,
@@ -301,8 +290,9 @@ export class PostService {
       where: { post_id: postId, deleted_at: null },
       include: {
         user: {
-          include: {
-            profile: true,
+          select: {
+            user_id: true,
+            username: true,
           },
         },
         _count: {
@@ -318,22 +308,7 @@ export class PostService {
       throw new AppError('Post not found', 404);
     }
 
-    return {
-      postId: post.post_id,
-      title: post.title,
-      content: post.content,
-      imageUrl: post.image_url,
-      tags: post.tags,
-      category: post.category,
-      featured: post.featured,
-      createdAt: post.created_at,
-      userId: post.user.user_id,
-      username: post.user.username,
-      profilePictureUrl: post.user.profile?.profile_picture_url || null,
-      commentCount: post._count.comments,
-      likeCount: post._count.likes,
-      isLiked: false,
-    };
+    return transformPostToResponse({ ...post, likes: [] });
   }
 
   async updatePost(
@@ -368,8 +343,9 @@ export class PostService {
       data: updateData,
       include: {
         user: {
-          include: {
-            profile: true,
+          select: {
+            user_id: true,
+            username: true,
           },
         },
         _count: {
@@ -381,22 +357,7 @@ export class PostService {
       },
     });
 
-    return {
-      postId: updatedPost.post_id,
-      title: updatedPost.title,
-      content: updatedPost.content,
-      imageUrl: updatedPost.image_url,
-      tags: updatedPost.tags,
-      category: updatedPost.category,
-      featured: updatedPost.featured,
-      createdAt: updatedPost.created_at,
-      userId: updatedPost.user.user_id,
-      username: updatedPost.user.username,
-      profilePictureUrl: updatedPost.user.profile?.profile_picture_url || null,
-      commentCount: updatedPost._count.comments,
-      likeCount: updatedPost._count.likes,
-      isLiked: false,
-    };
+    return transformPostToResponse({ ...updatedPost, likes: [] });
   }
 
   async deletePost(postId: number, userId: number): Promise<Post> {
@@ -439,21 +400,24 @@ export class PostService {
       },
       include: {
         user: {
-          include: {
-            profile: true,
+          select: {
+            user_id: true,
+            username: true,
           },
         },
       },
     });
 
     return {
-      commentId: comment.comment_id,
-      postId: comment.post_id,
+      comment_id: comment.comment_id,
+      post_id: comment.post_id,
       content: comment.content,
-      createdAt: comment.created_at,
-      userId: comment.user.user_id,
-      username: comment.user.username,
-      profilePictureUrl: comment.user.profile?.profile_picture_url || null,
+      created_at: comment.created_at,
+      user_id: comment.user.user_id,
+      user: {
+        user_id: comment.user.user_id,
+        username: comment.user.username,
+      },
     };
   }
 
@@ -463,21 +427,24 @@ export class PostService {
       orderBy: { created_at: 'desc' },
       include: {
         user: {
-          include: {
-            profile: true,
+          select: {
+            user_id: true,
+            username: true,
           },
         },
       },
     });
 
     return comments.map((comment) => ({
-      commentId: comment.comment_id,
-      postId: comment.post_id,
+      comment_id: comment.comment_id,
+      post_id: comment.post_id,
       content: comment.content,
-      createdAt: comment.created_at,
-      userId: comment.user.user_id,
-      username: comment.user.username,
-      profilePictureUrl: comment.user.profile?.profile_picture_url || null,
+      created_at: comment.created_at,
+      user_id: comment.user.user_id,
+      user: {
+        user_id: comment.user.user_id,
+        username: comment.user.username,
+      },
     }));
   }
 
@@ -500,7 +467,6 @@ export class PostService {
     });
   }
 
-  // FIXED: Using prisma.like (based on your schema: model Like)
   async togglePostReaction(postId: number, userId: number) {
     const post = await prisma.post.findUnique({
       where: { post_id: postId, deleted_at: null },
@@ -510,7 +476,6 @@ export class PostService {
       throw new AppError('Post not found', 404);
     }
 
-    // Check if like exists (using the unique constraint [post_id, user_id])
     const existingReaction = await prisma.like.findUnique({
       where: {
         post_id_user_id: {
@@ -521,7 +486,6 @@ export class PostService {
     });
 
     if (existingReaction) {
-      // Unlike: Delete the like
       await prisma.like.delete({
         where: {
           post_id_user_id: {
@@ -542,7 +506,6 @@ export class PostService {
         userId,
       };
     } else {
-      // Like: Create new like
       await prisma.like.create({
         data: {
           post_id: postId,
