@@ -37,6 +37,7 @@ export interface PostProps {
   onOpenComments?: () => void;
   onOptionsPress?: () => void;
   onShare?: () => void;  // NEW: Share handler
+  onPress?: () => void;  // NEW: Click handler to open details
 }
 
 

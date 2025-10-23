@@ -1,6 +1,6 @@
-// apps/mobile/src/components/feed/post/Post.tsx - UPDATED WITH SHARE
+// apps/mobile/src/components/feed/post/Post.tsx - UPDATED WITH CLICK HANDLER
 import React, { memo } from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import type { PostProps } from './type';
 import { PostHeader } from './PostHeader';
 import { PostContent } from './PostContent';
@@ -21,12 +21,21 @@ export const Post: React.FC<PostProps> = memo((props) => {
         created_at={props.created_at} 
         onOptionsPress={props.onOptionsPress}
       />
-      <PostContent
-        title={props.title}
-        content={props.content}
-        image_url={props.image_url}
-        tags={props.tags}
-      />
+      
+      {/* Make content clickable to open details */}
+      <TouchableOpacity 
+        onPress={props.onPress}
+        activeOpacity={0.95}
+        disabled={!props.onPress}
+      >
+        <PostContent
+          title={props.title}
+          content={props.content}
+          image_url={props.image_url}
+          tags={props.tags}
+        />
+      </TouchableOpacity>
+      
       <PostActions
         likeCount={props.likeCount || 0}
         commentCount={props.commentCount || 0}
