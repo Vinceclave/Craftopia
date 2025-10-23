@@ -4,6 +4,8 @@ import * as postService from '../services/post.service';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess, sendPaginatedSuccess } from '../utils/response';
 import { AuthRequest } from '../middlewares/auth.middleware';
+import WebSocketEmitter from '../websocket/events';
+import prisma from '../config/prisma';
  
 
 export const createPost = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -95,7 +97,40 @@ export const deletePost = asyncHandler(async (req: AuthRequest, res: Response) =
 
 export const addComment = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { postId, content } = req.body;
-  const comment = await postService.addComment({ postId, userId: req.user!.userId, content });
+  const userId = req.user!.userId;
+  
+  const comment = await postService.addComment({ 
+    postId, 
+    userId, 
+    content 
+  });
+  
+  // ✅ GET USERNAME FROM DATABASE
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { username: true }
+  });
+  
+  // ✅ Get updated comment count
+  const postData = await prisma.post.findUnique({
+    where: { post_id: postId },
+    include: {
+      _count: {
+        select: { comments: true }
+      }
+    }
+  });
+  
+  // ✅ EMIT WEBSOCKET EVENT
+  WebSocketEmitter.broadcast('post:commented', {
+    postId,
+    commentId: comment.comment_id,
+    userId,
+    username: user?.username || `User ${userId}`,
+    content: comment.content,
+    commentCount: postData?._count.comments || 0,
+  });
+  
   sendSuccess(res, comment, 'Comment added successfully', 201);
 });
 
@@ -122,6 +157,21 @@ export const handlePostReactionToggle = asyncHandler(async (req: AuthRequest, re
   const reactionData = await postService.togglePostReaction(postId, userId);
   
   console.log('🔵 Backend Controller: Reaction data:', reactionData);
+  
+  // ✅ GET USERNAME FROM DATABASE
+  const user = await prisma.user.findUnique({
+    where: { user_id: userId },
+    select: { username: true }
+  });
+  
+  // ✅ EMIT WEBSOCKET EVENT TO ALL CLIENTS
+  WebSocketEmitter.broadcast('post:liked', {
+    postId: reactionData.postId,
+    userId: reactionData.userId,
+    username: user?.username || `User ${userId}`, // Fallback if user not found
+    likeCount: reactionData.likeCount,
+    isLiked: reactionData.isLiked,
+  });
   
   // Send consistent response format
   sendSuccess(res, {

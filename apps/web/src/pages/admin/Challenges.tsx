@@ -34,32 +34,27 @@ export default function AdminChallenges() {
 
   // WebSocket handlers
   const handleChallengeCreated = useCallback((data: any) => {
-    console.log('✅ New challenge created:', data);
     success(data.message || 'New challenge available!');
     refetch();
   }, [refetch, success]);
 
   const handleChallengeUpdated = useCallback((data: any) => {
-    console.log('✅ Challenge updated:', data);
     info(data.message || 'A challenge was updated');
     refetch();
   }, [refetch, info]);
 
   const handleChallengeDeleted = useCallback((data: any) => {
-    console.log('✅ Challenge deleted:', data);
     info(data.message || 'A challenge was removed');
     refetch();
   }, [refetch, info]);
 
   const handleChallengeCompleted = useCallback((data: any) => {
-    console.log('✅ Challenge completed:', data);
-    info('New challenge submission pending verification!');
+    info('New challenge submission pending verification!' + data);
     refetchPending();
   }, [refetchPending, info]);
 
   const handleChallengeVerified = useCallback((data: any) => {
-    console.log('✅ Challenge verified:', data);
-    success('Challenge verification completed!');
+    success('Challenge verification completed!' + data);
     refetchPending();
   }, [refetchPending, success]);
 
@@ -95,8 +90,8 @@ export default function AdminChallenges() {
         material_type: 'plastic',
         category: 'daily'
       });
-    } catch (error: any) {
-      console.error('Error creating challenge:', error);
+    } catch (error: unknown) {
+      alert('Something went wrong while creating the challenge.' + error);
     }
   };
 

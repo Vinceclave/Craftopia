@@ -45,20 +45,17 @@ export default function AdminPosts() {
   // WebSocket real-time updates
   useWebSocketPosts({
     onCreated: useCallback((data) => {
-      console.log('📝 New post created:', data);
       info('New post created: ' + (data.title || 'Untitled'));
       refetch();
     }, [info, refetch]),
     
     onUpdated: useCallback((data) => {
-      console.log('✏️ Post updated:', data);
-      info('Post updated');
+      info('Post updated' + data);
       refetch();
     }, [info, refetch]),
     
     onDeleted: useCallback((data) => {
-      console.log('🗑️ Post deleted:', data);
-      info('Post removed');
+      info('Post removed' + data);
       refetch();
     }, [info, refetch]),
   });

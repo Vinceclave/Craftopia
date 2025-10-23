@@ -228,19 +228,16 @@ export default function AdminDashboard() {
   // WebSocket real-time event handlers
   useWebSocketChallenges({
     onCreated: useCallback((data) => {
-      console.log('🎯 New challenge created:', data);
-      info('New challenge created!');
+      info('New challenge created!' + data);
       refetch();
     }, [info, refetch]),
     
     onCompleted: useCallback((data) => {
-      console.log('✅ Challenge completed:', data);
-      success('A user completed a challenge!');
+      success('A user completed a challenge!' + data);
       refetch();
     }, [success, refetch]),
     
     onVerified: useCallback((data) => {
-      console.log('✓ Challenge verified:', data);
       success(`Challenge verified! ${data.points_awarded} points awarded`);
       refetch();
     }, [success, refetch]),
@@ -248,15 +245,12 @@ export default function AdminDashboard() {
 
   useWebSocketPosts({
     onCreated: useCallback((data) => {
-      console.log('📝 New post created:', data);
-      info('New post created on the platform');
+      info('New post created on the platform' + data);
       refetch();
     }, [info, refetch]),
   });
 
   useWebSocketAdminAlerts(useCallback((data) => {
-    console.log('🚨 Admin alert:', data);
-    
     if (data.type === 'challenge_pending') {
       warning('New challenge pending verification');
       refetch();

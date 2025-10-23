@@ -77,56 +77,65 @@ class PostService {
    * Validate and normalize post data
    */
   private normalizePost(post: any): Post {
-    console.log('🔍 Normalizing post:', {
-      post_id: post.post_id,
-      has_user: !!post.user,
-      user_data: post.user,
-      user_id: post.user_id
-    });
+  console.log('🔍 Normalizing post:', {
+    post_id: post.post_id,
+    commentCount: post.commentCount,
+    comment_count: post.comment_count,
+    likeCount: post.likeCount,
+    like_count: post.like_count,
+    rawPost: post
+  });
 
-    let user = post.user;
-    
-    if (!user) {
-      console.warn('⚠️ Post missing user object, creating from user_id');
-      user = {
-        user_id: post.user_id,
-        username: `User ${post.user_id}`
-      };
-    }
-    
-    if (user && (!user.username || user.username === '')) {
-      console.warn('⚠️ User missing username, using fallback');
-      user.username = `User ${user.user_id || post.user_id}`;
-    }
-
-    const normalized = {
-      post_id: post.post_id,
+  let user = post.user;
+  
+  if (!user) {
+    console.warn('⚠️ Post missing user object, creating from user_id');
+    user = {
       user_id: post.user_id,
-      title: post.title || '',
-      content: post.content || '',
-      image_url: post.image_url,
-      category: post.category || 'Other',
-      tags: Array.isArray(post.tags) ? post.tags : [],
-      featured: post.featured || false,
-      commentCount: post.commentCount || 0,
-      likeCount: post.likeCount || 0,
-      isLiked: post.isLiked || false,
-      created_at: post.created_at,
-      updated_at: post.updated_at,
-      deleted_at: post.deleted_at,
-      user: {
-        user_id: user.user_id || post.user_id,
-        username: user.username
-      }
+      username: `User ${post.user_id}`
     };
-
-    console.log('✅ Normalized post:', {
-      post_id: normalized.post_id,
-      username: normalized.user.username
-    });
-
-    return normalized;
   }
+  
+  if (user && (!user.username || user.username === '')) {
+    console.warn('⚠️ User missing username, using fallback');
+    user.username = `User ${user.user_id || post.user_id}`;
+  }
+
+  // ✅ HANDLE BOTH SNAKE_CASE AND CAMELCASE
+  const commentCount = post.commentCount ?? post.comment_count ?? 0;
+  const likeCount = post.likeCount ?? post.like_count ?? 0;
+  const isLiked = post.isLiked ?? post.is_liked ?? false;
+
+  const normalized = {
+    post_id: post.post_id,
+    user_id: post.user_id,
+    title: post.title || '',
+    content: post.content || '',
+    image_url: post.image_url,
+    category: post.category || 'Other',
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    featured: post.featured || false,
+    commentCount, // ✅ Use normalized value
+    likeCount,    // ✅ Use normalized value
+    isLiked,      // ✅ Use normalized value
+    created_at: post.created_at,
+    updated_at: post.updated_at,
+    deleted_at: post.deleted_at,
+    user: {
+      user_id: user.user_id || post.user_id,
+      username: user.username
+    }
+  };
+
+  console.log('✅ Normalized post counts:', {
+    post_id: normalized.post_id,
+    commentCount: normalized.commentCount,
+    likeCount: normalized.likeCount,
+    isLiked: normalized.isLiked
+  });
+
+  return normalized;
+}
 
   /**
    * Get posts with feed type and pagination

@@ -74,6 +74,13 @@ interface SearchPostsParams {
 // ============================================
 
 function transformPostToResponse(post: any, userId?: number): PostWithAuthor {
+  console.log('🔍 Transforming post:', {
+    post_id: post.post_id,
+    comment_count: post._count?.comments,
+    like_count: post._count?.likes,
+    likes_array: post.likes
+  });
+
   return {
     post_id: post.post_id,
     title: post.title,
@@ -89,8 +96,8 @@ function transformPostToResponse(post: any, userId?: number): PostWithAuthor {
       user_id: post.user.user_id,
       username: post.user.username,
     },
-    comment_count: post._count.comments,
-    like_count: post._count.likes,
+    comment_count: post._count?.comments || 0, // ✅ Use correct field
+    like_count: post._count?.likes || 0, // ✅ Use correct field
     is_liked: userId ? (post.likes as any[]).length > 0 : false,
   };
 }
@@ -141,68 +148,74 @@ export class PostService {
   }
 
   async getPosts(
-    feedType: 'all' | 'trending' | 'popular' | 'featured',
-    page: number,
-    limit: number,
-    userId?: number
-  ) {
-    this.validatePagination(page, limit);
-    const skip = (page - 1) * limit;
+  feedType: 'all' | 'trending' | 'popular' | 'featured',
+  page: number,
+  limit: number,
+  userId?: number
+) {
+  this.validatePagination(page, limit);
+  const skip = (page - 1) * limit;
 
-    let orderBy: any = { created_at: 'desc' };
-    let where: any = { deleted_at: null };
+  let orderBy: any = { created_at: 'desc' };
+  let where: any = { deleted_at: null };
 
-    if (feedType === 'trending') {
-      orderBy = { created_at: 'desc' };
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      where.created_at = { gte: sevenDaysAgo };
-    } else if (feedType === 'popular') {
-      orderBy = { likes: { _count: 'desc' } };
-    } else if (feedType === 'featured') {
-      where.featured = true;
-    }
-
-    const [posts, total] = await Promise.all([
-      prisma.post.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: {
-          user: {
-            select: {
-              user_id: true,
-              username: true,
-            },
-          },
-          _count: {
-            select: {
-              comments: true,
-              likes: true,
-            },
-          },
-          likes: userId ? {
-            where: { user_id: userId },
-            select: { user_id: true },
-          } : false,
-        },
-      }),
-      prisma.post.count({ where }),
-    ]);
-
-    const postsWithAuthor = posts.map((post) => transformPostToResponse(post, userId));
-
-    return {
-      data: postsWithAuthor,
-      meta: {
-        total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
-      },
-    };
+  if (feedType === 'trending') {
+    orderBy = { created_at: 'desc' };
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    where.created_at = { gte: sevenDaysAgo };
+  } else if (feedType === 'popular') {
+    orderBy = { likes: { _count: 'desc' } };
+  } else if (feedType === 'featured') {
+    where.featured = true;
   }
+
+  const [posts, total] = await Promise.all([
+    prisma.post.findMany({
+      where,
+      orderBy,
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: {
+            user_id: true,
+            username: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true, // ✅ CRITICAL: Must include this
+            likes: true,    // ✅ CRITICAL: Must include this
+          },
+        },
+        likes: userId ? {
+          where: { user_id: userId },
+          select: { user_id: true },
+        } : false,
+      },
+    }),
+    prisma.post.count({ where }),
+  ]);
+
+  console.log('📊 Posts fetched with counts:', posts.map(p => ({
+    id: p.post_id,
+    comments: p._count.comments,
+    likes: p._count.likes
+  })));
+
+  const postsWithAuthor = posts.map((post) => transformPostToResponse(post, userId));
+
+  return {
+    data: postsWithAuthor,
+    meta: {
+      total,
+      page,
+      limit,
+      lastPage: Math.ceil(total / limit),
+    },
+  };
+}
 
   async searchPosts(params: SearchPostsParams) {
     this.validatePagination(params.page, params.limit);
@@ -517,9 +530,10 @@ export class PostService {
         where: { post_id: postId },
       });
 
+
       return {
-        isLiked: true,
-        likeCount,
+        isLiked: !existingReaction, // or true if created
+        likeCount, // ✅ Real count from DB
         postId,
         userId,
       };

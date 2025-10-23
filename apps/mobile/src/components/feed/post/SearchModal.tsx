@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/SearchModal.tsx - WITH REAL SEARCH
+// apps/mobile/src/components/feed/post/SearchModal.tsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -107,6 +107,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   };
 
   const handleTagPress = (tag: string) => {
+    if (!tag) return;
+    
     saveRecentSearch(`#${tag}`);
     onResultPress({
       type: 'tag',
@@ -141,6 +143,26 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     'zero waste',
     'upcycling ideas',
   ];
+
+  // Filter matching tags safely
+  const getMatchingTags = () => {
+    if (!query || !trendingTags || trendingTags.length === 0) return [];
+    
+    return trendingTags.filter(tag => {
+      // Safety checks
+      if (!tag || !tag.tag) return false;
+      if (typeof tag.tag !== 'string') return false;
+      
+      try {
+        return tag.tag.toLowerCase().includes(query.toLowerCase());
+      } catch (error) {
+        console.error('Error filtering tag:', tag, error);
+        return false;
+      }
+    });
+  };
+
+  const matchingTags = getMatchingTags();
 
   return (
     <Modal
@@ -193,6 +215,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
             {query.length === 0 ? (
+              /* Empty State - Show Quick Searches, Recent, and Trending */
               <View className="p-4">
                 {/* Quick Searches */}
                 <View className="mb-6">
@@ -200,9 +223,9 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     Quick Searches
                   </Text>
                   <View className="flex-row flex-wrap gap-2">
-                    {quickSearches.map((search) => (
+                    {quickSearches.map((search, index) => (
                       <TouchableOpacity
-                        key={search}
+                        key={`quick-search-${index}`}
                         className="bg-craftopia-primary/10 px-3 py-2 rounded-full flex-row items-center"
                         onPress={() => handleQuickSearch(search)}
                         activeOpacity={0.7}
@@ -210,7 +233,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                         <Text className="text-craftopia-primary text-sm font-medium">
                           {search}
                         </Text>
-                        <ArrowUpRight size={12} color="#374A36" className="ml-1" />
+                        <ArrowUpRight size={12} color="#374A36" style={{ marginLeft: 4 }} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -229,7 +252,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     </View>
                     {recentSearches.map((search, index) => (
                       <TouchableOpacity
-                        key={index}
+                        key={`recent-search-${index}`}
                         className="flex-row items-center justify-between py-2.5"
                         onPress={() => handleRecentSearch(search)}
                         activeOpacity={0.7}
@@ -267,31 +290,36 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     <View className="py-4 items-center">
                       <ActivityIndicator size="small" color="#374A36" />
                     </View>
-                  ) : trendingTags.length > 0 ? (
+                  ) : trendingTags && trendingTags.length > 0 ? (
                     <View>
-                      {trendingTags.map((tag) => (
-                        <TouchableOpacity
-                          key={tag.tag}
-                          className="flex-row items-center justify-between py-3 border-b border-craftopia-light"
-                          onPress={() => handleTagPress(tag.tag)}
-                          activeOpacity={0.7}
-                        >
-                          <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                              <Hash size={16} color="#374A36" />
+                      {trendingTags.map((tag, index) => {
+                        // Safety check
+                        if (!tag || !tag.tag) return null;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={`trending-tag-${tag.tag}-${index}`}
+                            className="flex-row items-center justify-between py-3 border-b border-craftopia-light"
+                            onPress={() => handleTagPress(tag.tag)}
+                            activeOpacity={0.7}
+                          >
+                            <View className="flex-row items-center">
+                              <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
+                                <Hash size={16} color="#374A36" />
+                              </View>
+                              <View>
+                                <Text className="font-medium text-craftopia-primary">
+                                  #{tag.tag}
+                                </Text>
+                                <Text className="text-xs text-craftopia-textSecondary">
+                                  {tag.count} posts
+                                </Text>
+                              </View>
                             </View>
-                            <View>
-                              <Text className="font-medium text-craftopia-primary">
-                                #{tag.tag}
-                              </Text>
-                              <Text className="text-xs text-craftopia-textSecondary">
-                                {tag.count} posts
-                              </Text>
-                            </View>
-                          </View>
-                          <TrendingUp size={14} color="#10B981" />
-                        </TouchableOpacity>
-                      ))}
+                            <TrendingUp size={14} color="#10B981" />
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   ) : (
                     <Text className="text-craftopia-textSecondary text-sm py-4 text-center">
@@ -308,31 +336,39 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 </Text>
                 
                 {/* Matching Tags */}
-                {trendingTags
-                  .filter(tag => tag.tag.toLowerCase().includes(query.toLowerCase()))
-                  .length > 0 && (
+                {matchingTags.length > 0 && (
                   <View className="mb-4">
                     <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
                       Matching Tags
                     </Text>
-                    {trendingTags
-                      .filter(tag => tag.tag.toLowerCase().includes(query.toLowerCase()))
-                      .map((tag) => (
-                        <TouchableOpacity
-                          key={tag.tag}
-                          className="flex-row items-center py-2.5 bg-craftopia-light rounded-lg mb-2 px-3"
-                          onPress={() => handleTagPress(tag.tag)}
-                        >
-                          <Hash size={16} color="#374A36" />
-                          <Text className="font-medium text-craftopia-primary ml-2">
-                            {tag.tag}
-                          </Text>
-                          <Text className="text-xs text-craftopia-textSecondary ml-auto">
-                            {tag.count} posts
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    }
+                    {matchingTags.map((tag, index) => (
+                      <TouchableOpacity
+                        key={`matching-tag-${tag.tag}-${index}`}
+                        className="flex-row items-center py-2.5 bg-craftopia-light rounded-lg mb-2 px-3"
+                        onPress={() => handleTagPress(tag.tag)}
+                      >
+                        <Hash size={16} color="#374A36" />
+                        <Text className="font-medium text-craftopia-primary ml-2">
+                          {tag.tag}
+                        </Text>
+                        <Text className="text-xs text-craftopia-textSecondary ml-auto">
+                          {tag.count} posts
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* No Matching Tags */}
+                {matchingTags.length === 0 && (
+                  <View className="py-8 items-center">
+                    <Hash size={32} color="#D1D5DB" />
+                    <Text className="text-craftopia-textSecondary text-center mt-2">
+                      No matching tags found
+                    </Text>
+                    <Text className="text-craftopia-textSecondary text-xs text-center mt-1">
+                      Press "Search" to find posts
+                    </Text>
                   </View>
                 )}
               </View>
