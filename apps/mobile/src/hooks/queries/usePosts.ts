@@ -1,6 +1,6 @@
-// apps/mobile/src/hooks/queries/usePosts.ts - FIXED WITH DEBOUNCING
+// apps/mobile/src/hooks/queries/usePosts.ts - ENHANCED WITH UPDATE & SEARCH
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { postService } from '~/services/post.service';
+import { postService, SearchPostsParams } from '~/services/post.service';
 import { useAuth } from '~/context/AuthContext';
 import { useRef } from 'react';
 
@@ -36,6 +36,15 @@ export interface CreatePostPayload {
   featured?: boolean;
 }
 
+export interface UpdatePostPayload {
+  postId: number;
+  title: string;
+  content: string;
+  tags?: string[];
+  imageUrl?: string;
+  category?: 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other';
+}
+
 export interface TrendingTag {
   tag: string;
   count: number;
@@ -59,6 +68,7 @@ export const postKeys = {
   lists: () => [...postKeys.all, 'list'] as const,
   list: (feedType: FeedType) => [...postKeys.lists(), feedType] as const,
   infinite: (feedType: FeedType) => [...postKeys.list(feedType), 'infinite'] as const,
+  search: (params: SearchPostsParams) => [...postKeys.lists(), 'search', params] as const,
   details: () => [...postKeys.all, 'detail'] as const,
   detail: (id: number) => [...postKeys.details(), id] as const,
   trending: () => [...postKeys.all, 'trending'] as const,
@@ -84,6 +94,31 @@ export const useInfinitePosts = (feedType: FeedType) => {
     initialPageParam: 1,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Search posts with filters
+ */
+export const useSearchPosts = (params: SearchPostsParams) => {
+  return useInfiniteQuery({
+    queryKey: postKeys.search(params),
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await postService.searchPosts({
+        ...params,
+        page: pageParam,
+      });
+      return {
+        posts: response.data || [],
+        meta: response.pagination,
+        nextPage: response.pagination && pageParam < response.pagination.lastPage ? pageParam + 1 : undefined,
+      };
+    },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 1,
+    enabled: !!(params.query || params.category || params.tag),
+    staleTime: 1 * 60 * 1000,
+    gcTime: 3 * 60 * 1000,
   });
 };
 
@@ -159,52 +194,140 @@ export const useCreatePost = () => {
 };
 
 /**
- * Toggle post reaction (like/unlike) with debouncing and deduplication
+ * Update post mutation - FIXED WITH PROPER CACHE UPDATES
+ */
+export const useUpdatePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ postId, ...data }: UpdatePostPayload) => {
+      const response = await postService.updatePost(postId.toString(), data);
+      return { postId, ...response.data };
+    },
+    onMutate: async ({ postId, title, content, tags, imageUrl, category }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: postKeys.lists() });
+
+      // Snapshot previous value
+      const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
+
+      // Optimistically update all lists
+      queryClient.setQueriesData(
+        { queryKey: postKeys.lists() },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+
+          const updatePost = (post: any) => {
+            if (post.post_id !== postId) return post;
+            return {
+              ...post,
+              title,
+              content,
+              tags: tags || post.tags,
+              image_url: imageUrl !== undefined ? imageUrl : post.image_url,
+              category: category || post.category,
+              updated_at: new Date().toISOString(),
+            };
+          };
+
+          // Handle array structure
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+
+          // Handle infinite query structure
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+
+          return oldData;
+        }
+      );
+
+      // Update individual post cache
+      queryClient.setQueryData(
+        postKeys.detail(postId),
+        (oldPost: any) => {
+          if (!oldPost) return oldPost;
+          return {
+            ...oldPost,
+            title,
+            content,
+            tags: tags || oldPost.tags,
+            image_url: imageUrl !== undefined ? imageUrl : oldPost.image_url,
+            category: category || oldPost.category,
+            updated_at: new Date().toISOString(),
+          };
+        }
+      );
+
+      return { previousLists };
+    },
+    onError: (err, { postId }, context) => {
+      console.error('Failed to update post:', err);
+      
+      // Revert on error
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSuccess: ({ postId }) => {
+      // Invalidate to ensure we have latest data
+      queryClient.invalidateQueries({ 
+        queryKey: postKeys.detail(postId) 
+      });
+      
+      console.log('✅ Post updated successfully:', postId);
+    },
+  });
+};
+
+/**
+ * Toggle post reaction (like/unlike) with debouncing
  */
 export const useTogglePostReaction = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   
-  // Track pending mutations per post to prevent duplicates
   const pendingMutations = useRef<Map<number, Promise<any>>>(new Map());
-  // Track last mutation time to prevent rapid-fire
   const lastMutationTime = useRef<Map<number, number>>(new Map());
-  const DEBOUNCE_MS = 500; // Minimum 500ms between mutations for same post
+  const DEBOUNCE_MS = 500;
 
   return useMutation({
     mutationFn: async (postId: number) => {
       console.log('🔵 Frontend: Toggle reaction requested for post:', postId);
       
-      // Check if there's already a pending mutation for this post
       const existingMutation = pendingMutations.current.get(postId);
       if (existingMutation) {
-        console.log('⚠️ Mutation already in progress for post:', postId, '- reusing existing promise');
+        console.log('⚠️ Mutation already in progress for post:', postId);
         return existingMutation;
       }
 
-      // Check if we're being rate limited (too many requests too fast)
       const lastTime = lastMutationTime.current.get(postId) || 0;
       const now = Date.now();
       const timeSinceLastMutation = now - lastTime;
       
       if (timeSinceLastMutation < DEBOUNCE_MS) {
         const waitTime = DEBOUNCE_MS - timeSinceLastMutation;
-        console.log(`⏳ Debouncing: Waiting ${waitTime}ms before next mutation for post ${postId}`);
+        console.log(`⏳ Debouncing: Waiting ${waitTime}ms`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
 
-      // Update last mutation time
       lastMutationTime.current.set(postId, Date.now());
 
-      // Create and track the mutation promise
       const mutationPromise = (async () => {
         try {
-          console.log('🔵 Frontend: Executing toggle reaction for post:', postId);
           const response = await postService.toggleReaction(postId.toString());
-          console.log('🔵 Frontend: Toggle response:', response.data);
           return { postId, ...response.data };
         } finally {
-          // Clean up after mutation completes (success or failure)
           pendingMutations.current.delete(postId);
         }
       })();
@@ -214,15 +337,9 @@ export const useTogglePostReaction = () => {
     },
     
     onMutate: async (postId) => {
-      console.log('🔄 Optimistic update for post:', postId);
-      
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: postKeys.lists() });
-
-      // Get current state
       const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
 
-      // Optimistically update
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
@@ -235,14 +352,6 @@ export const useTogglePostReaction = () => {
             const newLikeCount = newIsLiked 
               ? post.likeCount + 1 
               : Math.max(0, post.likeCount - 1);
-            
-            console.log('🔄 Optimistic update:', {
-              postId,
-              oldLiked: post.isLiked,
-              newLiked: newIsLiked,
-              oldCount: post.likeCount,
-              newCount: newLikeCount
-            });
             
             return {
               ...post,
@@ -274,20 +383,13 @@ export const useTogglePostReaction = () => {
     
     onError: (err: any, postId, context) => {
       console.error('❌ Toggle reaction failed:', err);
-      
-      // Clean up pending mutation tracking
       pendingMutations.current.delete(postId);
       
-      // Check if it's a rate limit error
-      if (err.message?.includes('Too many requests') || err.message?.includes('rate limit')) {
-        console.warn('⚠️ Rate limited! Please wait before trying again.');
-        // Don't revert optimistic update for rate limit - it will sync when backend catches up
+      if (err.message?.includes('Too many requests')) {
         return;
       }
       
-      // For other errors, revert optimistic update
       if (context?.previousLists) {
-        console.log('↩️ Reverting optimistic update due to error');
         context.previousLists.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
@@ -295,13 +397,6 @@ export const useTogglePostReaction = () => {
     },
     
     onSuccess: (data, postId) => {
-      console.log('✅ Toggle reaction success:', {
-        postId,
-        isLiked: data.isLiked,
-        likeCount: data.likeCount
-      });
-      
-      // Update with server response (confirming optimistic update)
       queryClient.setQueriesData(
         { queryKey: postKeys.lists() },
         (oldData: any) => {
@@ -334,19 +429,13 @@ export const useTogglePostReaction = () => {
         }
       );
       
-      // Clean up tracking
       pendingMutations.current.delete(postId);
-      // Keep last mutation time for debouncing
     },
     
-    // Prevent automatic retries on rate limit
     retry: (failureCount, error: any) => {
-      // Don't retry if rate limited
-      if (error.message?.includes('Too many requests') || error.message?.includes('rate limit')) {
-        console.log('⚠️ Rate limit detected - not retrying');
+      if (error.message?.includes('Too many requests')) {
         return false;
       }
-      // Retry other errors up to 2 times
       return failureCount < 2;
     },
     
@@ -497,107 +586,3 @@ export const useAddComment = () => {
     },
   });
 };
-
-export const useUpdatePost = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ 
-      postId, 
-      title, 
-      content, 
-      tags 
-    }: { 
-      postId: number; 
-      title: string; 
-      content: string; 
-      tags?: string[] 
-    }) => {
-      const response = await postService.updatePost(postId.toString(), {
-        title,
-        content,
-        tags,
-      });
-      return { postId, ...response.data };
-    },
-    onMutate: async ({ postId, title, content, tags }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: postKeys.lists() });
-
-      // Snapshot previous value
-      const previousLists = queryClient.getQueriesData({ queryKey: postKeys.lists() });
-
-      // Optimistically update
-      queryClient.setQueriesData(
-        { queryKey: postKeys.lists() },
-        (oldData: any) => {
-          if (!oldData) return oldData;
-
-          const updatePost = (post: any) => {
-            if (post.post_id !== postId) return post;
-            return {
-              ...post,
-              title,
-              content,
-              tags: tags || post.tags,
-              updated_at: new Date().toISOString(),
-            };
-          };
-
-          if (Array.isArray(oldData)) {
-            return oldData.map(updatePost);
-          }
-
-          if (oldData.pages) {
-            return {
-              ...oldData,
-              pages: oldData.pages.map((page: any) => ({
-                ...page,
-                posts: page.posts?.map(updatePost) || [],
-              })),
-            };
-          }
-
-          return oldData;
-        }
-      );
-
-      // Update individual post cache
-      queryClient.setQueryData(
-        postKeys.detail(postId),
-        (oldPost: any) => {
-          if (!oldPost) return oldPost;
-          return {
-            ...oldPost,
-            title,
-            content,
-            tags: tags || oldPost.tags,
-            updated_at: new Date().toISOString(),
-          };
-        }
-      );
-
-      return { previousLists };
-    },
-    onError: (err, { postId }, context) => {
-      console.error('Failed to update post:', err);
-      
-      // Revert on error
-      if (context?.previousLists) {
-        context.previousLists.forEach(([queryKey, data]) => {
-          queryClient.setQueryData(queryKey, data);
-        });
-      }
-    },
-    onSuccess: ({ postId }) => {
-      // Invalidate to ensure we have latest data
-      queryClient.invalidateQueries({ 
-        queryKey: postKeys.detail(postId) 
-      });
-      
-      console.log('✅ Post updated successfully:', postId);
-    },
-  });
-};
-
-

@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Feed.tsx - FINAL COMPLETE VERSION
+// apps/mobile/src/screens/Feed.tsx - WITH SEARCH & CATEGORY FILTERING
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Text,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Animated,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +20,8 @@ import {
   Plus, 
   Wifi, 
   WifiOff,
+  Filter,
+  X,
 } from 'lucide-react-native';
 import { PostContainer } from '~/components/feed/post/PostContainer';
 import { TrendingTagItem } from '~/components/feed/TrendingTagItem';
@@ -28,9 +29,9 @@ import { FeedStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-// Import TanStack Query hooks
 import { 
   useInfinitePosts, 
+  useSearchPosts,
   useTogglePostReaction, 
   useTrendingTags, 
   type FeedType,
@@ -39,6 +40,7 @@ import {
 import { useWebSocket } from '~/context/WebSocketContext';
 import { SearchModal } from '~/components/feed/post/SearchModal';
 
+
 const FEED_TABS = [
   { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
   { key: 'trending' as FeedType, label: 'Trending', icon: TrendingUp },
@@ -46,15 +48,44 @@ const FEED_TABS = [
   { key: 'featured' as FeedType, label: 'Featured', icon: Star },
 ];
 
+const CATEGORIES = [
+  { id: 'all', label: 'All Categories', icon: '📋' },
+  { id: 'Social', label: 'Social', icon: '👥' },
+  { id: 'Tutorial', label: 'Tutorial', icon: '📚' },
+  { id: 'Challenge', label: 'Challenge', icon: '🏆' },
+  { id: 'Marketplace', label: 'Marketplace', icon: '🛒' },
+  { id: 'Other', label: 'Other', icon: '📝' },
+];
+
 export const FeedScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
   const [activeTab, setActiveTab] = useState<FeedType>('all');
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const { isConnected } = useWebSocket();
   const [connectionPulse] = useState(new Animated.Value(1));
 
-  // Infinite query for posts
+  // Determine which query to use
+  const isFiltering = searchQuery || selectedCategory !== 'all' || selectedTag;
+
+  // Main posts query (used when no filters)
+  const mainQuery = useInfinitePosts(activeTab);
+
+  // Search query (used when filtering)
+  const searchParams = {
+    query: searchQuery || undefined,
+    category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    tag: selectedTag || undefined,
+    limit: 10,
+  };
+  const searchQueryResult = useSearchPosts(searchParams);
+
+  // Use the appropriate query
+  const activeQuery = isFiltering ? searchQueryResult : mainQuery;
+
   const { 
     data,
     isLoading,
@@ -64,8 +95,7 @@ export const FeedScreen = () => {
     hasNextPage,
     isFetchingNextPage,
     isRefetching,
-    dataUpdatedAt
-  } = useInfinitePosts(activeTab);
+  } = activeQuery;
 
   const { 
     data: trendingTags = [], 
@@ -76,11 +106,6 @@ export const FeedScreen = () => {
 
   // Flatten pages into single array
   const posts = data?.pages.flatMap(page => page.posts) ?? [];
-
-  // Filter by selected tag if any
-  const filteredPosts = selectedTag 
-    ? posts.filter(post => post.tags?.includes(selectedTag))
-    : posts;
 
   // Pulse animation for connection status
   useEffect(() => {
@@ -137,8 +162,7 @@ export const FeedScreen = () => {
     
     switch (result.type) {
       case 'post':
-        // Post will open in details modal when clicked
-        Alert.alert('Search Result', `Opening post: ${result.title}`);
+        setShowSearchModal(false);
         break;
       case 'tag':
         setSelectedTag(result.tag);
@@ -146,9 +170,15 @@ export const FeedScreen = () => {
         setShowSearchModal(false);
         break;
       case 'user':
-        Alert.alert('User Profile', `User: ${result.username}\n\n(User profiles feature coming soon!)`);
+        setShowSearchModal(false);
         break;
     }
+  };
+
+  const handleSearch = (query: string) => {
+    console.log('🔍 Searching:', query);
+    setSearchQuery(query);
+    setActiveTab('all');
   };
 
   const handleTagPress = (tag: string) => {
@@ -156,6 +186,20 @@ export const FeedScreen = () => {
     setSelectedTag(tag);
     setActiveTab('all');
   };
+
+  const handleCategorySelect = (categoryId: string) => {
+    console.log('📁 Category selected:', categoryId);
+    setSelectedCategory(categoryId);
+    setShowCategoryFilter(false);
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('all');
+    setSelectedTag(null);
+  };
+
+  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedTag;
 
   const renderTab = (tab: typeof FEED_TABS[0]) => {
     const isActive = activeTab === tab.key;
@@ -166,7 +210,7 @@ export const FeedScreen = () => {
         onPress={() => {
           console.log('📑 Switching to tab:', tab.key);
           setActiveTab(tab.key);
-          setSelectedTag(null);
+          clearAllFilters();
         }}
         className={`mr-4 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
         activeOpacity={0.7}
@@ -226,7 +270,7 @@ export const FeedScreen = () => {
       );
     }
 
-    if (!hasNextPage && filteredPosts.length > 0) {
+    if (!hasNextPage && posts.length > 0) {
       return (
         <View className="py-6 items-center">
           <Text className="text-craftopia-textSecondary text-xs">
@@ -275,23 +319,21 @@ export const FeedScreen = () => {
       <View className="flex-1 justify-center items-center py-12 px-6">
         <Text className="text-2xl mb-2">📝</Text>
         <Text className="text-craftopia-textPrimary text-lg font-semibold mb-2">
-          No posts yet
+          No posts found
         </Text>
         <Text className="text-craftopia-textSecondary text-center text-sm mb-4">
-          {selectedTag 
-            ? `No posts found with #${selectedTag}`
-            : activeTab === 'all' 
-              ? 'Be the first to share something!' 
-              : `No ${activeTab} posts available`
+          {hasActiveFilters 
+            ? 'Try adjusting your filters or search terms'
+            : 'Be the first to share something!'
           }
         </Text>
         <TouchableOpacity 
-          onPress={selectedTag ? () => setSelectedTag(null) : handleCreatePost} 
+          onPress={hasActiveFilters ? clearAllFilters : handleCreatePost} 
           className="bg-craftopia-primary px-6 py-3 rounded-lg flex-row items-center"
           activeOpacity={0.7}
         >
-          {selectedTag ? (
-            <Text className="text-white text-sm font-medium">Clear Filter</Text>
+          {hasActiveFilters ? (
+            <Text className="text-white text-sm font-medium">Clear Filters</Text>
           ) : (
             <>
               <Plus size={18} color="white" />
@@ -305,8 +347,73 @@ export const FeedScreen = () => {
 
   const ListHeaderComponent = () => (
     <>
+      {/* Active Filters */}
+      {hasActiveFilters && (
+        <View className="bg-craftopia-primary/10 px-4 py-3">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-craftopia-primary font-medium text-sm">
+              Active Filters ({posts.length} results)
+            </Text>
+            <TouchableOpacity 
+              onPress={clearAllFilters}
+              className="flex-row items-center"
+            >
+              <X size={14} color="#374A36" />
+              <Text className="text-craftopia-primary text-xs font-medium ml-1">
+                Clear All
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View className="flex-row flex-wrap gap-2">
+            {searchQuery && (
+              <View className="bg-craftopia-primary rounded-full px-3 py-1 flex-row items-center">
+                <Search size={12} color="white" />
+                <Text className="text-white text-xs font-medium ml-1">
+                  "{searchQuery}"
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setSearchQuery('')}
+                  className="ml-1"
+                >
+                  <X size={12} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {selectedCategory !== 'all' && (
+              <View className="bg-craftopia-primary rounded-full px-3 py-1 flex-row items-center">
+                <Text className="text-white text-xs font-medium">
+                  {CATEGORIES.find(c => c.id === selectedCategory)?.label}
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setSelectedCategory('all')}
+                  className="ml-1"
+                >
+                  <X size={12} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {selectedTag && (
+              <View className="bg-craftopia-primary rounded-full px-3 py-1 flex-row items-center">
+                <Text className="text-white text-xs font-medium">
+                  #{selectedTag}
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setSelectedTag(null)}
+                  className="ml-1"
+                >
+                  <X size={12} color="white" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* Trending Tags Section */}
-      {activeTab === 'trending' && !selectedTag && (
+      {activeTab === 'trending' && !hasActiveFilters && (
         <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
           <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
             🔥 Trending Tags
@@ -333,28 +440,7 @@ export const FeedScreen = () => {
                 />
               ))}
             </ScrollView>
-          ) : (
-            <Text className="text-xs text-craftopia-textSecondary">
-              No trending tags available
-            </Text>
-          )}
-        </View>
-      )}
-
-      {/* Selected Tag Filter */}
-      {selectedTag && (
-        <View className="bg-craftopia-primary/10 px-4 py-3 flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <Text className="text-craftopia-primary font-medium">
-              Showing: #{selectedTag} ({filteredPosts.length})
-            </Text>
-          </View>
-          <TouchableOpacity 
-            onPress={() => setSelectedTag(null)}
-            className="bg-craftopia-primary px-3 py-1 rounded-full"
-          >
-            <Text className="text-white text-xs font-medium">Clear</Text>
-          </TouchableOpacity>
+          ) : null}
         </View>
       )}
 
@@ -385,17 +471,33 @@ export const FeedScreen = () => {
             <Text className="text-xs text-craftopia-textSecondary">
               {isConnected 
                 ? '✨ Real-time updates enabled' 
-                : '⚠️ Reconnecting to server...'
+                : '⚠️ Reconnecting...'
               }
             </Text>
           </View>
-          <TouchableOpacity 
-            className="w-9 h-9 bg-craftopia-light rounded-full items-center justify-center" 
-            activeOpacity={0.7}
-            onPress={handleSearchPress}
-          >
-            <Search size={18} color="#5D6B5D" />
-          </TouchableOpacity>
+          
+          <View className="flex-row items-center gap-2">
+            {/* Category Filter Button */}
+            <TouchableOpacity 
+              className="w-9 h-9 bg-craftopia-light rounded-full items-center justify-center relative" 
+              activeOpacity={0.7}
+              onPress={() => setShowCategoryFilter(true)}
+            >
+              <Filter size={18} color="#5D6B5D" />
+              {selectedCategory !== 'all' && (
+                <View className="absolute top-0 right-0 w-2 h-2 bg-craftopia-primary rounded-full" />
+              )}
+            </TouchableOpacity>
+            
+            {/* Search Button */}
+            <TouchableOpacity 
+              className="w-9 h-9 bg-craftopia-light rounded-full items-center justify-center" 
+              activeOpacity={0.7}
+              onPress={handleSearchPress}
+            >
+              <Search size={18} color="#5D6B5D" />
+            </TouchableOpacity>
+          </View>
         </View>
         
         {/* Tabs */}
@@ -406,7 +508,7 @@ export const FeedScreen = () => {
 
       {/* Posts List */}
       <FlatList
-        data={filteredPosts}
+        data={posts}
         renderItem={renderPost}
         keyExtractor={(item) => `${item.post_id}-${item.updated_at}`}
         ListHeaderComponent={ListHeaderComponent}
@@ -420,7 +522,6 @@ export const FeedScreen = () => {
             onRefresh={handleRefresh} 
             colors={['#374A36']}
             tintColor="#374A36"
-            title={isConnected ? "Pull to refresh" : "Reconnecting..."}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -428,11 +529,6 @@ export const FeedScreen = () => {
           paddingBottom: 100,
           flexGrow: 1 
         }}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        updateCellsBatchingPeriod={50}
-        initialNumToRender={5}
-        windowSize={10}
       />
 
       {/* Create Post FAB */}
@@ -456,7 +552,52 @@ export const FeedScreen = () => {
         visible={showSearchModal}
         onClose={() => setShowSearchModal(false)}
         onResultPress={handleSearchResult}
+        onSearch={handleSearch}
       />
+
+      {/* Category Filter Modal */}
+      {showCategoryFilter && (
+        <View className="absolute inset-0 bg-black/50 justify-end">
+          <View className="bg-craftopia-surface rounded-t-xl p-4">
+            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
+            <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 text-center">
+              Filter by Category
+            </Text>
+            
+            <ScrollView className="max-h-96">
+              {CATEGORIES.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  className={`flex-row items-center p-3 rounded-lg mb-2 ${
+                    selectedCategory === category.id 
+                      ? 'bg-craftopia-primary/10 border border-craftopia-primary/20' 
+                      : 'bg-craftopia-light'
+                  }`}
+                  onPress={() => handleCategorySelect(category.id)}
+                >
+                  <Text className="text-xl mr-3">{category.icon}</Text>
+                  <Text className={`font-medium ${
+                    selectedCategory === category.id 
+                      ? 'text-craftopia-primary' 
+                      : 'text-craftopia-textPrimary'
+                  }`}>
+                    {category.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity 
+              className="mt-4 p-3 bg-craftopia-light rounded-lg"
+              onPress={() => setShowCategoryFilter(false)}
+            >
+              <Text className="text-center font-medium text-craftopia-textSecondary">
+                Close
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };

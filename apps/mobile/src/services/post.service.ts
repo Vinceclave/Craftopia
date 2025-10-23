@@ -1,3 +1,4 @@
+// apps/mobile/src/services/post.service.ts - ENHANCED WITH UPDATE
 import { apiService } from './base.service';
 import { API_ENDPOINTS, ApiResponse, PaginatedResponse } from '~/config/api';
 
@@ -48,6 +49,14 @@ export interface CreatePostPayload {
   featured?: boolean;
 }
 
+export interface UpdatePostPayload {
+  title: string;
+  content: string;
+  tags?: string[];
+  imageUrl?: string;
+  category?: 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other';
+}
+
 export interface ReactionResponse {
   isLiked: boolean;
   likeCount: number;
@@ -55,9 +64,17 @@ export interface ReactionResponse {
   userId: number;
 }
 
+export interface SearchPostsParams {
+  query?: string;
+  category?: string;
+  tag?: string;
+  page?: number;
+  limit?: number;
+}
+
 class PostService {
   /**
-   * Validate and normalize post data - FIXED
+   * Validate and normalize post data
    */
   private normalizePost(post: any): Post {
     console.log('🔍 Normalizing post:', {
@@ -67,19 +84,16 @@ class PostService {
       user_id: post.user_id
     });
 
-    // Handle different user object structures from backend
     let user = post.user;
     
-    // If user doesn't exist, create from user_id
     if (!user) {
       console.warn('⚠️ Post missing user object, creating from user_id');
       user = {
         user_id: post.user_id,
-        username: `User ${post.user_id}` // Better than "Unknown User"
+        username: `User ${post.user_id}`
       };
     }
     
-    // Ensure user has required fields
     if (user && (!user.username || user.username === '')) {
       console.warn('⚠️ User missing username, using fallback');
       user.username = `User ${user.user_id || post.user_id}`;
@@ -115,7 +129,7 @@ class PostService {
   }
 
   /**
-   * Get posts with feed type and pagination - FIXED
+   * Get posts with feed type and pagination
    */
   async getPosts(
     feedType: 'all' | 'trending' | 'popular' | 'featured' = 'all',
@@ -129,22 +143,8 @@ class PostService {
         `${API_ENDPOINTS.POSTS.LIST}?feedType=${feedType}&page=${page}&limit=${limit}`
       );
 
-      console.log('📥 Raw API Response:', {
-        success: response.success,
-        dataCount: response.data?.length,
-        firstPost: response.data?.[0]
-      });
-
-      // Normalize all posts
       if (response.data && Array.isArray(response.data)) {
-        response.data = response.data.map((post, index) => {
-          console.log(`📝 Processing post ${index + 1}:`, {
-            post_id: post.post_id,
-            title: post.title,
-            user: post.user
-          });
-          return this.normalizePost(post);
-        });
+        response.data = response.data.map((post) => this.normalizePost(post));
       }
 
       console.log('✅ Posts fetched and normalized:', response.data?.length || 0);
@@ -156,7 +156,37 @@ class PostService {
   }
 
   /**
-   * Get single post by ID - FIXED
+   * Search posts with filters
+   */
+  async searchPosts(params: SearchPostsParams): Promise<PaginatedResponse<Post>> {
+    try {
+      console.log('🔍 Searching posts:', params);
+      
+      const queryParams = new URLSearchParams();
+      if (params.query) queryParams.append('search', params.query);
+      if (params.category) queryParams.append('category', params.category);
+      if (params.tag) queryParams.append('tag', params.tag);
+      queryParams.append('page', String(params.page || 1));
+      queryParams.append('limit', String(params.limit || 10));
+
+      const response = await apiService.get<PaginatedResponse<Post>>(
+        `${API_ENDPOINTS.POSTS.SEARCH}?${queryParams.toString()}`
+      );
+
+      if (response.data && Array.isArray(response.data)) {
+        response.data = response.data.map((post) => this.normalizePost(post));
+      }
+
+      console.log('✅ Search results:', response.data?.length || 0);
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to search posts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get single post by ID
    */
   async getPostById(postId: string): Promise<ApiResponse<Post>> {
     try {
@@ -166,9 +196,6 @@ class PostService {
         API_ENDPOINTS.POSTS.BY_ID(postId)
       );
 
-      console.log('📥 Raw post data:', response.data);
-
-      // Normalize post data
       if (response.data) {
         response.data = this.normalizePost(response.data);
       }
@@ -205,7 +232,6 @@ class PostService {
         payload
       );
       
-      // Normalize created post
       if (response.data) {
         response.data = this.normalizePost(response.data);
       }
@@ -218,29 +244,29 @@ class PostService {
     }
   }
 
-  async updatePost(
-  postId: string,
-  data: {
-    title: string;
-    content: string;
-    tags?: string[];
+  /**
+   * Update existing post
+   */
+  async updatePost(postId: string, payload: UpdatePostPayload): Promise<ApiResponse<Post>> {
+    try {
+      console.log('✏️ Updating post:', postId, payload);
+      
+      const response = await apiService.put<ApiResponse<Post>>(
+        API_ENDPOINTS.POSTS.BY_ID(postId),
+        payload
+      );
+      
+      if (response.data) {
+        response.data = this.normalizePost(response.data);
+      }
+
+      console.log('✅ Post updated successfully');
+      return response;
+    } catch (error) {
+      console.error('Failed to update post:', error);
+      throw error;
+    }
   }
-): Promise<ApiResponse<Post>> {
-  try {
-    console.log('✏️ Updating post:', postId, data);
-    
-    return await apiService.put<ApiResponse<Post>>(
-      `/api/v1/posts/${postId}`,
-      data
-    );
-  } catch (error) {
-    console.error('Failed to update post:', error);
-    throw error;
-  }
-}
-
-
-
 
   /**
    * Delete post

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/SearchModal.tsx
+// apps/mobile/src/components/feed/post/SearchModal.tsx - WITH REAL SEARCH
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -12,189 +12,135 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Search, TrendingUp, Hash, User } from 'lucide-react-native';
+import { X, Search, TrendingUp, Hash, ArrowUpRight } from 'lucide-react-native';
+import { useTrendingTags } from '~/hooks/queries/usePosts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SearchResult {
-  type: 'post' | 'tag' | 'user';
+  type: 'post' | 'tag' | 'user' | 'query';
   id: number | string;
   title?: string;
   content?: string;
   username?: string;
   tag?: string;
   count?: number;
+  query?: string;
 }
 
 interface SearchModalProps {
   visible: boolean;
   onClose: () => void;
   onResultPress: (result: SearchResult) => void;
+  onSearch: (query: string) => void;
 }
+
+const RECENT_SEARCHES_KEY = '@recent_searches';
+const MAX_RECENT_SEARCHES = 5;
 
 export const SearchModal: React.FC<SearchModalProps> = ({
   visible,
   onClose,
   onResultPress,
+  onSearch,
 }) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([
-    'recycling',
-    'DIY crafts',
-    'upcycling',
-  ]);
-  const [trendingTags] = useState([
-    { tag: 'sustainability', count: 234 },
-    { tag: 'zerowaste', count: 189 },
-    { tag: 'ecofriendly', count: 156 },
-    { tag: 'upcycling', count: 142 },
-  ]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const { data: trendingTags = [], isLoading: tagsLoading } = useTrendingTags();
 
+  // Load recent searches
   useEffect(() => {
     if (visible) {
+      loadRecentSearches();
       setQuery('');
-      setResults([]);
     }
   }, [visible]);
 
-  useEffect(() => {
-    if (query.length > 0) {
-      handleSearch(query);
-    } else {
-      setResults([]);
-    }
-  }, [query]);
-
-  const handleSearch = async (searchQuery: string) => {
-    setLoading(true);
+  const loadRecentSearches = async () => {
     try {
-      // TODO: Replace with actual API call
-      // Simulated search results
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const mockResults: SearchResult[] = [
-        {
-          type: 'post',
-          id: 1,
-          title: `Post about ${searchQuery}`,
-          content: 'This is a sample post matching your search...',
-        },
-        {
-          type: 'tag',
-          id: searchQuery,
-          tag: searchQuery,
-          count: 42,
-        },
-        {
-          type: 'user',
-          id: 2,
-          username: `${searchQuery}_user`,
-        },
-      ];
-
-      setResults(mockResults);
+      const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+      if (stored) {
+        setRecentSearches(JSON.parse(stored));
+      }
     } catch (error) {
-      console.error('Search failed:', error);
-      setResults([]);
-    } finally {
-      setLoading(false);
+      console.error('Failed to load recent searches:', error);
     }
+  };
+
+  const saveRecentSearch = async (searchQuery: string) => {
+    try {
+      const trimmed = searchQuery.trim();
+      if (!trimmed) return;
+
+      const updated = [
+        trimmed,
+        ...recentSearches.filter(s => s !== trimmed)
+      ].slice(0, MAX_RECENT_SEARCHES);
+
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+      setRecentSearches(updated);
+    } catch (error) {
+      console.error('Failed to save recent search:', error);
+    }
+  };
+
+  const clearRecentSearches = async () => {
+    try {
+      await AsyncStorage.removeItem(RECENT_SEARCHES_KEY);
+      setRecentSearches([]);
+    } catch (error) {
+      console.error('Failed to clear recent searches:', error);
+    }
+  };
+
+  const handleSearch = () => {
+    if (!query.trim()) return;
+    
+    saveRecentSearch(query.trim());
+    onSearch(query.trim());
+    onClose();
   };
 
   const handleRecentSearch = (search: string) => {
     setQuery(search);
-  };
-
-  const handleResultClick = (result: SearchResult) => {
-    // Add to recent searches
-    if (!recentSearches.includes(query)) {
-      setRecentSearches(prev => [query, ...prev.slice(0, 4)]);
-    }
-    
-    onResultPress(result);
+    onSearch(search);
     onClose();
   };
 
-  const clearRecentSearches = () => {
-    setRecentSearches([]);
+  const handleTagPress = (tag: string) => {
+    saveRecentSearch(`#${tag}`);
+    onResultPress({
+      type: 'tag',
+      id: tag,
+      tag,
+      count: trendingTags.find(t => t.tag === tag)?.count || 0,
+    });
+    onClose();
   };
 
-  const renderResultItem = (result: SearchResult) => {
-    switch (result.type) {
-      case 'post':
-        return (
-          <TouchableOpacity
-            key={`post-${result.id}`}
-            className="p-3 border-b border-craftopia-light"
-            onPress={() => handleResultClick(result)}
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-start">
-              <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <Search size={16} color="#374A36" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-medium text-craftopia-textPrimary mb-1" numberOfLines={1}>
-                  {result.title}
-                </Text>
-                <Text className="text-sm text-craftopia-textSecondary" numberOfLines={2}>
-                  {result.content}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
+  const handleQuickSearch = (searchTerm: string) => {
+    setQuery(searchTerm);
+    saveRecentSearch(searchTerm);
+    onSearch(searchTerm);
+    onClose();
+  };
 
-      case 'tag':
-        return (
-          <TouchableOpacity
-            key={`tag-${result.id}`}
-            className="p-3 border-b border-craftopia-light"
-            onPress={() => handleResultClick(result)}
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <Hash size={16} color="#374A36" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-medium text-craftopia-primary">
-                  #{result.tag}
-                </Text>
-                <Text className="text-xs text-craftopia-textSecondary">
-                  {result.count} posts
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-
-      case 'user':
-        return (
-          <TouchableOpacity
-            key={`user-${result.id}`}
-            className="p-3 border-b border-craftopia-light"
-            onPress={() => handleResultClick(result)}
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <User size={16} color="#374A36" />
-              </View>
-              <View className="flex-1">
-                <Text className="font-medium text-craftopia-textPrimary">
-                  {result.username}
-                </Text>
-                <Text className="text-xs text-craftopia-textSecondary">User</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-
-      default:
-        return null;
+  const removeRecentSearch = async (search: string) => {
+    try {
+      const updated = recentSearches.filter(s => s !== search);
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+      setRecentSearches(updated);
+    } catch (error) {
+      console.error('Failed to remove recent search:', error);
     }
   };
+
+  // Quick search suggestions
+  const quickSearches = [
+    'recycling tips',
+    'DIY crafts',
+    'zero waste',
+    'upcycling ideas',
+  ];
 
   return (
     <Modal
@@ -214,15 +160,18 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               <TouchableOpacity onPress={onClose} className="mr-3">
                 <X size={20} color="#1A1A1A" />
               </TouchableOpacity>
+              
               <View className="flex-1 flex-row items-center bg-craftopia-light rounded-full px-3 py-2">
                 <Search size={16} color="#6B7280" />
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Search posts, tags, users..."
+                  placeholder="Search posts, tags..."
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 ml-2 text-craftopia-textPrimary"
                   autoFocus
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearch}
                 />
                 {query.length > 0 && (
                   <TouchableOpacity onPress={() => setQuery('')}>
@@ -230,19 +179,43 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                   </TouchableOpacity>
                 )}
               </View>
+
+              {query.trim() && (
+                <TouchableOpacity 
+                  onPress={handleSearch}
+                  className="ml-2"
+                >
+                  <Text className="text-craftopia-primary font-medium">Search</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-            {loading ? (
-              <View className="flex-1 justify-center items-center py-8">
-                <ActivityIndicator size="small" color="#374A36" />
-                <Text className="text-craftopia-textSecondary text-sm mt-2">
-                  Searching...
-                </Text>
-              </View>
-            ) : query.length === 0 ? (
+            {query.length === 0 ? (
               <View className="p-4">
+                {/* Quick Searches */}
+                <View className="mb-6">
+                  <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">
+                    Quick Searches
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {quickSearches.map((search) => (
+                      <TouchableOpacity
+                        key={search}
+                        className="bg-craftopia-primary/10 px-3 py-2 rounded-full flex-row items-center"
+                        onPress={() => handleQuickSearch(search)}
+                        activeOpacity={0.7}
+                      >
+                        <Text className="text-craftopia-primary text-sm font-medium">
+                          {search}
+                        </Text>
+                        <ArrowUpRight size={12} color="#374A36" className="ml-1" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
                 {/* Recent Searches */}
                 {recentSearches.length > 0 && (
                   <View className="mb-6">
@@ -257,19 +230,22 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                     {recentSearches.map((search, index) => (
                       <TouchableOpacity
                         key={index}
-                        className="flex-row items-center py-2"
+                        className="flex-row items-center justify-between py-2.5"
                         onPress={() => handleRecentSearch(search)}
                         activeOpacity={0.7}
                       >
-                        <Search size={14} color="#6B7280" />
-                        <Text className="text-craftopia-textPrimary ml-3 flex-1">
-                          {search}
-                        </Text>
+                        <View className="flex-row items-center flex-1">
+                          <Search size={14} color="#6B7280" />
+                          <Text className="text-craftopia-textPrimary ml-3 flex-1">
+                            {search}
+                          </Text>
+                        </View>
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
-                            setRecentSearches(prev => prev.filter(s => s !== search));
+                            removeRecentSearch(search);
                           }}
+                          className="p-1"
                         >
                           <X size={14} color="#6B7280" />
                         </TouchableOpacity>
@@ -286,48 +262,79 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                       Trending Tags
                     </Text>
                   </View>
-                  {trendingTags.map((tag) => (
-                    <TouchableOpacity
-                      key={tag.tag}
-                      className="flex-row items-center justify-between py-3 border-b border-craftopia-light"
-                      onPress={() => handleResultClick({ 
-                        type: 'tag', 
-                        id: tag.tag, 
-                        tag: tag.tag, 
-                        count: tag.count 
-                      })}
-                      activeOpacity={0.7}
-                    >
-                      <View className="flex-row items-center">
-                        <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                          <Hash size={16} color="#374A36" />
-                        </View>
-                        <View>
-                          <Text className="font-medium text-craftopia-primary">
-                            #{tag.tag}
-                          </Text>
-                          <Text className="text-xs text-craftopia-textSecondary">
-                            {tag.count} posts
-                          </Text>
-                        </View>
-                      </View>
-                      <TrendingUp size={14} color="#10B981" />
-                    </TouchableOpacity>
-                  ))}
+                  
+                  {tagsLoading ? (
+                    <View className="py-4 items-center">
+                      <ActivityIndicator size="small" color="#374A36" />
+                    </View>
+                  ) : trendingTags.length > 0 ? (
+                    <View>
+                      {trendingTags.map((tag) => (
+                        <TouchableOpacity
+                          key={tag.tag}
+                          className="flex-row items-center justify-between py-3 border-b border-craftopia-light"
+                          onPress={() => handleTagPress(tag.tag)}
+                          activeOpacity={0.7}
+                        >
+                          <View className="flex-row items-center">
+                            <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
+                              <Hash size={16} color="#374A36" />
+                            </View>
+                            <View>
+                              <Text className="font-medium text-craftopia-primary">
+                                #{tag.tag}
+                              </Text>
+                              <Text className="text-xs text-craftopia-textSecondary">
+                                {tag.count} posts
+                              </Text>
+                            </View>
+                          </View>
+                          <TrendingUp size={14} color="#10B981" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text className="text-craftopia-textSecondary text-sm py-4 text-center">
+                      No trending tags available
+                    </Text>
+                  )}
                 </View>
               </View>
-            ) : results.length > 0 ? (
-              <View className="bg-craftopia-surface">
-                {results.map(renderResultItem)}
-              </View>
             ) : (
-              <View className="flex-1 justify-center items-center py-8">
-                <Text className="text-craftopia-textSecondary text-center">
-                  No results found for {`"${query}"`}
+              /* Search Results */
+              <View className="p-4">
+                <Text className="text-craftopia-textSecondary text-sm mb-3">
+                  Press "Search" to find posts matching "{query}"
                 </Text>
-                <Text className="text-craftopia-textSecondary text-xs text-center mt-1">
-                  Try different keywords
-                </Text>
+                
+                {/* Matching Tags */}
+                {trendingTags
+                  .filter(tag => tag.tag.toLowerCase().includes(query.toLowerCase()))
+                  .length > 0 && (
+                  <View className="mb-4">
+                    <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
+                      Matching Tags
+                    </Text>
+                    {trendingTags
+                      .filter(tag => tag.tag.toLowerCase().includes(query.toLowerCase()))
+                      .map((tag) => (
+                        <TouchableOpacity
+                          key={tag.tag}
+                          className="flex-row items-center py-2.5 bg-craftopia-light rounded-lg mb-2 px-3"
+                          onPress={() => handleTagPress(tag.tag)}
+                        >
+                          <Hash size={16} color="#374A36" />
+                          <Text className="font-medium text-craftopia-primary ml-2">
+                            {tag.tag}
+                          </Text>
+                          <Text className="text-xs text-craftopia-textSecondary ml-auto">
+                            {tag.count} posts
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    }
+                  </View>
+                )}
               </View>
             )}
           </ScrollView>

@@ -1,4 +1,4 @@
-// apps/backend/src/controllers/post.controller.ts - FIXED VERSION
+// apps/backend/src/controllers/post.controller.ts - COMPLETE VERSION WITH SEARCH & UPDATE
 import { Request, Response } from 'express';
 import * as postService from '../services/post.service';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -37,6 +37,27 @@ export const getPosts = asyncHandler(async (req: AuthRequest, res: Response) => 
   sendPaginatedSuccess(res, result.data, result.meta, 'Posts retrieved successfully');
 });
 
+// NEW: Search posts with filters
+export const searchPosts = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { search, category, tag } = req.query;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const userId = req.user?.userId;
+  
+  console.log('🔍 Search posts:', { search, category, tag, page, limit });
+  
+  const result = await postService.searchPosts({
+    search: search as string,
+    category: category as string,
+    tag: tag as string,
+    page,
+    limit,
+    userId
+  });
+  
+  sendPaginatedSuccess(res, result.data, result.meta, 'Posts search results');
+});
+
 export const getTrendingTags = asyncHandler(async (req: Request, res: Response) => {
   const tags = await postService.getTrendingTags();
   sendSuccess(res, tags, 'Tags retrieved successfully' )
@@ -46,6 +67,24 @@ export const getPostById = asyncHandler(async (req: Request, res: Response) => {
   const postId = Number(req.params.postId);
   const post = await postService.getPostById(postId);
   sendSuccess(res, post, 'Post retrieved successfully');
+});
+
+// NEW: Update post
+export const updatePost = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const postId = Number(req.params.postId);
+  const { title, content, tags, imageUrl, category } = req.body;
+  
+  console.log('✏️ Updating post:', postId, { title, content });
+  
+  const post = await postService.updatePost(postId, req.user!.userId, {
+    title,
+    content,
+    tags,
+    imageUrl,
+    category
+  });
+  
+  sendSuccess(res, post, 'Post updated successfully');
 });
 
 export const deletePost = asyncHandler(async (req: AuthRequest, res: Response) => {
