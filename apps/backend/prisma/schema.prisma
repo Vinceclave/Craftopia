@@ -43,6 +43,7 @@ model UserProfile {
   profile_picture_url   String?
   points                Int       @default(0)
   total_waste_kg        Float     @default(0)  // NEW
+  skipped_challenges    Int[]     @default([])  // NEW: Track skipped challenge IDs
   home_dashboard_layout Json?
   deleted_at            DateTime?
   user                  User      @relation(fields: [user_id], references: [user_id])
