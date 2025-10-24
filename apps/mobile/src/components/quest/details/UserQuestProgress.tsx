@@ -1,7 +1,7 @@
-// apps/mobile/src/components/quest/details/UserQuestProgress.tsx
+// apps/mobile/src/components/quest/details/UserQuestProgress.tsx - FIXED VERSION
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
-import { CheckCircle, Clock, Upload, Leaf } from 'lucide-react-native'
+import { CheckCircle, Clock, Upload, Leaf, AlertCircle } from 'lucide-react-native'
 import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { useUserChallengeProgress, useSubmitChallengeVerification } from '~/hooks/queries/useUserChallenges'
@@ -11,14 +11,14 @@ interface UserQuestProgressProps {
   id: number
   description?: string
   points?: number
-  wasteKg?: number // NEW: potential waste to save
+  wasteKg?: number
 }
 
 export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   id,
   description,
   points,
-  wasteKg = 0, // NEW
+  wasteKg = 0,
 }) => {
   const { success, error } = useAlert()
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -43,8 +43,15 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   }, [challengeData?.proof_url, imageUrl])
 
   const handleVerify = async () => {
-    if (!imageUrl || imageUrl.startsWith('file://')) {
+    // ✅ FIXED: Better validation
+    if (!imageUrl) {
       error('Error', 'Please upload a proof image first')
+      return
+    }
+
+    // ✅ FIXED: Check if image is still local file
+    if (imageUrl.startsWith('file://')) {
+      error('Error', 'Please wait for image upload to complete')
       return
     }
     
@@ -54,11 +61,19 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     }
 
     try {
-      await submitVerificationMutation.mutateAsync({
+      console.log('🔍 Submitting verification:', {
         userChallengeId: challengeData.user_challenge_id,
         proofUrl: imageUrl,
         description,
         points,
+        challengeId: id,
+      })
+
+      await submitVerificationMutation.mutateAsync({
+        userChallengeId: challengeData.user_challenge_id,
+        proofUrl: imageUrl,
+        description: description || '',
+        points: points || 0,
         challengeId: id,
       })
       
@@ -66,6 +81,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       // Refetch to get updated status
       refetch()
     } catch (err: any) {
+      console.error('❌ Verification error:', err)
       const msg = err.message || 'Something went wrong.'
       error('Error', msg)
     }
@@ -73,17 +89,25 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   const getStatusIcon = () => {
     if (!challengeData) return null
-    return challengeData.status === 'completed'
-      ? <CheckCircle size={14} color="#004E98" />
-      : <Clock size={14} color="#FF6700" />
+    switch (challengeData.status) {
+      case 'completed':
+        return <CheckCircle size={14} color="#16a34a" />
+      case 'pending_verification':
+        return <Clock size={14} color="#FF6700" />
+      case 'rejected':
+        return <AlertCircle size={14} color="#ef4444" />
+      default:
+        return <Clock size={14} color="#6b7280" />
+    }
   }
 
   const getStatusColor = () => {
     if (!challengeData) return 'text-craftopia-textSecondary'
     switch (challengeData.status) {
-      case 'completed': return 'text-craftopia-primary'
+      case 'completed': return 'text-green-600'
       case 'rejected': return 'text-red-600'
-      default: return 'text-craftopia-accent'
+      case 'pending_verification': return 'text-craftopia-accent'
+      default: return 'text-craftopia-textSecondary'
     }
   }
 
@@ -92,27 +116,36 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     if (!challengeData) return 'Submit for Verification'
     switch (challengeData.status) {
       case 'pending_verification': return 'Waiting for Verification'
-      case 'completed': return 'Completed'
-      case 'rejected': return 'Challenge Rejected'
+      case 'completed': return 'Completed ✓'
+      case 'rejected': return 'Resubmit Proof'
       default: return 'Submit for Verification'
     }
   }
 
-  const isDisabled = () =>
-    !challengeData ? false : 
-    submitVerificationMutation.isPending || 
-    isUploading || 
-    !imageUrl || 
-    ['pending_verification', 'completed'].includes(challengeData.status)
+  const isDisabled = () => {
+    if (!challengeData) return !imageUrl // Only disable if no image when not joined
+    
+    return (
+      submitVerificationMutation.isPending || 
+      isUploading || 
+      !imageUrl ||
+      imageUrl.startsWith('file://') || // ✅ FIXED: Disable while uploading
+      ['pending_verification', 'completed'].includes(challengeData.status)
+    )
+  }
 
-  // Show error state (but not for 404 - that means user hasn't joined)
+  // ✅ FIXED: Better error handling
   if (progressError && !progressError.message?.includes('not found')) {
     return (
       <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
         <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">Your Progress</Text>
         <View className="items-center py-4">
-          <Text className="text-sm text-red-500 text-center">
-            Failed to load progress: {progressError.message}
+          <AlertCircle size={24} color="#ef4444" />
+          <Text className="text-sm text-red-500 text-center mt-2">
+            Failed to load progress
+          </Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center mt-1">
+            {progressError.message}
           </Text>
           <Button
             title="Retry"
@@ -141,16 +174,34 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         </View>
       ) : (
         <>
+          {/* ✅ FIXED: Only disable upload after submission, not during pending */}
           <ImageUploadPicker
             label="Proof Image"
             description="Upload from camera or gallery"
             value={imageUrl || undefined}
-            onChange={setImageUrl}
+            onChange={(url) => {
+              console.log('📸 Image changed:', url)
+              setImageUrl(url || null)
+            }}
             folder="challenges"
-            onUploadStart={() => setIsUploading(true)}
-            onUploadComplete={() => setIsUploading(false)}
-            disabled={['pending_verification', 'completed'].includes(challengeData?.status || '')}
+            onUploadStart={() => {
+              console.log('📤 Upload started')
+              setIsUploading(true)
+            }}
+            onUploadComplete={() => {
+              console.log('✅ Upload completed')
+              setIsUploading(false)
+            }}
+            disabled={challengeData?.status === 'completed'} // ✅ Only disable when completed
           />
+
+          {/* ✅ NEW: Show upload status */}
+          {isUploading && (
+            <View className="flex-row items-center mt-2 bg-blue-50 p-2 rounded">
+              <ActivityIndicator size="small" color="#3b82f6" />
+              <Text className="text-xs text-blue-600 ml-2">Uploading image...</Text>
+            </View>
+          )}
 
           <Button
             title={getButtonTitle()}
@@ -171,7 +222,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                 </Text>
               </View>
 
-              {/* NEW: Show waste saved if completed */}
+              {/* Show waste saved if completed */}
               {challengeData.status === 'completed' && challengeData.waste_kg_saved > 0 && (
                 <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
                   <Leaf size={12} color="#16a34a" />
@@ -181,9 +232,10 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                 </View>
               )}
 
-              {challengeData.verified_at && (
+              {/* Show verified date if completed */}
+              {challengeData.verified_at && challengeData.status === 'completed' && (
                 <View className="flex-row items-center">
-                  <CheckCircle size={12} color="#00A896" />
+                  <CheckCircle size={12} color="#16a34a" />
                   <Text className="text-xs text-green-600 ml-1">
                     {new Date(challengeData.verified_at).toLocaleDateString()}
                   </Text>
@@ -195,4 +247,4 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       )}
     </View>
   )
-} 
+}

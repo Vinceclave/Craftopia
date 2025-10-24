@@ -1,15 +1,17 @@
-// apps/mobile/src/screens/quest/QuestDetails.tsx
-import React from 'react'
+// apps/mobile/src/screens/quest/QuestDetails.tsx - ENHANCED VERSION
+import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native'
-import { ScrollView, View, Text } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity } from 'react-native'
+import { SkipForward } from 'lucide-react-native'
 import { EcoQuestStackParamList } from '~/navigations/types'
 import { DetailHeader } from '~/components/quest/details/DetailHeader'
 import { DetailBanner } from '~/components/quest/details/DetailBanner'
 import { UserQuestProgress } from '~/components/quest/details/UserQuestProgress'
+import { SkipChallengeModal } from '~/components/quest/details/SkipChallengeModal'
 import { useChallenge } from '~/hooks/queries/useChallenges'
-import { useJoinChallenge, useUserChallengeProgress } from '~/hooks/queries/useUserChallenges'
+import { useJoinChallenge, useUserChallengeProgress, useSkipChallenge } from '~/hooks/queries/useUserChallenges'
 import { useAlert } from '~/hooks/useAlert'
 
 export const QuestDetailsScreen = () => {
@@ -17,6 +19,7 @@ export const QuestDetailsScreen = () => {
   const route = useRoute<RouteProp<EcoQuestStackParamList, 'QuestDetails'>>()
   const { questId } = route.params
   const { success, error } = useAlert()
+  const [skipModalVisible, setSkipModalVisible] = useState(false)
 
   // Get challenge details
   const { 
@@ -32,8 +35,9 @@ export const QuestDetailsScreen = () => {
     error: progressError 
   } = useUserChallengeProgress(questId)
 
-  // Join challenge mutation
+  // Mutations
   const joinChallengeMutation = useJoinChallenge()
+  const skipChallengeMutation = useSkipChallenge()
 
   const handleBack = () => navigation.goBack()
 
@@ -54,11 +58,39 @@ export const QuestDetailsScreen = () => {
     }
   }
 
+  // ✅ NEW: Handle skip challenge
+  const handleSkipChallenge = async (reason?: string) => {
+    if (!userProgress?.user_challenge_id) {
+      error('Error', 'Challenge data not found')
+      return
+    }
+
+    try {
+      await skipChallengeMutation.mutateAsync({
+        userChallengeId: userProgress.user_challenge_id,
+        reason,
+      })
+      
+      setSkipModalVisible(false)
+      success('Challenge Skipped', 'No worries! Try another challenge that fits your schedule.')
+      
+      // Navigate back to challenges list
+      setTimeout(() => {
+        navigation.goBack()
+      }, 1000)
+    } catch (err: any) {
+      error('Error', err.message || 'Failed to skip challenge')
+    }
+  }
+
   // Loading state
   const isLoading = questLoading || (progressLoading && !progressError?.message?.includes('not found'))
 
-  // Determine if user has joined (404 error means they haven't joined)
+  // Determine if user has joined
   const isJoined = !!userProgress
+
+  // Can skip: user has joined and status is in_progress
+  const canSkip = isJoined && userProgress?.status === 'in_progress'
 
   // Handle quest error
   if (questError) {
@@ -87,7 +119,7 @@ export const QuestDetailsScreen = () => {
           title={quest?.title || ''}
           description={quest?.description || ''}
           points={quest?.points_reward || 0}
-          wasteKg={quest?.waste_kg || 0} // NEW
+          wasteKg={quest?.waste_kg || 0}
           participants={quest?.participantCount || 0}
           isLoading={isLoading}
           isJoined={isJoined}
@@ -100,12 +132,39 @@ export const QuestDetailsScreen = () => {
             id={quest.challenge_id}
             description={quest.description}
             points={quest.points_reward}
-            wasteKg={quest.waste_kg} // NEW
+            wasteKg={quest.waste_kg}
           />
+        )}
+
+        {/* ✅ NEW: Skip Challenge Button */}
+        {canSkip && (
+          <View className="mx-4 my-3">
+            <TouchableOpacity
+              onPress={() => setSkipModalVisible(true)}
+              className="flex-row items-center justify-center p-3 bg-craftopia-light rounded-lg border border-craftopia-light"
+              activeOpacity={0.7}
+            >
+              <SkipForward size={16} color="#6b7280" />
+              <Text className="text-sm text-craftopia-textSecondary ml-2 font-medium">
+                Skip this challenge
+              </Text>
+            </TouchableOpacity>
+            <Text className="text-xs text-craftopia-textSecondary text-center mt-2">
+              No penalty - try another challenge anytime!
+            </Text>
+          </View>
         )}
 
         <View className="h-4" />
       </ScrollView>
+
+      {/* ✅ NEW: Skip Challenge Modal */}
+      <SkipChallengeModal
+        visible={skipModalVisible}
+        onClose={() => setSkipModalVisible(false)}
+        onConfirm={handleSkipChallenge}
+        loading={skipChallengeMutation.isPending}
+      />
     </SafeAreaView>
   )
 }

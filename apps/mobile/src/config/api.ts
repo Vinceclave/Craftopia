@@ -37,6 +37,8 @@ export const API_ENDPOINTS = {
     DETECT_MATERIALS: `${API_BASE_URL}/api/v1/ai/material/detect`,
     GENERATE_PROJECTS: `${API_BASE_URL}/api/v1/ai/material/generate-projects`,
     ANALYZE_AND_GENERATE: `${API_BASE_URL}/api/v1/ai/material/analyze`,
+    VERIFY_CHALLENGE: `${API_BASE_URL}/api/v1/ai/image/verify-upload`, // ✅ FIXED: Added missing endpoint
+  
   },
   CHALLENGES: {
     LIST: `/api/v1/challenges`,
@@ -52,6 +54,9 @@ export const API_ENDPOINTS = {
     USER_LIST: (userId?: number) => `${API_BASE_URL}/api/v1/user-challenges/user${userId ? `/${userId}` : ''}`,
     LEADERBOARD: `${API_BASE_URL}/api/v1/user-challenges/leaderboard`,
     PENDING: `${API_BASE_URL}/api/v1/user-challenges/pending-verifications`,
+      SKIP: (id: number) => `${API_BASE_URL}/api/v1/user-challenges/${id}/skip`, // ✅ NEW: Skip endpoint
+    WASTE_STATS: `${API_BASE_URL}/api/v1/user-challenges/my-waste-stats`, // ✅ NEW: Waste stats endpoint
+ 
   },
   POSTS: {
     LIST: `${API_BASE_URL}/api/v1/posts`,
@@ -75,6 +80,9 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/api/v1/reports`,
     MY_REPORTS: `${API_BASE_URL}/api/v1/reports/my-reports`,
   },
+  UPLOAD: {
+    IMAGE: `${API_BASE_URL}/api/v1/upload/image`, // ✅ NEW: Upload endpoint
+  }
 };
 
 // Types
