@@ -1,4 +1,4 @@
-// apps/mobile/src/components/quest/challenges/ChallengeList.tsx
+// apps/mobile/src/components/quest/challenges/ChallengeList.tsx - FIXED VERSION
 import React from 'react';
 import { FlatList, View, Text, Animated, Easing, RefreshControl, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import Button from '~/components/common/Button';
 
 interface Challenge {
   id: number | string;
+  challenge_id?: number; // ✅ NEW: Add challenge_id field
   title: string;
   description: string;
   completedAt?: string;
@@ -97,46 +98,69 @@ export const ChallengeList: React.FC<ChallengeListProps> = ({
     }
   };
 
-  const renderItem = ({ item }: { item: Challenge }) => (
-    <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
-      <View className="flex-row justify-between items-start mb-1">
-        <Text className="text-sm font-semibold text-craftopia-textPrimary flex-1 mr-2">
-          {item.title}
+  const renderItem = ({ item }: { item: Challenge }) => {
+    // ✅ FIX: Use challenge_id if available, fallback to id
+    const challengeId = item.challenge_id || Number(item.id);
+    
+    // ✅ FIX: Log for debugging
+    console.log('📋 User Challenge Item:', {
+      user_challenge_id: item.id,
+      challenge_id: challengeId,
+      title: item.title,
+      status: item.status
+    });
+
+    return (
+      <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
+        <View className="flex-row justify-between items-start mb-1">
+          <Text className="text-sm font-semibold text-craftopia-textPrimary flex-1 mr-2">
+            {item.title}
+          </Text>
+          {item.status && (
+            <View className="px-2 py-1 rounded-full bg-craftopia-light">
+              <Text className={`text-xs font-medium ${getStatusColor(item.status)}`}>
+                {getStatusText(item.status)}
+              </Text>
+            </View>
+          )}
+        </View>
+        
+        <Text className="text-xs text-craftopia-textSecondary mb-2 leading-relaxed">
+          {item.description}
         </Text>
-        {item.status && (
-          <View className="px-2 py-1 rounded-full bg-craftopia-light">
-            <Text className={`text-xs font-medium ${getStatusColor(item.status)}`}>
-              {getStatusText(item.status)}
+        
+        <View className="flex-row justify-between items-center mb-2">
+          {item.points && (
+            <Text className="text-xs font-medium text-craftopia-primary">
+              {item.points} points
             </Text>
-          </View>
-        )}
+          )}
+          {item.completedAt && (
+            <Text className="text-xs text-craftopia-textSecondary">
+              Completed: {new Date(item.completedAt).toLocaleDateString()}
+            </Text>
+          )}
+        </View>
+        
+        <Button
+          title="View Details"
+          size="md"
+          className="mt-1"
+          onPress={() => {
+            // ✅ FIX: Log before navigation
+            console.log('🎯 Navigating from UserChallenges to QuestDetails:', {
+              user_challenge_id: item.id,
+              challenge_id: challengeId,
+              title: item.title
+            });
+            
+            // ✅ FIX: Navigate with the correct challenge_id
+            navigation.navigate('QuestDetails', { questId: challengeId });
+          }}
+        />
       </View>
-      
-      <Text className="text-xs text-craftopia-textSecondary mb-2 leading-relaxed">
-        {item.description}
-      </Text>
-      
-      <View className="flex-row justify-between items-center mb-2">
-        {item.points && (
-          <Text className="text-xs font-medium text-craftopia-primary">
-            {item.points} points
-          </Text>
-        )}
-        {item.completedAt && (
-          <Text className="text-xs text-craftopia-textSecondary">
-            Completed: {new Date(item.completedAt).toLocaleDateString()}
-          </Text>
-        )}
-      </View>
-      
-      <Button
-        title="View Details"
-        size="md"
-        className="mt-1"
-        onPress={() => navigation.navigate('QuestDetails', { questId: Number(item.id) })}
-      />
-    </View>
-  );
+    );
+  };
 
   // Loading state with skeletons
   if (loading && challenges.length === 0) {
@@ -201,7 +225,12 @@ export const ChallengeList: React.FC<ChallengeListProps> = ({
   return (
     <FlatList
       data={challenges}
-      keyExtractor={(item, index) => (item.id ? item.id.toString() : index.toString())}
+      keyExtractor={(item, index) => {
+        // ✅ FIX: Use user_challenge_id as key (item.id)
+        const key = item.id ? item.id.toString() : `challenge-${index}`;
+        console.log('🔑 List key:', key, 'for challenge:', item.title);
+        return key;
+      }}
       renderItem={renderItem}
       showsVerticalScrollIndicator={false}
       refreshControl={

@@ -1,5 +1,5 @@
-// apps/mobile/src/screens/quest/QuestDetails.tsx - ENHANCED VERSION
-import React, { useState } from 'react'
+// apps/mobile/src/screens/quest/QuestDetails.tsx - FIXED VERSION
+import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native'
@@ -21,12 +21,29 @@ export const QuestDetailsScreen = () => {
   const { success, error } = useAlert()
   const [skipModalVisible, setSkipModalVisible] = useState(false)
 
+  // ✅ FIX: Log the received questId immediately
+  useEffect(() => {
+    console.log('📍 QuestDetailsScreen mounted with questId:', questId);
+  }, [questId]);
+
   // Get challenge details
   const { 
     data: quest, 
     isLoading: questLoading, 
     error: questError 
   } = useChallenge(questId)
+
+  // ✅ FIX: Log when quest data is loaded
+  useEffect(() => {
+    if (quest) {
+      console.log('✅ Quest data loaded:', {
+        challenge_id: quest.challenge_id,
+        title: quest.title,
+        points_reward: quest.points_reward,
+        waste_kg: quest.waste_kg
+      });
+    }
+  }, [quest]);
 
   // Get user's progress for this challenge
   const { 
@@ -35,6 +52,19 @@ export const QuestDetailsScreen = () => {
     error: progressError 
   } = useUserChallengeProgress(questId)
 
+  // ✅ FIX: Log user progress
+  useEffect(() => {
+    if (userProgress) {
+      console.log('✅ User progress loaded:', {
+        user_challenge_id: userProgress.user_challenge_id,
+        challenge_id: userProgress.challenge_id,
+        status: userProgress.status
+      });
+    } else if (progressError && !progressError.message?.includes('not found')) {
+      console.log('⚠️ Progress error:', progressError.message);
+    }
+  }, [userProgress, progressError]);
+
   // Mutations
   const joinChallengeMutation = useJoinChallenge()
   const skipChallengeMutation = useSkipChallenge()
@@ -42,13 +72,37 @@ export const QuestDetailsScreen = () => {
   const handleBack = () => navigation.goBack()
 
   const handleJoinPress = async () => {
-    if (!quest || userProgress) return
+    if (!quest || userProgress) {
+      console.log('⚠️ Cannot join:', { hasQuest: !!quest, hasProgress: !!userProgress });
+      return;
+    }
+
+    // ✅ FIX: Verify we're joining the correct challenge
+    console.log('🎯 Attempting to join challenge:', {
+      challenge_id: quest.challenge_id,
+      title: quest.title,
+      questId: questId
+    });
+
+    // ✅ FIX: Double-check IDs match
+    if (quest.challenge_id !== questId) {
+      console.error('❌ MISMATCH: quest.challenge_id !== questId', {
+        quest_challenge_id: quest.challenge_id,
+        questId: questId
+      });
+      error('Error', 'Challenge ID mismatch. Please try again.');
+      return;
+    }
 
     try {
       await joinChallengeMutation.mutateAsync(quest.challenge_id)
-      success('Success!', 'You have successfully joined this challenge!')
+      success('Success!', `You have successfully joined "${quest.title}"!`)
+      
+      console.log('✅ Successfully joined challenge:', quest.challenge_id);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to join challenge'
+      
+      console.error('❌ Join error:', errorMessage);
       
       if (errorMessage.includes('already joined')) {
         success('Info', 'You have already joined this challenge!')
@@ -58,12 +112,18 @@ export const QuestDetailsScreen = () => {
     }
   }
 
-  // ✅ NEW: Handle skip challenge
+  // Handle skip challenge
   const handleSkipChallenge = async (reason?: string) => {
     if (!userProgress?.user_challenge_id) {
       error('Error', 'Challenge data not found')
       return
     }
+
+    console.log('🔄 Skipping challenge:', {
+      user_challenge_id: userProgress.user_challenge_id,
+      challenge_id: userProgress.challenge_id,
+      reason
+    });
 
     try {
       await skipChallengeMutation.mutateAsync({
@@ -74,11 +134,14 @@ export const QuestDetailsScreen = () => {
       setSkipModalVisible(false)
       success('Challenge Skipped', 'No worries! Try another challenge that fits your schedule.')
       
+      console.log('✅ Challenge skipped successfully');
+      
       // Navigate back to challenges list
       setTimeout(() => {
         navigation.goBack()
       }, 1000)
     } catch (err: any) {
+      console.error('❌ Skip error:', err);
       error('Error', err.message || 'Failed to skip challenge')
     }
   }
@@ -94,6 +157,8 @@ export const QuestDetailsScreen = () => {
 
   // Handle quest error
   if (questError) {
+    console.error('❌ Quest error:', questError);
+    
     return (
       <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
         <DetailHeader onBackPress={handleBack} questId={questId} />
@@ -101,8 +166,11 @@ export const QuestDetailsScreen = () => {
           <Text className="text-lg font-semibold text-craftopia-textPrimary mb-2">
             Failed to load quest
           </Text>
-          <Text className="text-sm text-craftopia-textSecondary text-center">
+          <Text className="text-sm text-craftopia-textSecondary text-center mb-2">
             {questError.message || 'Something went wrong'}
+          </Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center">
+            Quest ID: {questId}
           </Text>
         </View>
       </SafeAreaView>
@@ -136,7 +204,7 @@ export const QuestDetailsScreen = () => {
           />
         )}
 
-        {/* ✅ NEW: Skip Challenge Button */}
+        {/* Skip Challenge Button */}
         {canSkip && (
           <View className="mx-4 my-3">
             <TouchableOpacity
@@ -158,7 +226,7 @@ export const QuestDetailsScreen = () => {
         <View className="h-4" />
       </ScrollView>
 
-      {/* ✅ NEW: Skip Challenge Modal */}
+      {/* Skip Challenge Modal */}
       <SkipChallengeModal
         visible={skipModalVisible}
         onClose={() => setSkipModalVisible(false)}

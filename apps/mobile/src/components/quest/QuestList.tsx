@@ -23,59 +23,73 @@ export const QuestList: React.FC<QuestListProps> = ({
   onJoin,
   onRetry,
 }) => {
-  const renderChallengeItem = ({ item }: { item: Challenge }) => (
-    <View className={`p-4 mb-3 mx-4 rounded-lg border ${
-      item.is_active ? 'bg-craftopia-surface border-craftopia-light' : 'bg-craftopia-light/50 border-craftopia-light'
-    }`}>
-      <View className="flex-row justify-between items-center">
-        <Text className="text-sm font-medium text-craftopia-textPrimary">{item.title}</Text>
-        {!item.is_active && <Text className="text-xs text-red-500 font-medium">Inactive</Text>}
+  const renderChallengeItem = ({ item }: { item: Challenge }) => {
+    // ✅ FIX: Use item.challenge_id consistently
+    const challengeId = item.challenge_id;
+    
+    console.log('📋 Rendering challenge:', {
+      challenge_id: challengeId,
+      title: item.title,
+      isJoined: item.isJoined
+    });
+
+    return (
+      <View className={`p-4 mb-3 mx-4 rounded-lg border ${
+        item.is_active ? 'bg-craftopia-surface border-craftopia-light' : 'bg-craftopia-light/50 border-craftopia-light'
+      }`}>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-sm font-medium text-craftopia-textPrimary">{item.title}</Text>
+          {!item.is_active && <Text className="text-xs text-red-500 font-medium">Inactive</Text>}
+        </View>
+
+        <Text className="text-sm text-craftopia-textSecondary mt-2">{item.description}</Text>
+
+        {/* Waste and Points Row */}
+        <View className="flex-row justify-between items-center mt-3">
+          <View className="flex-row items-center space-x-3">
+            <Text className="text-sm font-medium text-craftopia-primary">{item.points_reward} pts</Text>
+            {item.waste_kg > 0 && (
+              <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
+                <Leaf size={12} className="text-green-600 mr-1" />
+                <Text className="text-xs font-medium text-green-600">
+                  {item.waste_kg.toFixed(2)} kg
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text className="text-xs text-craftopia-textSecondary">
+            {item.participantCount || 0} participants
+          </Text>
+        </View>
+
+        <View className="mt-3 flex-row flex-wrap gap-2">
+          <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
+            <Text className="text-xs text-craftopia-textSecondary">{item.category}</Text>
+          </View>
+          <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
+            <Text className="text-xs text-craftopia-textSecondary">{item.material_type}</Text>
+          </View>
+        </View>
+
+        {item.is_active && (
+          <View className="mt-4">
+            <Button
+              title={item.isJoined ? "Already Joined" : "Join Challenge"}
+              onPress={() => {
+                // ✅ FIX: Log before navigation to verify correct ID
+                console.log('🎯 Navigating to challenge:', challengeId);
+                onJoin(challengeId);
+              }}
+              size="md"
+              disabled={item.isJoined}
+              className={item.isJoined ? "bg-craftopia-light" : ""}
+              textClassName={item.isJoined ? "text-craftopia-textSecondary" : ""}
+            />
+          </View>
+        )}
       </View>
-
-      <Text className="text-sm text-craftopia-textSecondary mt-2">{item.description}</Text>
-
-      {/* NEW: Waste and Points Row */}
-      <View className="flex-row justify-between items-center mt-3">
-        <View className="flex-row items-center space-x-3">
-          <Text className="text-sm font-medium text-craftopia-primary">{item.points_reward} pts</Text>
-          {/* NEW: Waste indicator */}
-          {item.waste_kg > 0 && (
-            <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
-              <Leaf size={12} className="text-green-600 mr-1" />
-              <Text className="text-xs font-medium text-green-600">
-                {item.waste_kg.toFixed(2)} kg
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text className="text-xs text-craftopia-textSecondary">
-          {item.participantCount || 0} participants
-        </Text>
-      </View>
-
-      <View className="mt-3 flex-row flex-wrap gap-2">
-        <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
-          <Text className="text-xs text-craftopia-textSecondary">{item.category}</Text>
-        </View>
-        <View className="px-3 py-1.5 bg-craftopia-light rounded-full">
-          <Text className="text-xs text-craftopia-textSecondary">{item.material_type}</Text>
-        </View>
-      </View>
-
-      {item.is_active && (
-        <View className="mt-4">
-          <Button
-            title={item.isJoined ? "Already Joined" : "Join Challenge"}
-            onPress={() => onJoin(item.challenge_id)}
-            size="md"
-            disabled={item.isJoined}
-            className={item.isJoined ? "bg-craftopia-light" : ""}
-            textClassName={item.isJoined ? "text-craftopia-textSecondary" : ""}
-          />
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
   // Loading state
   if (loading && challenges.length === 0) {
