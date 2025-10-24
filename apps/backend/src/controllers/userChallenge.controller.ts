@@ -90,3 +90,30 @@ export const manualVerify = asyncHandler(async (req: AuthRequest, res: Response)
   
   sendSuccess(res, result, 'Challenge manually verified');
 });
+
+/**
+ * Skip a challenge (no penalty)
+ * POST /api/v1/user-challenges/:userChallengeId/skip
+ */
+export const skipChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const userChallengeId = Number(req.params.userChallengeId);
+  const { reason } = req.body; // optional: 'no_materials', 'too_busy', 'not_interested'
+  
+  await userChallengeService.skipChallenge(
+    userChallengeId,
+    req.user!.userId,
+    reason
+  );
+  
+  sendSuccess(res, null, 'Challenge skipped successfully. Try another one!');
+});
+
+/**
+ * Get user's waste statistics
+ * GET /api/v1/user-challenges/my-waste-stats
+ */
+export const getMyWasteStats = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const stats = await userChallengeService.getUserWasteStats(req.user!.userId);
+  
+  sendSuccess(res, stats, 'Your waste statistics retrieved successfully');
+});

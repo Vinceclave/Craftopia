@@ -178,6 +178,19 @@ export class WebSocketEmitter {
     }, 'challengeRejected');
   }
 
+   static challengeSkipped(userId: number, skipData: any) {
+    this.safeEmit(() => {
+      const ws = getWebSocketServer();
+      ws.emitToUser(userId, WebSocketEvent.NOTIFICATION, {
+        type: 'challenge_skipped',
+        title: 'Challenge Skipped',
+        message: skipData.message || 'No worries! Try another challenge.',
+        data: skipData
+      });
+      logger.info('Emitted challenge skipped', { userId });
+    }, 'challengeSkipped');
+  }
+
   // ==========================================
   // POINTS EVENTS
   // ==========================================

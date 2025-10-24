@@ -149,149 +149,154 @@ class UserChallengeService extends BaseService {
   }
 
   // Verify challenge (AI or manual)
-  async verifyChallenge(
-    userChallengeId: number,
-    imageUri: string,
-    description: string,
-    points: number,
-    challengeId: number,
-    userId: number
-  ) {
-    this.validateId(userChallengeId, 'User Challenge ID');
-    this.validateId(userId, 'User ID');
-    this.validateRequiredString(description, 'Challenge description', 1, 500);
+ async verifyChallenge(
+  userChallengeId: number,
+  imageUri: string,
+  description: string,
+  points: number,
+  challengeId: number,
+  userId: number
+) {
+  this.validateId(userChallengeId, 'User Challenge ID');
+  this.validateId(userId, 'User ID');
+  this.validateRequiredString(description, 'Challenge description', 1, 500);
 
-    if (points <= 0) {
-      throw new ValidationError('Points must be greater than 0');
+  if (points <= 0) {
+    throw new ValidationError('Points must be greater than 0');
+  }
+
+  logger.info('Starting AI challenge verification', { 
+    userChallengeId, 
+    userId,
+    challengeId 
+  });
+
+  // Get challenge details including waste_kg
+  const challenge = await prisma.ecoChallenge.findUnique({
+    where: { challenge_id: challengeId },
+    select: { 
+      waste_kg: true, 
+      points_reward: true,
+      title: true,
+      material_type: true
     }
+  });
 
-    logger.info('Starting AI challenge verification', { 
-      userChallengeId, 
-      userId,
-      challengeId 
-    });
+  if (!challenge) {
+    throw new NotFoundError('Challenge');
+  }
 
-    // Step 1: Run AI verification
-    const aiVerification = await verifyChallengeAI(
-      description, 
-      imageUri, 
-      points, 
-      userId
-    );
+  // Step 1: Run AI verification
+  const aiVerification = await verifyChallengeAI(
+    description, 
+    imageUri, 
+    points, 
+    userId
+  );
 
-    const { 
-      status, 
-      points_awarded, 
-      ai_confidence_score, 
-      verification_type, 
-      admin_notes, 
-      completed_at, 
-      verified_at
-    } = aiVerification;
+  const { 
+    status, 
+    points_awarded, 
+    ai_confidence_score, 
+    verification_type, 
+    admin_notes, 
+    completed_at, 
+    verified_at
+  } = aiVerification;
 
-    logger.info('AI verification completed', { 
-      userChallengeId,
+  logger.info('AI verification completed', { 
+    userChallengeId,
+    status,
+    confidence: ai_confidence_score 
+  });
+
+  // Calculate waste saved based on verification status
+  const wasteKgSaved = status === 'completed' ? challenge.waste_kg : 0;
+
+  // Step 2: Update userChallenge
+  const verified = await prisma.userChallenge.update({
+    where: { user_challenge_id: userChallengeId },
+    data: {
       status,
-      confidence: ai_confidence_score 
-    });
-
-    // Step 2: Update userChallenge
-    const verified = await prisma.userChallenge.update({
-      where: { user_challenge_id: userChallengeId },
-      data: {
-        status,
-        proof_url: imageUri,
-        verified_at,
-        points_awarded,
-        ai_confidence_score,
-        verification_type,
-        admin_notes,
-        completed_at,
-        user_id: userId,
-        challenge_id: challengeId
+      proof_url: imageUri,
+      verified_at,
+      points_awarded,
+      waste_kg_saved: wasteKgSaved, // ✅ NEW FIELD
+      ai_confidence_score,
+      verification_type,
+      admin_notes,
+      completed_at,
+      user_id: userId,
+      challenge_id: challengeId
+    },
+    include: {
+      challenge: true,
+      user: {
+        select: { user_id: true, username: true, email: true }
       },
-      include: {
-        challenge: true,
-        user: {
-          select: { user_id: true, username: true, email: true }
-        },
-        verified_by: {
-          select: { user_id: true, username: true }
-        }
+      verified_by: {
+        select: { user_id: true, username: true }
+      }
+    }
+  });
+
+  // Step 3: Increment user score AND waste_kg if completed
+  if (status === 'completed' && points_awarded > 0) {
+    await prisma.userProfile.upsert({
+      where: { user_id: userId },
+      update: {
+        points: { increment: points_awarded },
+        total_waste_kg: { increment: wasteKgSaved } // ✅ NEW FIELD
+      },
+      create: {
+        user_id: userId,
+        points: points_awarded,
+        total_waste_kg: wasteKgSaved // ✅ NEW FIELD
       }
     });
 
-    // Step 3: Increment user score if completed
-    if (status === 'completed' && points_awarded) {
-      await prisma.userProfile.upsert({
-        where: { user_id: userId },
-        update: {
-          points: { increment: points_awarded }
-        },
-        create: {
-          user_id: userId,
-          points: points_awarded
-        }
-      });
+    logger.info('User points and waste saved', { 
+      userId, 
+      pointsAwarded: points_awarded,
+      wasteKgSaved
+    });
 
-      logger.info('User points awarded', { 
-        userId, 
-        pointsAwarded: points_awarded 
-      });
-    }
+    // Notify user of success
+    WebSocketEmitter.challengeVerified(userId, {
+      userChallengeId,
+      challenge: verified.challenge,
+      points_awarded,
+      waste_kg_saved: wasteKgSaved, // ✅ INCLUDE IN NOTIFICATION
+      ai_confidence_score,
+      status
+    });
 
-    // 🔥 WEBSOCKET: Notify based on verification result
-    if (status === 'completed' && points_awarded) {
-      await prisma.userProfile.upsert({
-        where: { user_id: userId },
-        update: {
-          points: { increment: points_awarded }
-        },
-        create: {
-          user_id: userId,
-          points: points_awarded
-        }
-      });
+    // Award points notification
+    WebSocketEmitter.pointsAwarded(userId, {
+      amount: points_awarded,
+      waste_kg_saved: wasteKgSaved, // ✅ INCLUDE IN NOTIFICATION
+      reason: 'Challenge completed',
+      challengeTitle: verified.challenge.title
+    });
 
-      logger.info('User points awarded', { 
-        userId, 
-        pointsAwarded: points_awarded 
-      });
-
-      // Notify user of success
-      WebSocketEmitter.challengeVerified(userId, {
-        userChallengeId,
-        challenge: verified.challenge,
-        points_awarded,
-        ai_confidence_score,
-        status
-      });
-
-      // Award points notification
-      WebSocketEmitter.pointsAwarded(userId, {
-        amount: points_awarded,
-        reason: 'Challenge completed',
-        challengeTitle: verified.challenge.title
-      });
-
-      // Update leaderboard for everyone
-      const leaderboard = await this.getChallengeLeaderboard(challengeId, 10);
-      WebSocketEmitter.leaderboardUpdated({
-        challengeId,
-        leaderboard
-      });
-    } else if (status === 'rejected') {
-      // Notify user of rejection
-      WebSocketEmitter.challengeRejected(userId, {
-        userChallengeId,
-        challenge: verified.challenge,
-        admin_notes,
-        ai_confidence_score
-      });
-    }
-
-    return verified;
+    // Update leaderboard
+    const leaderboard = await this.getChallengeLeaderboard(challengeId, 10);
+    WebSocketEmitter.leaderboardUpdated({
+      challengeId,
+      leaderboard
+    });
+  } else if (status === 'rejected') {
+    // Notify user of rejection
+    WebSocketEmitter.challengeRejected(userId, {
+      userChallengeId,
+      challenge: verified.challenge,
+      admin_notes,
+      ai_confidence_score
+    });
   }
+
+  return verified;
+}
 
   // Get user challenges
   async getUserChallenges(userId: number, status?: ChallengeStatus) {
@@ -461,109 +466,120 @@ class UserChallengeService extends BaseService {
   }
 
   // Manually verify challenge (Admin)
-  async manualVerify(
-    userChallengeId: number,
-    adminId: number,
-    approved: boolean,
-    notes?: string
-  ) {
-    this.validateId(userChallengeId, 'User Challenge ID');
-    this.validateId(adminId, 'Admin ID');
+ async manualVerify(
+  userChallengeId: number,
+  adminId: number,
+  approved: boolean,
+  notes?: string
+) {
+  this.validateId(userChallengeId, 'User Challenge ID');
+  this.validateId(adminId, 'Admin ID');
 
-    logger.info('Manual verification by admin', { 
-      userChallengeId, 
-      adminId, 
-      approved 
+  logger.info('Manual verification by admin', { 
+    userChallengeId, 
+    adminId, 
+    approved 
+  });
+
+  return await this.executeTransaction(async (tx) => {
+    const userChallenge = await tx.userChallenge.findFirst({
+      where: { 
+        user_challenge_id: userChallengeId,
+        deleted_at: null
+      },
+      include: { challenge: true }
     });
 
-    return await this.executeTransaction(async (tx) => {
-      const userChallenge = await tx.userChallenge.findFirst({
-        where: { 
-          user_challenge_id: userChallengeId,
-          deleted_at: null
-        },
-        include: { challenge: true }
-      });
+    if (!userChallenge) {
+      throw new NotFoundError('User challenge');
+    }
 
-      if (!userChallenge) {
-        throw new NotFoundError('User challenge');
+    const status = approved ? ChallengeStatus.completed : ChallengeStatus.rejected;
+    const pointsAwarded = approved ? userChallenge.challenge.points_reward : 0;
+    const wasteKgSaved = approved ? userChallenge.challenge.waste_kg : 0; // ✅ NEW
+
+    const updated = await tx.userChallenge.update({
+      where: { user_challenge_id: userChallengeId },
+      data: {
+        status,
+        verified_by_admin_id: adminId,
+        verified_at: new Date(),
+        verification_type: VerificationType.manual,
+        points_awarded: pointsAwarded,
+        waste_kg_saved: wasteKgSaved, // ✅ NEW FIELD
+        admin_notes: notes?.trim() || null
+      },
+      include: {
+        challenge: true,
+        user: {
+          select: { user_id: true, username: true, email: true }
+        },
+        verified_by: {
+          select: { user_id: true, username: true }
+        }
       }
+    });
 
-      const status = approved ? ChallengeStatus.completed : ChallengeStatus.rejected;
-      const pointsAwarded = approved ? userChallenge.challenge.points_reward : 0;
-
-      const updated = await tx.userChallenge.update({
-        where: { user_challenge_id: userChallengeId },
-        data: {
-          status,
-          verified_by_admin_id: adminId,
-          verified_at: new Date(),
-          verification_type: VerificationType.manual,
-          points_awarded: pointsAwarded,
-          admin_notes: notes?.trim() || null
+    // Award points and waste_kg if approved
+    if (approved && pointsAwarded > 0) {
+      await tx.userProfile.upsert({
+        where: { user_id: userChallenge.user_id },
+        update: {
+          points: { increment: pointsAwarded },
+          total_waste_kg: { increment: wasteKgSaved } // ✅ NEW FIELD
         },
-        include: {
-          challenge: true,
-          user: {
-            select: { user_id: true, username: true, email: true }
-          },
-          verified_by: {
-            select: { user_id: true, username: true }
-          }
+        create: {
+          user_id: userChallenge.user_id,
+          points: pointsAwarded,
+          total_waste_kg: wasteKgSaved // ✅ NEW FIELD
         }
       });
 
-      // Award points if approved
-      if (approved && pointsAwarded > 0) {
-        await tx.userProfile.upsert({
-          where: { user_id: userChallenge.user_id },
-          update: {
-            points: { increment: pointsAwarded }
-          },
-          create: {
-            user_id: userChallenge.user_id,
-            points: pointsAwarded
-          }
-        });
+      logger.info('Points and waste awarded via manual verification', { 
+        userId: userChallenge.user_id, 
+        points: pointsAwarded,
+        wasteKg: wasteKgSaved
+      });
 
-        logger.info('Points awarded via manual verification', { 
-          userId: userChallenge.user_id, 
-          points: pointsAwarded 
-        });
+      WebSocketEmitter.challengeVerified(userChallenge.user_id, {
+        userChallengeId,
+        challenge: updated.challenge,
+        points_awarded: pointsAwarded,
+        waste_kg_saved: wasteKgSaved, // ✅ INCLUDE IN NOTIFICATION
+        status,
+        verifiedBy: updated.verified_by?.username,
+        admin_notes: notes
+      });
+      
+      WebSocketEmitter.pointsAwarded(userChallenge.user_id, {
+        amount: pointsAwarded,
+        waste_kg_saved: wasteKgSaved, // ✅ INCLUDE IN NOTIFICATION
+        reason: 'Challenge manually approved',
+        challengeTitle: updated.challenge.title
+      });
 
-        WebSocketEmitter.challengeVerified(userChallenge.user_id, {
-          userChallengeId,
-          challenge: updated.challenge,
-          points_awarded: pointsAwarded,
-          status,
-          verifiedBy: updated.verified_by?.username,
-          admin_notes: notes
-        });
-        
-        WebSocketEmitter.pointsAwarded(userChallenge.user_id, {
-          amount: pointsAwarded,
-          reason: 'Challenge manually approved',
-          challengeTitle: updated.challenge.title
-        });
-
-        // Update leaderboard
-        const leaderboard = await this.getChallengeLeaderboard(userChallenge.challenge_id, 10);
-        WebSocketEmitter.leaderboardUpdated({
-          challengeId: userChallenge.challenge_id,
-          leaderboard
-        });
-      } else {
-        // 🔥 WEBSOCKET: Notify user of rejection
-        WebSocketEmitter.challengeRejected(userChallenge.user_id, {
-          userChallengeId,
-          challenge: updated.challenge,
-          admin_notes: notes,
-          verifiedBy: updated.verified_by?.username
-        });
-      }
-      return updated;
-    });
-  }
+      // Update leaderboard
+      const leaderboard = await this.getChallengeLeaderboard(
+        userChallenge.challenge_id, 
+        10
+      );
+      WebSocketEmitter.leaderboardUpdated({
+        challengeId: userChallenge.challenge_id,
+        leaderboard
+      });
+    } else {
+      // Rejection notification
+      WebSocketEmitter.challengeRejected(userChallenge.user_id, {
+        userChallengeId,
+        challenge: updated.challenge,
+        admin_notes: notes,
+        verifiedBy: updated.verified_by?.username
+      });
+    }
+    
+    return updated;
+  });
+}
 
   // Get user challenge statistics
   async getUserChallengeStats(userId: number) {
@@ -621,6 +637,154 @@ class UserChallengeService extends BaseService {
       totalPointsEarned: totalPoints._sum.points_awarded || 0
     };
   }
+  /**
+   * Skip a challenge (soft delete with skip tracking)
+   */
+  async skipChallenge(
+    userChallengeId: number,
+    userId: number,
+    reason?: string
+  ) {
+    this.validateId(userChallengeId, 'User Challenge ID');
+    this.validateId(userId, 'User ID');
+
+    logger.info('User skipping challenge', { userChallengeId, userId, reason });
+
+    return await this.executeTransaction(async (tx) => {
+      // Verify ownership and status
+      const userChallenge = await tx.userChallenge.findFirst({
+        where: {
+          user_challenge_id: userChallengeId,
+          user_id: userId,
+          deleted_at: null
+        },
+        include: { challenge: true }
+      });
+
+      if (!userChallenge) {
+        throw new NotFoundError('User challenge');
+      }
+
+      // Can only skip if in_progress
+      if (userChallenge.status !== ChallengeStatus.in_progress) {
+        throw new ValidationError(
+          'Can only skip challenges that are in progress'
+        );
+      }
+
+      // Mark as skipped (soft delete + skip timestamp)
+      await tx.userChallenge.update({
+        where: { user_challenge_id: userChallengeId },
+        data: {
+          deleted_at: new Date(),
+          skipped_at: new Date(),
+          admin_notes: reason ? `Skipped: ${reason}` : 'Skipped by user'
+        }
+      });
+
+      logger.info('Challenge skipped successfully', {
+        userChallengeId,
+        userId,
+        challengeTitle: userChallenge.challenge.title
+      });
+
+      // Notify user via WebSocket
+      WebSocketEmitter.notification(userId, {
+        type: 'challenge_skipped',
+        title: 'Challenge Skipped',
+        message: 'No worries! Try another challenge that fits your schedule.',
+        data: {
+          challengeId: userChallenge.challenge_id,
+          challengeTitle: userChallenge.challenge.title
+        }
+      });
+
+      return {
+        message: 'Challenge skipped. Try a different one!',
+        skippedChallenge: {
+          challenge_id: userChallenge.challenge_id,
+          title: userChallenge.challenge.title
+        }
+      };
+    });
+  }
+
+  /**
+   * Get user's waste statistics
+   */
+  async getUserWasteStats(userId: number) {
+  this.validateId(userId, 'User ID');
+
+  const profile = await prisma.userProfile.findUnique({
+    where: { user_id: userId },
+    select: { total_waste_kg: true, points: true }
+  });
+
+  const completedChallenges = await prisma.userChallenge.findMany({
+    where: {
+      user_id: userId,
+      status: ChallengeStatus.completed,
+      deleted_at: null
+    },
+    include: {
+      challenge: {
+        select: {
+          title: true,
+          waste_kg: true,
+          material_type: true
+        }
+      }
+    }
+  });
+
+  // Calculate waste by material type
+  const wasteByMaterial = completedChallenges.reduce((acc, uc) => {
+    const material = uc.challenge.material_type;
+    acc[material] = (acc[material] || 0) + uc.waste_kg_saved;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Recent contributions
+  const recentContributions = completedChallenges.slice(0, 5).map(uc => ({
+    challenge_title: uc.challenge.title,
+    waste_kg: uc.waste_kg_saved,
+    material_type: uc.challenge.material_type,
+    verified_at: uc.verified_at
+  }));
+
+  return {
+    total_waste_kg: profile?.total_waste_kg || 0,
+    total_points: profile?.points || 0,
+    completed_challenges_count: completedChallenges.length,
+    waste_by_material: wasteByMaterial,
+    recent_contributions: recentContributions,
+    impact_equivalents: {
+      plastic_bottles: Math.floor((profile?.total_waste_kg || 0) / 0.03),
+      coffee_cups: Math.floor((profile?.total_waste_kg || 0) / 0.05),
+      cardboard_boxes: Math.floor((profile?.total_waste_kg || 0) / 0.2),
+      glass_jars: Math.floor((profile?.total_waste_kg || 0) / 0.3),
+      aluminum_cans: Math.floor((profile?.total_waste_kg || 0) / 0.015),
+      trees_equivalent: ((profile?.total_waste_kg || 0) * 0.05).toFixed(1)
+    }
+  };
+}
+
+
+
+
+  /**
+   * Calculate real-world impact equivalents
+   */
+  private calculateImpactEquivalents(wasteKg: number) {
+    return {
+      plastic_bottles: Math.floor(wasteKg / 0.03), // 30g per bottle
+      coffee_cups: Math.floor(wasteKg / 0.05), // 50g per cup
+      cardboard_boxes: Math.floor(wasteKg / 0.2), // 200g per box
+      glass_jars: Math.floor(wasteKg / 0.3), // 300g per jar
+      aluminum_cans: Math.floor(wasteKg / 0.015), // 15g per can
+      trees_equivalent: (wasteKg * 0.05).toFixed(1) // Rough estimate
+    };
+  }
 }
 
 // Export singleton instance
@@ -636,3 +800,5 @@ export const getChallengeLeaderboard = userChallengeService.getChallengeLeaderbo
 export const getPendingVerifications = userChallengeService.getPendingVerifications.bind(userChallengeService);
 export const manualVerify = userChallengeService.manualVerify.bind(userChallengeService);
 export const getUserChallengeStats = userChallengeService.getUserChallengeStats.bind(userChallengeService);
+export const skipChallenge = userChallengeService.skipChallenge.bind(userChallengeService);
+export const getUserWasteStats = userChallengeService.getUserWasteStats.bind(userChallengeService);

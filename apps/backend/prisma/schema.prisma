@@ -42,6 +42,7 @@ model UserProfile {
   bio                   String?
   profile_picture_url   String?
   points                Int       @default(0)
+  total_waste_kg        Float     @default(0)  // NEW
   home_dashboard_layout Json?
   deleted_at            DateTime?
   user                  User      @relation(fields: [user_id], references: [user_id])
@@ -140,6 +141,7 @@ model EcoChallenge {
   title               String
   description         String
   points_reward       Int
+  waste_kg            Float             @default(0)  // NEW
   is_active           Boolean           @default(true)
   source              ChallengeSource   @default(admin)
   material_type       MaterialType
@@ -166,6 +168,7 @@ model UserChallenge {
   verification_type    VerificationType?
   ai_confidence_score  Float?
   points_awarded       Int               @default(0)
+  waste_kg_saved       Float             @default(0)  // NEW
   admin_notes          String?
   created_at           DateTime          @default(now())
   deleted_at           DateTime?

@@ -1,6 +1,6 @@
 // apps/backend/src/services/challenge.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { MaterialType, ChallengeCategory, ChallengeSource } from "../generated/prisma";
+import { MaterialType, ChallengeCategory, ChallengeSource, ChallengeStatus } from "../generated/prisma";
 import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError } from "../utils/error";
 import { VALIDATION_LIMITS, POINTS } from "../constats";
@@ -390,6 +390,203 @@ class ChallengeService extends BaseService {
       materialType: randomMaterial as MaterialType,
     };
   }
+   /**
+   * Get challenge options for user to choose from
+   * Returns challenges user hasn't joined yet
+   */
+  async getChallengeOptions(
+    userId: number, 
+    category?: string, 
+    limit: number = 5
+  ) {
+    this.validateId(userId, 'User ID');
+
+    if (limit < 1 || limit > 20) {
+      throw new ValidationError('Limit must be between 1 and 20');
+    }
+
+    logger.debug('Fetching challenge options', { userId, category, limit });
+
+    // Get challenges user has already joined or skipped
+    const userChallengeIds = await prisma.userChallenge.findMany({
+      where: { 
+        user_id: userId,
+        deleted_at: null
+      },
+      select: { challenge_id: true }
+    });
+
+    const excludeIds = userChallengeIds.map(uc => uc.challenge_id);
+
+    // Build where clause
+    const where: any = {
+      is_active: true,
+      deleted_at: null,
+      challenge_id: { notIn: excludeIds },
+      OR: [
+        { expires_at: null },
+        { expires_at: { gt: new Date() } }
+      ]
+    };
+
+    if (category && category !== 'all') {
+      this.validateEnum(category, ChallengeCategory, 'category');
+      where.category = category;
+    }
+
+    // Get options
+    const options = await prisma.ecoChallenge.findMany({
+      where,
+      take: limit,
+      orderBy: [
+        { created_at: 'desc' },
+        { points_reward: 'asc' } // Show easier challenges first
+      ],
+      include: {
+        created_by_admin: {
+          select: { user_id: true, username: true }
+        },
+        _count: {
+          select: { 
+            participants: { 
+              where: { deleted_at: null } 
+            } 
+          }
+        }
+      }
+    });
+
+    logger.info('Challenge options retrieved', { 
+      userId, 
+      category,
+      count: options.length 
+    });
+
+    return {
+      options,
+      total: options.length,
+      category: category || 'all',
+      message: options.length === 0 
+        ? 'No new challenges available. Check back later!' 
+        : `Pick a challenge that fits your schedule!`
+    };
+  }
+
+  /**
+   * Get personalized challenge recommendations based on user history
+   */
+  async getRecommendedChallenges(userId: number, limit: number = 5) {
+    this.validateId(userId, 'User ID');
+
+    logger.debug('Fetching recommended challenges', { userId, limit });
+
+    // Get user's completed challenges
+    const completedChallenges = await prisma.userChallenge.findMany({
+      where: {
+        user_id: userId,
+        status: ChallengeStatus.completed,
+        deleted_at: null
+      },
+      include: { challenge: true },
+      orderBy: { verified_at: 'desc' },
+      take: 20
+    });
+
+    // Analyze user preferences
+    const materialCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+
+    completedChallenges.forEach(uc => {
+      const material = uc.challenge.material_type;
+      const category = uc.challenge.category;
+      
+      materialCounts[material] = (materialCounts[material] || 0) + 1;
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    });
+
+    // Get top preferences
+    const topMaterial = Object.entries(materialCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] as MaterialType | undefined;
+
+    const topCategory = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] as ChallengeCategory | undefined;
+
+    // Get challenges user hasn't joined
+    const userChallengeIds = await prisma.userChallenge.findMany({
+      where: { user_id: userId, deleted_at: null },
+      select: { challenge_id: true }
+    });
+
+    const excludeIds = userChallengeIds.map(uc => uc.challenge_id);
+
+    // Build recommendation query
+    const where: any = {
+      is_active: true,
+      deleted_at: null,
+      challenge_id: { notIn: excludeIds },
+      OR: [
+        { expires_at: null },
+        { expires_at: { gt: new Date() } }
+      ]
+    };
+
+    // Prefer user's favorite material and category
+    if (topMaterial) {
+      where.material_type = topMaterial;
+    }
+    if (topCategory) {
+      where.category = topCategory;
+    }
+
+    const recommendations = await prisma.ecoChallenge.findMany({
+      where,
+      take: limit,
+      orderBy: { created_at: 'desc' }
+    });
+
+    // If not enough recommendations with preferences, add random ones
+    if (recommendations.length < limit) {
+      const additional = await prisma.ecoChallenge.findMany({
+        where: {
+          is_active: true,
+          deleted_at: null,
+          challenge_id: { 
+            notIn: [
+              ...excludeIds, 
+              ...recommendations.map(r => r.challenge_id)
+            ] 
+          },
+          OR: [
+            { expires_at: null },
+            { expires_at: { gt: new Date() } }
+          ]
+        },
+        take: limit - recommendations.length,
+        orderBy: { created_at: 'desc' }
+      });
+
+      recommendations.push(...additional);
+    }
+
+    logger.info('Recommendations generated', {
+      userId,
+      count: recommendations.length,
+      topMaterial,
+      topCategory
+    });
+
+    return {
+      recommendations,
+      reason: topMaterial 
+        ? `Based on your ${topMaterial} challenge history`
+        : 'Recommended for you',
+      preferences: {
+        topMaterial,
+        topCategory,
+        completedCount: completedChallenges.length
+      }
+    };
+  }
 }
 
 // Export singleton instance
@@ -405,3 +602,5 @@ export const deleteChallenge = challengeService.deleteChallenge.bind(challengeSe
 export const toggleActiveStatus = challengeService.toggleActiveStatus.bind(challengeService);
 export const getChallengesByCategory = challengeService.getChallengesByCategory.bind(challengeService);
 export const getActiveChallengesCount = challengeService.getActiveChallengesCount.bind(challengeService);
+export const getChallengeOptions = challengeService.getChallengeOptions.bind(challengeService);
+export const getRecommendedChallenges = challengeService.getRecommendedChallenges.bind(challengeService);

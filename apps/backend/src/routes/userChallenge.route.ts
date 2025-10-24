@@ -67,4 +67,16 @@ ucRouter.get(
   userChallengeController.getChallengeLeaderboard
 );
 
+ucRouter.post(
+  '/:userChallengeId/skip',
+  requireAuth,
+  userChallengeController.skipChallenge
+);
+
+ucRouter.get(
+  '/my-waste-stats',
+  requireAuth,
+  userChallengeController.getMyWasteStats
+);
+
 export default ucRouter;

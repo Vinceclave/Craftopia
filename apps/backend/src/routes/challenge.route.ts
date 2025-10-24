@@ -47,4 +47,17 @@ router.get(
   challengeController.getChallengeById
 );
 
+router.get(
+  '/options',
+  requireAuth,
+  challengeController.getChallengeOptions
+);
+
+router.get(
+  '/recommended',
+  requireAuth,
+  challengeController.getRecommendedChallenges
+);
+
+
 export default router;

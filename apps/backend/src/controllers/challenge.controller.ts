@@ -146,3 +146,35 @@ export const manualVerify = asyncHandler(async (req: AuthRequest, res: Response)
   
   sendSuccess(res, result, 'Challenge manually verified');
 });
+
+/**
+ * Get challenge options for user to choose from
+ * GET /api/v1/challenges/options?category=daily&limit=5
+ */
+export const getChallengeOptions = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const category = req.query.category as string;
+  const limit = Number(req.query.limit) || 5;
+  
+  const options = await challengeService.getChallengeOptions(
+    req.user!.userId,
+    category,
+    limit
+  );
+  
+  sendSuccess(res, options, 'Challenge options retrieved successfully');
+});
+
+/**
+ * Get personalized challenge recommendations
+ * GET /api/v1/challenges/recommended?limit=5
+ */
+export const getRecommendedChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const limit = Number(req.query.limit) || 5;
+  
+  const recommendations = await challengeService.getRecommendedChallenges(
+    req.user!.userId,
+    limit
+  );
+  
+  sendSuccess(res, recommendations, 'Recommended challenges retrieved successfully');
+});
