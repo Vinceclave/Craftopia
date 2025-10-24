@@ -3,7 +3,8 @@ import {
   joinChallengeSchema, 
   completeChallengeSchema,
   verifyChallengeSchema,
-  manualVerifySchema
+  manualVerifySchema,
+  skipChallengeSchema
 } from "../schemas/userChallenge.schema";
 import { Router } from "express";
 import { validate } from "../utils/validation";
@@ -42,6 +43,13 @@ ucRouter.post(
   userChallengeController.manualVerify
 );
 
+ucRouter.post(
+  '/:userChallengeId/skip',
+  requireAuth,
+  validate(skipChallengeSchema), // ✅ Add validation
+  userChallengeController.skipChallenge
+);
+
 ucRouter.get(
   '/pending-verifications',
   requireAdmin,
@@ -65,12 +73,6 @@ ucRouter.get(
   '/leaderboard',
   requireAuth,
   userChallengeController.getChallengeLeaderboard
-);
-
-ucRouter.post(
-  '/:userChallengeId/skip',
-  requireAuth,
-  userChallengeController.skipChallenge
 );
 
 ucRouter.get(

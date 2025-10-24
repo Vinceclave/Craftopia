@@ -32,3 +32,7 @@ export const leaderboardQuerySchema = Joi.object({
   challengeId: commonSchemas.optionalPositiveId,
   limit: Joi.number().min(1).max(50).default(10)
 });
+
+export const skipChallengeSchema = Joi.object({
+  reason: Joi.string().max(200).optional().allow('', null).trim()
+});

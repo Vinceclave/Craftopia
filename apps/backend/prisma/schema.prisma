@@ -172,6 +172,7 @@ model UserChallenge {
   admin_notes          String?
   created_at           DateTime          @default(now())
   deleted_at           DateTime?
+  skipped_at DateTime?
   challenge            EcoChallenge      @relation(fields: [challenge_id], references: [challenge_id])
   user                 User              @relation(fields: [user_id], references: [user_id])
   verified_by          User?             @relation("VerifiedBy", fields: [verified_by_admin_id], references: [user_id])
