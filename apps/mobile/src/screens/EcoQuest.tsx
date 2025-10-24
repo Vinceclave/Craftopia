@@ -8,7 +8,9 @@ import { QuestBanner } from '~/components/quest/QuestBanner';
 import { Achievements } from '~/components/quest/Achievements';
 import { QuestTabs } from '~/components/quest/QuestTabs';
 import { QuestList } from '~/components/quest/QuestList';
+import { WasteStatsCard } from '~/components/quest/WasteStatsCard'; // NEW
 import { useChallenges } from '~/hooks/queries/useChallenges';
+import { useUserWasteStats } from '~/hooks/queries/useUserChallenges'; // NEW
 import { EcoQuestStackParamList } from '~/navigations/types';
 import { useUserStats } from '~/hooks/useUserStats';
 
@@ -24,6 +26,13 @@ export const EcoQuestScreen = () => {
     isLoading: statsLoading, 
     error: statsError 
   } = useUserStats();
+
+  // NEW: Waste stats query
+  const {
+    data: wasteStats,
+    isLoading: wasteLoading,
+    error: wasteError
+  } = useUserWasteStats();
 
   // Challenges query
   const { 
@@ -46,8 +55,22 @@ export const EcoQuestScreen = () => {
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-light">
       <QuestHeader navigation={navigation} />
 
-      {/* Fixed: use userStats and statsLoading here */}
-      <QuestBanner data={userStats} loading={statsLoading} />
+      {/* Banner with waste stats */}
+      <QuestBanner 
+        data={userStats ? {
+          ...userStats,
+          total_waste_kg: wasteStats?.total_waste_kg || 0 // NEW
+        } : null} 
+        loading={statsLoading || wasteLoading} 
+      />
+
+      {/* NEW: Detailed Waste Stats Card */}
+      {wasteStats && wasteStats.total_waste_kg > 0 && (
+        <WasteStatsCard 
+          data={wasteStats} 
+          loading={wasteLoading} 
+        />
+      )}
 
       <Achievements />
 

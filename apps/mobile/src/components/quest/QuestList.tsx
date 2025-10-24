@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import Button from '~/components/common/Button';
 import { Challenge } from '~/hooks/queries/useChallenges';
+import { Leaf } from 'lucide-react-native';
 
 interface QuestListProps {
   challenges: Challenge[];
@@ -33,8 +34,20 @@ export const QuestList: React.FC<QuestListProps> = ({
 
       <Text className="text-sm text-craftopia-textSecondary mt-2">{item.description}</Text>
 
+      {/* NEW: Waste and Points Row */}
       <View className="flex-row justify-between items-center mt-3">
-        <Text className="text-sm font-medium text-craftopia-primary">{item.points_reward} pts</Text>
+        <View className="flex-row items-center space-x-3">
+          <Text className="text-sm font-medium text-craftopia-primary">{item.points_reward} pts</Text>
+          {/* NEW: Waste indicator */}
+          {item.waste_kg > 0 && (
+            <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
+              <Leaf size={12} className="text-green-600 mr-1" />
+              <Text className="text-xs font-medium text-green-600">
+                {item.waste_kg.toFixed(2)} kg
+              </Text>
+            </View>
+          )}
+        </View>
         <Text className="text-xs text-craftopia-textSecondary">
           {item.participantCount || 0} participants
         </Text>

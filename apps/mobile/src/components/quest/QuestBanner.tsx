@@ -1,4 +1,4 @@
-import { Badge } from 'lucide-react-native';
+import { Badge, Recycle } from 'lucide-react-native';
 import React from 'react';
 import { Text, View, ActivityIndicator } from 'react-native';
 
@@ -6,6 +6,7 @@ interface QuestBannerProps {
   data?: {
     points: number;
     challenges_completed: number;
+    total_waste_kg?: number; // NEW: total waste saved
     level?: number;
     nextLevelPoints?: number;
   } | null;
@@ -29,6 +30,7 @@ export const QuestBanner: React.FC<QuestBannerProps> = ({ data, loading }) => {
   const points = data.points ?? 0;
   const nextLevelPoints = data.nextLevelPoints ?? 1000;
   const completedQuests = data.challenges_completed ?? 0;
+  const totalWaste = data.total_waste_kg ?? 0; // NEW
 
   const progress = Math.min(points / nextLevelPoints, 1);
 
@@ -60,15 +62,23 @@ export const QuestBanner: React.FC<QuestBannerProps> = ({ data, loading }) => {
         </View>
       </View>
 
-      {/* Stats (only Completed Quests + Points) */}
+      {/* Stats */}
       <View className="flex-row justify-between mt-3 pt-2 border-t border-craftopia-light">
         <View className="items-center flex-1">
           <Text className="text-sm font-bold text-craftopia-textPrimary">{completedQuests}</Text>
-          <Text className="text-xs text-craftopia-textSecondary">Completed Quests</Text>
+          <Text className="text-xs text-craftopia-textSecondary">Quests</Text>
         </View>
         <View className="items-center flex-1">
           <Text className="text-sm font-bold text-craftopia-accent">{points}</Text>
           <Text className="text-xs text-craftopia-textSecondary">Points</Text>
+        </View>
+        {/* NEW: Waste Saved */}
+        <View className="items-center flex-1">
+          <View className="flex-row items-center">
+            <Recycle size={12} className="text-green-600 mr-1" />
+            <Text className="text-sm font-bold text-green-600">{totalWaste.toFixed(1)}</Text>
+          </View>
+          <Text className="text-xs text-craftopia-textSecondary">kg saved</Text>
         </View>
       </View>
     </View>

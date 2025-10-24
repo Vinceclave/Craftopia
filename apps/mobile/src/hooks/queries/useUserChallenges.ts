@@ -14,6 +14,7 @@ export interface UserChallenge {
   proof_url?: string;
   description?: string;
   points?: number;
+  waste_kg_saved: number; // NEW: actual waste saved by user
   verified_at?: string;
   completed_at?: string;
   created_at: string;
@@ -22,6 +23,7 @@ export interface UserChallenge {
     title: string;
     description: string;
     points_reward: number;
+    waste_kg: number; // NEW: potential waste that can be saved
     category: string;
     material_type: string;
   };
@@ -32,6 +34,7 @@ export interface QuestProgress {
   challenge_id: number;
   status: UserChallengeStatus;
   proof_url?: string;
+  waste_kg_saved: number; // NEW
   verified_at?: string;
   created_at: string;
 }
@@ -44,6 +47,7 @@ export const userChallengeKeys = {
   details: () => [...userChallengeKeys.all, 'detail'] as const,
   detail: (challengeId: number, userId: number) => [...userChallengeKeys.details(), challengeId, userId] as const,
   progress: (challengeId: number, userId: number) => [...userChallengeKeys.all, 'progress', challengeId, userId] as const,
+  wasteStats: (userId: number) => [...userChallengeKeys.all, 'wasteStats', userId] as const, // NEW
 };
 
 /**
@@ -73,6 +77,7 @@ export const useUserChallenges = (status?: UserChallengeStatus) => {
         proof_url: item.proof_url,
         description: item.description,
         points: item.points,
+        waste_kg_saved: Number(item.waste_kg_saved || 0), // NEW
         verified_at: item.verified_at,
         completed_at: item.completed_at || item.completedAt,
         created_at: item.created_at,
@@ -81,6 +86,7 @@ export const useUserChallenges = (status?: UserChallengeStatus) => {
           title: item.challenge.title || 'No title',
           description: item.challenge.description || 'No description',
           points_reward: item.challenge.points_reward || item.challenge.points || 0,
+          waste_kg: Number(item.challenge.waste_kg || 0), // NEW
           category: item.challenge.category || 'Other',
           material_type: item.challenge.material_type || 'General',
         } : undefined,
@@ -117,6 +123,7 @@ export const useUserChallengeProgress = (challengeId: number) => {
           challenge_id: data.challenge_id,
           status: data.status,
           proof_url: data.proof_url,
+          waste_kg_saved: Number(data.waste_kg_saved || 0), // NEW
           verified_at: data.verified_at,
           created_at: data.created_at,
         };
@@ -142,6 +149,29 @@ export const useUserChallengeProgress = (challengeId: number) => {
       }
       return failureCount < 2;
     },
+  });
+};
+
+/**
+ * NEW: Get user's waste statistics
+ */
+export const useUserWasteStats = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: userChallengeKeys.wasteStats(user?.id || 0),
+    queryFn: async () => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const response: any = await apiService.request(
+        API_ENDPOINTS.USER_CHALLENGES.WASTE_STATS,
+        { method: 'GET' }
+      );
+
+      return response.data || response;
+    },
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
   });
 };
 
@@ -227,6 +257,11 @@ export const useSubmitChallengeVerification = () => {
         queryClient.refetchQueries({ 
           queryKey: userChallengeKeys.progress(variables.challengeId, user.id) 
         });
+
+        // NEW: Invalidate waste stats
+        queryClient.invalidateQueries({
+          queryKey: userChallengeKeys.wasteStats(user.id)
+        });
       }
       
       // Invalidate user challenges list
@@ -268,6 +303,37 @@ export const useSubmitChallengeVerification = () => {
           userChallengeKeys.progress(variables.challengeId, user?.id || 0),
           context.previousProgress
         );
+      }
+    },
+  });
+};
+
+/**
+ * NEW: Skip a challenge
+ */
+export const useSkipChallenge = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (params: {
+      userChallengeId: number;
+      reason?: string;
+    }) => {
+      const response = await apiService.request(
+        API_ENDPOINTS.USER_CHALLENGES.SKIP(params.userChallengeId),
+        {
+          method: 'POST',
+          data: { reason: params.reason },
+        }
+      );
+      return response;
+    },
+    onSuccess: () => {
+      if (user?.id) {
+        queryClient.invalidateQueries({ 
+          queryKey: userChallengeKeys.lists() 
+        });
       }
     },
   });

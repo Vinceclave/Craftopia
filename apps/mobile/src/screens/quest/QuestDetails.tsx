@@ -87,6 +87,7 @@ export const QuestDetailsScreen = () => {
           title={quest?.title || ''}
           description={quest?.description || ''}
           points={quest?.points_reward || 0}
+          wasteKg={quest?.waste_kg || 0} // NEW
           participants={quest?.participantCount || 0}
           isLoading={isLoading}
           isJoined={isJoined}
@@ -99,6 +100,7 @@ export const QuestDetailsScreen = () => {
             id={quest.challenge_id}
             description={quest.description}
             points={quest.points_reward}
+            wasteKg={quest.waste_kg} // NEW
           />
         )}
 

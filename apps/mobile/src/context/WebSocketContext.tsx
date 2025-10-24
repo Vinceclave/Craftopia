@@ -1,9 +1,11 @@
-// apps/mobile/src/context/WebSocketContext.tsx - CRITICAL FIX FOR BROADCAST
+// apps/mobile/src/context/WebSocketContext.tsx - WITH CHALLENGE & WASTE REAL-TIME UPDATES
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { wsManager, WebSocketEvent } from '~/config/websocket';
 import { useAuth } from './AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { postKeys } from '~/hooks/queries/usePosts';
+import { challengeKeys } from '~/hooks/queries/useChallenges';
+import { userChallengeKeys } from '~/hooks/queries/useUserChallenges';
 import { Alert } from 'react-native';
 
 interface WebSocketContextType {
@@ -53,7 +55,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     listenersRegistered.current = true;
 
     // ========================================
-    // POST CREATED - BROADCAST EVENT (ALL CLIENTS)
+    // POST EVENTS - BROADCAST (ALL CLIENTS)
     // ========================================
     const handlePostCreated = (data: any) => {
       console.log('📢 [WS BROADCAST] Post created:', {
@@ -63,7 +65,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         currentUser: user.username
       });
       
-      // Invalidate ALL post queries on ALL devices
       queryClient.invalidateQueries({ 
         queryKey: ['posts'],
         refetchType: 'all'
@@ -72,168 +73,144 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('✅ Post created - all caches invalidated');
     };
 
-    // ========================================
-    // POST LIKED - BROADCAST EVENT (ALL CLIENTS)
-    // ========================================
     const handlePostLiked = (data: any) => {
-  console.log('❤️ [WS BROADCAST] Post liked:', {
-    postId: data.postId,
-    username: data.username,
-    likeCount: data.likeCount,
-    isLiked: data.isLiked
-  });
-  
-  // Update ALL post queries immediately
-  queryClient.setQueriesData(
-    { queryKey: ['posts'] },
-    (oldData: any) => {
-      if (!oldData) return oldData;
-      
-      const updatePost = (post: any) => {
-        if (post.post_id !== data.postId) return post;
-        
-        return {
-          ...post,
-          likeCount: data.likeCount, // Use server value
-          // Only update isLiked for current user
-          isLiked: data.userId === user?.id ? data.isLiked : post.isLiked
-        };
-      };
-      
-      // Handle array structure
-      if (Array.isArray(oldData)) {
-        return oldData.map(updatePost);
-      }
-      
-      // Handle infinite query structure  
-      if (oldData.pages) {
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: any) => ({
-            ...page,
-            posts: page.posts?.map(updatePost) || [],
-          })),
-        };
-      }
-      
-      return oldData;
-    }
-  );
-  
-  // Update individual post cache
-  queryClient.setQueryData(
-    postKeys.detail(data.postId),
-    (oldPost: any) => {
-      if (!oldPost) return oldPost;
-      return {
-        ...oldPost,
+      console.log('❤️ [WS BROADCAST] Post liked:', {
+        postId: data.postId,
+        username: data.username,
         likeCount: data.likeCount,
-        isLiked: data.userId === user?.id ? data.isLiked : oldPost.isLiked
-      };
-    }
-  );
-  
-  // CRITICAL: Force refetch to ensure consistency
-  queryClient.invalidateQueries({ 
-    queryKey: ['posts'],
-    refetchType: 'none' // Don't refetch, just mark as stale
-  });
-};
-
-    // ========================================
-    // POST COMMENTED - BROADCAST EVENT (ALL CLIENTS)
-    // ========================================
-    const handlePostCommented = (data: any) => {
-  console.log('💬 [WS BROADCAST] Post commented:', {
-    postId: data.postId,
-    commentId: data.commentId,
-    username: data.username
-  });
-  
-  // Update ALL post queries immediately
-  queryClient.setQueriesData(
-    { queryKey: ['posts'] },
-    (oldData: any) => {
-      if (!oldData) return oldData;
-      
-      const updatePost = (post: any) => {
-        if (post.post_id !== data.postId) return post;
-        
-        // Use server value if provided, otherwise increment
-        const newCommentCount = data.commentCount ?? (post.commentCount + 1);
-        
-        return {
-          ...post,
-          commentCount: newCommentCount
-        };
-      };
-      
-      // Handle array structure
-      if (Array.isArray(oldData)) {
-        return oldData.map(updatePost);
-      }
-      
-      // Handle infinite query structure
-      if (oldData.pages) {
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: any) => ({
-            ...page,
-            posts: page.posts?.map(updatePost) || [],
-          })),
-        };
-      }
-      
-      return oldData;
-    }
-  );
-  
-  // Update individual post cache
-  queryClient.setQueryData(
-    postKeys.detail(data.postId),
-    (oldPost: any) => {
-      if (!oldPost) return oldPost;
-      return {
-        ...oldPost,
-        commentCount: data.commentCount ?? (oldPost.commentCount + 1)
-      };
-    }
-  );
-  
-  // Invalidate comments for that post
-  queryClient.invalidateQueries({ 
-    queryKey: postKeys.comments(data.postId),
-    refetchType: 'active'
-  });
-  
-  // Mark posts as stale
-  queryClient.invalidateQueries({ 
-    queryKey: ['posts'],
-    refetchType: 'none'
-  });
-};
-    // ========================================
-    // POST DELETED - BROADCAST EVENT (ALL CLIENTS)
-    // ========================================
-    const handlePostDeleted = (data: any) => {
-      console.log('🗑️ [WS BROADCAST] Post deleted:', {
-        postId: data.postId
+        isLiked: data.isLiked
       });
       
-      // Remove from ALL cached queries on ALL devices
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
           
-          // Handle array structure
+          const updatePost = (post: any) => {
+            if (post.post_id !== data.postId) return post;
+            
+            return {
+              ...post,
+              likeCount: data.likeCount,
+              isLiked: data.userId === user?.id ? data.isLiked : post.isLiked
+            };
+          };
+          
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+          
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+          
+          return oldData;
+        }
+      );
+      
+      queryClient.setQueryData(
+        postKeys.detail(data.postId),
+        (oldPost: any) => {
+          if (!oldPost) return oldPost;
+          return {
+            ...oldPost,
+            likeCount: data.likeCount,
+            isLiked: data.userId === user?.id ? data.isLiked : oldPost.isLiked
+          };
+        }
+      );
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['posts'],
+        refetchType: 'none'
+      });
+    };
+
+    const handlePostCommented = (data: any) => {
+      console.log('💬 [WS BROADCAST] Post commented:', {
+        postId: data.postId,
+        commentId: data.commentId,
+        username: data.username
+      });
+      
+      queryClient.setQueriesData(
+        { queryKey: ['posts'] },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          
+          const updatePost = (post: any) => {
+            if (post.post_id !== data.postId) return post;
+            
+            const newCommentCount = data.commentCount ?? (post.commentCount + 1);
+            
+            return {
+              ...post,
+              commentCount: newCommentCount
+            };
+          };
+          
+          if (Array.isArray(oldData)) {
+            return oldData.map(updatePost);
+          }
+          
+          if (oldData.pages) {
+            return {
+              ...oldData,
+              pages: oldData.pages.map((page: any) => ({
+                ...page,
+                posts: page.posts?.map(updatePost) || [],
+              })),
+            };
+          }
+          
+          return oldData;
+        }
+      );
+      
+      queryClient.setQueryData(
+        postKeys.detail(data.postId),
+        (oldPost: any) => {
+          if (!oldPost) return oldPost;
+          return {
+            ...oldPost,
+            commentCount: data.commentCount ?? (oldPost.commentCount + 1)
+          };
+        }
+      );
+      
+      queryClient.invalidateQueries({ 
+        queryKey: postKeys.comments(data.postId),
+        refetchType: 'active'
+      });
+      
+      queryClient.invalidateQueries({ 
+        queryKey: ['posts'],
+        refetchType: 'none'
+      });
+    };
+
+    const handlePostDeleted = (data: any) => {
+      console.log('🗑️ [WS BROADCAST] Post deleted:', {
+        postId: data.postId
+      });
+      
+      queryClient.setQueriesData(
+        { queryKey: ['posts'] },
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          
           if (Array.isArray(oldData)) {
             const filtered = oldData.filter((post: any) => post.post_id !== data.postId);
             console.log(`🗑️ Removed post from array (${oldData.length} -> ${filtered.length})`);
             return filtered;
           }
           
-          // Handle infinite query structure
           if (oldData.pages) {
             const updated = {
               ...oldData,
@@ -250,10 +227,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       );
       
-      // Remove individual post from cache
       queryClient.removeQueries({ queryKey: postKeys.detail(data.postId) });
       
-      // Force refetch
       queryClient.invalidateQueries({ 
         queryKey: ['posts'], 
         refetchType: 'all' 
@@ -262,16 +237,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('✅ Post deleted and removed from all devices');
     };
 
-    // ========================================
-    // POST UPDATED - BROADCAST EVENT (ALL CLIENTS)
-    // ========================================
     const handlePostUpdated = (data: any) => {
       console.log('📝 [WS BROADCAST] Post updated:', {
         post_id: data.post_id,
         title: data.title
       });
       
-      // Update specific post in cache
       queryClient.setQueryData(
         postKeys.detail(data.post_id),
         (oldPost: any) => {
@@ -280,7 +251,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       );
       
-      // Update in all lists
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
@@ -313,6 +283,107 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     // ========================================
+    // CHALLENGE EVENTS - REAL-TIME UPDATES
+    // ========================================
+    const handleChallengeCreated = (data: any) => {
+      console.log('🎯 [WS BROADCAST] Challenge created:', {
+        challenge_id: data.challenge_id,
+        title: data.title,
+        waste_kg: data.waste_kg
+      });
+      
+      // Invalidate all challenge queries
+      queryClient.invalidateQueries({ 
+        queryKey: challengeKeys.all,
+        refetchType: 'all'
+      });
+      
+      // Show notification
+      Alert.alert(
+        '🎯 New Challenge!',
+        `${data.title} - Save ${data.waste_kg}kg of waste!`,
+        [{ text: 'OK' }]
+      );
+    };
+
+    const handleChallengeJoined = (data: any) => {
+      console.log('✅ [WS USER] Challenge joined:', {
+        challengeId: data.challenge?.challenge_id,
+        userChallengeId: data.userChallengeId
+      });
+      
+      if (data.userId === user.id) {
+        // Invalidate user's challenges
+        queryClient.invalidateQueries({ 
+          queryKey: userChallengeKeys.lists()
+        });
+        
+        // Update progress for this challenge
+        queryClient.invalidateQueries({
+          queryKey: userChallengeKeys.progress(data.challenge?.challenge_id, user.id)
+        });
+      }
+    };
+
+    const handleChallengeVerified = (data: any) => {
+      console.log('🎉 [WS USER] Challenge verified:', {
+        userChallengeId: data.userChallengeId,
+        points_awarded: data.points_awarded,
+        waste_kg_saved: data.waste_kg_saved // NEW
+      });
+      
+      if (data.userId === user.id) {
+        // Invalidate user challenges
+        queryClient.invalidateQueries({ 
+          queryKey: userChallengeKeys.lists()
+        });
+        
+        // Invalidate waste stats - NEW
+        queryClient.invalidateQueries({
+          queryKey: userChallengeKeys.wasteStats(user.id)
+        });
+        
+        // Show success notification
+        Alert.alert(
+          '🎉 Challenge Completed!',
+          `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
+          [{ text: 'Awesome!' }]
+        );
+      }
+    };
+
+    const handlePointsAwarded = (data: any) => {
+      console.log('⭐ [WS USER] Points awarded:', {
+        amount: data.amount,
+        waste_kg_saved: data.waste_kg_saved, // NEW
+        reason: data.reason
+      });
+      
+      if (data.userId === user.id) {
+        // Invalidate user stats
+        queryClient.invalidateQueries({ 
+          queryKey: ['userStats', user.id]
+        });
+        
+        // Invalidate waste stats - NEW
+        queryClient.invalidateQueries({
+          queryKey: userChallengeKeys.wasteStats(user.id)
+        });
+      }
+    };
+
+    const handleLeaderboardUpdated = (data: any) => {
+      console.log('🏆 [WS BROADCAST] Leaderboard updated:', {
+        challengeId: data.challengeId
+      });
+      
+      // Invalidate leaderboard queries
+      queryClient.invalidateQueries({ 
+        queryKey: ['leaderboard']
+      });
+    };
+
+    // ========================================
     // CONNECTION EVENTS
     // ========================================
     const handleConnected = (data: any) => {
@@ -332,6 +403,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         queryKey: ['posts'],
         refetchType: 'all'
       });
+      queryClient.invalidateQueries({ 
+        queryKey: challengeKeys.all,
+        refetchType: 'all'
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: userChallengeKeys.all,
+        refetchType: 'all'
+      });
     };
 
     // ========================================
@@ -339,12 +418,19 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // ========================================
     console.log('📡 Registering WebSocket event handlers...');
     
-    // Post events - ALL BROADCAST
+    // Post events
     wsManager.on('post:created', handlePostCreated);
     wsManager.on('post:liked', handlePostLiked);
     wsManager.on('post:commented', handlePostCommented);
     wsManager.on('post:deleted', handlePostDeleted);
     wsManager.on('post:updated', handlePostUpdated);
+    
+    // Challenge events - NEW
+    wsManager.on('challenge:created', handleChallengeCreated);
+    wsManager.on('challenge:joined', handleChallengeJoined);
+    wsManager.on('challenge:verified', handleChallengeVerified);
+    wsManager.on('points:awarded', handlePointsAwarded);
+    wsManager.on('leaderboard:updated', handleLeaderboardUpdated);
     
     // Connection events
     wsManager.on('connected', handleConnected);
@@ -366,6 +452,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       wsManager.off('post:commented', handlePostCommented);
       wsManager.off('post:deleted', handlePostDeleted);
       wsManager.off('post:updated', handlePostUpdated);
+      
+      // Challenge events
+      wsManager.off('challenge:created', handleChallengeCreated);
+      wsManager.off('challenge:joined', handleChallengeJoined);
+      wsManager.off('challenge:verified', handleChallengeVerified);
+      wsManager.off('points:awarded', handlePointsAwarded);
+      wsManager.off('leaderboard:updated', handleLeaderboardUpdated);
       
       // Connection events
       wsManager.off('connected', handleConnected);

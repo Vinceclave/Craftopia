@@ -8,6 +8,7 @@ interface Challenge {
   title: string;
   description: string;
   points_reward: number;
+  waste_kg: number; // NEW: waste saved in kg
   category: string;
   material_type: string;
   source: string;
@@ -28,6 +29,7 @@ interface UserChallenge {
   proof_url?: string;
   description?: string;
   points?: number;
+  waste_kg_saved: number; // NEW: actual waste saved by user
   verified_at?: string;
   completedAt?: string;
   created_at: string;
@@ -48,6 +50,7 @@ const normalizeChallenge = (challenge: any): Challenge => ({
   title: challenge.title || 'No title',
   description: challenge.description || 'No description',
   points_reward: Number(challenge.points_reward || challenge.points || 0),
+  waste_kg: Number(challenge.waste_kg || 0), // NEW
   category: challenge.category || 'Other',
   material_type: challenge.material_type || 'General',
   source: challenge.source || 'System',

@@ -1,4 +1,4 @@
-import { Award, Star, Users } from 'lucide-react-native'
+import { Award, Star, Users, Leaf } from 'lucide-react-native'
 import React from 'react'
 import { Text, View } from 'react-native'
 import Button from '~/components/common/Button'
@@ -9,6 +9,7 @@ interface DetailBannerProp {
   title: string
   description: string
   points: number
+  wasteKg?: number // NEW
   isLoading?: boolean
   isJoined: boolean
   onPress: () => void
@@ -19,7 +20,8 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
   category, 
   title, 
   description, 
-  points, 
+  points,
+  wasteKg = 0, // NEW
   isLoading = false,
   isJoined,
   onPress
@@ -58,6 +60,14 @@ export const DetailBanner: React.FC<DetailBannerProp> = ({
             <Award size={14} className="text-craftopia-primary" />
             <Text className="text-craftopia-primary text-sm font-medium ml-2">{points} Points</Text>
           </View>
+
+          {/* NEW: Waste indicator */}
+          {wasteKg > 0 && (
+            <View className="bg-green-50 px-3 py-1.5 rounded-full flex-row items-center">
+              <Leaf size={14} className="text-green-600" />
+              <Text className="text-green-600 text-sm font-medium ml-2">{wasteKg.toFixed(2)} kg</Text>
+            </View>
+          )}
 
           <View className="bg-craftopia-primary/10 px-3 py-1.5 rounded-full flex-row items-center">
             <Star size={14} className="text-craftopia-accent" />

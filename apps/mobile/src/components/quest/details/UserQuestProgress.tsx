@@ -1,7 +1,7 @@
 // apps/mobile/src/components/quest/details/UserQuestProgress.tsx
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
-import { CheckCircle, Clock, Upload } from 'lucide-react-native'
+import { CheckCircle, Clock, Upload, Leaf } from 'lucide-react-native'
 import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { useUserChallengeProgress, useSubmitChallengeVerification } from '~/hooks/queries/useUserChallenges'
@@ -11,12 +11,14 @@ interface UserQuestProgressProps {
   id: number
   description?: string
   points?: number
+  wasteKg?: number // NEW: potential waste to save
 }
 
 export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   id,
   description,
   points,
+  wasteKg = 0, // NEW
 }) => {
   const { success, error } = useAlert()
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -169,6 +171,16 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                 </Text>
               </View>
 
+              {/* NEW: Show waste saved if completed */}
+              {challengeData.status === 'completed' && challengeData.waste_kg_saved > 0 && (
+                <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
+                  <Leaf size={12} color="#16a34a" />
+                  <Text className="text-xs text-green-600 ml-1 font-medium">
+                    {challengeData.waste_kg_saved.toFixed(2)} kg saved
+                  </Text>
+                </View>
+              )}
+
               {challengeData.verified_at && (
                 <View className="flex-row items-center">
                   <CheckCircle size={12} color="#00A896" />
@@ -183,4 +195,4 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       )}
     </View>
   )
-}
+} 
