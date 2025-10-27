@@ -63,15 +63,6 @@ export const EcoQuestScreen = () => {
         } : null} 
         loading={statsLoading || wasteLoading} 
       />
-
-      {/* NEW: Detailed Waste Stats Card */}
-      {wasteStats && wasteStats.total_waste_kg > 0 && (
-        <WasteStatsCard 
-          data={wasteStats} 
-          loading={wasteLoading} 
-        />
-      )}
-
       <Achievements />
 
       <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
