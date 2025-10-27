@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import Button from '../common/Button';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { List } from 'lucide-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { EcoQuestStackParamList } from '~/navigations/types';
@@ -16,24 +15,24 @@ export const QuestHeader: React.FC<QuestHeaderProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="px-4 py-3 border-b border-craftopia-light bg-craftopia-surface">
+    <View className="px-4 py-4 bg-craftopia-surface">
       <View className="flex-row justify-between items-center">
         <View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary">
-            Eco Quest
+          <Text className="text-xl font-bold text-craftopia-textPrimary">
+            Eco Quests
           </Text>
-          <Text className="text-sm text-craftopia-textSecondary mt-0.5">
-            Complete quests, earn rewards
+          <Text className="text-sm text-craftopia-textSecondary mt-1">
+            Complete challenges, make an impact
           </Text>
         </View>
 
-        <Button
-          title=""
+        <TouchableOpacity
           onPress={handleSeeChallenges}
-          iconOnly
-          leftIcon={<List size={20} className="text-craftopia-textSecondary" />}
-          className="bg-transparent"
-        />
+          className="w-10 h-10 items-center justify-center rounded-full bg-craftopia-light"
+          activeOpacity={0.7}
+        >
+          <List size={18} color="#5D6B5D" />
+        </TouchableOpacity>
       </View>
     </View>
   );

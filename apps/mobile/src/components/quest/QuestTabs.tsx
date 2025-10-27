@@ -17,11 +17,11 @@ const QUEST_TABS: { key: QuestType; label: string }[] = [
 
 export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab }) => {
   return (
-    <View className="py-2 bg-craftopia-light">
+    <View className=" mt-4 py-3 bg-craftopia-surface">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="px-4"
+        contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         {QUEST_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -29,16 +29,16 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
             <TouchableOpacity
               key={tab.key}
               onPress={() => onChangeTab(tab.key)}
-              activeOpacity={0.8}
-              className={`mr-2 px-3 py-1.5 rounded-full border ${
+              activeOpacity={0.7}
+              className={`mr-3 px-4 py-2.5 rounded-lg ${
                 isActive
-                  ? 'bg-craftopia-primary border-craftopia-primary'
-                  : 'bg-craftopia-surface border-craftopia-light'
+                  ? 'bg-craftopia-primary'
+                  : 'bg-craftopia-light'
               }`}
             >
               <Text
-                className={`text-xs ${
-                  isActive ? 'text-craftopia-surface font-medium' : 'text-craftopia-textSecondary'
+                className={`text-sm font-medium ${
+                  isActive ? 'text-craftopia-surface' : 'text-craftopia-textSecondary'
                 }`}
               >
                 {tab.label}
@@ -49,4 +49,4 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
       </ScrollView>
     </View>
   );
-};
+} 

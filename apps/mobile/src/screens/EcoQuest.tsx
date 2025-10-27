@@ -63,7 +63,7 @@ export const EcoQuestScreen = () => {
         } : null} 
         loading={statsLoading || wasteLoading} 
       />
-      <Achievements />
+      {/* <Achievements /> */}
 
       <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 

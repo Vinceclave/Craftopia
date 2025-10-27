@@ -1,4 +1,3 @@
-// apps/mobile/src/components/quest/details/SkipChallengeModal.tsx - NEW
 import React, { useState } from 'react';
 import {
   Modal,
@@ -6,9 +5,17 @@ import {
   Text,
   TouchableOpacity,
   TextInput,
-  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { X, AlertTriangle } from 'lucide-react-native';
+import { 
+  X, 
+  AlertTriangle, 
+  CheckCircle, 
+  Package, 
+  Clock, 
+  Frown,
+  Zap 
+} from 'lucide-react-native';
 import Button from '~/components/common/Button';
 
 interface SkipChallengeModalProps {
@@ -19,11 +26,26 @@ interface SkipChallengeModalProps {
 }
 
 const SKIP_REASONS = [
-  { value: 'no_materials', label: "Don't have materials" },
-  { value: 'too_busy', label: 'Too busy right now' },
-  { value: 'not_interested', label: 'Not interested anymore' },
-  { value: 'too_difficult', label: 'Too difficult' },
-  { value: 'other', label: 'Other reason' },
+  { 
+    value: 'no_materials', 
+    label: "Don't have materials", 
+    icon: Package 
+  },
+  { 
+    value: 'too_busy', 
+    label: 'Too busy right now', 
+    icon: Clock 
+  },
+  { 
+    value: 'not_interested', 
+    label: 'Not interested anymore', 
+    icon: Frown 
+  },
+  { 
+    value: 'too_difficult', 
+    label: 'Too difficult', 
+    icon: Zap 
+  },
 ];
 
 export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
@@ -57,101 +79,194 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
       onRequestClose={handleClose}
     >
       <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-craftopia-surface rounded-t-xl p-4 max-h-[80%]">
-          {/* Header */}
-          <View className="flex-row justify-between items-center mb-4">
-            <View className="flex-row items-center">
-              <View className="p-2 bg-yellow-100 rounded-full mr-3">
-                <AlertTriangle size={20} color="#f59e0b" />
-              </View>
-              <Text className="text-lg font-semibold text-craftopia-textPrimary">
-                Skip Challenge?
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleClose}
-              className="p-2"
-              disabled={loading}
-            >
-              <X size={20} color="#6b7280" />
-            </TouchableOpacity>
+        <View className="bg-craftopia-surface rounded-t-2xl max-h-[90%]">
+          {/* Handle Bar */}
+          <View className="items-center pt-3 pb-2">
+            <View className="w-10 h-1 bg-craftopia-light rounded-full" />
           </View>
 
-          {/* Description */}
-          <Text className="text-sm text-craftopia-textSecondary mb-4">
-            You can skip this challenge and try another one. This won't affect your points.
-          </Text>
-
-          {/* Reason Selection */}
-          <Text className="text-sm font-medium text-craftopia-textPrimary mb-2">
-            Why are you skipping? (Optional)
-          </Text>
-
-          <View className="space-y-2 mb-4">
-            {SKIP_REASONS.map((reason) => (
-              <TouchableOpacity
-                key={reason.value}
-                onPress={() => setSelectedReason(reason.value)}
-                disabled={loading}
-                className={`p-3 rounded-lg border ${
-                  selectedReason === reason.value
-                    ? 'bg-craftopia-primary/10 border-craftopia-primary'
-                    : 'bg-craftopia-light border-craftopia-light'
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    selectedReason === reason.value
-                      ? 'text-craftopia-primary font-medium'
-                      : 'text-craftopia-textSecondary'
-                  }`}
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View className="px-4 pb-6">
+              {/* Header */}
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center flex-1">
+                  <View className="w-10 h-10 bg-yellow-100 rounded-full items-center justify-center mr-3">
+                    <AlertTriangle size={20} color="#f59e0b" />
+                  </View>
+                  <View>
+                    <Text className="text-lg font-bold text-craftopia-textPrimary">
+                      Skip Challenge
+                    </Text>
+                    <Text className="text-xs text-craftopia-textSecondary">
+                      No penalty, try another anytime
+                    </Text>
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  onPress={handleClose}
+                  className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
+                  disabled={loading}
+                  activeOpacity={0.7}
                 >
-                  {reason.label}
+                  <X size={18} color="#5D6B5D" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Info Banner */}
+              <View className="bg-craftopia-light/70 p-3 rounded-xl mb-4">
+                <Text className="text-sm text-craftopia-textSecondary leading-relaxed">
+                  You can skip this challenge and explore others. Your points stay safe! 🌱
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+              </View>
 
-          {/* Custom Reason Input */}
-          {selectedReason === 'other' && (
-            <View className="mb-4">
-              <TextInput
-                value={customReason}
-                onChangeText={setCustomReason}
-                placeholder="Tell us more (optional)"
-                placeholderTextColor="#9ca3af"
-                multiline
-                numberOfLines={3}
-                maxLength={200}
-                className="bg-craftopia-light border border-craftopia-light rounded-lg p-3 text-craftopia-textPrimary text-sm"
-                style={{ textAlignVertical: 'top' }}
-                editable={!loading}
-              />
-              <Text className="text-xs text-craftopia-textSecondary mt-1 text-right">
-                {customReason.length}/200
+              {/* Reason Selection */}
+              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">
+                Why are you skipping? (Optional)
               </Text>
-            </View>
-          )}
 
-          {/* Actions */}
-          <View className="flex-row gap-3">
-            <Button
-              title="Cancel"
-              onPress={handleClose}
-              size="md"
-              className="flex-1 bg-craftopia-light"
-              textClassName="text-craftopia-textSecondary"
-              disabled={loading}
-            />
-            <Button
-              title={loading ? "Skipping..." : "Skip Challenge"}
-              onPress={handleConfirm}
-              size="md"
-              className="flex-1"
-              loading={loading}
-              disabled={loading}
-            />
-          </View>
+              <View className="gap-2 mb-4">
+                {SKIP_REASONS.map((reason) => {
+                  const isSelected = selectedReason === reason.value;
+                  const IconComponent = reason.icon;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={reason.value}
+                      onPress={() => setSelectedReason(reason.value)}
+                      disabled={loading}
+                      activeOpacity={0.7}
+                      className={`p-3 rounded-xl border flex-row items-center ${
+                        isSelected
+                          ? 'bg-craftopia-primary/10 border-craftopia-primary'
+                          : 'bg-craftopia-surface border-craftopia-light'
+                      }`}
+                      style={{
+                        shadowColor: isSelected ? '#374A36' : 'transparent',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isSelected ? 0.1 : 0,
+                        shadowRadius: 2,
+                        elevation: isSelected ? 1 : 0,
+                      }}
+                    >
+                      <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+                        isSelected ? 'bg-craftopia-primary/20' : 'bg-craftopia-light'
+                      }`}>
+                        <IconComponent 
+                          size={16} 
+                          color={isSelected ? '#374A36' : '#5D6B5D'} 
+                        />
+                      </View>
+                      
+                      <Text
+                        className={`flex-1 text-sm font-medium ${
+                          isSelected
+                            ? 'text-craftopia-primary'
+                            : 'text-craftopia-textSecondary'
+                        }`}
+                      >
+                        {reason.label}
+                      </Text>
+                      
+                      {isSelected && (
+                        <CheckCircle size={18} color="#374A36" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Other Reason Option */}
+                <TouchableOpacity
+                  onPress={() => setSelectedReason('other')}
+                  disabled={loading}
+                  activeOpacity={0.7}
+                  className={`p-3 rounded-xl border flex-row items-center ${
+                    selectedReason === 'other'
+                      ? 'bg-craftopia-primary/10 border-craftopia-primary'
+                      : 'bg-craftopia-surface border-craftopia-light'
+                  }`}
+                  style={{
+                    shadowColor: selectedReason === 'other' ? '#374A36' : 'transparent',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: selectedReason === 'other' ? 0.1 : 0,
+                    shadowRadius: 2,
+                    elevation: selectedReason === 'other' ? 1 : 0,
+                  }}
+                >
+                  <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
+                    selectedReason === 'other' ? 'bg-craftopia-primary/20' : 'bg-craftopia-light'
+                  }`}>
+                    <Text className={`text-base ${
+                      selectedReason === 'other' ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
+                    }`}>
+                      💭
+                    </Text>
+                  </View>
+                  
+                  <Text
+                    className={`flex-1 text-sm font-medium ${
+                      selectedReason === 'other'
+                        ? 'text-craftopia-primary'
+                        : 'text-craftopia-textSecondary'
+                    }`}
+                  >
+                    Other reason
+                  </Text>
+                  
+                  {selectedReason === 'other' && (
+                    <CheckCircle size={18} color="#374A36" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Custom Reason Input */}
+              {selectedReason === 'other' && (
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
+                    Tell us more (optional)
+                  </Text>
+                  <View className="bg-craftopia-light border border-craftopia-light rounded-xl overflow-hidden">
+                    <TextInput
+                      value={customReason}
+                      onChangeText={setCustomReason}
+                      placeholder="Share your thoughts..."
+                      placeholderTextColor="#9ca3af"
+                      multiline
+                      numberOfLines={4}
+                      maxLength={200}
+                      className="p-3 text-craftopia-textPrimary text-sm"
+                      style={{ textAlignVertical: 'top', minHeight: 100 }}
+                      editable={!loading}
+                    />
+                  </View>
+                  <Text className="text-xs text-craftopia-textSecondary mt-1.5 text-right">
+                    {customReason.length}/200
+                  </Text>
+                </View>
+              )}
+
+              {/* Actions */}
+              <View className="flex-row gap-3 mt-2">
+                <Button
+                  title="Cancel"
+                  onPress={handleClose}
+                  size="lg"
+                  variant="outline"
+                  className="flex-1 border-craftopia-light"
+                  textClassName="text-craftopia-textSecondary"
+                  disabled={loading}
+                />
+                <Button
+                  title={loading ? "Skipping..." : "Skip Challenge"}
+                  onPress={handleConfirm}
+                  size="lg"
+                  className="flex-1"
+                  loading={loading}
+                  disabled={loading}
+                />
+              </View>
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>

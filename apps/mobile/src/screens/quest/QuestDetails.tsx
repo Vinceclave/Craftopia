@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/quest/QuestDetails.tsx - FIXED VERSION
+// apps/mobile/src/screens/quest/QuestDetails.tsx - UPDATED WITH UNIFIED COMPONENT
 import React, { useState, useEffect } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -7,12 +7,11 @@ import { ScrollView, View, Text, TouchableOpacity } from 'react-native'
 import { SkipForward } from 'lucide-react-native'
 import { EcoQuestStackParamList } from '~/navigations/types'
 import { DetailHeader } from '~/components/quest/details/DetailHeader'
-import { DetailBanner } from '~/components/quest/details/DetailBanner'
-import { UserQuestProgress } from '~/components/quest/details/UserQuestProgress'
 import { SkipChallengeModal } from '~/components/quest/details/SkipChallengeModal'
 import { useChallenge } from '~/hooks/queries/useChallenges'
 import { useJoinChallenge, useUserChallengeProgress, useSkipChallenge } from '~/hooks/queries/useUserChallenges'
 import { useAlert } from '~/hooks/useAlert'
+import { QuestDetail } from '~/components/quest/details/QuestDetail'
 
 export const QuestDetailsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>()
@@ -182,27 +181,23 @@ export const QuestDetailsScreen = () => {
       <DetailHeader onBackPress={handleBack} questId={questId} />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <DetailBanner
+        {/* Unified Quest Detail Component */}
+        <QuestDetail
+          // Banner props
+          participants={quest?.participantCount || 0}
           category={quest?.category || ''}
           title={quest?.title || ''}
           description={quest?.description || ''}
           points={quest?.points_reward || 0}
           wasteKg={quest?.waste_kg || 0}
-          participants={quest?.participantCount || 0}
           isLoading={isLoading}
           isJoined={isJoined}
-          onPress={handleJoinPress}
+          onJoinPress={handleJoinPress}
+          
+          // Progress props
+          questId={questId}
+          progressDescription={quest?.description || ''}
         />
-
-        {/* Show progress component only if user has joined */}
-        {isJoined && quest && (
-          <UserQuestProgress
-            id={quest.challenge_id}
-            description={quest.description}
-            points={quest.points_reward}
-            wasteKg={quest.waste_kg}
-          />
-        )}
 
         {/* Skip Challenge Button */}
         {canSkip && (
@@ -212,7 +207,7 @@ export const QuestDetailsScreen = () => {
               className="flex-row items-center justify-center p-3 bg-craftopia-light rounded-lg border border-craftopia-light"
               activeOpacity={0.7}
             >
-              <SkipForward size={16} color="#6b7280" />
+              <SkipForward size={16} color="#5D6B5D" />
               <Text className="text-sm text-craftopia-textSecondary ml-2 font-medium">
                 Skip this challenge
               </Text>
