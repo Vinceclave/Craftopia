@@ -230,16 +230,17 @@ export const useSubmitChallengeVerification = () => {
         userId: user?.id,
       });
 
-      // ✅ FIXED: Use correct AI verification endpoint
+      // ✅ FIXED: Call the correct user challenge verification endpoint
       const response = await apiService.request(
-        API_ENDPOINTS.AI.VERIFY_CHALLENGE,
+        API_ENDPOINTS.USER_CHALLENGES.VERIFY(params.userChallengeId),
         {
           method: 'POST',
           data: {
-            challengeDescription: params.description || '',
-            imageUrl: params.proofUrl,
-            challengePoints: params.points || 0,
-            userId: user?.id, // ✅ FIXED: Send userId in body
+            proof_url: params.proofUrl,
+            description: params.description || '',
+            points: params.points || 0,
+            challenge_id: params.challengeId,
+            userId: user?.id,
           },
         }
       );

@@ -12,6 +12,10 @@ import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
 
 const ucRouter = Router();
 
+// ========================================
+// IMPORTANT: Specific routes MUST come BEFORE parameterized routes
+// ========================================
+
 // User actions
 ucRouter.post(
   '/join',
@@ -19,6 +23,37 @@ ucRouter.post(
   validate(joinChallengeSchema),
   userChallengeController.joinChallenge
 );
+
+// ✅ FIXED: Move specific routes BEFORE :challengeId routes
+ucRouter.get(
+  '/pending-verifications',
+  requireAdmin,
+  userChallengeController.getPendingVerifications
+);
+
+ucRouter.get(
+  '/leaderboard',
+  requireAuth,
+  userChallengeController.getChallengeLeaderboard
+);
+
+// ✅ FIXED: Move waste stats route BEFORE :challengeId
+ucRouter.get(
+  '/my-waste-stats',
+  requireAuth,
+  userChallengeController.getMyWasteStats
+);
+
+// ✅ FIXED: Move user challenges list BEFORE :challengeId
+ucRouter.get(
+  '/user/:userId?',
+  requireAuth,
+  userChallengeController.getUserChallenges
+);
+
+// ========================================
+// Parameterized routes come AFTER specific routes
+// ========================================
 
 ucRouter.post(
   '/:userChallengeId/complete',
@@ -46,39 +81,15 @@ ucRouter.post(
 ucRouter.post(
   '/:userChallengeId/skip',
   requireAuth,
-  validate(skipChallengeSchema), // ✅ Add validation
+  validate(skipChallengeSchema),
   userChallengeController.skipChallenge
 );
 
-ucRouter.get(
-  '/pending-verifications',
-  requireAdmin,
-  userChallengeController.getPendingVerifications
-);
-
-// User queries
-ucRouter.get(
-  '/user/:userId?',
-  requireAuth,
-  userChallengeController.getUserChallenges
-);
-
+// ✅ FIXED: This should be LAST since it uses :challengeId parameter
 ucRouter.get(
   '/:challengeId',
   requireAuth,
   userChallengeController.getUserChallengeById
-);
-
-ucRouter.get(
-  '/leaderboard',
-  requireAuth,
-  userChallengeController.getChallengeLeaderboard
-);
-
-ucRouter.get(
-  '/my-waste-stats',
-  requireAuth,
-  userChallengeController.getMyWasteStats
 );
 
 export default ucRouter;

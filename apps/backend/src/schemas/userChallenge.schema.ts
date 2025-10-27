@@ -10,8 +10,15 @@ export const completeChallengeSchema = Joi.object({
   proof_url: commonSchemas.optionalUrl
 });
 
+// ✅ FIXED: Allow both full URLs and relative paths for proof_url
 export const verifyChallengeSchema = Joi.object({
-  proof_url: commonSchemas.url,
+  proof_url: Joi.alternatives().try(
+    Joi.string().uri(), // Full URL: http://example.com/image.jpg
+    Joi.string().pattern(/^\/uploads\//) // Relative path: /uploads/challenges/image.jpg
+  ).required().messages({
+    'alternatives.match': 'proof_url must be a valid URL or path starting with /uploads/',
+    'any.required': 'proof_url is required'
+  }),
   description: commonSchemas.requiredString(1, 500),
   points: Joi.number().positive().required(),
   challenge_id: commonSchemas.positiveId,

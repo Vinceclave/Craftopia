@@ -31,7 +31,7 @@ export const completeChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userChallengeId = Number(req.params.userChallengeId);
   const { proof_url, description, points, challenge_id, userId } = req.body;
-
+  
   const updated = await userChallengeService.verifyChallenge(
     userChallengeId,
     proof_url,
