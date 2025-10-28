@@ -5,10 +5,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { QuestHeader } from '~/components/quest/QuestHeader';
 import { QuestBanner } from '~/components/quest/QuestBanner';
-import { Achievements } from '~/components/quest/Achievements';
 import { QuestTabs } from '~/components/quest/QuestTabs';
 import { QuestList } from '~/components/quest/QuestList';
-import { WasteStatsCard } from '~/components/quest/WasteStatsCard'; // NEW
 import { useChallenges } from '~/hooks/queries/useChallenges';
 import { useUserWasteStats } from '~/hooks/queries/useUserChallenges'; // NEW
 import { EcoQuestStackParamList } from '~/navigations/types';
@@ -26,6 +24,8 @@ export const EcoQuestScreen = () => {
     isLoading: statsLoading, 
     error: statsError 
   } = useUserStats();
+
+  console.log(userStats)
 
   // NEW: Waste stats query
   const {

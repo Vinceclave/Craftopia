@@ -1,9 +1,81 @@
-// apps/mobile/src/components/home/HomeQuest.tsx
-import React from 'react';
+// apps/mobile/src/components/home/HomeQuest.tsx - REAL-TIME VERSION
+import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Target, CheckCircle, Clock, ChevronRight, Flame, Calendar, Zap } from 'lucide-react-native';
+import { useWebSocket } from '~/context/WebSocketContext';
+import { WebSocketEvent } from '~/config/websocket';
 
-export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
+export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress, refetch }) => {
+  const { on, off, isConnected } = useWebSocket();
+  const [newChallengeAlert, setNewChallengeAlert] = useState(false);
+  const [updatedChallengeIds, setUpdatedChallengeIds] = useState<Set<number>>(new Set());
+
+  // Real-time updates via WebSocket
+  useEffect(() => {
+    if (!isConnected) return;
+
+    console.log('🎯 HomeQuest: Setting up real-time listeners');
+
+    // New challenge created
+    const handleChallengeCreated = (data: any) => {
+      console.log('🆕 HomeQuest: New challenge created:', data);
+      setNewChallengeAlert(true);
+      setTimeout(() => setNewChallengeAlert(false), 3000);
+      refetch?.(); // Refresh challenges list
+    };
+
+    // Challenge updated
+    const handleChallengeUpdated = (data: any) => {
+      console.log('📝 HomeQuest: Challenge updated:', data);
+      setUpdatedChallengeIds(prev => new Set(prev).add(data.challenge?.challenge_id));
+      setTimeout(() => {
+        setUpdatedChallengeIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(data.challenge?.challenge_id);
+          return newSet;
+        });
+      }, 2000);
+      refetch?.();
+    };
+
+    // Challenge joined by user
+    const handleChallengeJoined = (data: any) => {
+      console.log('✅ HomeQuest: Challenge joined:', data);
+      refetch?.();
+    };
+
+    // Challenge verified
+    const handleChallengeVerified = (data: any) => {
+      console.log('🎉 HomeQuest: Challenge verified:', data);
+      refetch?.();
+    };
+
+    // Leaderboard updated
+    const handleLeaderboardUpdated = (data: any) => {
+      console.log('🏆 HomeQuest: Leaderboard updated:', data);
+      // Optionally refresh if needed
+    };
+
+    // Register listeners
+    on(WebSocketEvent.CHALLENGE_CREATED, handleChallengeCreated);
+    on(WebSocketEvent.CHALLENGE_UPDATED, handleChallengeUpdated);
+    on(WebSocketEvent.CHALLENGE_JOINED, handleChallengeJoined);
+    on(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
+    on(WebSocketEvent.LEADERBOARD_UPDATED, handleLeaderboardUpdated);
+
+    console.log('✅ HomeQuest: Real-time listeners registered');
+
+    // Cleanup
+    return () => {
+      console.log('🧹 HomeQuest: Removing real-time listeners');
+      off(WebSocketEvent.CHALLENGE_CREATED, handleChallengeCreated);
+      off(WebSocketEvent.CHALLENGE_UPDATED, handleChallengeUpdated);
+      off(WebSocketEvent.CHALLENGE_JOINED, handleChallengeJoined);
+      off(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
+      off(WebSocketEvent.LEADERBOARD_UPDATED, handleLeaderboardUpdated);
+    };
+  }, [isConnected, on, off, refetch]);
+
   // Loading State
   if (loading) {
     return (
@@ -120,6 +192,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
     const progress = quest.progress || 0;
     const total = quest.total || 1;
     const progressPercent = (progress / total) * 100;
+    const isUpdated = updatedChallengeIds.has(quest.challenge_id || quest.id);
 
     return (
       <TouchableOpacity
@@ -130,13 +203,26 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           shadowOpacity: isCompleted ? 0.03 : 0.05,
           shadowRadius: 8,
           elevation: 2,
-          backgroundColor: isCompleted ? 'rgba(55, 74, 54, 0.03)' : '#FFFFFF',
-          borderWidth: isCompleted ? 1 : 0,
-          borderColor: isCompleted ? 'rgba(55, 74, 54, 0.15)' : 'transparent',
+          backgroundColor: isUpdated ? 'rgba(55, 74, 54, 0.08)' : isCompleted ? 'rgba(55, 74, 54, 0.03)' : '#FFFFFF',
+          borderWidth: isCompleted || isUpdated ? 1 : 0,
+          borderColor: isUpdated ? 'rgba(55, 74, 54, 0.3)' : isCompleted ? 'rgba(55, 74, 54, 0.15)' : 'transparent',
+          transform: isUpdated ? [{ scale: 1.02 }] : [{ scale: 1 }],
         }}
         onPress={() => onQuestPress?.(quest)}
         activeOpacity={0.7}
       >
+        {/* "Updated" Badge */}
+        {isUpdated && (
+          <View 
+            className="absolute -top-2 -right-2 px-2 py-1 rounded-full"
+            style={{ backgroundColor: '#374A36' }}
+          >
+            <Text className="text-xs font-bold text-white">
+              Updated!
+            </Text>
+          </View>
+        )}
+
         {/* Header */}
         <View className="flex-row items-center justify-between mb-3">
           {/* Status Badge */}
@@ -159,9 +245,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
             )}
             <Text 
               className="text-xs font-bold uppercase tracking-wide ml-1"
-              style={{ 
-                color: '#374A36'
-              }}
+              style={{ color: '#374A36' }}
             >
               {isCompleted ? 'Done' : quest.category || 'Quest'}
             </Text>
@@ -255,6 +339,23 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
   return (
     <View className="px-4 mb-4">
+      {/* New Challenge Alert */}
+      {newChallengeAlert && (
+        <View 
+          className="mb-3 p-3 rounded-xl flex-row items-center"
+          style={{ 
+            backgroundColor: 'rgba(55, 74, 54, 0.15)',
+            borderWidth: 1,
+            borderColor: 'rgba(55, 74, 54, 0.3)',
+          }}
+        >
+          <Zap size={16} color="#374A36" />
+          <Text className="text-sm font-bold ml-2 flex-1" style={{ color: '#374A36' }}>
+            New challenge available! 🎯
+          </Text>
+        </View>
+      )}
+
       {/* Section Header */}
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
@@ -265,9 +366,14 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
             <Target size={18} color="#374A36" />
           </View>
           <View>
-            <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
-              Daily Quests
-            </Text>
+            <View className="flex-row items-center">
+              <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
+                Daily Quests
+              </Text>
+              {isConnected && (
+                <View className="w-2 h-2 rounded-full bg-green-500 ml-2" />
+              )}
+            </View>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
               {completedCount}/{totalCount} completed today
             </Text>

@@ -1,11 +1,19 @@
-// apps/mobile/src/components/home/HomeStats.tsx
-import React from 'react';
+// apps/mobile/src/components/home/HomeStats.tsx - REAL-TIME VERSION
+import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
 import { Leaf, TrendingUp, Award, ChevronRight, Sparkles, Palette, Trophy } from 'lucide-react-native';
 import { useUserStats } from '~/hooks/useUserStats';
+import { useWebSocket } from '~/context/WebSocketContext';
+import { WebSocketEvent } from '~/config/websocket';
+import { useUserWasteStats } from '~/hooks/queries/useUserChallenges';
 
 export const HomeStats = () => {
-  const { data: userStats } = useUserStats();
+  const { data: userStats, refetch } = useUserStats();
+
+  console.log(userStats)
+  const { on, off, isConnected } = useWebSocket();
+  const [animatePoints, setAnimatePoints] = useState(false);
+  const [animateWaste, setAnimateWaste] = useState(false);
 
   const stats = {
     wasteSaved: ((userStats?.points || 0) * 0.1).toFixed(1),
@@ -13,6 +21,64 @@ export const HomeStats = () => {
     crafts: userStats?.crafts_created || 0,
     challenges: userStats?.challenges_completed || 0,
   };
+
+  const {
+      data: wasteStats,
+      isLoading: wasteLoading,
+      error: wasteError
+    } = useUserWasteStats();
+  
+
+    console.log(wasteStats)
+
+  // Real-time updates via WebSocket
+  useEffect(() => {
+    if (!isConnected) return;
+
+    console.log('📊 HomeStats: Setting up real-time listeners');
+
+    // Listen for points updates
+    const handlePointsAwarded = (data: any) => {
+      console.log('⭐ HomeStats: Points awarded event received:', data);
+      setAnimatePoints(true);
+      setTimeout(() => setAnimatePoints(false), 1000);
+      refetch(); // Refresh stats
+    };
+
+    const handlePointsUpdated = (data: any) => {
+      console.log('📈 HomeStats: Points updated event received:', data);
+      setAnimatePoints(true);
+      setTimeout(() => setAnimatePoints(false), 1000);
+      refetch();
+    };
+
+    // Listen for challenge completion (affects waste saved)
+    const handleChallengeVerified = (data: any) => {
+      console.log('🎉 HomeStats: Challenge verified event received:', data);
+      setAnimateWaste(true);
+      setAnimatePoints(true);
+      setTimeout(() => {
+        setAnimateWaste(false);
+        setAnimatePoints(false);
+      }, 1000);
+      refetch();
+    };
+
+    // Register listeners
+    on(WebSocketEvent.POINTS_AWARDED, handlePointsAwarded);
+    on(WebSocketEvent.POINTS_UPDATED, handlePointsUpdated);
+    on(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
+
+    console.log('✅ HomeStats: Real-time listeners registered');
+
+    // Cleanup
+    return () => {
+      console.log('🧹 HomeStats: Removing real-time listeners');
+      off(WebSocketEvent.POINTS_AWARDED, handlePointsAwarded);
+      off(WebSocketEvent.POINTS_UPDATED, handlePointsUpdated);
+      off(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
+    };
+  }, [isConnected, on, off, refetch]);
 
   return (
     <View className="px-4 pt-4">
@@ -53,9 +119,10 @@ export const HomeStats = () => {
         <View 
           className="rounded-xl p-4 mb-3"
           style={{ 
-            backgroundColor: 'rgba(55, 74, 54, 0.08)',
+            backgroundColor: animateWaste ? 'rgba(55, 74, 54, 0.15)' : 'rgba(55, 74, 54, 0.08)',
             borderWidth: 1,
-            borderColor: 'rgba(55, 74, 54, 0.15)',
+            borderColor: animateWaste ? 'rgba(55, 74, 54, 0.3)' : 'rgba(55, 74, 54, 0.15)',
+            transform: animateWaste ? [{ scale: 1.02 }] : [{ scale: 1 }],
           }}
         >
           <View className="flex-row items-center justify-between">
@@ -72,13 +139,13 @@ export const HomeStats = () => {
                 </Text>
               </View>
               <Text className="text-3xl font-bold mb-1" style={{ color: '#374A36' }}>
-                {stats.wasteSaved}
+                {wasteStats.total_waste_kg}
                 <Text className="text-lg" style={{ color: '#6B7280' }}> kg</Text>
               </Text>
               <View className="flex-row items-center">
                 <Sparkles size={12} color="#374A36" />
                 <Text className="text-xs font-semibold ml-1" style={{ color: '#374A36' }}>
-                  Amazing progress!
+                  {animateWaste ? 'Just updated! 🎉' : 'Amazing progress!'}
                 </Text>
               </View>
             </View>
@@ -98,7 +165,10 @@ export const HomeStats = () => {
           {/* Points */}
           <View 
             className="flex-1 rounded-xl p-3"
-            style={{ backgroundColor: '#F9FAFB' }}
+            style={{ 
+              backgroundColor: animatePoints ? 'rgba(212, 169, 106, 0.15)' : '#F9FAFB',
+              transform: animatePoints ? [{ scale: 1.05 }] : [{ scale: 1 }],
+            }}
           >
             <View className="flex-row items-center mb-2">
               <View 
