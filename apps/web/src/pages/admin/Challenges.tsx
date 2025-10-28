@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/Challenges.tsx - WITH WEBSOCKET
+// apps/web/src/pages/admin/Challenges.tsx - FIXED VERSION
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trophy, Plus, Loader2, RefreshCw, Sparkles, Clock, Users, Zap } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Trophy, Plus, Loader2, RefreshCw, Sparkles, Clock, Users, Zap, AlertCircle } from 'lucide-react';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
@@ -30,33 +31,53 @@ export default function AdminChallenges() {
     refetchPending
   } = useChallenges();
 
-  const { success, info } = useToast();
+  const { toast } = useToast();
 
-  // WebSocket handlers
+  // WebSocket handlers with proper error handling
   const handleChallengeCreated = useCallback((data: any) => {
-    success(data.message || 'New challenge available!');
+    toast({
+      title: "New Challenge Created",
+      description: data.message || 'New challenge is now available!',
+      variant: "default"
+    });
     refetch();
-  }, [refetch, success]);
+  }, [refetch, toast]);
 
   const handleChallengeUpdated = useCallback((data: any) => {
-    info(data.message || 'A challenge was updated');
+    toast({
+      title: "Challenge Updated",
+      description: data.message || 'A challenge has been updated',
+      variant: "default"
+    });
     refetch();
-  }, [refetch, info]);
+  }, [refetch, toast]);
 
   const handleChallengeDeleted = useCallback((data: any) => {
-    info(data.message || 'A challenge was removed');
+    toast({
+      title: "Challenge Deleted",
+      description: data.message || 'A challenge has been removed',
+      variant: "default"
+    });
     refetch();
-  }, [refetch, info]);
+  }, [refetch, toast]);
 
   const handleChallengeCompleted = useCallback((data: any) => {
-    info('New challenge submission pending verification!' + data);
+    toast({
+      title: "New Submission",
+      description: 'A challenge submission is pending verification!',
+      variant: "default"
+    });
     refetchPending();
-  }, [refetchPending, info]);
+  }, [refetchPending, toast]);
 
   const handleChallengeVerified = useCallback((data: any) => {
-    success('Challenge verification completed!' + data);
+    toast({
+      title: "Verification Complete",
+      description: 'A challenge has been verified!',
+      variant: "default"
+    });
     refetchPending();
-  }, [refetchPending, success]);
+  }, [refetchPending, toast]);
 
   // Subscribe to WebSocket events
   useWebSocketChallenges({
@@ -72,6 +93,7 @@ export default function AdminChallenges() {
     title: '',
     description: '',
     points_reward: 25,
+    waste_kg: 0,
     material_type: 'plastic',
     category: 'daily'
   });
@@ -81,17 +103,26 @@ export default function AdminChallenges() {
     
     try {
       await createChallenge(formData);
-      success('Challenge created successfully!');
+      toast({
+        title: "Success",
+        description: "Challenge created successfully!",
+        variant: "default"
+      });
       setCreateDialogOpen(false);
       setFormData({
         title: '',
         description: '',
         points_reward: 25,
+        waste_kg: 0,
         material_type: 'plastic',
         category: 'daily'
       });
-    } catch (error: unknown) {
-      alert('Something went wrong while creating the challenge.' + error);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || 'Failed to create challenge',
+        variant: "destructive"
+      });
     }
   };
 
@@ -100,9 +131,17 @@ export default function AdminChallenges() {
     
     try {
       await generateAIChallenge(category);
-      success('AI challenge generated successfully!');
+      toast({
+        title: "Success",
+        description: "AI challenge generated successfully!",
+        variant: "default"
+      });
     } catch (error: any) {
-      console.error('Error generating AI challenge:', error);
+      toast({
+        title: "Error",
+        description: error?.message || 'Failed to generate AI challenge',
+        variant: "destructive"
+      });
     }
   };
 
@@ -122,9 +161,10 @@ export default function AdminChallenges() {
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               <div className="flex items-center justify-between">
-                <span>Error loading challenges: {(error as Error).message}</span>
+                <span>Error loading challenges: {error?.message || 'Unknown error'}</span>
                 <Button size="sm" variant="outline" onClick={() => refetch()}>
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
@@ -140,6 +180,7 @@ export default function AdminChallenges() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 mb-2">
@@ -166,7 +207,7 @@ export default function AdminChallenges() {
                     Create Challenge
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Create New Challenge</DialogTitle>
                     <DialogDescription>
@@ -187,24 +228,38 @@ export default function AdminChallenges() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
-                        <Input
+                        <Textarea
                           id="description"
                           value={formData.description}
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                           placeholder="Transform plastic bottles into useful items"
+                          rows={3}
                           required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="points">Points Reward</Label>
-                        <Input
-                          id="points"
-                          type="number"
-                          min="1"
-                          value={formData.points_reward}
-                          onChange={(e) => setFormData({ ...formData, points_reward: parseInt(e.target.value) })}
-                          required
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="points">Points Reward</Label>
+                          <Input
+                            id="points"
+                            type="number"
+                            min="1"
+                            value={formData.points_reward}
+                            onChange={(e) => setFormData({ ...formData, points_reward: parseInt(e.target.value) || 0 })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="waste_kg">Waste (kg)</Label>
+                          <Input
+                            id="waste_kg"
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={formData.waste_kg}
+                            onChange={(e) => setFormData({ ...formData, waste_kg: parseFloat(e.target.value) || 0 })}
+                          />
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="material">Material Type</Label>
@@ -245,6 +300,14 @@ export default function AdminChallenges() {
                       </div>
                     </div>
                     <DialogFooter>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setCreateDialogOpen(false)}
+                        disabled={isCreating}
+                      >
+                        Cancel
+                      </Button>
                       <Button type="submit" disabled={isCreating}>
                         {isCreating ? (
                           <>
@@ -270,7 +333,7 @@ export default function AdminChallenges() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1">Total Challenges</p>
-                <p className="text-3xl font-bold">{challenges.length}</p>
+                <p className="text-3xl font-bold">{challenges?.length || 0}</p>
               </div>
             </CardContent>
           </Card>
@@ -279,7 +342,7 @@ export default function AdminChallenges() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1">Active</p>
                 <p className="text-3xl font-bold text-green-600">
-                  {challenges.filter(c => c.is_active).length}
+                  {challenges?.filter(c => c.is_active).length || 0}
                 </p>
               </div>
             </CardContent>
@@ -289,7 +352,7 @@ export default function AdminChallenges() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1">AI Generated</p>
                 <p className="text-3xl font-bold text-purple-600">
-                  {challenges.filter(c => c.source === 'ai').length}
+                  {challenges?.filter(c => c.source === 'ai').length || 0}
                 </p>
               </div>
             </CardContent>
@@ -299,7 +362,7 @@ export default function AdminChallenges() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1">Pending Verification</p>
                 <p className="text-3xl font-bold text-orange-600">
-                  {pendingVerifications.length}
+                  {pendingVerifications?.length || 0}
                 </p>
               </div>
             </CardContent>
@@ -348,35 +411,40 @@ export default function AdminChallenges() {
         </Card>
 
         {/* Filter */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Filter Challenges</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+        {/* Filter */}
+<Card className="mb-6">
+  <CardHeader>
+    <CardTitle>Filter Challenges</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <Select
+      value={category || "all"}
+      onValueChange={(value) => setCategory(value === "all" ? "" : value)}
+    >
+      <SelectTrigger className="w-64">
+        <SelectValue placeholder="All Categories" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All Categories</SelectItem>
+        <SelectItem value="daily">Daily</SelectItem>
+        <SelectItem value="weekly">Weekly</SelectItem>
+        <SelectItem value="monthly">Monthly</SelectItem>
+      </SelectContent>
+    </Select>
+  </CardContent>
+</Card>
+
 
         {/* Challenges List */}
         <Card>
           <CardHeader>
-            <CardTitle>All Challenges ({challenges.length})</CardTitle>
+            <CardTitle>All Challenges ({challenges?.length || 0})</CardTitle>
             <CardDescription>
               Manage and monitor all platform challenges
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {challenges.length === 0 ? (
+            {!challenges || challenges.length === 0 ? (
               <div className="text-center py-12">
                 <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500">No challenges found</p>
@@ -410,6 +478,11 @@ export default function AdminChallenges() {
                           <Badge variant="outline">
                             {challenge.points_reward} points
                           </Badge>
+                          {challenge.waste_kg > 0 && (
+                            <Badge variant="outline">
+                              {challenge.waste_kg} kg waste
+                            </Badge>
+                          )}
                           {challenge._count && (
                             <Badge variant="outline">
                               <Users className="w-3 h-3 mr-1" />
@@ -439,7 +512,7 @@ export default function AdminChallenges() {
         </Card>
 
         {/* Pending Verifications */}
-        {pendingVerifications.length > 0 && (
+        {pendingVerifications && pendingVerifications.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -471,7 +544,7 @@ export default function AdminChallenges() {
                           </p>
                           <p className="text-xs text-gray-500">
                             By {verification.user?.username || 'Unknown'} • 
-                            {new Date(verification.completed_at).toLocaleDateString()}
+                            {verification.completed_at ? new Date(verification.completed_at).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                         <Badge variant="outline" className="text-orange-600 border-orange-600">
