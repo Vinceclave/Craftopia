@@ -1,4 +1,4 @@
-import { Award, Users, Leaf, CheckCircle, Clock, Upload, AlertCircle, PlayCircle } from 'lucide-react-native'
+import { Award, Users, Leaf, CheckCircle, Clock, Upload, AlertCircle, PlayCircle, Target } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
 import Button from '~/components/common/Button'
@@ -123,31 +123,41 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
       case 'completed':
         return { 
           icon: <CheckCircle size={14} color="#4A7C59" />,
-          color: 'bg-craftopia-success/20 border-craftopia-success/30 text-craftopia-success',
+          bgColor: 'bg-craftopia-success/10',
+          borderColor: 'border-craftopia-success/30',
+          textColor: 'text-craftopia-success',
           label: 'COMPLETED'
         }
       case 'pending_verification':
         return { 
           icon: <Clock size={14} color="#D4A96A" />,
-          color: 'bg-craftopia-accent/20 border-craftopia-accent/30 text-craftopia-accent',
+          bgColor: 'bg-craftopia-accent/10',
+          borderColor: 'border-craftopia-accent/30',
+          textColor: 'text-craftopia-accent',
           label: 'PENDING'
         }
       case 'rejected':
         return { 
           icon: <AlertCircle size={14} color="#8B4513" />,
-          color: 'bg-craftopia-error/20 border-craftopia-error/30 text-craftopia-error',
+          bgColor: 'bg-red-500/10',
+          borderColor: 'border-red-500/30',
+          textColor: 'text-red-600',
           label: 'REJECTED'
         }
       case 'in_progress':
         return { 
-          icon: <PlayCircle size={14} color="#5D8AA8" />,
-          color: 'bg-craftopia-info/20 border-craftopia-info/30 text-craftopia-info',
+          icon: <PlayCircle size={14} color="#374A36" />,
+          bgColor: 'bg-craftopia-primary/10',
+          borderColor: 'border-craftopia-primary/30',
+          textColor: 'text-craftopia-primary',
           label: 'IN PROGRESS'
         }
       default:
         return { 
           icon: <Clock size={14} color="#5D6B5D" />,
-          color: 'bg-craftopia-light border-craftopia-light text-craftopia-textSecondary',
+          bgColor: 'bg-craftopia-light',
+          borderColor: 'border-craftopia-light',
+          textColor: 'text-craftopia-textSecondary',
           label: 'NOT STARTED'
         }
     }
@@ -183,33 +193,42 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
   // Loading state
   if (isLoading) {
     return (
-      <View className="mx-4 mt-4 p-5 bg-craftopia-surface rounded-2xl border border-craftopia-light">
-        <View className="h-4 bg-craftopia-light rounded-full mb-3 w-20" />
-        <View className="h-6 bg-craftopia-light rounded-lg mb-2 w-4/5" />
-        <View className="h-3 bg-craftopia-light rounded mb-2 w-full" />
-        <View className="h-3 bg-craftopia-light rounded mb-3 w-3/4" />
-        <View className="flex-row gap-2 mb-3">
-          <View className="h-7 bg-craftopia-light rounded-full w-24" />
-          <View className="h-7 bg-craftopia-light rounded-full w-16" />
+      <View className="mx-4 mt-4">
+        <View className="bg-craftopia-surface rounded-xl px-5 py-4 border border-craftopia-light/50">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="w-20 h-5 bg-craftopia-light rounded-full" />
+            <View className="w-16 h-5 bg-craftopia-light rounded-full" />
+          </View>
+          <View className="w-4/5 h-6 bg-craftopia-light rounded mb-2" />
+          <View className="w-full h-4 bg-craftopia-light rounded mb-1" />
+          <View className="w-3/4 h-4 bg-craftopia-light rounded mb-4" />
+          <View className="flex-row gap-2 mb-4">
+            <View className="w-24 h-10 bg-craftopia-light rounded-xl" />
+            <View className="w-20 h-10 bg-craftopia-light rounded-xl" />
+          </View>
+          <View className="w-full h-12 bg-craftopia-light rounded-full" />
         </View>
-        <View className="h-10 bg-craftopia-light rounded-lg" />
       </View>
     )
   }
 
   return (
     <View className="mx-4 mt-4">
-      {/* Main Quest Card */}
-      <View className="bg-craftopia-surface rounded-2xl border border-craftopia-light p-5">
-        {/* Header with Category and Status */}
-        <View className="flex-row justify-between items-start mb-3">
-          <View className="bg-craftopia-primary/10 px-3 py-1.5 rounded-full">
-            <Text className="text-craftopia-primary text-xs font-semibold">{category}</Text>
+      {/* Main Quest Card - Home style with clean layout */}
+      <View className="bg-craftopia-surface rounded-xl px-5 py-4 border border-craftopia-light/50 mb-3">
+        {/* Header Row - Category & Status */}
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center px-3 py-1.5 rounded-full bg-craftopia-accent/10 border border-craftopia-accent/20">
+            <Target size={14} color="#D4A96A" />
+            <Text className="text-xs font-semibold text-craftopia-accent uppercase tracking-wide ml-1">
+              {category}
+            </Text>
           </View>
+          
           {isJoined && challengeData && (
-            <View className={`flex-row items-center px-2.5 py-1 rounded-full border ${statusConfig.color}`}>
+            <View className={`flex-row items-center px-2.5 py-1 rounded-full border ${statusConfig.bgColor} ${statusConfig.borderColor}`}>
               {statusConfig.icon}
-              <Text className={`text-xs font-semibold ml-1.5 ${statusConfig.color.split(' ')[2]}`}>
+              <Text className={`text-xs font-semibold uppercase tracking-wide ml-1 ${statusConfig.textColor}`}>
                 {statusConfig.label}
               </Text>
             </View>
@@ -217,94 +236,111 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
         </View>
 
         {/* Title & Description */}
-        <Text className="text-xl font-bold text-craftopia-textPrimary mb-2 leading-7">
+        <Text className="text-xl font-bold text-craftopia-textPrimary mb-2">
           {title}
         </Text>
         <Text className="text-sm text-craftopia-textSecondary leading-5 mb-4">
           {description}
         </Text>
 
-        {/* Stats Grid */}
+        {/* Stats Row - Similar to HomeStats compact layout */}
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center gap-2">
-            <View className="flex-row items-center bg-craftopia-primary/5 px-3 py-2 rounded-xl">
+            {/* Points */}
+            <View className="flex-row items-center bg-craftopia-primary/10 px-3 py-2 rounded-xl">
               <Award size={16} color="#374A36" />
-              <Text className="text-craftopia-primary text-sm font-bold ml-1.5">
+              <Text className="text-base font-bold text-craftopia-primary ml-1.5">
                 {points}
               </Text>
-              <Text className="text-craftopia-textSecondary text-xs ml-0.5">pts</Text>
+              <Text className="text-xs text-craftopia-textSecondary ml-0.5">pts</Text>
             </View>
 
+            {/* Waste Impact */}
             {wasteKg > 0 && (
               <View className="flex-row items-center bg-craftopia-success/10 px-3 py-2 rounded-xl">
                 <Leaf size={16} color="#4A7C59" />
-                <Text className="text-craftopia-success text-sm font-bold ml-1.5">
+                <Text className="text-base font-bold text-craftopia-success ml-1.5">
                   {wasteKg.toFixed(1)}
                 </Text>
-                <Text className="text-craftopia-textSecondary text-xs ml-0.5">kg</Text>
+                <Text className="text-xs text-craftopia-textSecondary ml-0.5">kg</Text>
               </View>
             )}
           </View>
           
+          {/* Participants */}
           <View className="flex-row items-center bg-craftopia-light px-3 py-2 rounded-xl">
             <Users size={16} color="#5D6B5D" />
-            <Text className="text-craftopia-textSecondary text-sm font-bold ml-1.5">
+            <Text className="text-sm font-bold text-craftopia-textSecondary ml-1.5">
               {participants}
             </Text>
           </View>
         </View>
 
-        {/* Main Action Button */}
+        {/* Action Button */}
         {!isJoined ? (
           <Button
             onPress={onJoinPress}
-            title="Start Quest"
+            title="Join Challenge"
             size="md"
             loading={isLoading}
-            className="rounded-lg"
+            className="rounded-full"
           />
         ) : (
-          <View className={`p-3 rounded-lg ${challengeData?.status === 'completed' ? 'bg-craftopia-success/10' : 'bg-craftopia-light'}`}>
-            <Text className={`text-center font-semibold text-sm ${challengeData?.status === 'completed' ? 'text-craftopia-success' : 'text-craftopia-textSecondary'}`}>
-              {challengeData?.status === 'completed' ? '🎉 Quest Completed!' : '✅ Quest Joined'}
+          <View className={`py-3 rounded-full items-center ${
+            challengeData?.status === 'completed' 
+              ? 'bg-craftopia-success/10 border border-craftopia-success/30' 
+              : 'bg-craftopia-light'
+          }`}>
+            <Text className={`text-sm font-semibold ${
+              challengeData?.status === 'completed' 
+                ? 'text-craftopia-success' 
+                : 'text-craftopia-textSecondary'
+            }`}>
+              {challengeData?.status === 'completed' ? '✅ Quest Completed!' : '✓ Quest Joined'}
             </Text>
           </View>
         )}
       </View>
 
-      {/* Progress Section - Only show if user has joined but not completed */}
+      {/* Progress Section - Only show if joined but not completed */}
       {isJoined && challengeData?.status !== 'completed' && (
-        <View className="bg-craftopia-surface rounded-2xl border border-craftopia-light p-5 mt-3">
-          <View className="flex-row items-center justify-between mb-4">
-            <View>
-              <Text className="text-lg font-bold text-craftopia-textPrimary">Your Progress</Text>
-              <Text className="text-xs text-craftopia-textSecondary mt-1">
-                Upload proof to complete the challenge
+        <View className="bg-craftopia-surface rounded-xl px-4 py-4 border border-craftopia-light/50 mb-3">
+          {/* Section Header - Home style */}
+          <View className="flex-row items-center mb-3">
+            <View className="w-8 h-8 rounded-full bg-craftopia-primary/10 items-center justify-center mr-2">
+              <Clock size={16} color="#374A36" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-base font-bold text-craftopia-textPrimary">
+                Your Progress
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                Upload proof to complete
               </Text>
             </View>
           </View>
 
           {progressLoading ? (
-            <View className="items-center py-3">
+            <View className="items-center py-4">
               <ActivityIndicator size="small" color="#374A36" />
-              <Text className="text-xs text-craftopia-textSecondary mt-1">Loading progress...</Text>
+              <Text className="text-xs text-craftopia-textSecondary mt-2">Loading progress...</Text>
             </View>
           ) : progressError ? (
-            <View className="items-center py-3">
+            <View className="items-center py-4 bg-craftopia-light rounded-lg">
               <AlertCircle size={24} color="#8B4513" />
-              <Text className="text-sm text-craftopia-error text-center mt-2 font-semibold">
+              <Text className="text-sm text-craftopia-textSecondary text-center mt-2 font-medium">
                 {progressError.message?.includes('not found') ? 'Not yet started' : 'Failed to load progress'}
               </Text>
             </View>
           ) : (
             <>
-              {/* Image Upload Section */}
+              {/* Image Upload */}
               <View className="mb-3">
-                <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1.5">
+                <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1">
                   Proof of Completion
                 </Text>
-                <Text className="text-xs text-craftopia-textSecondary mb-3">
-                  Take a photo or upload from your gallery as evidence
+                <Text className="text-xs text-craftopia-textSecondary mb-2">
+                  Upload a photo showing your completion
                 </Text>
                 <ImageUploadPicker
                   label=""
@@ -318,18 +354,18 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 />
               </View>
 
-              {/* Upload Status */}
+              {/* Upload Status Messages */}
               {isUploading && (
-                <View className="flex-row items-center bg-craftopia-info/10 p-3 rounded-lg mb-3">
-                  <ActivityIndicator size="small" color="#5D8AA8" />
-                  <Text className="text-xs text-craftopia-info ml-2 font-medium">
+                <View className="flex-row items-center bg-craftopia-accent/10 px-3 py-2 rounded-lg mb-2">
+                  <ActivityIndicator size="small" color="#D4A96A" />
+                  <Text className="text-xs text-craftopia-accent ml-2 font-medium">
                     Uploading your image...
                   </Text>
                 </View>
               )}
 
               {imageUrl && !imageUrl.startsWith('file://') && !isUploading && (
-                <View className="flex-row items-center bg-craftopia-success/10 p-3 rounded-lg mb-3">
+                <View className="flex-row items-center bg-craftopia-success/10 px-3 py-2 rounded-lg mb-2">
                   <CheckCircle size={16} color="#4A7C59" />
                   <Text className="text-xs text-craftopia-success ml-2 font-medium">
                     Image ready for submission
@@ -345,20 +381,20 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 leftIcon={submitVerificationMutation.isPending || isUploading ? undefined : <Upload size={16} color="#fff" />}
                 loading={submitVerificationMutation.isPending}
                 size="md"
-                className="rounded-lg"
+                className="rounded-full"
               />
 
               {/* Rejection Message */}
               {challengeData?.status === 'rejected' && (
-                <View className="mt-3 p-3 bg-craftopia-error/10 rounded-lg border border-craftopia-error/20">
-                  <View className="flex-row items-center mb-1.5">
-                    <AlertCircle size={14} color="#8B4513" />
-                    <Text className="text-xs text-craftopia-error font-semibold ml-1.5">
+                <View className="mt-3 px-3 py-2.5 bg-red-500/5 rounded-lg border border-red-500/20">
+                  <View className="flex-row items-center mb-1">
+                    <AlertCircle size={14} color="#DC2626" />
+                    <Text className="text-xs text-red-600 font-semibold ml-1.5">
                       Verification Required
                     </Text>
                   </View>
-                  <Text className="text-xs text-craftopia-error">
-                    Your previous submission was rejected. Please upload a clearer image that shows your completion of the challenge.
+                  <Text className="text-xs text-craftopia-textSecondary">
+                    Your previous submission was rejected. Please upload a clearer image.
                   </Text>
                 </View>
               )}
@@ -367,25 +403,27 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
         </View>
       )}
 
-      {/* Completed Stats */}
+      {/* Completed Stats Card - Home style success card */}
       {isJoined && challengeData?.status === 'completed' && (
-        <View className="bg-craftopia-success/5 rounded-2xl border border-craftopia-success/20 p-5 mt-3">
-          <View className="flex-row items-center justify-between">
+        <View className="bg-craftopia-success/10 rounded-xl px-4 py-4 border border-craftopia-success/30 mb-3">
+          <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center">
-              <CheckCircle size={20} color="#4A7C59" />
-              <Text className="text-base font-bold text-craftopia-success ml-2">
+              <View className="w-8 h-8 rounded-full bg-craftopia-success/20 items-center justify-center mr-2">
+                <CheckCircle size={16} color="#4A7C59" />
+              </View>
+              <Text className="text-base font-bold text-craftopia-success">
                 Challenge Completed!
               </Text>
             </View>
-            <View className="bg-craftopia-success/20 px-2.5 py-1 rounded-full">
-              <Text className="text-craftopia-success text-xs font-semibold">
+            <View className="bg-craftopia-success/20 px-3 py-1 rounded-full">
+              <Text className="text-craftopia-success text-xs font-bold">
                 +{points} pts
               </Text>
             </View>
           </View>
           
           {challengeData.waste_kg_saved > 0 && (
-            <View className="flex-row items-center mt-2 bg-white px-3 py-2 rounded-lg">
+            <View className="flex-row items-center bg-white px-3 py-2 rounded-lg mb-2">
               <Leaf size={16} color="#4A7C59" />
               <Text className="text-craftopia-success text-sm font-semibold ml-1.5">
                 {challengeData.waste_kg_saved.toFixed(2)} kg waste saved
@@ -394,12 +432,19 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
           )}
 
           {challengeData.verified_at && (
-            <Text className="text-xs text-craftopia-textSecondary mt-2">
+            <Text className="text-xs text-craftopia-textSecondary">
               Verified on {new Date(challengeData.verified_at).toLocaleDateString()}
             </Text>
           )}
         </View>
       )}
+
+      {/* Tips Card - Home style encouragement */}
+      <View className="bg-craftopia-light rounded-xl px-3 py-2.5 mb-3">
+        <Text className="text-xs font-medium text-craftopia-textPrimary text-center">
+          💡 Complete challenges to earn points and make an impact!
+        </Text>
+      </View>
     </View>
   )
 }

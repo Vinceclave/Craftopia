@@ -1,32 +1,41 @@
-import { ArrowLeft } from 'lucide-react-native'
-import React from 'react'
-import { Text, View, TouchableOpacity } from 'react-native'
+// DetailHeader.tsx - Redesigned to match HomeHeader style
+import React from 'react';
+import { Text, View, TouchableOpacity } from 'react-native';
+import { ArrowLeft, Share2 } from 'lucide-react-native';
 
-interface DetailHeaderProp {
-  onBackPress: () => void
-  questId: number
+interface DetailHeaderProps {
+  onBackPress: () => void;
+  questId: number;
 }
 
-export const DetailHeader: React.FC<DetailHeaderProp> = ({ onBackPress, questId }) => {
+export const DetailHeader = ({ onBackPress, questId }: DetailHeaderProps) => {
   return (
-    <View className="px-4 py-3 bg-craftopia-surface border-b border-craftopia-light">
-      <View className="flex-row items-center">
-        <TouchableOpacity
-          onPress={onBackPress}
-          className="w-8 h-8 items-center justify-center rounded-full bg-craftopia-light mr-3"
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={18} color="#5D6B5D" />
-        </TouchableOpacity>
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-craftopia-textPrimary">
-            Quest Details
-          </Text>
-          <Text className="text-sm text-craftopia-textSecondary mt-0.5">
-            Challenge #{questId}
-          </Text>
+    <View className="px-4 pt-4 pb-3 bg-craftopia-surface border-b border-craftopia-light/30">
+      <View className="flex-row justify-between items-center">
+        <View className="flex-1 flex-row items-center">
+          <TouchableOpacity 
+            onPress={onBackPress}
+            className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center mr-3"
+          >
+            <ArrowLeft size={18} color="#374A36" />
+          </TouchableOpacity>
+          
+          <View className="flex-1">
+            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-0.5">
+              Quest Details 🎯
+            </Text>
+            <Text className="text-xl font-bold text-craftopia-textPrimary">
+              Challenge Info
+            </Text>
+          </View>
         </View>
+        
+        <TouchableOpacity 
+          className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center"
+        >
+          <Share2 size={18} color="#374A36" />
+        </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};

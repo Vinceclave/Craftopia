@@ -1,5 +1,7 @@
+// ChallengeTab.tsx - Redesigned to match QuestTabs style
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { Clock, CheckCircle, XCircle, HourglassIcon } from 'lucide-react-native';
 
 export type QuestType = 'in_progress' | 'pending_verification' | 'rejected' | 'completed';
 
@@ -8,37 +10,43 @@ interface ChallengeTabProps {
   onChangeTab: (tab: QuestType) => void;
 }
 
-const QUEST_TABS: { key: QuestType; label: string }[] = [
-  { key: 'in_progress', label: 'In Progress' },
-  { key: 'pending_verification', label: 'Pending' },
-  { key: 'rejected', label: 'Rejected' },
-  { key: 'completed', label: 'Completed' },
-];
+export const ChallengeTab = ({ activeTab, onChangeTab }: ChallengeTabProps) => {
+  const tabs: Array<{ key: QuestType; label: string; icon: any }> = [
+    { key: 'in_progress', label: 'In Progress', icon: Clock },
+    { key: 'pending_verification', label: 'Pending', icon: HourglassIcon },
+    { key: 'completed', label: 'Completed', icon: CheckCircle },
+    { key: 'rejected', label: 'Rejected', icon: XCircle },
+  ];
 
-export const ChallengeTab: React.FC<ChallengeTabProps> = ({ activeTab, onChangeTab }) => {
   return (
-    <View className="px-4 py-3 bg-craftopia-surface border-b border-craftopia-light">
-      <ScrollView
-        horizontal
+    <View className="px-4 py-3 bg-craftopia-light border-b border-craftopia-light/50">
+      <ScrollView 
+        horizontal 
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 12 }}
+        contentContainerStyle={{ gap: 8 }}
       >
-        {QUEST_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
+          const Icon = tab.icon;
+          
           return (
             <TouchableOpacity
               key={tab.key}
               onPress={() => onChangeTab(tab.key)}
-              activeOpacity={0.7}
-              className={`mr-3 px-4 py-2.5 rounded-lg ${
+              className={`flex-row items-center px-4 py-2 rounded-full border ${
                 isActive
-                  ? 'bg-craftopia-primary'
-                  : 'bg-craftopia-light'
+                  ? 'bg-craftopia-primary border-craftopia-primary'
+                  : 'bg-craftopia-surface border-craftopia-light/50'
               }`}
+              activeOpacity={0.7}
             >
+              <Icon 
+                size={16} 
+                color={isActive ? '#FFFFFF' : '#5D6B5D'} 
+              />
               <Text
-                className={`text-sm font-medium ${
-                  isActive ? 'text-craftopia-surface' : 'text-craftopia-textSecondary'
+                className={`text-sm font-semibold ml-1.5 ${
+                  isActive ? 'text-white' : 'text-craftopia-textSecondary'
                 }`}
               >
                 {tab.label}

@@ -1,44 +1,52 @@
+// QuestTabs.tsx - Redesigned with cleaner style
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { Flame, TrendingUp, Calendar, Grid } from 'lucide-react-native';
 
 type QuestType = 'all' | 'daily' | 'weekly' | 'monthly';
 
-interface QuestListsProps {
+interface QuestTabsProps {
   activeTab: QuestType;
   onChangeTab: (tab: QuestType) => void;
 }
 
-const QUEST_TABS: { key: QuestType; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'daily', label: 'Daily' },
-  { key: 'weekly', label: 'Weekly' },
-  { key: 'monthly', label: 'Monthly' },
-];
+export const QuestTabs = ({ activeTab, onChangeTab }: QuestTabsProps) => {
+  const tabs: Array<{ key: QuestType; label: string; icon: any }> = [
+    { key: 'all', label: 'All', icon: Grid },
+    { key: 'daily', label: 'Daily', icon: Flame },
+    { key: 'weekly', label: 'Weekly', icon: TrendingUp },
+    { key: 'monthly', label: 'Monthly', icon: Calendar },
+  ];
 
-export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab }) => {
   return (
-    <View className=" mt-4 py-3 bg-craftopia-surface">
-      <ScrollView
-        horizontal
+    <View className="px-4 py-3 bg-craftopia-light border-b border-craftopia-light/50">
+      <ScrollView 
+        horizontal 
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={{ gap: 8 }}
       >
-        {QUEST_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
+          const Icon = tab.icon;
+          
           return (
             <TouchableOpacity
               key={tab.key}
               onPress={() => onChangeTab(tab.key)}
-              activeOpacity={0.7}
-              className={`mr-3 px-4 py-2.5 rounded-lg ${
+              className={`flex-row items-center px-4 py-2 rounded-full border ${
                 isActive
-                  ? 'bg-craftopia-primary'
-                  : 'bg-craftopia-light'
+                  ? 'bg-craftopia-primary border-craftopia-primary'
+                  : 'bg-craftopia-surface border-craftopia-light/50'
               }`}
+              activeOpacity={0.7}
             >
+              <Icon 
+                size={16} 
+                color={isActive ? '#FFFFFF' : '#5D6B5D'} 
+              />
               <Text
-                className={`text-sm font-medium ${
-                  isActive ? 'text-craftopia-surface' : 'text-craftopia-textSecondary'
+                className={`text-sm font-semibold ml-1.5 ${
+                  isActive ? 'text-white' : 'text-craftopia-textSecondary'
                 }`}
               >
                 {tab.label}
@@ -49,4 +57,4 @@ export const QuestTabs: React.FC<QuestListsProps> = ({ activeTab, onChangeTab })
       </ScrollView>
     </View>
   );
-} 
+};

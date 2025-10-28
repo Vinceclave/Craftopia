@@ -1,200 +1,266 @@
+// QuestList.tsx - Redesigned to match HomeQuest style
 import React from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
-import { Leaf, Users, Award, Calendar } from 'lucide-react-native';
+import { Text, View, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { Target, ChevronRight, Flame, TrendingUp, Calendar } from 'lucide-react-native';
 
 interface Challenge {
   challenge_id: number;
   title: string;
-  description: string;
-  points_reward: number;
-  waste_kg: number;
-  participantCount: number;
+  description?: string;
   category: string;
-  material_type: string;
-  is_active: boolean;
-  isJoined: boolean;
-  duration?: string;
+  points_reward: number;
+  waste_kg?: number;
+  participantCount?: number;
 }
 
 interface QuestListProps {
   challenges: Challenge[];
-  loading: boolean;
-  refreshing: boolean;
-  error: string | null;
-  onRefresh: () => void;
+  loading?: boolean;
+  refreshing?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
   onJoin: (challengeId: number) => void;
-  onRetry: () => void;
+  onRetry?: () => void;
 }
 
-export const QuestList: React.FC<QuestListProps> = ({
+export const QuestList = ({
   challenges,
   loading,
   refreshing,
   error,
   onRefresh,
   onJoin,
-  onRetry,
-}) => {
-  const renderChallengeItem = ({ item }: { item: Challenge }) => {
-    const challengeId = item.challenge_id;
+  onRetry
+}: QuestListProps) => {
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'daily':
+        return <Flame size={16} color="#D4A96A" />;
+      case 'weekly':
+        return <TrendingUp size={16} color="#D4A96A" />;
+      case 'monthly':
+        return <Calendar size={16} color="#D4A96A" />;
+      default:
+        return <Target size={16} color="#D4A96A" />;
+    }
+  };
 
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case 'daily':
+        return 'bg-orange-500/10 border-orange-500/20';
+      case 'weekly':
+        return 'bg-blue-500/10 border-blue-500/20';
+      case 'monthly':
+        return 'bg-purple-500/10 border-purple-500/20';
+      default:
+        return 'bg-craftopia-accent/10 border-craftopia-accent/20';
+    }
+  };
+
+  if (loading && !refreshing) {
     return (
-      <TouchableOpacity
-        onPress={() => onJoin(challengeId)}
-        disabled={!item.is_active || item.isJoined}
-        activeOpacity={0.7}
-        className={`mx-4 mb-3 p-4 rounded-2xl border ${
-          item.is_active 
-            ? 'bg-craftopia-surface border-craftopia-light' 
-            : 'bg-craftopia-light/50 border-craftopia-light'
-        } ${(item.is_active && !item.isJoined) ? 'active:scale-95' : ''}`}
-      >
-        {/* Header with title and status */}
-        <View className="flex-row justify-between items-start mb-2">
-          <Text className="text-base font-bold text-craftopia-textPrimary flex-1 mr-2" numberOfLines={2}>
-            {item.title}
+      <View className="mx-4 mb-6">
+        {/* Section Header Skeleton */}
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-light mr-2" />
+            <View>
+              <View className="w-24 h-4 bg-craftopia-light rounded mb-1" />
+              <View className="w-32 h-3 bg-craftopia-light rounded" />
+            </View>
+          </View>
+        </View>
+
+        {/* Quest Item Skeletons */}
+        {[1, 2, 3].map((item) => (
+          <View 
+            key={item} 
+            className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light/50"
+          >
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="w-16 h-5 bg-craftopia-light rounded" />
+              <View className="w-12 h-5 bg-craftopia-light rounded" />
+            </View>
+            <View className="w-3/4 h-4 bg-craftopia-light rounded mb-2" />
+            <View className="w-full h-3 bg-craftopia-light rounded mb-2" />
+            <View className="flex-row justify-between items-center">
+              <View className="w-20 h-3 bg-craftopia-light rounded" />
+              <View className="w-20 h-8 bg-craftopia-light rounded-lg" />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="mx-4 mb-6">
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
+          <View className="w-12 h-12 rounded-full bg-red-500/10 items-center justify-center mb-3">
+            <Target size={20} color="#DC2626" />
+          </View>
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+            Failed to Load Quests
           </Text>
-          {!item.is_active && (
-            <View className="px-2 py-1 bg-gray-100 rounded-full">
-              <Text className="text-xs font-medium text-gray-500">Inactive</Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+            {error}
+          </Text>
+          {onRetry && (
+            <TouchableOpacity 
+              className="bg-craftopia-primary rounded-full px-4 py-2"
+              onPress={onRetry}
+            >
+              <Text className="text-xs font-semibold text-white">
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  if (!challenges || challenges.length === 0) {
+    return (
+      <View className="mx-4 mb-6">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
+              <Target size={18} color="#D4A96A" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-craftopia-textPrimary">
+                Available Quests
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                Join challenges and earn rewards
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
+          <View className="w-12 h-12 rounded-full bg-craftopia-light/50 items-center justify-center mb-3">
+            <Target size={20} color="#5D6B5D" />
+          </View>
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+            No Quests Available
+          </Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+            New challenges will appear soon. Check back later!
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const QuestItem = ({ quest }: { quest: Challenge }) => (
+    <TouchableOpacity
+      className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light/50"
+      onPress={() => onJoin(quest.challenge_id)}
+      activeOpacity={0.7}
+    >
+      {/* Category Badge */}
+      <View className="flex-row items-center justify-between mb-2">
+        <View className={`flex-row items-center px-2 py-1 rounded-lg border ${getCategoryColor(quest.category)}`}>
+          {getCategoryIcon(quest.category)}
+          <Text className="text-xs font-medium text-craftopia-accent uppercase tracking-wide ml-1">
+            {quest.category}
+          </Text>
+        </View>
+        
+        <View className="px-2 py-1 rounded-lg bg-craftopia-primary/10">
+          <Text className="text-xs font-bold text-craftopia-primary">
+            +{quest.points_reward}
+          </Text>
+        </View>
+      </View>
+
+      {/* Quest Info */}
+      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1">
+        {quest.title}
+      </Text>
+      <Text className="text-xs text-craftopia-textSecondary mb-2" numberOfLines={2}>
+        {quest.description || 'Complete this challenge to earn points'}
+      </Text>
+
+      {/* Footer with stats and action */}
+      <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
+        <View className="flex-row items-center">
+          {quest.waste_kg && quest.waste_kg > 0 && (
+            <View className="flex-row items-center mr-3">
+              <Text className="text-xs text-craftopia-textSecondary">
+                🌱 {quest.waste_kg}kg impact
+              </Text>
+            </View>
+          )}
+          {quest.participantCount && quest.participantCount > 0 && (
+            <View className="flex-row items-center">
+              <Text className="text-xs text-craftopia-textSecondary">
+                👥 {quest.participantCount} joined
+              </Text>
             </View>
           )}
         </View>
 
-        {/* Description */}
-        <Text className="text-sm text-craftopia-textSecondary leading-5 mb-3" numberOfLines={2}>
-          {item.description}
-        </Text>
-
-        {/* Stats Row */}
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center gap-2">
-            {/* Points */}
-            <View className="flex-row items-center bg-craftopia-primary/5 px-2.5 py-1.5 rounded-full">
-              <Award size={14} color="#374A36" />
-              <Text className="text-craftopia-primary text-sm font-bold ml-1">
-                {item.points_reward}
-              </Text>
-            </View>
-
-            {/* Waste Saved */}
-            {item.waste_kg > 0 && (
-              <View className="flex-row items-center bg-craftopia-success/10 px-2.5 py-1.5 rounded-full">
-                <Leaf size={14} color="#4A7C59" />
-                <Text className="text-craftopia-success text-sm font-bold ml-1">
-                  {item.waste_kg.toFixed(1)}kg
-                </Text>
-              </View>
-            )}
-
-            {/* Participants */}
-            <View className="flex-row items-center bg-craftopia-light px-2.5 py-1.5 rounded-full">
-              <Users size={14} color="#5D6B5D" />
-              <Text className="text-craftopia-textSecondary text-sm font-medium ml-1">
-                {item.participantCount || 0}
-              </Text>
-            </View>
-          </View>
+        <View className="flex-row items-center">
+          <Text className="text-xs font-semibold text-craftopia-primary mr-1">
+            View Details
+          </Text>
+          <ChevronRight size={14} color="#374A36" />
         </View>
-
-        {/* Category Tags */}
-        <View className="flex-row flex-wrap gap-2 mb-3">
-          <View className="px-2.5 py-1 bg-craftopia-light rounded-full">
-            <Text className="text-xs text-craftopia-textSecondary font-medium">{item.category}</Text>
-          </View>
-          <View className="px-2.5 py-1 bg-craftopia-light rounded-full">
-            <Text className="text-xs text-craftopia-textSecondary font-medium">{item.material_type}</Text>
-          </View>
-        </View>
-
-        {/* Join Button */}
-        {item.is_active && (
-          <View className={`px-3 py-2.5 rounded-xl ${
-            item.isJoined ? 'bg-craftopia-light' : 'bg-craftopia-primary'
-          }`}>
-            <Text className={`text-center font-semibold text-sm ${
-              item.isJoined ? 'text-craftopia-textSecondary' : 'text-craftopia-surface'
-            }`}>
-              {item.isJoined ? '✓ Already Joined' : 'Join Challenge'}
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  // Loading state
-  if (loading && challenges.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center py-8">
-        <ActivityIndicator size="small" color="#374A36" />
-        <Text className="text-craftopia-textSecondary text-sm mt-3">
-          Loading quests...
-        </Text>
       </View>
-    );
-  }
-
-  // Error state
-  if (error && challenges.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center px-6 py-8">
-        <Text className="text-lg font-bold text-craftopia-textPrimary text-center mb-2">
-          Something went wrong
-        </Text>
-        <Text className="text-sm text-craftopia-textSecondary text-center mb-6">
-          {error}
-        </Text>
-        <TouchableOpacity 
-          onPress={onRetry} 
-          className="bg-craftopia-primary px-5 py-3 rounded-xl"
-          activeOpacity={0.7}
-        >
-          <Text className="text-craftopia-surface text-sm font-semibold">Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // Empty state
-  if (!loading && challenges.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center px-6 py-8">
-        <Text className="text-lg font-bold text-craftopia-textPrimary text-center mb-2">
-          No quests found
-        </Text>
-        <Text className="text-sm text-craftopia-textSecondary text-center mb-6">
-          Check back later for new eco-challenges
-        </Text>
-        <TouchableOpacity 
-          onPress={onRefresh} 
-          className="bg-craftopia-primary px-5 py-3 rounded-xl"
-          activeOpacity={0.7}
-        >
-          <Text className="text-craftopia-surface text-sm font-semibold">Refresh</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+    </TouchableOpacity>
+  );
 
   return (
-    <FlatList
-      data={challenges}
-      keyExtractor={(item) => item.challenge_id.toString()}
-      renderItem={renderChallengeItem}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={['#374A36']}
-          tintColor="#374A36"
-        />
-      }
+    <ScrollView
+      className="flex-1"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ 
-        paddingVertical: 8,
-        paddingBottom: 60
-      }}
-    />
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing || false}
+            onRefresh={onRefresh}
+            tintColor="#374A36"
+          />
+        ) : undefined
+      }
+    >
+      <View className="mx-4 mb-6">
+        {/* Section Header */}
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
+              <Target size={18} color="#D4A96A" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-craftopia-textPrimary">
+                Available Quests
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                {challenges.length} challenge{challenges.length !== 1 ? 's' : ''} waiting
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quest Items */}
+        <View>
+          {challenges.map((quest) => (
+            <QuestItem key={quest.challenge_id} quest={quest} />
+          ))}
+        </View>
+
+        {/* Encouragement Card */}
+        <View className="bg-craftopia-light rounded-xl p-3 mt-2">
+          <Text className="text-xs font-medium text-craftopia-textPrimary text-center">
+            💪 Every quest completed makes a difference!
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
   );
 };

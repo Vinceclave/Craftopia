@@ -1,299 +1,309 @@
-// apps/mobile/src/components/quest/challenges/ChallengeList.tsx - UPDATED COLORS
+// ChallengeList.tsx - Redesigned to match HomeQuest style
 import React from 'react';
-import { FlatList, View, Text, Animated, Easing, RefreshControl, TouchableOpacity } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Trophy, Clock, CheckCircle, XCircle, HourglassIcon, ChevronRight } from 'lucide-react-native';
 import { EcoQuestStackParamList } from '~/navigations/types';
-import { CheckCircle, Clock, AlertCircle, PlayCircle, ArrowRight, Award } from 'lucide-react-native';
 
 interface Challenge {
-  id: number | string;
-  challenge_id?: number;
+  id: number;
+  challenge_id: number;
   title: string;
-  description: string;
-  completedAt?: string;
+  description?: string;
+  completedAt?: string | null;
   points?: number;
-  status?: string;
+  status: 'in_progress' | 'pending_verification' | 'rejected' | 'completed';
 }
 
 interface ChallengeListProps {
   challenges: Challenge[];
-  loading: boolean;
-  error?: string | null;
+  loading?: boolean;
   refreshing?: boolean;
+  error?: string | null;
   onRefresh?: () => void;
   onRetry?: () => void;
 }
 
-const SkeletonItem: React.FC = () => {
-  const shimmer = React.useRef(new Animated.Value(0)).current;
+export const ChallengeList = ({
+  challenges,
+  loading,
+  refreshing,
+  error,
+  onRefresh,
+  onRetry
+}: ChallengeListProps) => {
+  const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
 
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 1,
-          duration: 1000,
-          easing: Easing.linear,
-          useNativeDriver: false,
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0,
-          duration: 1000,
-          easing: Easing.linear,
-          useNativeDriver: false,
-        }),
-      ])
-    ).start();
-  }, [shimmer]);
-
-  const backgroundColor = shimmer.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#F2F4F3', '#E8EAE9'],
-  });
-
-  return (
-    <View className="mx-4 my-2 bg-craftopia-surface rounded-2xl p-4 border border-craftopia-light">
-      <View className="flex-row items-start justify-between mb-3">
-        <Animated.View style={{ height: 16, width: '70%', borderRadius: 8, backgroundColor }} />
-        <Animated.View style={{ height: 24, width: 80, borderRadius: 12, backgroundColor }} />
-      </View>
-      <Animated.View style={{ height: 12, width: '90%', borderRadius: 6, backgroundColor, marginBottom: 8 }} />
-      <Animated.View style={{ height: 12, width: '60%', borderRadius: 6, backgroundColor }} />
-    </View>
-  );
-};
-
-const StatusIcon: React.FC<{ status?: string }> = ({ status }) => {
-  const iconProps = { size: 16 };
-  
-  switch (status) {
-    case 'completed':
-      return <CheckCircle {...iconProps} color="#4A7C59" />; // craftopia-success
-    case 'pending_verification':
-      return <Clock {...iconProps} color="#B68D40" />; // craftopia-warning
-    case 'rejected':
-      return <AlertCircle {...iconProps} color="#8B4513" />; // craftopia-error
-    case 'in_progress':
-      return <PlayCircle {...iconProps} color="#5D8AA8" />; // craftopia-info
-    default:
-      return <Award {...iconProps} color="#6B8E6B" />; // craftopia-secondary
-  }
-};
-
-const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
-  const getStatusConfig = (status?: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
       case 'completed':
-        return { 
-          color: 'bg-craftopia-success/20 border-craftopia-success/30', 
-          text: 'text-craftopia-success', 
-          label: 'COMPLETED' 
+        return {
+          icon: CheckCircle,
+          color: '#4A7C59',
+          bgColor: 'bg-craftopia-success/10',
+          borderColor: 'border-craftopia-success/30',
+          label: 'Completed',
         };
       case 'pending_verification':
-        return { 
-          color: 'bg-craftopia-warning/20 border-craftopia-warning/30', 
-          text: 'text-craftopia-warning', 
-          label: 'PENDING' 
+        return {
+          icon: HourglassIcon,
+          color: '#D4A96A',
+          bgColor: 'bg-craftopia-accent/10',
+          borderColor: 'border-craftopia-accent/30',
+          label: 'Pending Review',
         };
       case 'rejected':
-        return { 
-          color: 'bg-craftopia-error/20 border-craftopia-error/30', 
-          text: 'text-craftopia-error', 
-          label: 'REJECTED' 
-        };
-      case 'in_progress':
-        return { 
-          color: 'bg-craftopia-info/20 border-craftopia-info/30', 
-          text: 'text-craftopia-info', 
-          label: 'IN PROGRESS' 
+        return {
+          icon: XCircle,
+          color: '#DC2626',
+          bgColor: 'bg-red-500/10',
+          borderColor: 'border-red-500/30',
+          label: 'Rejected',
         };
       default:
-        return { 
-          color: 'bg-craftopia-light border-craftopia-light', 
-          text: 'text-craftopia-textSecondary', 
-          label: 'UNKNOWN' 
+        return {
+          icon: Clock,
+          color: '#5D6B5D',
+          bgColor: 'bg-craftopia-primary/10',
+          borderColor: 'border-craftopia-light/50',
+          label: 'In Progress',
         };
     }
   };
 
-  const config = getStatusConfig(status);
+  const handleChallengePress = (challenge: Challenge) => {
+    console.log('🎯 Challenge pressed:', {
+      user_challenge_id: challenge.id,
+      challenge_id: challenge.challenge_id,
+      title: challenge.title
+    });
 
-  return (
-    <View className={`flex-row items-center px-2.5 py-1 rounded-full border ${config.color}`}>
-      <View className="mr-1.5">
-        <StatusIcon status={status} />
-      </View>
-      <Text className={`text-xs font-semibold ${config.text}`}>
-        {config.label}
-      </Text>
-    </View>
-  );
-};
+    navigation.navigate('QuestDetails', { 
+      questId: challenge.challenge_id 
+    });
+  };
 
-export const ChallengeList: React.FC<ChallengeListProps> = ({ 
-  challenges, 
-  loading, 
-  error,
-  refreshing = false,
-  onRefresh,
-  onRetry
-}) => {
-  const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
-
-  const renderItem = ({ item }: { item: Challenge }) => {
-    const challengeId = item.challenge_id || Number(item.id);
-    
+  if (loading && !refreshing) {
     return (
-      <TouchableOpacity
-        onPress={() => {
-          navigation.navigate('QuestDetails', { questId: challengeId });
-        }}
-        activeOpacity={0.7}
-        className="mx-4 my-2 bg-craftopia-surface rounded-2xl p-4 border border-craftopia-light"
-      >
-        {/* Header with title and status */}
-        <View className="flex-row items-start justify-between mb-3">
-          <Text className="text-lg font-bold text-craftopia-textPrimary flex-1 mr-3" numberOfLines={2}>
-            {item.title}
-          </Text>
-          <StatusBadge status={item.status} />
+      <View className="mx-4 mb-6">
+        {/* Section Header Skeleton */}
+        <View className="flex-row items-center justify-between mb-3 mt-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-light mr-2" />
+            <View>
+              <View className="w-24 h-4 bg-craftopia-light rounded mb-1" />
+              <View className="w-32 h-3 bg-craftopia-light rounded" />
+            </View>
+          </View>
         </View>
 
-        {/* Description */}
-        <Text className="text-sm text-craftopia-textSecondary mb-4 leading-5" numberOfLines={2}>
-          {item.description}
+        {/* Challenge Item Skeletons */}
+        {[1, 2, 3].map((item) => (
+          <View 
+            key={item} 
+            className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light/50"
+          >
+            <View className="flex-row items-center mb-2">
+              <View className="w-14 h-5 bg-craftopia-light rounded mr-2" />
+              <View className="w-12 h-5 bg-craftopia-light rounded" />
+            </View>
+            <View className="w-3/4 h-4 bg-craftopia-light rounded mb-2" />
+            <View className="w-full h-3 bg-craftopia-light rounded mb-2" />
+            <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
+              <View className="w-24 h-3 bg-craftopia-light rounded" />
+              <View className="w-20 h-3 bg-craftopia-light rounded" />
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="mx-4 mb-6 mt-3">
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
+          <View className="w-12 h-12 rounded-full bg-red-500/10 items-center justify-center mb-3">
+            <Trophy size={20} color="#DC2626" />
+          </View>
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+            Failed to Load Challenges
+          </Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+            {error}
+          </Text>
+          {onRetry && (
+            <TouchableOpacity 
+              className="bg-craftopia-primary rounded-full px-4 py-2"
+              onPress={onRetry}
+            >
+              <Text className="text-xs font-semibold text-white">
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  if (!challenges || challenges.length === 0) {
+    return (
+      <View className="mx-4 mb-6 mt-3">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
+              <Trophy size={18} color="#D4A96A" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-craftopia-textPrimary">
+                Your Challenges
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                Track your quest progress
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
+          <View className="w-12 h-12 rounded-full bg-craftopia-light/50 items-center justify-center mb-3">
+            <Trophy size={20} color="#5D6B5D" />
+          </View>
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+            No Challenges Yet
+          </Text>
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+            Join a quest to start your journey!
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const ChallengeItem = ({ challenge }: { challenge: Challenge }) => {
+    const statusConfig = getStatusConfig(challenge.status);
+    const StatusIcon = statusConfig.icon;
+
+    return (
+      <TouchableOpacity
+        className={`bg-craftopia-surface rounded-xl p-3 mb-2 border ${statusConfig.borderColor}`}
+        onPress={() => handleChallengePress(challenge)}
+        activeOpacity={0.7}
+      >
+        {/* Status Badge */}
+        <View className="flex-row items-center justify-between mb-2">
+          <View className={`flex-row items-center px-2 py-1 rounded-lg ${statusConfig.bgColor}`}>
+            <StatusIcon size={14} color={statusConfig.color} />
+            <Text 
+              className="text-xs font-medium uppercase tracking-wide ml-1"
+              style={{ color: statusConfig.color }}
+            >
+              {statusConfig.label}
+            </Text>
+          </View>
+
+          {challenge.points && challenge.points > 0 && (
+            <View className="px-2 py-1 rounded-lg bg-craftopia-primary/10">
+              <Text className="text-xs font-bold text-craftopia-primary">
+                +{challenge.points}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Challenge Info */}
+        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1">
+          {challenge.title}
+        </Text>
+        <Text className="text-xs text-craftopia-textSecondary mb-2" numberOfLines={2}>
+          {challenge.description || 'Continue working on this challenge'}
         </Text>
 
-        {/* Footer with points and date */}
-        <View className="flex-row justify-between items-center">
+        {/* Footer */}
+        <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
+          {challenge.completedAt && (
+            <Text className="text-xs text-craftopia-textSecondary">
+              📅 {new Date(challenge.completedAt).toLocaleDateString()}
+            </Text>
+          )}
+          {!challenge.completedAt && challenge.status === 'in_progress' && (
+            <Text className="text-xs text-craftopia-textSecondary">
+              ⏱️ Keep going!
+            </Text>
+          )}
+
           <View className="flex-row items-center">
-            {item.points && (
-              <>
-                <View className="mr-1">
-                  <Award size={16} color="#4A7C59" />
-                </View>
-                <Text className="text-sm font-bold text-craftopia-success">
-                  {item.points} pts
-                </Text>
-              </>
-            )}
-          </View>
-          
-          <View className="flex-row items-center">
-            {item.completedAt && (
-              <Text className="text-xs text-craftopia-textSecondary mr-2">
-                {new Date(item.completedAt).toLocaleDateString()}
-              </Text>
-            )}
-            <View className="w-6 h-6 items-center justify-center rounded-full bg-craftopia-light">
-              <ArrowRight size={14} color="#5D6B5D" />
-            </View>
+            <Text className="text-xs font-semibold text-craftopia-primary mr-1">
+              View Details
+            </Text>
+            <ChevronRight size={14} color="#374A36" />
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-  // Loading state with modern skeletons
-  if (loading && challenges.length === 0) {
-    return (
-      <FlatList
-        data={Array.from({ length: 3 })}
-        keyExtractor={(_, index) => `skeleton-${index}`}
-        renderItem={() => <SkeletonItem />}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingVertical: 8 }}
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={['#374A36']}
-              tintColor="#374A36"
-            />
-          ) : undefined
-        }
-      />
-    );
-  }
-
-  // Modern error state
-  if (error && challenges.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center px-6">
-        <View className="mb-4">
-          <AlertCircle size={48} color="#8B4513" />
-        </View>
-        <Text className="text-xl font-bold text-craftopia-textPrimary text-center mb-2">
-          Oops! Something went wrong
-        </Text>
-        <Text className="text-base text-craftopia-textSecondary text-center mb-6">
-          {error}
-        </Text>
-        {onRetry && (
-          <TouchableOpacity 
-            onPress={onRetry} 
-            className="bg-craftopia-primary px-6 py-3 rounded-xl"
-            activeOpacity={0.7}
-          >
-            <Text className="text-craftopia-surface text-base font-semibold">Try Again</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
-  // Modern empty state
-  if (!loading && challenges.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center px-6">
-        <View className="mb-4">
-          <Award size={48} color="#6B8E6B" />
-        </View>
-        <Text className="text-xl font-bold text-craftopia-textPrimary text-center mb-2">
-          No challenges yet
-        </Text>
-        <Text className="text-base text-craftopia-textSecondary text-center mb-6">
-          Start your first challenge to earn rewards and make an impact
-        </Text>
-        {onRefresh && (
-          <TouchableOpacity 
-            onPress={onRefresh} 
-            className="bg-craftopia-primary px-6 py-3 rounded-xl"
-            activeOpacity={0.7}
-          >
-            <Text className="text-craftopia-surface text-base font-semibold">Explore Challenges</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
-  // Main list with modern styling
   return (
-    <FlatList
-      data={challenges}
-      keyExtractor={(item, index) => {
-        const key = item.id ? item.id.toString() : `challenge-${index}`;
-        return key;
-      }}
-      renderItem={renderItem}
+    <ScrollView
+      className="flex-1"
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ 
-        paddingVertical: 8,
-        flexGrow: 1 
-      }}
       refreshControl={
         onRefresh ? (
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={refreshing || false}
             onRefresh={onRefresh}
-            colors={['#374A36']}
             tintColor="#374A36"
           />
         ) : undefined
       }
-    />
+    >
+      <View className="mx-4 mb-6 mt-3">
+        {/* Section Header */}
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
+              <Trophy size={18} color="#D4A96A" />
+            </View>
+            <View>
+              <Text className="text-lg font-bold text-craftopia-textPrimary">
+                Your Challenges
+              </Text>
+              <Text className="text-xs text-craftopia-textSecondary">
+                {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Challenge Items */}
+        <View>
+          {challenges.map((challenge) => (
+            <ChallengeItem key={challenge.id} challenge={challenge} />
+          ))}
+        </View>
+
+        {/* Stats Card */}
+        <View className="bg-craftopia-light rounded-xl p-3 mt-2">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xs font-medium text-craftopia-textPrimary">
+              Total Progress
+            </Text>
+            <Text className="text-xs font-semibold text-craftopia-primary">
+              {challenges.filter(c => c.status === 'completed').length}/{challenges.length} Completed
+            </Text>
+          </View>
+          <View className="w-full h-1.5 bg-craftopia-surface rounded-full overflow-hidden mt-1.5">
+            <View 
+              className="h-full bg-craftopia-primary rounded-full"
+              style={{ 
+                width: `${(challenges.filter(c => c.status === 'completed').length / challenges.length) * 100}%` 
+              }}
+            />
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
