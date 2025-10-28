@@ -44,7 +44,7 @@ export const HomeScreen = () => {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -69,7 +69,7 @@ export const HomeScreen = () => {
         <HomeActivity />
 
         {/* Bottom Spacer */}
-        <View className="h-6" />
+        <View className="h-4" />
       </ScrollView>
     </SafeAreaView>
   );

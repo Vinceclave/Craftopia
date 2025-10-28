@@ -1,7 +1,7 @@
 // apps/mobile/src/components/home/HomeStats.tsx
 import React from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { Leaf, TrendingUp, Award, ChevronRight, Sparkles } from 'lucide-react-native';
+import { Leaf, TrendingUp, Award, ChevronRight, Sparkles, Palette, Trophy } from 'lucide-react-native';
 import { useUserStats } from '~/hooks/useUserStats';
 
 export const HomeStats = () => {
@@ -15,69 +15,69 @@ export const HomeStats = () => {
   };
 
   return (
-    <View className="px-6 pt-6">
+    <View className="px-4 pt-4">
       {/* Main Impact Card */}
       <View 
-        className="bg-white rounded-3xl p-6 mb-4"
+        className="bg-white rounded-2xl p-4 mb-3"
         style={{ 
-          shadowColor: '#374A36',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+          elevation: 2,
         }}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-6">
+        <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#6B7280' }}>
+            <Text className="text-xs font-semibold uppercase tracking-wider mb-0.5" style={{ color: '#6B7280' }}>
               Your Impact
             </Text>
-            <Text className="text-sm" style={{ color: '#9CA3AF' }}>
+            <Text className="text-xs" style={{ color: '#9CA3AF' }}>
               Keep making a difference! 🌍
             </Text>
           </View>
           <TouchableOpacity 
-            className="flex-row items-center px-3 py-2 rounded-full"
+            className="flex-row items-center px-3 py-1.5 rounded-full"
             style={{ backgroundColor: '#F3F4F6' }}
             activeOpacity={0.7}
           >
             <Text className="text-xs font-semibold mr-1" style={{ color: '#374A36' }}>
               Details
             </Text>
-            <ChevronRight size={14} color="#374A36" />
+            <ChevronRight size={12} color="#374A36" />
           </TouchableOpacity>
         </View>
 
         {/* Primary Stat - Waste Saved */}
         <View 
-          className="rounded-2xl p-5 mb-5"
+          className="rounded-xl p-4 mb-3"
           style={{ 
-            backgroundColor: 'rgba(74, 124, 89, 0.08)',
+            backgroundColor: 'rgba(55, 74, 54, 0.08)',
             borderWidth: 1,
-            borderColor: 'rgba(74, 124, 89, 0.2)',
+            borderColor: 'rgba(55, 74, 54, 0.15)',
           }}
         >
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <View className="flex-row items-center mb-3">
+              <View className="flex-row items-center mb-2">
                 <View 
-                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                  style={{ backgroundColor: 'rgba(74, 124, 89, 0.15)' }}
+                  className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                  style={{ backgroundColor: 'rgba(55, 74, 54, 0.15)' }}
                 >
-                  <Leaf size={20} color="#4A7C59" />
+                  <Leaf size={16} color="#374A36" />
                 </View>
-                <Text className="text-sm font-semibold" style={{ color: '#6B7280' }}>
+                <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                   Waste Saved
                 </Text>
               </View>
-              <Text className="text-4xl font-bold mb-2" style={{ color: '#374A36' }}>
+              <Text className="text-3xl font-bold mb-1" style={{ color: '#374A36' }}>
                 {stats.wasteSaved}
-                <Text className="text-xl" style={{ color: '#6B7280' }}> kg</Text>
+                <Text className="text-lg" style={{ color: '#6B7280' }}> kg</Text>
               </Text>
               <View className="flex-row items-center">
-                <Sparkles size={14} color="#4A7C59" />
-                <Text className="text-xs font-semibold ml-1" style={{ color: '#4A7C59' }}>
+                <Sparkles size={12} color="#374A36" />
+                <Text className="text-xs font-semibold ml-1" style={{ color: '#374A36' }}>
                   Amazing progress!
                 </Text>
               </View>
@@ -85,33 +85,33 @@ export const HomeStats = () => {
             
             {/* Decorative Element */}
             <View 
-              className="w-24 h-24 rounded-full items-center justify-center"
-              style={{ backgroundColor: 'rgba(74, 124, 89, 0.1)' }}
+              className="w-20 h-20 rounded-full items-center justify-center"
+              style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
             >
-              <Text className="text-5xl">♻️</Text>
+              <Leaf size={40} color="#374A36" />
             </View>
           </View>
         </View>
 
         {/* Secondary Stats Grid */}
-        <View className="flex-row gap-3">
+        <View className="flex-row gap-2">
           {/* Points */}
           <View 
-            className="flex-1 rounded-xl p-4"
+            className="flex-1 rounded-xl p-3"
             style={{ backgroundColor: '#F9FAFB' }}
           >
-            <View className="flex-row items-center mb-3">
+            <View className="flex-row items-center mb-2">
               <View 
-                className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                className="w-7 h-7 rounded-full items-center justify-center mr-1.5"
                 style={{ backgroundColor: 'rgba(212, 169, 106, 0.2)' }}
               >
-                <Award size={14} color="#D4A96A" />
+                <Award size={12} color="#D4A96A" />
               </View>
               <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Points
               </Text>
             </View>
-            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
+            <Text className="text-xl font-bold mb-0.5" style={{ color: '#374A36' }}>
               {stats.points}
             </Text>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -121,16 +121,21 @@ export const HomeStats = () => {
 
           {/* Crafts */}
           <View 
-            className="flex-1 rounded-xl p-4"
+            className="flex-1 rounded-xl p-3"
             style={{ backgroundColor: '#F9FAFB' }}
           >
-            <View className="flex-row items-center mb-3">
-              <Text className="text-xl mr-2">🎨</Text>
+            <View className="flex-row items-center mb-2">
+              <View 
+                className="w-7 h-7 rounded-full items-center justify-center mr-1.5"
+                style={{ backgroundColor: 'rgba(147, 51, 234, 0.15)' }}
+              >
+                <Palette size={12} color="#9333EA" />
+              </View>
               <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Crafts
               </Text>
             </View>
-            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
+            <Text className="text-xl font-bold mb-0.5" style={{ color: '#374A36' }}>
               {stats.crafts}
             </Text>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -140,47 +145,25 @@ export const HomeStats = () => {
 
           {/* Challenges */}
           <View 
-            className="flex-1 rounded-xl p-4"
+            className="flex-1 rounded-xl p-3"
             style={{ backgroundColor: '#F9FAFB' }}
           >
-            <View className="flex-row items-center mb-3">
-              <Text className="text-xl mr-2">🏆</Text>
+            <View className="flex-row items-center mb-2">
+              <View 
+                className="w-7 h-7 rounded-full items-center justify-center mr-1.5"
+                style={{ backgroundColor: 'rgba(55, 74, 54, 0.15)' }}
+              >
+                <Trophy size={12} color="#374A36" />
+              </View>
               <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Quests
               </Text>
             </View>
-            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
+            <Text className="text-xl font-bold mb-0.5" style={{ color: '#374A36' }}>
               {stats.challenges}
             </Text>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
               Done
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Quick Tip Card */}
-      <View 
-        className="rounded-2xl px-4 py-4 mb-4"
-        style={{ 
-          backgroundColor: 'rgba(212, 169, 106, 0.08)',
-          borderWidth: 1,
-          borderColor: 'rgba(212, 169, 106, 0.2)',
-        }}
-      >
-        <View className="flex-row items-center">
-          <View 
-            className="w-10 h-10 rounded-full items-center justify-center mr-3"
-            style={{ backgroundColor: 'rgba(212, 169, 106, 0.2)' }}
-          >
-            <TrendingUp size={18} color="#D4A96A" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-bold mb-1" style={{ color: '#1A1A1A' }}>
-              Daily Tip
-            </Text>
-            <Text className="text-xs" style={{ color: '#6B7280' }}>
-              Complete 3 quests today to unlock bonus rewards!
             </Text>
           </View>
         </View>

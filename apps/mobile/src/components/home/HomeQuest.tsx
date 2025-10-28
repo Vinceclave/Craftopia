@@ -7,17 +7,17 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
   // Loading State
   if (loading) {
     return (
-      <View className="px-6 mb-6">
-        <View className="flex-row items-center justify-between mb-4">
+      <View className="px-4 mb-4">
+        <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <View 
-              className="w-11 h-11 rounded-full items-center justify-center mr-3"
-              style={{ backgroundColor: 'rgba(212, 169, 106, 0.15)' }}
+              className="w-9 h-9 rounded-full items-center justify-center mr-2"
+              style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
             >
-              <Target size={20} color="#D4A96A" />
+              <Target size={18} color="#374A36" />
             </View>
             <View>
-              <Text className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+              <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
                 Daily Quests
               </Text>
               <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -31,15 +31,15 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
         {[1, 2, 3].map((item) => (
           <View 
             key={item} 
-            className="bg-white rounded-2xl p-5 mb-3"
+            className="bg-white rounded-xl p-4 mb-2"
             style={{ backgroundColor: '#F9FAFB' }}
           >
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="w-20 h-6 rounded-lg" style={{ backgroundColor: '#E5E7EB' }} />
-              <View className="w-14 h-7 rounded-full" style={{ backgroundColor: '#E5E7EB' }} />
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="w-16 h-5 rounded-lg" style={{ backgroundColor: '#E5E7EB' }} />
+              <View className="w-12 h-6 rounded-full" style={{ backgroundColor: '#E5E7EB' }} />
             </View>
-            <View className="w-4/5 h-5 rounded mb-2" style={{ backgroundColor: '#E5E7EB' }} />
-            <View className="w-full h-4 rounded mb-4" style={{ backgroundColor: '#E5E7EB' }} />
+            <View className="w-4/5 h-4 rounded mb-2" style={{ backgroundColor: '#E5E7EB' }} />
+            <View className="w-full h-3 rounded mb-3" style={{ backgroundColor: '#E5E7EB' }} />
             <View className="w-full h-2 rounded" style={{ backgroundColor: '#E5E7EB' }} />
           </View>
         ))}
@@ -50,17 +50,17 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
   // Empty State
   if (!quests || quests.length === 0) {
     return (
-      <View className="px-6 mb-6">
-        <View className="flex-row items-center justify-between mb-4">
+      <View className="px-4 mb-4">
+        <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <View 
-              className="w-11 h-11 rounded-full items-center justify-center mr-3"
-              style={{ backgroundColor: 'rgba(212, 169, 106, 0.15)' }}
+              className="w-9 h-9 rounded-full items-center justify-center mr-2"
+              style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
             >
-              <Target size={20} color="#D4A96A" />
+              <Target size={18} color="#374A36" />
             </View>
             <View>
-              <Text className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+              <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
                 Daily Quests
               </Text>
               <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -71,7 +71,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
         </View>
         
         <View 
-          className="bg-white rounded-3xl p-8 items-center"
+          className="bg-white rounded-2xl p-6 items-center"
           style={{ 
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -81,19 +81,19 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           }}
         >
           <View 
-            className="w-16 h-16 rounded-full items-center justify-center mb-4"
+            className="w-14 h-14 rounded-full items-center justify-center mb-3"
             style={{ backgroundColor: '#F3F4F6' }}
           >
-            <Target size={28} color="#9CA3AF" />
+            <Target size={24} color="#9CA3AF" />
           </View>
-          <Text className="text-lg font-bold mb-2" style={{ color: '#1A1A1A' }}>
+          <Text className="text-base font-bold mb-1" style={{ color: '#1A1A1A' }}>
             All Caught Up!
           </Text>
-          <Text className="text-sm text-center mb-5" style={{ color: '#6B7280' }}>
+          <Text className="text-sm text-center mb-4" style={{ color: '#6B7280' }}>
             New quests will appear tomorrow. Check back then!
           </Text>
           <TouchableOpacity 
-            className="px-6 py-3 rounded-xl"
+            className="px-5 py-2.5 rounded-xl"
             style={{ backgroundColor: '#374A36' }}
             activeOpacity={0.8}
           >
@@ -110,9 +110,9 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
   const getCategoryIcon = (quest) => {
     const category = quest.category?.toLowerCase() || '';
-    if (category.includes('daily')) return <Flame size={14} color="#F59E0B" />;
-    if (category.includes('weekly')) return <Calendar size={14} color="#3B82F6" />;
-    return <Zap size={14} color="#D4A96A" />;
+    if (category.includes('daily')) return <Flame size={12} color="#F59E0B" />;
+    if (category.includes('weekly')) return <Calendar size={12} color="#3B82F6" />;
+    return <Zap size={12} color="#374A36" />;
   };
 
   const QuestItem = ({ quest, index }) => {
@@ -123,44 +123,44 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
     return (
       <TouchableOpacity
-        className="bg-white rounded-2xl p-5 mb-3"
+        className="bg-white rounded-xl p-4 mb-2"
         style={{ 
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: isCompleted ? 0.03 : 0.05,
           shadowRadius: 8,
           elevation: 2,
-          backgroundColor: isCompleted ? 'rgba(74, 124, 89, 0.03)' : '#FFFFFF',
+          backgroundColor: isCompleted ? 'rgba(55, 74, 54, 0.03)' : '#FFFFFF',
           borderWidth: isCompleted ? 1 : 0,
-          borderColor: isCompleted ? 'rgba(74, 124, 89, 0.2)' : 'transparent',
+          borderColor: isCompleted ? 'rgba(55, 74, 54, 0.15)' : 'transparent',
         }}
         onPress={() => onQuestPress?.(quest)}
         activeOpacity={0.7}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center justify-between mb-3">
           {/* Status Badge */}
           <View 
-            className="flex-row items-center px-3 py-1.5 rounded-full"
+            className="flex-row items-center px-2.5 py-1 rounded-full"
             style={{ 
               backgroundColor: isCompleted 
-                ? 'rgba(74, 124, 89, 0.1)' 
-                : 'rgba(212, 169, 106, 0.1)',
+                ? 'rgba(55, 74, 54, 0.1)' 
+                : 'rgba(55, 74, 54, 0.08)',
               borderWidth: 1,
               borderColor: isCompleted 
-                ? 'rgba(74, 124, 89, 0.2)' 
-                : 'rgba(212, 169, 106, 0.2)',
+                ? 'rgba(55, 74, 54, 0.2)' 
+                : 'rgba(55, 74, 54, 0.15)',
             }}
           >
             {isCompleted ? (
-              <CheckCircle size={13} color="#4A7C59" />
+              <CheckCircle size={11} color="#374A36" />
             ) : (
               getCategoryIcon(quest)
             )}
             <Text 
-              className="text-xs font-bold uppercase tracking-wide ml-1.5"
+              className="text-xs font-bold uppercase tracking-wide ml-1"
               style={{ 
-                color: isCompleted ? '#4A7C59' : '#D4A96A'
+                color: '#374A36'
               }}
             >
               {isCompleted ? 'Done' : quest.category || 'Quest'}
@@ -169,27 +169,27 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
           {/* Points Badge */}
           <View 
-            className="px-3 py-1.5 rounded-full"
-            style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
+            className="px-2.5 py-1 rounded-full"
+            style={{ backgroundColor: 'rgba(212, 169, 106, 0.15)' }}
           >
-            <Text className="text-sm font-bold" style={{ color: '#374A36' }}>
+            <Text className="text-xs font-bold" style={{ color: '#D4A96A' }}>
               +{quest.points_rewards || quest.points || 0}
             </Text>
           </View>
         </View>
 
         {/* Content */}
-        <Text className="text-base font-bold mb-2" style={{ color: '#1A1A1A' }}>
+        <Text className="text-sm font-bold mb-1" style={{ color: '#1A1A1A' }}>
           {quest.title}
         </Text>
-        <Text className="text-sm mb-4" style={{ color: '#6B7280' }} numberOfLines={2}>
+        <Text className="text-xs mb-3" style={{ color: '#6B7280' }} numberOfLines={2}>
           {quest.description || 'Complete this challenge to earn rewards'}
         </Text>
 
         {/* Progress Bar */}
         {!isCompleted && progress !== undefined && total !== undefined && (
-          <View className="mb-4">
-            <View className="flex-row justify-between mb-2">
+          <View className="mb-3">
+            <View className="flex-row justify-between mb-1.5">
               <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Progress
               </Text>
@@ -198,14 +198,14 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
               </Text>
             </View>
             <View 
-              className="h-2 rounded-full overflow-hidden"
+              className="h-1.5 rounded-full overflow-hidden"
               style={{ backgroundColor: '#E5E7EB' }}
             >
               <View 
                 className="h-full rounded-full"
                 style={{ 
                   width: `${Math.min(progressPercent, 100)}%`,
-                  backgroundColor: '#D4A96A',
+                  backgroundColor: '#374A36',
                 }}
               />
             </View>
@@ -214,7 +214,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
         {/* Footer */}
         <View 
-          className="flex-row items-center justify-between pt-4"
+          className="flex-row items-center justify-between pt-3"
           style={{ 
             borderTopWidth: 1,
             borderTopColor: '#F3F4F6',
@@ -223,15 +223,15 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           <View className="flex-row items-center">
             {!isCompleted ? (
               <>
-                <Clock size={15} color="#9CA3AF" />
-                <Text className="text-xs font-medium ml-2" style={{ color: '#6B7280' }}>
+                <Clock size={13} color="#9CA3AF" />
+                <Text className="text-xs font-medium ml-1.5" style={{ color: '#6B7280' }}>
                   In Progress
                 </Text>
               </>
             ) : (
               <>
-                <CheckCircle size={15} color="#4A7C59" />
-                <Text className="text-xs font-semibold ml-2" style={{ color: '#4A7C59' }}>
+                <CheckCircle size={13} color="#374A36" />
+                <Text className="text-xs font-semibold ml-1.5" style={{ color: '#374A36' }}>
                   Completed!
                 </Text>
               </>
@@ -239,10 +239,10 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           </View>
           
           <View className="flex-row items-center">
-            <Text className="text-xs font-bold mr-1" style={{ color: '#374A36' }}>
+            <Text className="text-xs font-bold mr-0.5" style={{ color: '#374A36' }}>
               View
             </Text>
-            <ChevronRight size={14} color="#374A36" />
+            <ChevronRight size={12} color="#374A36" />
           </View>
         </View>
       </TouchableOpacity>
@@ -254,18 +254,18 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
   const completionPercent = (completedCount / totalCount) * 100;
 
   return (
-    <View className="px-6 mb-6">
+    <View className="px-4 mb-4">
       {/* Section Header */}
-      <View className="flex-row items-center justify-between mb-4">
+      <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
           <View 
-            className="w-11 h-11 rounded-full items-center justify-center mr-3"
-            style={{ backgroundColor: 'rgba(212, 169, 106, 0.15)' }}
+            className="w-9 h-9 rounded-full items-center justify-center mr-2"
+            style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
           >
-            <Target size={20} color="#D4A96A" />
+            <Target size={18} color="#374A36" />
           </View>
           <View>
-            <Text className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+            <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
               Daily Quests
             </Text>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -276,21 +276,21 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
         
         {totalCount > 3 && (
           <TouchableOpacity 
-            className="flex-row items-center px-4 py-2 rounded-full"
+            className="flex-row items-center px-3 py-1.5 rounded-full"
             style={{ backgroundColor: '#F3F4F6' }}
             onPress={onSeeAll}
             activeOpacity={0.7}
           >
-            <Text className="text-xs font-bold mr-1" style={{ color: '#374A36' }}>
+            <Text className="text-xs font-bold mr-0.5" style={{ color: '#374A36' }}>
               See All
             </Text>
-            <ChevronRight size={14} color="#374A36" />
+            <ChevronRight size={12} color="#374A36" />
           </TouchableOpacity>
         )}
       </View>
 
       {/* Quest Cards */}
-      <View className="mb-4">
+      <View className="mb-3">
         {visibleQuests.map((quest, index) => (
           <QuestItem key={quest.id || index} quest={quest} index={index} />
         ))}
@@ -298,7 +298,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
 
       {/* Daily Progress Summary */}
       <View 
-        className="bg-white rounded-2xl p-5"
+        className="bg-white rounded-xl p-4"
         style={{ 
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -307,7 +307,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           elevation: 2,
         }}
       >
-        <View className="flex-row justify-between items-center mb-3">
+        <View className="flex-row justify-between items-center mb-2">
           <Text className="text-sm font-bold" style={{ color: '#1A1A1A' }}>
             Daily Progress
           </Text>
@@ -316,7 +316,7 @@ export const HomeQuest = ({ quests = [], loading, onSeeAll, onQuestPress }) => {
           </Text>
         </View>
         <View 
-          className="h-2 rounded-full overflow-hidden mb-3"
+          className="h-1.5 rounded-full overflow-hidden mb-2"
           style={{ backgroundColor: '#E5E7EB' }}
         >
           <View 

@@ -35,13 +35,13 @@ export const HomeActivity = () => {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'achievement':
-        return <Award size={18} color="#D4A96A" />;
+        return <Award size={16} color="#D4A96A" />;
       case 'quest':
-        return <Trophy size={18} color="#374A36" />;
+        return <Trophy size={16} color="#374A36" />;
       case 'social':
-        return <Heart size={18} color="#EF4444" />;
+        return <Heart size={16} color="#EF4444" />;
       default:
-        return <Activity size={18} color="#6B7280" />;
+        return <Activity size={16} color="#6B7280" />;
     }
   };
 
@@ -50,17 +50,17 @@ export const HomeActivity = () => {
       case 'achievement':
         return {
           bg: 'rgba(212, 169, 106, 0.1)',
-          border: 'rgba(212, 169, 106, 0.2)',
+          border: 'rgba(212, 169, 106, 0.15)',
         };
       case 'quest':
         return {
           bg: 'rgba(55, 74, 54, 0.1)',
-          border: 'rgba(55, 74, 54, 0.2)',
+          border: 'rgba(55, 74, 54, 0.15)',
         };
       case 'social':
         return {
           bg: 'rgba(239, 68, 68, 0.1)',
-          border: 'rgba(239, 68, 68, 0.2)',
+          border: 'rgba(239, 68, 68, 0.15)',
         };
       default:
         return {
@@ -75,18 +75,18 @@ export const HomeActivity = () => {
   }
 
   return (
-    <View className="px-6 mb-6">
+    <View className="px-4 mb-4">
       {/* Section Header */}
-      <View className="flex-row items-center justify-between mb-4">
+      <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
           <View 
-            className="w-11 h-11 rounded-full items-center justify-center mr-3"
+            className="w-9 h-9 rounded-full items-center justify-center mr-2"
             style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
           >
-            <Activity size={20} color="#374A36" />
+            <Activity size={18} color="#374A36" />
           </View>
           <View>
-            <Text className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+            <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>
               Recent Activity
             </Text>
             <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -96,20 +96,20 @@ export const HomeActivity = () => {
         </View>
         
         <TouchableOpacity 
-          className="flex-row items-center px-4 py-2 rounded-full"
+          className="flex-row items-center px-3 py-1.5 rounded-full"
           style={{ backgroundColor: '#F3F4F6' }}
           activeOpacity={0.7}
         >
-          <Text className="text-xs font-bold mr-1" style={{ color: '#374A36' }}>
+          <Text className="text-xs font-bold mr-0.5" style={{ color: '#374A36' }}>
             View All
           </Text>
-          <ChevronRight size={14} color="#374A36" />
+          <ChevronRight size={12} color="#374A36" />
         </TouchableOpacity>
       </View>
 
       {/* Activity Timeline */}
       <View 
-        className="bg-white rounded-2xl overflow-hidden mb-4"
+        className="bg-white rounded-xl overflow-hidden mb-3"
         style={{ 
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 2 },
@@ -121,7 +121,7 @@ export const HomeActivity = () => {
         {activities.map((activity, index) => (
           <TouchableOpacity
             key={activity.id}
-            className="p-5"
+            className="p-4"
             style={{
               borderBottomWidth: index < activities.length - 1 ? 1 : 0,
               borderBottomColor: '#F3F4F6',
@@ -131,7 +131,7 @@ export const HomeActivity = () => {
             <View className="flex-row items-start">
               {/* Icon */}
               <View 
-                className="w-11 h-11 rounded-full items-center justify-center mr-4"
+                className="w-9 h-9 rounded-full items-center justify-center mr-3"
                 style={{ 
                   backgroundColor: getActivityColor(activity.type).bg,
                   borderWidth: 1,
@@ -143,13 +143,13 @@ export const HomeActivity = () => {
 
               {/* Content */}
               <View className="flex-1">
-                <View className="flex-row items-center justify-between mb-1">
-                  <Text className="text-base font-bold flex-1" style={{ color: '#1A1A1A' }}>
+                <View className="flex-row items-center justify-between mb-0.5">
+                  <Text className="text-sm font-bold flex-1" style={{ color: '#1A1A1A' }}>
                     {activity.title}
                   </Text>
                   {activity.points > 0 && (
                     <View 
-                      className="px-3 py-1 rounded-full ml-3"
+                      className="px-2.5 py-0.5 rounded-full ml-2"
                       style={{ backgroundColor: 'rgba(212, 169, 106, 0.15)' }}
                     >
                       <Text className="text-xs font-bold" style={{ color: '#D4A96A' }}>
@@ -158,7 +158,7 @@ export const HomeActivity = () => {
                     </View>
                   )}
                 </View>
-                <Text className="text-sm mb-2" style={{ color: '#6B7280' }}>
+                <Text className="text-xs mb-1" style={{ color: '#6B7280' }}>
                   {activity.description}
                 </Text>
                 <Text className="text-xs" style={{ color: '#9CA3AF' }}>
@@ -172,7 +172,7 @@ export const HomeActivity = () => {
 
       {/* Motivational Footer */}
       <View 
-        className="rounded-2xl px-4 py-4"
+        className="rounded-xl px-3 py-3"
         style={{ 
           backgroundColor: 'rgba(55, 74, 54, 0.05)',
           borderWidth: 1,
@@ -180,12 +180,12 @@ export const HomeActivity = () => {
         }}
       >
         <View className="flex-row items-center">
-          <Sparkles size={18} color="#374A36" />
-          <Text className="text-sm font-semibold text-center flex-1 ml-2" style={{ color: '#374A36' }}>
+          <Sparkles size={16} color="#374A36" />
+          <Text className="text-xs font-semibold text-center flex-1 ml-2" style={{ color: '#374A36' }}>
             You're on fire! Keep up the amazing work!
           </Text>
         </View>
       </View>
     </View>
   );
-};
+};  
