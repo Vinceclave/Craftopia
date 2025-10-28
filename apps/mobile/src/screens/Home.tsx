@@ -1,4 +1,4 @@
-// HomeScreen.tsx - REDESIGNED with modern card-based layout
+// apps/mobile/src/screens/Home.tsx
 import React from 'react';
 import { ScrollView, Platform, View, RefreshControl } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
@@ -35,7 +35,11 @@ export const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView 
+      edges={['left', 'right']} 
+      className="flex-1"
+      style={{ backgroundColor: '#F9FAFB' }}
+    >
       <HomeHeader />
       <ScrollView
         className="flex-1"

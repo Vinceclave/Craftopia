@@ -1,7 +1,7 @@
-// HomeStats.tsx - REDESIGNED with cleaner card design
+// apps/mobile/src/components/home/HomeStats.tsx
 import React from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { Leaf, TrendingUp, Award, ChevronRight } from 'lucide-react-native';
+import { Leaf, TrendingUp, Award, ChevronRight, Sparkles } from 'lucide-react-native';
 import { useUserStats } from '~/hooks/useUserStats';
 
 export const HomeStats = () => {
@@ -15,21 +15,34 @@ export const HomeStats = () => {
   };
 
   return (
-    <View className="px-4 pt-4">
+    <View className="px-6 pt-6">
       {/* Main Impact Card */}
-      <View className="bg-craftopia-surface rounded-2xl p-5 border border-craftopia-light/50 mb-3">
+      <View 
+        className="bg-white rounded-3xl p-6 mb-4"
+        style={{ 
+          shadowColor: '#374A36',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 4,
+        }}
+      >
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center justify-between mb-6">
           <View>
-            <Text className="text-xs font-medium text-craftopia-textSecondary uppercase tracking-wider mb-1">
+            <Text className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#6B7280' }}>
               Your Impact
             </Text>
-            <Text className="text-sm text-craftopia-textSecondary">
+            <Text className="text-sm" style={{ color: '#9CA3AF' }}>
               Keep making a difference! 🌍
             </Text>
           </View>
-          <TouchableOpacity className="flex-row items-center">
-            <Text className="text-xs font-semibold text-craftopia-primary mr-1">
+          <TouchableOpacity 
+            className="flex-row items-center px-3 py-2 rounded-full"
+            style={{ backgroundColor: '#F3F4F6' }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-xs font-semibold mr-1" style={{ color: '#374A36' }}>
               Details
             </Text>
             <ChevronRight size={14} color="#374A36" />
@@ -37,102 +50,136 @@ export const HomeStats = () => {
         </View>
 
         {/* Primary Stat - Waste Saved */}
-        <View className="bg-gradient-to-r from-craftopia-primary/10 to-craftopia-success/10 rounded-xl p-4 mb-4 border border-craftopia-primary/20">
+        <View 
+          className="rounded-2xl p-5 mb-5"
+          style={{ 
+            backgroundColor: 'rgba(74, 124, 89, 0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(74, 124, 89, 0.2)',
+          }}
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <View className="flex-row items-center mb-2">
-                <View className="w-8 h-8 bg-craftopia-success/20 rounded-full items-center justify-center mr-2">
-                  <Leaf size={16} color="#4A7C59" />
+              <View className="flex-row items-center mb-3">
+                <View 
+                  className="w-10 h-10 rounded-full items-center justify-center mr-3"
+                  style={{ backgroundColor: 'rgba(74, 124, 89, 0.15)' }}
+                >
+                  <Leaf size={20} color="#4A7C59" />
                 </View>
-                <Text className="text-sm font-medium text-craftopia-textSecondary">
+                <Text className="text-sm font-semibold" style={{ color: '#6B7280' }}>
                   Waste Saved
                 </Text>
               </View>
-              <Text className="text-3xl font-bold text-craftopia-primary mb-1">
+              <Text className="text-4xl font-bold mb-2" style={{ color: '#374A36' }}>
                 {stats.wasteSaved}
-                <Text className="text-lg text-craftopia-textSecondary"> kg</Text>
+                <Text className="text-xl" style={{ color: '#6B7280' }}> kg</Text>
               </Text>
-              <Text className="text-xs text-craftopia-success">
-                🎉 Amazing progress!
-              </Text>
+              <View className="flex-row items-center">
+                <Sparkles size={14} color="#4A7C59" />
+                <Text className="text-xs font-semibold ml-1" style={{ color: '#4A7C59' }}>
+                  Amazing progress!
+                </Text>
+              </View>
             </View>
             
             {/* Decorative Element */}
-            <View className="w-20 h-20 bg-craftopia-success/10 rounded-full items-center justify-center">
-              <Text className="text-4xl">♻️</Text>
+            <View 
+              className="w-24 h-24 rounded-full items-center justify-center"
+              style={{ backgroundColor: 'rgba(74, 124, 89, 0.1)' }}
+            >
+              <Text className="text-5xl">♻️</Text>
             </View>
           </View>
         </View>
 
         {/* Secondary Stats Grid */}
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-3">
           {/* Points */}
-          <View className="flex-1 bg-craftopia-light rounded-xl p-3">
-            <View className="flex-row items-center mb-2">
-              <View className="w-6 h-6 bg-craftopia-accent/20 rounded-full items-center justify-center mr-1.5">
-                <Award size={12} color="#D4A96A" />
+          <View 
+            className="flex-1 rounded-xl p-4"
+            style={{ backgroundColor: '#F9FAFB' }}
+          >
+            <View className="flex-row items-center mb-3">
+              <View 
+                className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                style={{ backgroundColor: 'rgba(212, 169, 106, 0.2)' }}
+              >
+                <Award size={14} color="#D4A96A" />
               </View>
-              <Text className="text-xs text-craftopia-textSecondary font-medium">
+              <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Points
               </Text>
             </View>
-            <Text className="text-xl font-bold text-craftopia-primary">
+            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
               {stats.points}
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary mt-0.5">
+            <Text className="text-xs" style={{ color: '#9CA3AF' }}>
               +{Math.floor(stats.points * 0.1)} today
             </Text>
           </View>
 
           {/* Crafts */}
-          <View className="flex-1 bg-craftopia-light rounded-xl p-3">
-            <View className="flex-row items-center mb-2">
-              <View className="w-6 h-6 bg-craftopia-primary/20 rounded-full items-center justify-center mr-1.5">
-                <Text className="text-xs">🎨</Text>
-              </View>
-              <Text className="text-xs text-craftopia-textSecondary font-medium">
+          <View 
+            className="flex-1 rounded-xl p-4"
+            style={{ backgroundColor: '#F9FAFB' }}
+          >
+            <View className="flex-row items-center mb-3">
+              <Text className="text-xl mr-2">🎨</Text>
+              <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Crafts
               </Text>
             </View>
-            <Text className="text-xl font-bold text-craftopia-primary">
+            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
               {stats.crafts}
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary mt-0.5">
+            <Text className="text-xs" style={{ color: '#9CA3AF' }}>
               Created
             </Text>
           </View>
 
           {/* Challenges */}
-          <View className="flex-1 bg-craftopia-light rounded-xl p-3">
-            <View className="flex-row items-center mb-2">
-              <View className="w-6 h-6 bg-craftopia-success/20 rounded-full items-center justify-center mr-1.5">
-                <Text className="text-xs">🏆</Text>
-              </View>
-              <Text className="text-xs text-craftopia-textSecondary font-medium">
+          <View 
+            className="flex-1 rounded-xl p-4"
+            style={{ backgroundColor: '#F9FAFB' }}
+          >
+            <View className="flex-row items-center mb-3">
+              <Text className="text-xl mr-2">🏆</Text>
+              <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>
                 Quests
               </Text>
             </View>
-            <Text className="text-xl font-bold text-craftopia-primary">
+            <Text className="text-2xl font-bold mb-1" style={{ color: '#374A36' }}>
               {stats.challenges}
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary mt-0.5">
-              Completed
+            <Text className="text-xs" style={{ color: '#9CA3AF' }}>
+              Done
             </Text>
           </View>
         </View>
       </View>
 
       {/* Quick Tip Card */}
-      <View className="bg-gradient-to-r from-craftopia-accent/10 to-craftopia-primary/5 rounded-xl px-3 py-3 border border-craftopia-accent/20 mb-3">
+      <View 
+        className="rounded-2xl px-4 py-4 mb-4"
+        style={{ 
+          backgroundColor: 'rgba(212, 169, 106, 0.08)',
+          borderWidth: 1,
+          borderColor: 'rgba(212, 169, 106, 0.2)',
+        }}
+      >
         <View className="flex-row items-center">
-          <View className="w-8 h-8 rounded-full bg-craftopia-accent/20 items-center justify-center mr-2">
-            <TrendingUp size={16} color="#D4A96A" />
+          <View 
+            className="w-10 h-10 rounded-full items-center justify-center mr-3"
+            style={{ backgroundColor: 'rgba(212, 169, 106, 0.2)' }}
+          >
+            <TrendingUp size={18} color="#D4A96A" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-0.5">
+            <Text className="text-sm font-bold mb-1" style={{ color: '#1A1A1A' }}>
               Daily Tip
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary">
+            <Text className="text-xs" style={{ color: '#6B7280' }}>
               Complete 3 quests today to unlock bonus rewards!
             </Text>
           </View>

@@ -1,4 +1,4 @@
-// Button.tsx
+// apps/mobile/src/components/common/Button.tsx
 import React from 'react';
 import {
   TouchableOpacity,
@@ -14,7 +14,7 @@ interface ButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   textClassName?: string;
@@ -22,6 +22,7 @@ interface ButtonProps {
   rightIcon?: React.ReactNode;
   iconOnly?: boolean;
   style?: StyleProp<ViewStyle>;
+  fullWidth?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -37,68 +38,110 @@ const Button: React.FC<ButtonProps> = ({
   rightIcon,
   iconOnly = false,
   style,
+  fullWidth = false,
 }) => {
+  const isDisabled = disabled || loading;
+
   const getButtonStyles = () => {
-    const base = iconOnly
+    // Size styles
+    const sizeStyles = iconOnly
       ? size === 'sm'
-        ? 'rounded-lg p-1.5'
+        ? 'p-2'
         : size === 'lg'
-        ? 'rounded-lg p-3'
-        : 'rounded-lg p-2'
+        ? 'p-4'
+        : 'p-3'
       : size === 'sm'
-      ? 'rounded-lg py-1.5 px-3'
+      ? 'py-2 px-4'
       : size === 'lg'
-      ? 'rounded-lg py-3 px-6'
-      : 'rounded-lg py-2 px-4';
+      ? 'py-4 px-8'
+      : 'py-3 px-6';
 
-    const baseStyles = `${base} items-center ${
-      iconOnly ? '' : 'flex-row justify-center'
-    }`;
+    // Base styles
+    const baseStyles = `${sizeStyles} items-center justify-center rounded-xl ${
+      iconOnly ? '' : 'flex-row'
+    } ${fullWidth ? 'w-full' : ''}`;
 
-    // 🔥 Keep styles consistent, no opacity changes for disabled/loading
+    // Variant styles with disabled state
+    let variantStyles = '';
     switch (variant) {
       case 'secondary':
-        return `${baseStyles} bg-craftopia-light ${className}`;
+        variantStyles = isDisabled
+          ? 'bg-gray-100'
+          : 'bg-craftopia-light';
+        break;
       case 'outline':
-        return `${baseStyles} bg-transparent border border-craftopia-light ${className}`;
+        variantStyles = isDisabled
+          ? 'bg-transparent border border-gray-200'
+          : 'bg-transparent border-2 border-craftopia-primary';
+        break;
+      case 'ghost':
+        variantStyles = isDisabled
+          ? 'bg-transparent'
+          : 'bg-transparent';
+        break;
       default:
-        return `${baseStyles} bg-craftopia-primary ${className}`;
+        variantStyles = isDisabled
+          ? 'bg-gray-300'
+          : 'bg-craftopia-primary';
     }
+
+    return `${baseStyles} ${variantStyles} ${className}`;
   };
 
   const getTextStyles = () => {
     const textSize =
-      size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-base' : 'text-sm';
+      size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
 
+    const fontWeight = 'font-semibold';
+
+    let textColor = '';
     switch (variant) {
       case 'secondary':
+        textColor = isDisabled ? 'text-gray-400' : 'text-craftopia-textPrimary';
+        break;
       case 'outline':
-        return `${textSize} font-medium ${
-          textClassName || 'text-craftopia-textPrimary'
-        }`;
+      case 'ghost':
+        textColor = isDisabled ? 'text-gray-400' : 'text-craftopia-primary';
+        break;
       default:
-        return `${textSize} font-medium ${textClassName || 'text-white'}`;
+        textColor = isDisabled ? 'text-gray-500' : 'text-white';
     }
+
+    return `${textSize} ${fontWeight} ${textClassName || textColor}`;
+  };
+
+  const getActivityIndicatorColor = () => {
+    if (variant === 'primary') return '#fff';
+    return '#374A36';
   };
 
   return (
     <TouchableOpacity
       className={getButtonStyles()}
-      style={style}
+      style={[
+        style,
+        {
+          shadowColor: !isDisabled && variant === 'primary' ? '#374A36' : 'transparent',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: !isDisabled && variant === 'primary' ? 2 : 0,
+        }
+      ]}
       onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
+      disabled={isDisabled}
+      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === 'primary' ? '#fff' : '#374151'}
+          color={getActivityIndicatorColor()}
           size="small"
         />
       ) : (
         <>
-          {leftIcon && <View className="mr-1.5">{leftIcon}</View>}
+          {leftIcon && <View className="mr-2">{leftIcon}</View>}
           {title && <Text className={getTextStyles()}>{title}</Text>}
-          {rightIcon && <View className="ml-1.5">{rightIcon}</View>}
+          {rightIcon && <View className="ml-2">{rightIcon}</View>}
         </>
       )}
     </TouchableOpacity>

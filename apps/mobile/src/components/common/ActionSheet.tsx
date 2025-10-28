@@ -8,12 +8,13 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, AlertCircle } from 'lucide-react-native';
 
 export interface ActionSheetOption {
   text: string;
   onPress: () => void;
   style?: 'default' | 'cancel' | 'destructive';
+  icon?: React.ReactNode;
 }
 
 interface ActionSheetProps {
@@ -33,7 +34,6 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
 }) => {
   const handleOptionPress = (option: ActionSheetOption) => {
     onClose();
-    // Delay action slightly to allow modal to close smoothly
     setTimeout(() => {
       option.onPress();
     }, 100);
@@ -43,44 +43,51 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/50 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
         <TouchableOpacity
           className="flex-1"
           activeOpacity={1}
           onPress={onClose}
         />
         
-        <View className="bg-craftopia-surface rounded-t-2xl" style={{ 
-          backgroundColor: '#FFFFFF',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-        }}>
+        <View 
+          className="bg-white rounded-t-3xl overflow-hidden"
+          style={{ 
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 12,
+            elevation: 8,
+          }}
+        >
           {/* Handle Bar */}
           <View className="items-center pt-3 pb-2">
             <View 
-              className="w-10 h-1 bg-gray-300 rounded-full" 
+              className="w-12 h-1 rounded-full" 
               style={{ backgroundColor: '#D1D5DB' }}
             />
           </View>
 
           {/* Header */}
           {(title || message) && (
-            <View className="px-5 py-3 border-b border-gray-200" style={{ borderBottomColor: '#E5E7EB' }}>
+            <View className="px-6 py-4 border-b" style={{ borderBottomColor: '#F3F4F6' }}>
               {title && (
                 <Text 
-                  className="text-lg font-semibold text-craftopia-textPrimary text-center mb-1"
-                  style={{ color: '#1A1A1A', fontSize: 18, fontWeight: '600' }}
+                  className="text-lg font-bold text-center mb-1"
+                  style={{ color: '#1A1A1A', fontSize: 18 }}
                 >
                   {title}
                 </Text>
               )}
               {message && (
                 <Text 
-                  className="text-sm text-craftopia-textSecondary text-center"
-                  style={{ color: '#6B7280', fontSize: 14 }}
+                  className="text-sm text-center"
+                  style={{ color: '#6B7280', fontSize: 14, lineHeight: 20 }}
                 >
                   {message}
                 </Text>
@@ -90,7 +97,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
 
           {/* Options */}
           <ScrollView 
-            className="max-h-96"
+            style={{ maxHeight: 400 }}
             showsVerticalScrollIndicator={false}
           >
             <View className="py-2">
@@ -98,24 +105,22 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
                 <TouchableOpacity
                   key={index}
                   onPress={() => handleOptionPress(option)}
-                  className="px-5 py-4 border-b border-gray-100"
+                  className="px-6 py-4 flex-row items-center justify-center"
                   style={{ 
                     borderBottomColor: '#F3F4F6',
                     borderBottomWidth: index < options.length - 1 ? 1 : 0,
                   }}
                   activeOpacity={0.7}
                 >
+                  {option.icon && (
+                    <View className="mr-3">
+                      {option.icon}
+                    </View>
+                  )}
                   <Text
-                    className={`text-center text-base font-medium ${
-                      option.style === 'destructive'
-                        ? 'text-red-600'
-                        : option.style === 'cancel'
-                        ? 'text-gray-600'
-                        : 'text-craftopia-primary'
-                    }`}
+                    className="text-base font-semibold"
                     style={{
                       fontSize: 16,
-                      fontWeight: option.style === 'cancel' ? '400' : '500',
                       color: option.style === 'destructive' 
                         ? '#DC2626' 
                         : option.style === 'cancel'
@@ -131,7 +136,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
           </ScrollView>
 
           {/* Safe area bottom padding */}
-          <View className="h-8" />
+          <View style={{ height: Platform.OS === 'ios' ? 34 : 16 }} />
         </View>
       </View>
     </Modal>

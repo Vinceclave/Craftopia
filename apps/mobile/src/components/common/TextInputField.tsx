@@ -1,7 +1,7 @@
-// TextInputField.tsx
+// apps/mobile/src/components/common/TextInputField.tsx
 import React, { useState, forwardRef } from 'react';
 import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
-import { Eye, EyeOff } from 'lucide-react-native';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react-native';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -11,7 +11,9 @@ interface InputProps extends TextInputProps {
   isLastInput?: boolean;
   onSubmit?: () => void;
   leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   containerClassName?: string;
+  helper?: string;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
@@ -24,7 +26,9 @@ export const Input = forwardRef<TextInput, InputProps>(
       isLastInput,
       onSubmit,
       leftIcon,
+      rightIcon,
       containerClassName = '',
+      helper,
       ...props
     },
     ref
@@ -33,28 +37,35 @@ export const Input = forwardRef<TextInput, InputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className={`mb-3 ${containerClassName}`}>
+      <View className={`mb-4 ${containerClassName}`}>
         {label && (
-          <Text className="text-craftopia-textSecondary text-sm mb-1.5 font-medium">
+          <Text className="text-sm font-semibold mb-2" style={{ color: '#1A1A1A' }}>
             {label}
           </Text>
         )}
 
         <View
-          className={`flex-row items-center px-3 py-2 rounded-lg border ${
-            error
-              ? 'border-red-500'
+          className={`flex-row items-center px-4 py-3 rounded-xl border-2 bg-white`}
+          style={{
+            borderColor: error
+              ? '#DC2626'
               : isFocused
-              ? 'border-craftopia-primary'
-              : 'border-craftopia-light'
-          } bg-craftopia-surface`}
+              ? '#374A36'
+              : '#E5E7EB',
+            shadowColor: isFocused ? '#374A36' : 'transparent',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: isFocused ? 2 : 0,
+          }}
         >
-          {leftIcon && <View className="mr-2">{leftIcon}</View>}
+          {leftIcon && <View className="mr-3">{leftIcon}</View>}
 
           <TextInput
             ref={ref}
-            className="flex-1 text-craftopia-textPrimary text-sm"
-            placeholderTextColor="#6B7280"
+            className="flex-1 text-base"
+            style={{ color: '#1A1A1A' }}
+            placeholderTextColor="#9CA3AF"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
             blurOnSubmit={isLastInput}
@@ -73,19 +84,39 @@ export const Input = forwardRef<TextInput, InputProps>(
           {secure && (
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              className="ml-1 p-1"
+              className="ml-2 p-1"
+              activeOpacity={0.7}
             >
               {showPassword ? (
-                <EyeOff size={16} color="#6B7280" />
+                <EyeOff size={20} color="#6B7280" />
               ) : (
-                <Eye size={16} color="#6B7280" />
+                <Eye size={20} color="#6B7280" />
               )}
             </TouchableOpacity>
           )}
+
+          {rightIcon && !secure && (
+            <View className="ml-3">{rightIcon}</View>
+          )}
         </View>
 
-        {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+        {error && (
+          <View className="flex-row items-center mt-2">
+            <AlertCircle size={14} color="#DC2626" />
+            <Text className="text-sm ml-1" style={{ color: '#DC2626' }}>
+              {error}
+            </Text>
+          </View>
+        )}
+
+        {helper && !error && (
+          <Text className="text-xs mt-2" style={{ color: '#6B7280' }}>
+            {helper}
+          </Text>
+        )}
       </View>
     );
   }
 );
+
+Input.displayName = 'Input';

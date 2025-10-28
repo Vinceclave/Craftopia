@@ -1,3 +1,4 @@
+// apps/mobile/src/components/common/ImageUploadPicker.tsx
 import React, { useState } from 'react'
 import { 
   View, 
@@ -8,7 +9,7 @@ import {
   Modal 
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { X, Camera, Image as ImageIcon, Upload } from 'lucide-react-native'
+import { X, Camera, Image as ImageIcon, Upload, CheckCircle } from 'lucide-react-native'
 import { useLocalUpload } from '~/hooks/useUpload'
 import { API_BASE_URL } from '~/config/api'
 
@@ -24,8 +25,8 @@ interface ImageUploadPickerProps {
 }
 
 export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
-  label = 'Proof Image',
-  description = 'Upload from camera, gallery',
+  label = 'Upload Image',
+  description = 'Take a photo or choose from gallery',
   value,
   onChange,
   folder = 'posts',
@@ -53,22 +54,19 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
       const result = await (fromCamera
         ? ImagePicker.launchCameraAsync({ 
-            quality: 0.7,
+            quality: 0.8,
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
           })
         : ImagePicker.launchImageLibraryAsync({ 
-            quality: 0.7,
+            quality: 0.8,
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
           }))
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0]
         
-        // ✅ Show preview immediately with local URI
         setLocalImageUri(asset.uri)
         setShowPicker(false)
-        
-        // ✅ Start upload
         setUploading(true)
         onUploadStart?.()
         
@@ -79,9 +77,8 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
           
           if (uploadedUrl) {
             console.log('✅ Upload successful:', uploadedUrl)
-            // ✅ CRITICAL: Only set the value after successful upload
             onChange?.(uploadedUrl)
-            setLocalImageUri(null) // Clear local URI after successful upload
+            setLocalImageUri(null)
           } else {
             console.error('❌ Upload failed: No URL returned')
             setLocalImageUri(null)
@@ -109,13 +106,12 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
     onChange?.(undefined)
   }
 
-  // ✅ Determine which image to show
   const displayImageUri = localImageUri || value
 
   return (
-    <View className="flex flex-col gap-2">
+    <View className="mb-4">
       {label && (
-        <Text className="text-craftopia-textSecondary text-sm mb-1 font-medium">
+        <Text className="text-sm font-semibold mb-2" style={{ color: '#1A1A1A' }}>
           {label}
         </Text>
       )}
@@ -125,63 +121,93 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
           <Image
             source={{ 
               uri: localImageUri 
-                ? localImageUri  // Show local image while uploading
-                : `${API_BASE_URL}${value}` // Show server image after upload
+                ? localImageUri
+                : `${API_BASE_URL}${value}`
             }}
-            className="w-full h-40 rounded-lg"
+            className="w-full rounded-xl"
+            style={{ 
+              height: 200,
+              backgroundColor: '#F3F4F6',
+            }}
             resizeMode="cover"
           />
           
-          {/* ✅ Show uploading overlay */}
           {uploading && (
-            <View className="absolute inset-0 bg-black/50 rounded-lg items-center justify-center">
-              <ActivityIndicator size="large" color="#ffffff" />
-              <View className="flex-row items-center mt-2 bg-white/90 px-3 py-1 rounded-full">
-                <Upload size={14} color="#16a34a" />
-                <Text className="text-xs text-green-600 ml-1 font-medium">
-                  Uploading...
-                </Text>
+            <View 
+              className="absolute inset-0 rounded-xl items-center justify-center"
+              style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+            >
+              <View className="items-center">
+                <ActivityIndicator size="large" color="#ffffff" />
+                <View className="flex-row items-center mt-3 bg-white rounded-full px-4 py-2">
+                  <Upload size={16} color="#374A36" />
+                  <Text className="text-sm font-semibold ml-2" style={{ color: '#374A36' }}>
+                    Uploading...
+                  </Text>
+                </View>
               </View>
             </View>
           )}
           
-          {/* ✅ Remove button (disabled while uploading) */}
           {!disabled && !uploading && (
             <TouchableOpacity
-              className="absolute top-2 right-2 bg-black/50 p-1 rounded-full"
+              className="absolute top-3 right-3 p-2 rounded-full"
+              style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
               onPress={handleRemove}
+              activeOpacity={0.7}
             >
-              <X size={18} color="white" />
+              <X size={20} color="white" />
             </TouchableOpacity>
+          )}
+
+          {!uploading && value && (
+            <View 
+              className="absolute top-3 left-3 flex-row items-center px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: 'rgba(74, 124, 89, 0.9)' }}
+            >
+              <CheckCircle size={14} color="white" />
+              <Text className="text-xs font-semibold text-white ml-1">
+                Uploaded
+              </Text>
+            </View>
           )}
         </View>
       ) : (
         <TouchableOpacity
           disabled={uploading || disabled}
           onPress={() => setShowPicker(true)}
-          className="flex flex-col items-center justify-center border border-dashed border-craftopia-light rounded-lg p-4 bg-craftopia-surface"
+          className="rounded-xl overflow-hidden border-2 border-dashed"
+          style={{ 
+            borderColor: '#D1D5DB',
+            backgroundColor: '#F9FAFB',
+            height: 200,
+          }}
+          activeOpacity={0.7}
         >
           {uploading ? (
-            <>
-              <ActivityIndicator color="#16a34a" />
-              <Text className="text-craftopia-textSecondary text-xs mt-2">
+            <View className="flex-1 items-center justify-center">
+              <ActivityIndicator color="#374A36" size="large" />
+              <Text className="text-sm font-medium mt-3" style={{ color: '#6B7280' }}>
                 Uploading...
               </Text>
-            </>
+            </View>
           ) : (
-            <>
-              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mb-2">
-                <ImageIcon size={20} color="#16a34a" />
+            <View className="flex-1 items-center justify-center">
+              <View 
+                className="w-16 h-16 rounded-full items-center justify-center mb-3"
+                style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
+              >
+                <ImageIcon size={28} color="#374A36" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium">
+              <Text className="text-base font-semibold mb-1" style={{ color: '#1A1A1A' }}>
                 Add Image
               </Text>
               {description && (
-                <Text className="text-craftopia-textSecondary text-xs text-center mt-1">
+                <Text className="text-sm text-center px-6" style={{ color: '#6B7280' }}>
                   {description}
                 </Text>
               )}
-            </>
+            </View>
           )}
         </TouchableOpacity>
       )}
@@ -193,44 +219,76 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
         animationType="slide"
         onRequestClose={() => setShowPicker(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-craftopia-surface rounded-t-xl p-4">
-            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-4 text-center">
-              Select Image
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View 
+            className="bg-white rounded-t-3xl p-6"
+            style={{
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+            }}
+          >
+            <View 
+              className="w-12 h-1 rounded-full self-center mb-6" 
+              style={{ backgroundColor: '#D1D5DB' }}
+            />
+            
+            <Text className="text-lg font-bold text-center mb-6" style={{ color: '#1A1A1A' }}>
+              Select Image Source
             </Text>
 
             <TouchableOpacity
-              className="flex-row items-center p-3 bg-craftopia-light rounded-lg mb-2"
+              className="flex-row items-center p-4 rounded-xl mb-3"
+              style={{ backgroundColor: '#F3F4F6' }}
               onPress={() => pickImage(true)}
               disabled={uploading || disabled}
+              activeOpacity={0.7}
             >
-              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <Camera size={16} color="#16a34a" />
+              <View 
+                className="w-12 h-12 rounded-full items-center justify-center mr-4"
+                style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
+              >
+                <Camera size={20} color="#374A36" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
-                Take Photo
-              </Text>
+              <View className="flex-1">
+                <Text className="text-base font-semibold mb-0.5" style={{ color: '#1A1A1A' }}>
+                  Take Photo
+                </Text>
+                <Text className="text-sm" style={{ color: '#6B7280' }}>
+                  Use your camera
+                </Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
+              className="flex-row items-center p-4 rounded-xl mb-4"
+              style={{ backgroundColor: '#F3F4F6' }}
               onPress={() => pickImage(false)}
               disabled={uploading || disabled}
+              activeOpacity={0.7}
             >
-              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <ImageIcon size={16} color="#16a34a" />
+              <View 
+                className="w-12 h-12 rounded-full items-center justify-center mr-4"
+                style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}
+              >
+                <ImageIcon size={20} color="#374A36" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
-                Choose from Gallery
-              </Text>
+              <View className="flex-1">
+                <Text className="text-base font-semibold mb-0.5" style={{ color: '#1A1A1A' }}>
+                  Choose from Gallery
+                </Text>
+                <Text className="text-sm" style={{ color: '#6B7280' }}>
+                  Pick from your photos
+                </Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="mt-4 p-3 bg-craftopia-light rounded-lg"
+              className="p-4 rounded-xl border-2"
+              style={{ borderColor: '#E5E7EB' }}
               onPress={() => setShowPicker(false)}
+              activeOpacity={0.7}
             >
-              <Text className="text-center font-medium text-craftopia-textSecondary text-sm">
+              <Text className="text-center font-semibold" style={{ color: '#6B7280' }}>
                 Cancel
               </Text>
             </TouchableOpacity>
