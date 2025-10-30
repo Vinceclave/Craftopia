@@ -71,11 +71,7 @@ export const PostContainer: React.FC<PostContainerProps> = ({
 
   // Extract user ID from multiple possible properties
   const currentUserId = 
-    currentUser?.id || 
-    currentUser?.user_id || 
-    currentUser?.userId || 
-    currentUser?.sub ||
-    currentUser?.uid;
+    currentUser?.id;
 
   // Calculate if this is user's own post
   const isOwnPost = currentUserId !== undefined && 

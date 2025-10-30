@@ -29,12 +29,6 @@ export const PostList: React.FC<PostListProps> = ({
       key={item.post_id}
       postId={item.post_id}
       {...item}
-      onLoadComments={async (postId: number) => {
-        return [];
-      }}
-      onAddComment={async (postId: number, content: string) => {
-        // This will be handled by the useAddComment hook inside PostContainer
-      }}
     />
   );
 

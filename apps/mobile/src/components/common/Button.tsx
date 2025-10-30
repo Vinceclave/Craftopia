@@ -1,4 +1,5 @@
 // apps/mobile/src/components/common/Button.tsx
+import { CraftopiaTheme } from 'constants/theme';
 import React from 'react';
 import {
   TouchableOpacity,
@@ -38,109 +39,107 @@ const Button: React.FC<ButtonProps> = ({
   rightIcon,
   iconOnly = false,
   style,
-  fullWidth = false,
+  fullWidth = true,
 }) => {
   const isDisabled = disabled || loading;
 
-  const getButtonStyles = () => {
-    // Size styles
-    const sizeStyles = iconOnly
-      ? size === 'sm'
-        ? 'p-2'
-        : size === 'lg'
-        ? 'p-4'
-        : 'p-3'
-      : size === 'sm'
-      ? 'py-2 px-4'
-      : size === 'lg'
-      ? 'py-4 px-8'
-      : 'py-3 px-6';
-
-    // Base styles
-    const baseStyles = `${sizeStyles} items-center justify-center rounded-xl ${
-      iconOnly ? '' : 'flex-row'
-    } ${fullWidth ? 'w-full' : ''}`;
-
-    // Variant styles with disabled state
-    let variantStyles = '';
+  const getVariantStyles = () => {
+    const baseStyles = 'rounded-xl border-2 items-center justify-center flex-row';
+    
     switch (variant) {
+      case 'primary':
+        return `${baseStyles} ${
+          isDisabled 
+            ? 'bg-gray-300 border-gray-300' 
+            : 'bg-craftopia-primary-500 border-craftopia-primary-500 active:bg-craftopia-primary-600'
+        }`;
       case 'secondary':
-        variantStyles = isDisabled
-          ? 'bg-gray-100'
-          : 'bg-craftopia-light';
-        break;
+        return `${baseStyles} ${
+          isDisabled
+            ? 'bg-craftopia-primary-100 border-craftopia-primary-100'
+            : 'bg-craftopia-primary-100 border-craftopia-primary-100 active:bg-craftopia-primary-200'
+        }`;
       case 'outline':
-        variantStyles = isDisabled
-          ? 'bg-transparent border border-gray-200'
-          : 'bg-transparent border-2 border-craftopia-primary';
-        break;
+        return `${baseStyles} ${
+          isDisabled
+            ? 'bg-transparent border-craftopia-border-medium'
+            : 'bg-transparent border-craftopia-primary-500 active:bg-craftopia-primary-50'
+        }`;
       case 'ghost':
-        variantStyles = isDisabled
-          ? 'bg-transparent'
-          : 'bg-transparent';
-        break;
+        return `${baseStyles} ${
+          isDisabled
+            ? 'bg-transparent border-transparent'
+            : 'bg-transparent border-transparent active:bg-craftopia-primary-50'
+        }`;
       default:
-        variantStyles = isDisabled
-          ? 'bg-gray-300'
-          : 'bg-craftopia-primary';
+        return baseStyles;
     }
+  };
 
-    return `${baseStyles} ${variantStyles} ${className}`;
+  const getSizeStyles = () => {
+    if (iconOnly) {
+      return size === 'sm' ? 'p-2' : size === 'lg' ? 'p-4' : 'p-3';
+    }
+    
+    const vertical = size === 'sm' ? 'py-2' : size === 'lg' ? 'py-4' : 'py-3';
+    const horizontal = size === 'sm' ? 'px-4' : size === 'lg' ? 'px-8' : 'px-6';
+    return `${vertical} ${horizontal}`;
   };
 
   const getTextStyles = () => {
-    const textSize =
-      size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
-
-    const fontWeight = 'font-semibold';
-
-    let textColor = '';
+    const sizeStyles = 
+      size === 'sm' ? 'text-sm' : 
+      size === 'lg' ? 'text-lg' : 'text-base';
+    
+    const weightStyles = 'font-poppins font-semibold';
+    
     switch (variant) {
+      case 'primary':
+        return `${sizeStyles} ${weightStyles} text-white`;
       case 'secondary':
-        textColor = isDisabled ? 'text-gray-400' : 'text-craftopia-textPrimary';
-        break;
+        return `${sizeStyles} ${weightStyles} text-craftopia-primary-600`;
       case 'outline':
+        return `${sizeStyles} ${weightStyles} text-craftopia-primary-500`;
       case 'ghost':
-        textColor = isDisabled ? 'text-gray-400' : 'text-craftopia-primary';
-        break;
+        return `${sizeStyles} ${weightStyles} text-craftopia-primary-500`;
       default:
-        textColor = isDisabled ? 'text-gray-500' : 'text-white';
+        return `${sizeStyles} ${weightStyles} text-white`;
     }
-
-    return `${textSize} ${fontWeight} ${textClassName || textColor}`;
   };
 
-  const getActivityIndicatorColor = () => {
-    if (variant === 'primary') return '#fff';
-    return '#374A36';
+  const getShadowStyles = () => {
+    if (isDisabled || variant !== 'primary') return {};
+    return CraftopiaTheme.shadows.sm;
   };
 
   return (
     <TouchableOpacity
-      className={getButtonStyles()}
-      style={[
-        style,
-        {
-          shadowColor: !isDisabled && variant === 'primary' ? '#374A36' : 'transparent',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: !isDisabled && variant === 'primary' ? 2 : 0,
-        }
-      ]}
+      className={`
+        ${getVariantStyles()}
+        ${getSizeStyles()}
+        ${fullWidth ? 'w-full' : ''}
+        ${className}
+      `}
+      style={[getShadowStyles(), style]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
       {loading ? (
         <ActivityIndicator
-          color={getActivityIndicatorColor()}
           size="small"
+          color={
+            variant === 'primary' ? '#FFFFFF' : CraftopiaTheme.colors.primary[500]
+          }
         />
       ) : (
         <>
           {leftIcon && <View className="mr-2">{leftIcon}</View>}
-          {title && <Text className={getTextStyles()}>{title}</Text>}
+          {title && (
+            <Text className={`${getTextStyles()} ${textClassName}`}>
+              {title}
+            </Text>
+          )}
           {rightIcon && <View className="ml-2">{rightIcon}</View>}
         </>
       )}

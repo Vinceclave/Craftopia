@@ -1,5 +1,4 @@
 // apps/mobile/src/hooks/queries/useChallengeWithStatus.ts
-import { useQuery } from '@tanstack/query-core';
 import { useChallenge } from './useChallenges';
 import { useUserChallengeProgress } from './useUserChallenges';
 

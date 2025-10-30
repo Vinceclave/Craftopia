@@ -104,8 +104,8 @@ class AuthService {
       let user = response.data;
       
       // Normalize user data
-      if (user.user_id && !user.id) {
-        user.id = user.user_id;
+      if (!user.id) {
+        user.id = user.id;
       }
       
       // Ensure profile exists
