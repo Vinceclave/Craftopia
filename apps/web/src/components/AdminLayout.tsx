@@ -26,7 +26,7 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { isConnected, ping } = useWebSocket();
+  const { isConnected } = useWebSocket();
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3, badge: null },
@@ -42,7 +42,23 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white relative">
+      {/* Background Floating Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(3)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
+            style={{
+              left: `${10 + i * 30}%`,
+              top: `${15 + (i % 2) * 30}%`,
+              animationDelay: `${i * 1.5}s`,
+              animationDuration: '4s'
+            }}
+          />
+        ))}
+      </div>
+
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -53,20 +69,20 @@ const AdminLayout = () => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-100 transition-all duration-300
+        className={`fixed top-0 left-0 z-50 h-full bg-white/80 backdrop-blur-sm border-r border-[#6CAC73]/20 transition-all duration-300
         ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0 lg:w-20'}`}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div className="flex items-center justify-between p-6 border-b border-[#6CAC73]/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
                 <Shield className="w-4 h-4 text-white" />
               </div>
               {sidebarOpen && (
                 <div>
-                  <h1 className="font-semibold text-gray-900 text-sm">Craftopia</h1>
-                  <p className="text-xs text-gray-400">Admin</p>
+                  <h1 className="font-semibold text-[#2B4A2F] text-sm font-poppins">Craftopia</h1>
+                  <p className="text-xs text-gray-600 font-nunito">Admin</p>
                 </div>
               )}
             </div>
@@ -74,10 +90,10 @@ const AdminLayout = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 lg:hidden"
+              className="h-7 w-7 lg:hidden hover:bg-[#6CAC73]/10"
               onClick={() => setSidebarOpen(false)}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 text-[#2B4A2F]" />
             </Button>
           </div>
 
@@ -88,91 +104,77 @@ const AdminLayout = () => {
               return (
                 <Link key={item.name} to={item.href} onClick={() => setSidebarOpen(false)}>
                   <div
-                    className={`flex items-center w-full relative group rounded-lg transition-all duration-200
+                    className={`flex items-center w-full relative group rounded-xl transition-all duration-200
                     ${sidebarOpen ? 'px-3 py-2.5' : 'px-2 py-2.5 justify-center'}
-                    ${isActive ? 'bg-gray-50 text-gray-900' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                    ${isActive 
+                      ? 'bg-gradient-to-r from-[#6CAC73]/10 to-[#2B4A2F]/5 text-[#2B4A2F] border border-[#6CAC73]/20' 
+                      : 'text-gray-600 hover:text-[#2B4A2F] hover:bg-white/50 border border-transparent'
+                    }`}
                   >
                     <item.icon className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && (
                       <>
-                        <span className="flex-1 text-sm font-medium">{item.name}</span>
+                        <span className="flex-1 text-sm font-medium font-poppins">{item.name}</span>
                         {item.badge && (
-                          <Badge className="ml-2 bg-gray-900 text-white text-xs min-w-[20px]">
+                          <Badge className="ml-2 bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white text-xs min-w-[20px] border-0">
                             {item.badge}
                           </Badge>
                         )}
                       </>
                     )}
                     {!sidebarOpen && item.badge && (
-                      <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-gray-900 rounded-full" />
+                      <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#6CAC73] rounded-full" />
                     )}
                   </div>
                 </Link>
               );
             })}
           </nav>
-
-          {/* WebSocket Status */}
-          {sidebarOpen && (
-            <div className="px-4 py-3 border-t border-gray-100">
-              <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  {isConnected ? (
-                    <>
-                      <Wifi className="w-4 h-4 text-green-600" />
-                      <span className="text-xs text-green-700 font-medium">Connected</span>
-                    </>
-                  ) : (
-                    <>
-                      <WifiOff className="w-4 h-4 text-rose-600" />
-                      <span className="text-xs text-rose-700 font-medium">Disconnected</span>
-                    </>
-                  )}
-                </div>
-                {isConnected && (
-                  <button
-                    onClick={ping}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                    title="Test connection"
-                  >
-                    Ping
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* User Section */}
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-[#6CAC73]/10">
             {sidebarOpen ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 p-2">
-                  <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-full flex items-center justify-center text-white text-sm font-medium shadow-lg">
                     {user?.username?.charAt(0).toUpperCase() || 'A'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{user?.username || 'Admin'}</p>
-                    <p className="text-xs text-gray-400 truncate">{user?.email || 'admin@craftopia.com'}</p>
+                    <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">{user?.username || 'Admin'}</p>
+                    <p className="text-xs text-gray-600 font-nunito truncate">{user?.email || 'admin@craftopia.com'}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="flex-1 text-xs h-8">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex-1 text-xs h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10 hover:text-[#2B4A2F]"
+                  >
                     <Settings className="w-3 h-3 mr-2" />
                     Settings
                   </Button>
-                  <Button variant="ghost" size="sm" className="flex-1 text-xs h-8" onClick={handleLogout}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="flex-1 text-xs h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10 hover:text-[#2B4A2F]" 
+                    onClick={handleLogout}
+                  >
                     <LogOut className="w-3 h-3 mr-2" />
                     Logout
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white text-sm">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-full flex items-center justify-center text-white text-sm shadow-lg">
                   {user?.username?.charAt(0).toUpperCase() || 'A'}
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleLogout}>
-                  <LogOut className="w-3 h-3" />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 hover:bg-[#6CAC73]/10 border border-[#6CAC73]/20" 
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-3 h-3 text-[#2B4A2F]" />
                 </Button>
               </div>
             )}
@@ -187,21 +189,21 @@ const AdminLayout = () => {
         }`}
       >
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-100">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-[#6CAC73]/20">
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden h-8 w-8"
+                className="lg:hidden h-8 w-8 hover:bg-[#6CAC73]/10 border border-[#6CAC73]/20"
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="w-4 h-4 text-[#2B4A2F]" />
               </Button>
 
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className="font-medium text-gray-900">Admin</span>
-                <ChevronRight className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-gray-600 font-nunito">
+                <span className="font-medium text-[#2B4A2F] font-poppins">Admin</span>
+                <ChevronRight className="w-4 h-4 text-[#6CAC73]" />
                 <span className="capitalize text-gray-600">
                   {location.pathname.split('/').pop() || 'Dashboard'}
                 </span>
@@ -211,7 +213,7 @@ const AdminLayout = () => {
             {/* WebSocket Status Badge (Desktop) */}
             <div className="hidden lg:flex items-center gap-2">
               {isConnected ? (
-                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins">
                   <Wifi className="w-3 h-3 mr-1" />
                   Live
                 </Badge>

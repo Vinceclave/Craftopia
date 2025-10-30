@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useUsers.ts - FIXED VERSION
+// ✅ Fully typed and production-ready hook for user listing, moderation, and role management.
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userAPI, User, ApiResponse, PaginatedResponse } from '../lib/api';
@@ -24,94 +24,65 @@ export const useUsers = () => {
     isActive: '',
     isVerified: '',
     sortBy: 'created_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
   });
 
   const queryClient = useQueryClient();
 
+  /**
+   * 🔍 Fetch paginated users with search, sorting, and filters.
+   */
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['users', params],
     queryFn: async () => {
-      console.log('🔍 Fetching users with params:', params);
-      const response = await userAPI.getAll(params);
-      console.log('📦 Full response:', response);
-      
-      // ✅ FIX: Handle nested response structure
-      let users, meta;
-      
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          // Format 1: { success: true, data: [...], meta: {...} }
-          users = response.data;
-          meta = response.meta;
-        } else if (response.data.data) {
-          // Format 2: { success: true, data: { data: [...], meta: {...} } }
-          users = response.data.data;
-          meta = response.data.meta;
-        } else {
-          console.error('❌ Unexpected response format:', response);
-          throw new Error('Invalid response format from server');
-        }
-      } else {
-        console.error('❌ No data in response:', response);
-        throw new Error('No data received from server');
-      }
-      
-      console.log('✅ Extracted users:', users?.length || 0, 'items');
-      console.log('✅ Pagination meta:', meta);
-      
-      return { data: users || [], meta: meta || {} };
+      const response: ApiResponse<PaginatedResponse<User>> = await userAPI.getAll(params);
+
+      // ✅ Extract paginated users and metadata from wrapped response
+      const paginated = response?.data ?? { data: [], meta: {} };
+
+      return {
+        data: paginated.data,
+        meta: paginated.meta,
+      };
     },
     retry: 1,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: 30_000, // Cache for 30 seconds
+    refetchOnWindowFocus: false,
   });
 
-  // ✅ Toggle user ban status (not delete)
+  /**
+   * 🚫 Toggle user's active status (ban/unban) without deleting.
+   */
   const toggleStatusMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      console.log('🔄 Toggling user status:', userId);
-      return await userAPI.toggleStatus(userId);
-    },
-    onSuccess: (data) => {
-      console.log('✅ User status toggled:', data);
+    mutationFn: async (userId: number) => await userAPI.toggleStatus(userId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (error: any) => {
-      console.error('❌ Toggle status error:', error);
-    }
   });
 
-  // ✅ Update user role
+  /**
+   * 🧭 Update user role (e.g., admin, moderator, member).
+   */
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
-      console.log('🔄 Updating user role:', { userId, role });
-      return await userAPI.updateRole(userId, role);
-    },
-    onSuccess: (data) => {
-      console.log('✅ User role updated:', data);
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) =>
+      await userAPI.updateRole(userId, role),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (error: any) => {
-      console.error('❌ Update role error:', error);
-    }
   });
 
-  // ✅ Permanent delete user
+  /**
+   * 🗑️ Permanently delete a user from the system.
+   */
   const deleteMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      console.log('🗑️ Permanently deleting user:', userId);
-      return await userAPI.delete(userId);
-    },
-    onSuccess: (data) => {
-      console.log('✅ User permanently deleted:', data);
+    mutationFn: async (userId: number) => await userAPI.delete(userId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (error: any) => {
-      console.error('❌ Delete user error:', error);
-    }
   });
 
   return {
+    // 📦 Data
     users: data?.data || [],
     meta: data?.meta,
     isLoading,
@@ -119,13 +90,13 @@ export const useUsers = () => {
     params,
     setParams,
     refetch,
-    
-    // Actions
+
+    // ⚙️ Actions
     toggleStatus: toggleStatusMutation.mutateAsync,
     updateRole: updateRoleMutation.mutateAsync,
     deleteUser: deleteMutation.mutateAsync,
-    
-    // Loading states
+
+    // 🔄 Loading states
     isToggling: toggleStatusMutation.isPending,
     isUpdating: updateRoleMutation.isPending,
     isDeleting: deleteMutation.isPending,

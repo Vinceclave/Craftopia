@@ -12,6 +12,7 @@ import AdminUsers from './pages/admin/Users';
 import AdminPosts from './pages/admin/Posts';
 import AdminReports from './pages/admin/Reports';
 import AdminChallenges from './pages/admin/Challenges';
+import { Landing } from './pages/Landing';
 
 // Create QueryClient
 const queryClient = new QueryClient({
@@ -33,10 +34,10 @@ function App() {
 
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Protected Admin Routes with Layout */}
+          {/* Protected Admin Routes with Layout  */}
           <Route path="/admin" element={<ProtectedRoute />}>
             <Route element={<AdminLayout />}>
               <Route path="dashboard" element={<AdminDashboard />} />

@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  FileText, Trash2, Star, Loader2, RefreshCw, Undo2,
-  MessageCircle, AlertCircle, Eye, CheckSquare, Image as ImageIcon,
-  Calendar, MoreHorizontal, Wifi
+  FileText, Trash2, Star, Loader2, RefreshCw,
+  MessageCircle, AlertCircle, CheckSquare, Image as ImageIcon,
+  Calendar, MoreHorizontal, Wifi, 
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useWebSocketPosts, useWebSocket } from '@/hooks/useWebSocket';
@@ -28,11 +28,9 @@ export default function AdminPosts() {
     deletePost,
     deleteComment,
     featurePost,
-    restorePost,
     bulkDeletePosts,
     isDeleting,
     isFeaturing,
-    isRestoring,
     isBulkDeleting
   } = usePosts();
 
@@ -44,17 +42,17 @@ export default function AdminPosts() {
 
   // WebSocket real-time updates
   useWebSocketPosts({
-    onCreated: useCallback((data) => {
-      info('New post created: ' + (data.title || 'Untitled'));
+    onCreated: useCallback(() => {
+      info('New post created: ');
       refetch();
     }, [info, refetch]),
     
-    onUpdated: useCallback((data) => {
+    onUpdated: useCallback((data: unknown) => {
       info('Post updated' + data);
       refetch();
     }, [info, refetch]),
     
-    onDeleted: useCallback((data) => {
+    onDeleted: useCallback((data: unknown) => {
       info('Post removed' + data);
       refetch();
     }, [info, refetch]),
@@ -64,10 +62,6 @@ export default function AdminPosts() {
   const totalPosts = posts.length;
   const totalComments = comments.length;
   const featuredPosts = posts.filter(p => p.featured).length;
-  const flaggedPosts = posts.filter(p => p._count && p._count.reports > 0).length;
-  const flaggedComments = comments.filter(c =>
-    posts.find(p => p.post_id === c.post_id)?._count?.reports ?? 0 > 0
-  ).length;
 
   // Handlers
   const handleDeletePost = async (postId: number) => {
@@ -99,15 +93,6 @@ export default function AdminPosts() {
     }
   };
 
-  const handleRestorePost = async (postId: number) => {
-    try {
-      await restorePost(postId);
-      success('Post restored!');
-    } catch (err: any) {
-      alert('Error restoring post: ' + err.message);
-    }
-  };
-
   const handleBulkDelete = async () => {
     if (selectedPosts.length === 0) return alert('Select posts to delete');
     if (!window.confirm(`Delete ${selectedPosts.length} selected posts?`)) return;
@@ -134,10 +119,10 @@ export default function AdminPosts() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
         <div className="text-center flex flex-col gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground mx-auto" />
-          <p className="text-muted-foreground text-sm">Loading content...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto" />
+          <p className="text-[#2B4A2F] font-poppins">Loading content...</p>
         </div>
       </div>
     );
@@ -145,13 +130,33 @@ export default function AdminPosts() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <Alert variant="destructive" className="border-destructive/20 bg-destructive/10">
-            <AlertCircle className="h-4 w-4 text-destructive" />
+      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 lg:p-8 relative">
+        {/* Background Floating Elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
+              style={{
+                left: `${15 + i * 30}%`,
+                top: `${20 + (i % 2) * 25}%`,
+                animationDelay: `${i * 1.5}s`,
+                animationDuration: '4s'
+              }}
+            />
+          ))}
+        </div>
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <Alert className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
+            <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
             <AlertDescription className="flex items-center justify-between gap-4">
-              <span>Error loading content: {(error as Error).message}</span>
-              <Button size="sm" variant="outline" onClick={() => refetch()} className="border-border">
+              <span className="text-[#2B4A2F] font-nunito">Error loading content: {(error as Error).message}</span>
+              <Button 
+                size="sm" 
+                onClick={() => refetch()} 
+                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" /> Retry
               </Button>
             </AlertDescription>
@@ -162,38 +167,53 @@ export default function AdminPosts() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 lg:p-8 flex flex-col gap-8">
-      <div className="w-full max-w-7xl mx-auto flex flex-col gap-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 lg:p-8 flex flex-col gap-8 relative">
+      {/* Background Floating Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
+            style={{
+              left: `${10 + i * 25}%`,
+              top: `${15 + (i % 3) * 20}%`,
+              animationDelay: `${i * 1.2}s`,
+              animationDuration: '4s'
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="w-full max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
 
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-foreground rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-background" />
+              <div className="w-9 h-9 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
+                <FileText className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-3xl font-light tracking-tight text-foreground">
+              <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins">
                 Content Moderation
               </h1>
               {/* Real-time indicator */}
               {isConnected && (
-                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse">
+                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
                   <Wifi className="w-3 h-3 mr-1" />
                   Live
                 </Badge>
               )}
             </div>
-            <p className="text-muted-foreground text-sm">Manage and moderate platform content in real-time</p>
+            <p className="text-gray-600 text-sm font-nunito">Manage and moderate platform content in real-time</p>
           </div>
 
           <div className="flex items-center gap-3">
             {selectedPosts.length > 0 && (
               <Button
                 size="sm"
-                variant="destructive"
                 onClick={handleBulkDelete}
                 disabled={isBulkDeleting}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
               >
                 {isBulkDeleting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -203,10 +223,17 @@ export default function AdminPosts() {
                 Delete {selectedPosts.length}
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => refetch()} className="border-border">
+            <Button 
+              size="sm" 
+              onClick={() => refetch()} 
+              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+            >
               <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button size="sm" variant="ghost" className="w-9 h-9 p-0">
+            <Button 
+              size="sm" 
+              className="w-9 h-9 p-0 border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+            >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </div>
@@ -215,21 +242,19 @@ export default function AdminPosts() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
           {[
-            { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-foreground' },
-            { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-foreground' },
+            { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-[#2B4A2F]' },
+            { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-[#2B4A2F]' },
             { label: 'Featured', value: featuredPosts, icon: Star, color: 'text-yellow-600' },
-            { label: 'Flagged Posts', value: flaggedPosts, icon: AlertCircle, color: 'text-rose-600' },
-            { label: 'Flagged Comments', value: flaggedComments, icon: AlertCircle, color: 'text-orange-600' }
           ].map((stat, i) => (
-            <Card key={i} className="border-0 bg-background shadow-xs hover:shadow-sm transition-shadow">
+            <Card key={i} className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className={`text-2xl font-light ${stat.color}`}>{stat.value}</p>
+                    <p className="text-sm text-gray-600 font-nunito">{stat.label}</p>
+                    <p className={`text-2xl font-bold font-poppins ${stat.color}`}>{stat.value}</p>
                   </div>
-                  <div className="w-10 h-10 bg-muted/50 rounded-lg flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-muted-foreground" />
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl flex items-center justify-center border border-[#6CAC73]/10 shadow-sm">
+                    <stat.icon className="w-5 h-5 text-[#6CAC73]" />
                   </div>
                 </div>
               </CardContent>
@@ -240,24 +265,26 @@ export default function AdminPosts() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <TabsList className="bg-muted/50 p-1 rounded-lg border border-border flex gap-2">
-              <TabsTrigger value="posts" className="flex items-center gap-2 text-sm">
+            <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2">
+              <TabsTrigger 
+                value="posts" 
+                className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+              >
                 <FileText className="w-4 h-4" /> Posts ({totalPosts})
               </TabsTrigger>
-              <TabsTrigger value="comments" className="flex items-center gap-2 text-sm">
+              <TabsTrigger 
+                value="comments" 
+                className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+              >
                 <MessageCircle className="w-4 h-4" /> Comments ({totalComments})
-              </TabsTrigger>
-              <TabsTrigger value="flagged" className="flex items-center gap-2 text-sm">
-                <AlertCircle className="w-4 h-4" /> Flagged ({flaggedPosts})
               </TabsTrigger>
             </TabsList>
 
             {activeTab === 'posts' && posts.length > 0 && (
               <Button
                 size="sm"
-                variant="ghost"
                 onClick={selectAllPosts}
-                className="border-border text-sm"
+                className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F] text-sm font-poppins"
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
                 {selectedPosts.length === posts.length ? 'Deselect All' : 'Select All'}
@@ -267,27 +294,27 @@ export default function AdminPosts() {
 
           {/* Posts Tab */}
           <TabsContent value="posts">
-            <Card className="border-0 shadow-xs">
+            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader className="p-6 pb-4 flex flex-col gap-1">
-                <CardTitle className="text-lg font-semibold">All Posts</CardTitle>
-                <CardDescription className="text-muted-foreground">Manage all platform posts with real-time updates</CardDescription>
+                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Posts</CardTitle>
+                <CardDescription className="text-gray-600 font-nunito">Manage all platform posts with real-time updates</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 {posts.length === 0 ? (
                   <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <FileText className="w-12 h-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground font-medium">No posts found</p>
-                    <p className="text-muted-foreground/70 text-sm">Posts will appear here once created</p>
+                    <FileText className="w-12 h-12 text-gray-300" />
+                    <p className="text-gray-500 font-medium font-poppins">No posts found</p>
+                    <p className="text-gray-400 text-sm font-nunito">Posts will appear here once created</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
                     {posts.map((post: Post) => (
                       <div
                         key={post.post_id}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
+                        className={`p-4 rounded-xl border transition-all duration-200 bg-white/60 backdrop-blur-sm ${
                           selectedPosts.includes(post.post_id)
-                            ? 'border-blue-200 bg-blue-50/50'
-                            : 'border-border hover:bg-accent'
+                            ? 'border-blue-300 bg-blue-50/70 shadow-md'
+                            : 'border-[#6CAC73]/20 hover:bg-white/80 hover:shadow-md'
                         }`}
                       >
                         <div className="flex gap-4">
@@ -297,7 +324,7 @@ export default function AdminPosts() {
                               type="checkbox"
                               checked={selectedPosts.includes(post.post_id)}
                               onChange={() => togglePostSelection(post.post_id)}
-                              className="w-4 h-4 rounded border-border text-foreground focus:ring-foreground"
+                              className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
                             />
                           </div>
 
@@ -305,33 +332,33 @@ export default function AdminPosts() {
                           <div className="flex-1 flex flex-col gap-3">
                             <div className="flex flex-col gap-2">
                               <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-foreground text-sm">{post.title}</h3>
+                                <h3 className="font-semibold text-[#2B4A2F] font-poppins text-sm">{post.title}</h3>
                                 {post.featured && (
-                                  <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-0">
+                                  <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins">
                                     <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> Featured
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-muted-foreground line-clamp-2">{post.content}</p>
+                              <p className="text-sm text-gray-600 font-nunito line-clamp-2">{post.content}</p>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
-                              <Badge variant="secondary" className="capitalize text-xs border-0 bg-muted">
+                              <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
                                 {post.category}
                               </Badge>
-                              <Badge variant="secondary" className="text-xs border-0 bg-muted">
+                              <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
                                 {post._count?.likes || 0} likes
                               </Badge>
-                              <Badge variant="secondary" className="text-xs border-0 bg-muted">
+                              <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
                                 {post._count?.comments || 0} comments
                               </Badge>
                               {post._count && post._count.reports > 0 && (
-                                <Badge variant="destructive" className="text-xs border-0">
+                                <Badge className="text-xs border-0 bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 font-poppins">
                                   <AlertCircle className="w-3 h-3 mr-1" /> {post._count.reports} reports
                                 </Badge>
                               )}
                               {post.image_url && (
-                                <Badge variant="secondary" className="text-xs border-0 bg-muted">
+                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
                                   <ImageIcon className="w-3 h-3 mr-1" /> Has image
                                 </Badge>
                               )}
@@ -340,19 +367,19 @@ export default function AdminPosts() {
                             {post.tags?.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {post.tags.slice(0, 5).map((tag, i) => (
-                                  <Badge key={i} variant="outline" className="text-xs bg-background border-border">
+                                  <Badge key={i} className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
                                     #{tag}
                                   </Badge>
                                 ))}
                                 {post.tags.length > 5 && (
-                                  <Badge variant="outline" className="text-xs bg-background border-border">
+                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
                                     +{post.tags.length - 5} more
                                   </Badge>
                                 )}
                               </div>
                             )}
 
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
                               <span>By {post.user.username}</span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3" />
@@ -365,20 +392,18 @@ export default function AdminPosts() {
                           <div className="flex flex-col gap-1">
                             <Button
                               size="sm"
-                              variant="ghost"
                               onClick={() => handleFeaturePost(post.post_id)}
                               disabled={isFeaturing}
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                               title="Toggle Featured"
                             >
-                              <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
+                              <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
                             </Button>
                             <Button
                               size="sm"
-                              variant="ghost"
                               onClick={() => handleDeletePost(post.post_id)}
                               disabled={isDeleting}
-                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-rose-50 text-rose-600 hover:text-rose-700"
                               title="Delete Post"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -395,25 +420,25 @@ export default function AdminPosts() {
 
           {/* Comments Tab */}
           <TabsContent value="comments">
-            <Card className="border-0 shadow-xs">
+            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader className="p-6 pb-4 flex flex-col gap-1">
-                <CardTitle className="text-lg font-semibold">All Comments</CardTitle>
-                <CardDescription className="text-muted-foreground">Manage platform comments</CardDescription>
+                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Comments</CardTitle>
+                <CardDescription className="text-gray-600 font-nunito">Manage platform comments</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 {comments.length === 0 ? (
                   <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <MessageCircle className="w-12 h-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground font-medium">No comments found</p>
-                    <p className="text-muted-foreground/70 text-sm">Comments will appear here</p>
+                    <MessageCircle className="w-12 h-12 text-gray-300" />
+                    <p className="text-gray-500 font-medium font-poppins">No comments found</p>
+                    <p className="text-gray-400 text-sm font-nunito">Comments will appear here</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
                     {comments.map((comment: Comment) => (
-                      <div key={comment.comment_id} className="p-4 border border-border rounded-lg hover:bg-accent transition-colors flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                      <div key={comment.comment_id} className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 transition-colors flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                         <div className="flex-1 flex flex-col gap-2">
-                          <p className="text-sm text-foreground">{comment.content}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <p className="text-sm text-[#2B4A2F] font-nunito">{comment.content}</p>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-nunito">
                             <span>By {comment.user.username}</span>
                             <span>•</span>
                             <span>{new Date(comment.created_at).toLocaleDateString()}</span>
@@ -427,10 +452,9 @@ export default function AdminPosts() {
                         </div>
                         <Button
                           size="sm"
-                          variant="ghost"
                           onClick={() => handleDeleteComment(comment.comment_id)}
                           disabled={isDeleting}
-                          className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                          className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-rose-50 text-rose-600 hover:text-rose-700 flex-shrink-0"
                           title="Delete Comment"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -442,95 +466,30 @@ export default function AdminPosts() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* Flagged Tab */}
-          <TabsContent value="flagged">
-            <Card className="border-0 shadow-xs">
-              <CardHeader className="p-6 pb-4 flex flex-col gap-1">
-                <CardTitle className="text-lg font-semibold">Flagged Content</CardTitle>
-                <CardDescription className="text-muted-foreground">Posts with reports requiring attention</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {flaggedPosts === 0 ? (
-                  <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <CheckSquare className="w-12 h-12 text-muted-foreground/30" />
-                    <p className="text-muted-foreground font-medium">No flagged posts</p>
-                    <p className="text-muted-foreground/70 text-sm">Everything looks good</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {posts.filter(p => p._count && p._count.reports > 0).map((post: Post) => (
-                      <div key={post.post_id} className="p-4 border border-destructive/30 bg-destructive/5 rounded-lg flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                        <div className="flex-1 flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-destructive" />
-                            <h3 className="font-semibold text-destructive text-sm">{post.title}</h3>
-                          </div>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{post.content}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span>{post._count?.reports} reports</span>
-                            <span>•</span>
-                            <span>By {post.user.username}</span>
-                            <span>•</span>
-                            <span>{new Date(post.created_at).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRestorePost(post.post_id)}
-                            disabled={isRestoring}
-                            className="flex items-center gap-2 border-border"
-                          >
-                            {isRestoring ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Undo2 className="w-4 h-4" />
-                            )}
-                            Restore
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDeletePost(post.post_id)}
-                            disabled={isDeleting}
-                            className="flex items-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" /> Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* Pagination */}
         {meta && meta.totalPages > 1 && (
-          <Card className="border-0 shadow-xs">
+          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
             <CardContent className="p-4">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-600 font-nunito">
                   Page {meta.page} of {meta.totalPages} ({meta.totalItems} items)
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
                     onClick={() => setPage(prev => Math.max(1, prev - 1))}
                     disabled={page === 1}
+                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                   >
                     Prev
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
                     onClick={() => setPage(prev => Math.min(meta.totalPages, prev + 1))}
                     disabled={page === meta.totalPages}
+                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                   >
                     Next
                   </Button>

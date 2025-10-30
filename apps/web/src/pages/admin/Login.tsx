@@ -1,184 +1,124 @@
-// apps/web/src/pages/admin/Login.tsx - ENHANCED VERSION
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// apps/web/src/pages/admin/Login.tsx
+// -----------------------------------------------------------------------------
+// Modern Brand-Level Admin Login
+// Clean, minimalist, and professional design — inspired by top SaaS dashboards.
+// -----------------------------------------------------------------------------
+
+import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { healthCheck } from '@/lib/api';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
-  const { login, loading, error, isInitializing, clearError } = useAuth();
-
-  // ✅ Check API health on mount
-  useEffect(() => {
-    const checkHealth = async () => {
-      const healthy = await healthCheck();
-      setApiHealthy(healthy);
-    };
-    checkHealth();
-  }, []);
-
-  // ✅ Clear error when user types
-  useEffect(() => {
-    if (error) {
-      clearError();
-    }
-  }, [email, password]);
+  const { login, loading, error, isInitializing } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim() || !password.trim()) {
-      return;
-    }
-    
-    try {
-      await login(email, password);
-    } catch (err) {
-      // Error is already set in useAuth
-      console.error('Login failed:', err);
-    }
+    if (!email.trim() || !password.trim()) return;
+    await login(email, password);
   };
 
-  const inputProps = {
-    required: true,
-    disabled: loading || isInitializing,
-    className: "border border-gray-200 focus:border-gray-900"
-  };
-
-  // ✅ Show loading state while initializing
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-900" />
-          <p className="text-gray-500">Loading...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
+        <Loader2 className="w-6 h-6 animate-spin text-[#6CAC73]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4 sm:p-6">
-      <div className="w-full max-w-sm sm:max-w-md">
-        {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-gray-900 rounded-xl mb-3 sm:mb-4">
-            <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white relative overflow-hidden">
+      {/* Background Floating Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
+            style={{
+              left: `${15 + i * 20}%`,
+              top: `${20 + (i % 3) * 25}%`,
+              animationDelay: `${i * 1.2}s`,
+              animationDuration: '4s'
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="w-full max-w-md p-8 sm:p-10 relative z-10">
+        {/* Logo / Brand Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Admin Portal</h1>
-          <p className="text-gray-500 text-sm sm:text-base">Sign in to continue</p>
+          <h1 className="text-2xl font-bold text-[#2B4A2F] font-poppins">Craftopia Admin</h1>
+          <p className="text-gray-600 text-sm font-nunito mt-1">Sign in to your dashboard</p>
         </div>
 
-        {/* API Health Status */}
-        {apiHealthy !== null && (
-          <div className="mb-4">
-            <Alert 
-              variant={apiHealthy ? "default" : "destructive"} 
-              className={apiHealthy ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"}
-            >
-              <div className="flex items-center gap-2">
-                {apiHealthy ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <AlertDescription className="text-sm text-emerald-700">
-                      API Connected
-                    </AlertDescription>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-4 h-4 text-rose-600" />
-                    <AlertDescription className="text-sm text-rose-700">
-                      Cannot connect to API. Please check if backend is running.
-                    </AlertDescription>
-                  </>
-                )}
-              </div>
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <Alert variant="destructive" className="bg-rose-50 border-rose-200 text-rose-700 text-sm rounded-xl">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
+          )}
+
+          <div>
+            <Label htmlFor="email" className="text-[#2B4A2F] text-sm font-medium font-poppins">
+              Email
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              placeholder="admin@craftopia.com"
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              required
+              className="mt-2 font-nunito border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 rounded-lg transition-all duration-200"
+            />
           </div>
-        )}
-      
-        {/* Login Card */}
-        <Card className="border border-gray-100 shadow-sm">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-lg sm:text-xl font-semibold text-gray-900">Sign In</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Error Alert */}
-              {error && (
-                <Alert variant="destructive" className="bg-rose-50 border-rose-200 text-rose-700">
-                  <AlertDescription className="text-sm">{error}</AlertDescription>
-                </Alert>
-              )}
 
-              {/* Email Input */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@craftopia.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  {...inputProps}
-                />
+          <div>
+            <Label htmlFor="password" className="text-[#2B4A2F] text-sm font-medium font-poppins">
+              Password
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              placeholder="••••••••"
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              required
+              className="mt-2 font-nunito border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 rounded-lg transition-all duration-200"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading || !email.trim() || !password.trim()}
+            className="w-full bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white font-poppins rounded-lg py-2.5 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            {loading ? (
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Signing in...</span>
               </div>
-
-              {/* Password Input */}
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  {...inputProps}
-                />
-              </div>
-
-              {/* Submit Button */}
-              <Button 
-                type="submit" 
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white mt-2" 
-                disabled={loading || apiHealthy === false || !email.trim() || !password.trim()}
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
-                  'Continue'
-                )}
-              </Button>
-
-              {/* Info Text */}
-              <div className="text-center text-xs text-gray-400 mt-4">
-                Restricted access. Authorized personnel only.
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+            ) : (
+              'Sign In'
+            )}
+          </Button>
+        </form>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-400">© 2025 Craftopia</p>
-          <p className="text-xs text-gray-300 mt-1">
-            Secure admin authentication with refresh tokens
+        <div className="mt-8 text-center">
+          <p className="text-xs text-gray-500 font-nunito flex items-center justify-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            © 2025 Craftopia • Secure Admin Access
           </p>
         </div>
       </div>

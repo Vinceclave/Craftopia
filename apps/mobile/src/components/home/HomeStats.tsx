@@ -1,7 +1,7 @@
 // apps/mobile/src/components/home/HomeStats.tsx - REAL-TIME VERSION
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { Leaf, TrendingUp, Award, ChevronRight, Sparkles, Palette, Trophy } from 'lucide-react-native';
+import { Leaf, Award, ChevronRight, Sparkles, Palette, Trophy } from 'lucide-react-native';
 import { useUserStats } from '~/hooks/useUserStats';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
@@ -21,6 +21,8 @@ export const HomeStats = () => {
     crafts: userStats?.crafts_created || 0,
     challenges: userStats?.challenges_completed || 0,
   };
+
+  
 
   const {
       data: wasteStats,
@@ -139,7 +141,6 @@ export const HomeStats = () => {
                 </Text>
               </View>
               <Text className="text-3xl font-bold mb-1" style={{ color: '#374A36' }}>
-                {wasteStats.total_waste_kg}
                 <Text className="text-lg" style={{ color: '#6B7280' }}> kg</Text>
               </Text>
               <View className="flex-row items-center">

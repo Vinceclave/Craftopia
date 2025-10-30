@@ -10,9 +10,7 @@ export const useChallenges = () => {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['challenges', category],
     queryFn: async () => {
-      console.log('🔍 Fetching challenges, category:', category);
       const response = await challengesAPI.getAll(category);
-      console.log('✅ Challenges response:', response);
       return response;
     },
     retry: 1,
@@ -20,11 +18,9 @@ export const useChallenges = () => {
 
   const createMutation = useMutation({
     mutationFn: async (challengeData: any) => {
-      console.log('➕ Creating challenge:', challengeData);
       return await challengesAPI.create(challengeData);
     },
-    onSuccess: (data) => {
-      console.log('✅ Challenge created:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
     onError: (error: any) => {
@@ -37,8 +33,7 @@ export const useChallenges = () => {
       console.log('🤖 Generating AI challenge, category:', category);
       return await challengesAPI.generateAI(category);
     },
-    onSuccess: (data) => {
-      console.log('✅ AI challenge generated:', data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
     onError: (error: any) => {
@@ -49,9 +44,7 @@ export const useChallenges = () => {
   const { data: pendingData, isLoading: isPendingLoading, refetch: refetchPending } = useQuery({
     queryKey: ['pending-verifications'],
     queryFn: async () => {
-      console.log('🔍 Fetching pending verifications');
       const response = await challengesAPI.getPendingVerifications();
-      console.log('✅ Pending verifications response:', response);
       return response;
     },
     retry: 1,

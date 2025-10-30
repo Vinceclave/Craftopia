@@ -1,12 +1,10 @@
-// apps/web/src/lib/api.ts - COMPLETE WITH REFRESH TOKEN
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+// apps/web/src/lib/api.ts
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = isDevelopment 
+const API_BASE_URL = isDevelopment
   ? 'http://localhost:3001/api/v1'
   : (import.meta.env.VITE_API_BASE_URL || 'https://your-production-api.com/api/v1');
-
-console.log('🔌 API Base URL:', API_BASE_URL);
 
 // ===== TYPE DEFINITIONS =====
 export interface IUser {
@@ -143,6 +141,7 @@ export interface Challenge {
   _count?: {
     participants: number;
   };
+  waste_kg?: number;
 }
 
 export interface DashboardStats {
@@ -194,19 +193,12 @@ const onTokenRefreshed = (token: string) => {
 const refreshAccessToken = async (): Promise<string> => {
   try {
     const refreshToken = localStorage.getItem('adminRefreshToken');
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
+    if (!refreshToken) throw new Error('No refresh token available');
 
-    console.log('🔄 Refreshing access token...');
-
-    const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
+    const response: AxiosResponse<ApiResponse<RefreshTokenResponse>> = await axios.post(
       `${API_BASE_URL}/auth/refresh-token`,
       { refreshToken },
-      {
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { headers: { 'Content-Type': 'application/json' } }
     );
 
     if (!response.data.success || !response.data.data) {
@@ -214,22 +206,16 @@ const refreshAccessToken = async (): Promise<string> => {
     }
 
     const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-
-    // Save new tokens
     localStorage.setItem('adminToken', accessToken);
     localStorage.setItem('adminRefreshToken', newRefreshToken);
 
-    console.log('✅ Token refreshed successfully');
     return accessToken;
   } catch (error) {
     console.error('❌ Token refresh failed:', error);
-    
-    // Clear tokens and redirect to login
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRefreshToken');
     localStorage.removeItem('adminUser');
     window.location.href = '/admin/login';
-    
     throw error;
   }
 };
@@ -237,9 +223,7 @@ const refreshAccessToken = async (): Promise<string> => {
 // ===== AXIOS INSTANCE =====
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
   withCredentials: false,
 });
@@ -251,58 +235,37 @@ api.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    console.log('📤 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      hasToken: !!token
-    });
-    
+
     return config;
   },
-  (error) => {
-    console.error('❌ Request Error:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // ===== RESPONSE INTERCEPTOR WITH REFRESH TOKEN =====
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', {
-      url: response.config.url,
-      status: response.status,
-      hasData: !!response.data
-    });
-    
     return response.data;
   },
   async (error: AxiosError<ApiResponse>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+
     console.error('❌ Response Error:', {
       url: originalRequest?.url,
       status: error.response?.status,
-      message: error.response?.data?.error || error.message
+      message: error.response?.data?.error || error.message,
     });
-    
-    // Handle 401 Unauthorized
+
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      
-      // Check if this is a login or refresh-token endpoint (don't retry these)
-      if (originalRequest.url?.includes('/auth/login') || 
-          originalRequest.url?.includes('/auth/refresh-token')) {
-        console.warn('🔐 Auth endpoint failed - redirecting to login');
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminRefreshToken');
-        localStorage.removeItem('adminUser');
+      if (
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/refresh-token')
+      ) {
+        localStorage.clear();
         window.location.href = '/admin/login';
         return Promise.reject(error);
       }
 
-      // If already refreshing, wait for the new token
       if (isRefreshing) {
-        console.log('⏳ Waiting for token refresh...');
         return new Promise((resolve) => {
           subscribeTokenRefresh((token: string) => {
             if (originalRequest.headers) {
@@ -313,18 +276,14 @@ api.interceptors.response.use(
         });
       }
 
-      // Mark as retrying and start refresh
       originalRequest._retry = true;
       isRefreshing = true;
 
       try {
         const newToken = await refreshAccessToken();
         isRefreshing = false;
-        
-        // Notify all waiting requests
         onTokenRefreshed(newToken);
-        
-        // Retry original request with new token
+
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
@@ -335,13 +294,13 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
-    const message = 
-      error.response?.data?.error || 
+
+    const message =
+      error.response?.data?.error ||
       error.response?.data?.message ||
-      error.message || 
+      error.message ||
       'An error occurred';
-    
+
     return Promise.reject(new Error(message));
   }
 );
@@ -349,75 +308,63 @@ api.interceptors.response.use(
 // ===== AUTH API =====
 export const authAPI = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    try {
-      console.log('🔑 Attempting login for:', email);
-      
-      const response = await api.post<ApiResponse<LoginResponse>>('/auth/login', { 
-        email, 
-        password 
-      });
-      
-      console.log('📦 Login response received');
-      
-      if (!response.success || !response.data) {
-        throw new Error(response.error || 'Login failed');
-      }
-      
-      const { accessToken, refreshToken, user } = response.data;
-      
-      if (!accessToken || !refreshToken || !user) {
-        throw new Error('Incomplete login response');
-      }
-      
-      // ✅ Save both tokens
-      localStorage.setItem('adminToken', accessToken);
-      localStorage.setItem('adminRefreshToken', refreshToken);
-      
-      console.log('✅ Login successful');
-      return response.data;
-    } catch (error: any) {
-      console.error('❌ Login error:', error);
-      throw error;
+  try {
+    const response = await api.post('/auth/login', { email, password });
+    const res = response.data;
+
+    // Handle both styles of API responses
+    const data = res.data || res;
+    if (!data.accessToken || !data.refreshToken || !data.user) {
+      throw new Error(res.error || 'Login failed');
     }
-  },
-  
+
+    // ✅ Save tokens
+    localStorage.setItem('adminToken', data.accessToken);
+    localStorage.setItem('adminRefreshToken', data.refreshToken);
+    localStorage.setItem('adminUser', JSON.stringify(data.user));
+    return data;
+  } catch (error: any) {
+    console.error('❌ Login error:', error);
+    throw error;
+  }
+},
+
   logout: async () => {
     try {
       const refreshToken = localStorage.getItem('adminRefreshToken');
-      
       if (refreshToken) {
-        console.log('👋 Logging out from backend...');
         await api.post('/auth/logout', { refreshToken });
       }
     } catch (error) {
       console.warn('⚠️ Backend logout failed:', error);
     } finally {
-      // Always clear local storage
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminRefreshToken');
       localStorage.removeItem('adminUser');
     }
   },
-  
+
   refreshToken: async (): Promise<RefreshTokenResponse> => {
-    const refreshToken = localStorage.getItem('adminRefreshToken');
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
+    const storedToken = localStorage.getItem('adminRefreshToken');
+    if (!storedToken) throw new Error('No refresh token available');
+
+    const response = await api.post<ApiResponse<RefreshTokenResponse>>('/auth/refresh-token', {
+      refreshToken: storedToken,
+    });
+
+    const { success, data, error } = response.data;
+
+    if (!success || !data) {
+      throw new Error(error || 'Failed to refresh token');
     }
 
-    const response = await api.post<ApiResponse<RefreshTokenResponse>>(
-      '/auth/refresh-token',
-      { refreshToken }
-    );
+    const { accessToken, refreshToken } = data;
+    localStorage.setItem('adminToken', accessToken);
+    localStorage.setItem('adminRefreshToken', refreshToken);
 
-    if (!response.success || !response.data) {
-      throw new Error('Failed to refresh token');
-    }
-
-    return response.data;
+    return data;
   },
-  
+
   getCurrentUser: (): IUser | null => {
     try {
       const user = localStorage.getItem('adminUser');
@@ -427,175 +374,86 @@ export const authAPI = {
       return null;
     }
   },
-  
+
   hasValidToken: (): boolean => {
     return !!localStorage.getItem('adminToken');
-  }
+  },
 };
+
 
 // ===== DASHBOARD API =====
 export const dashboardAPI = {
-  getStats: (): Promise<ApiResponse<DashboardStats>> => 
-    api.get('/admin/dashboard/stats'),
-  
-  getActivityLogs: (days = 7): Promise<ApiResponse<any>> => 
+  getStats: (): Promise<ApiResponse<DashboardStats>> => api.get('/admin/dashboard/stats'),
+  getActivityLogs: (days = 7): Promise<ApiResponse<any>> =>
     api.get(`/admin/dashboard/activity`, { params: { days } }),
-  
-  getTopUsers: (limit = 10): Promise<ApiResponse<any>> => 
+  getTopUsers: (limit = 10): Promise<ApiResponse<any>> =>
     api.get(`/admin/dashboard/top-users`, { params: { limit } }),
-  
-  getRecentActivity: (limit = 20): Promise<ApiResponse<any>> => 
-    api.get(`/admin/dashboard/recent-activity`, { params: { limit } })
+  getRecentActivity: (limit = 20): Promise<ApiResponse<any>> =>
+    api.get(`/admin/dashboard/recent-activity`, { params: { limit } }),
 };
 
 // ===== USER API =====
 export const userAPI = {
-  getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<User>>> => 
+  getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<User>>> =>
     api.get('/admin/management/users', { params }),
-  
-  getById: (userId: number): Promise<ApiResponse<User>> => 
-    api.get(`/admin/management/users/${userId}`),
-  
-  getStats: (userId: number): Promise<ApiResponse<any>> => 
+  getById: (userId: number): Promise<ApiResponse<User>> => api.get(`/admin/management/users/${userId}`),
+  getStats: (userId: number): Promise<ApiResponse<any>> =>
     api.get(`/admin/management/users/${userId}/stats`),
-  
-  toggleStatus: (userId: number): Promise<ApiResponse<User>> => 
+  toggleStatus: (userId: number): Promise<ApiResponse<User>> =>
     api.patch(`/admin/management/users/${userId}/status`),
-  
-  updateRole: (userId: number, role: string): Promise<ApiResponse<User>> => 
+  updateRole: (userId: number, role: string): Promise<ApiResponse<User>> =>
     api.patch(`/admin/management/users/${userId}/role`, { role }),
-  
-  delete: (userId: number): Promise<ApiResponse<any>> => 
-    api.delete(`/admin/management/users/${userId}`)
+  delete: (userId: number): Promise<ApiResponse<any>> => api.delete(`/admin/management/users/${userId}`),
 };
 
 // ===== MODERATION API =====
 export const moderationAPI = {
-  getContentForReview: async (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> => {
-    console.log('🔍 Fetching content for review:', { page, limit });
-    try {
-      const response = await api.get('/admin/moderation/content/review', { 
-        params: { page, limit } 
-      });
-      console.log('✅ Content review response:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Content review error:', error);
-      throw error;
-    }
-  },
-  
-  deletePost: async (postId: number, reason?: string): Promise<ApiResponse<any>> => {
-    console.log('🗑️ Deleting post:', { postId, reason });
-    try {
-      const response = await api.delete(`/admin/moderation/posts/${postId}`, { 
-        data: { reason } 
-      });
-      console.log('✅ Post deleted:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Delete post error:', error);
-      throw error;
-    }
-  },
-  
-  deleteComment: async (commentId: number, reason?: string): Promise<ApiResponse<any>> => {
-    console.log('🗑️ Deleting comment:', { commentId, reason });
-    try {
-      const response = await api.delete(`/admin/moderation/comments/${commentId}`, { 
-        data: { reason } 
-      });
-      console.log('✅ Comment deleted:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Delete comment error:', error);
-      throw error;
-    }
-  },
-  
-  bulkDeletePosts: async (postIds: number[], reason?: string): Promise<ApiResponse<any>> => {
-    console.log('🗑️ Bulk deleting posts:', { postIds, reason });
-    try {
-      const response = await api.post('/admin/moderation/posts/bulk-delete', { 
-        postIds, 
-        reason 
-      });
-      console.log('✅ Bulk delete successful:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Bulk delete error:', error);
-      throw error;
-    }
-  },
-  
-  restorePost: async (postId: number): Promise<ApiResponse<Post>> => {
-    console.log('♻️ Restoring post:', postId);
-    try {
-      const response = await api.patch(`/admin/moderation/posts/${postId}/restore`);
-      console.log('✅ Post restored:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Restore post error:', error);
-      throw error;
-    }
-  },
-  
-  featurePost: async (postId: number): Promise<ApiResponse<Post>> => {
-    console.log('⭐ Featuring post:', postId);
-    try {
-      const response = await api.patch(`/admin/moderation/posts/${postId}/feature`);
-      console.log('✅ Post feature toggled:', response);
-      return response;
-    } catch (error: any) {
-      console.error('❌ Feature post error:', error);
-      throw error;
-    }
-  }
+  getContentForReview: (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> =>
+    api.get('/admin/moderation/content/review', { params: { page, limit } }),
+
+  deletePost: (postId: number, reason?: string): Promise<ApiResponse<any>> =>
+    api.delete(`/admin/moderation/posts/${postId}`, { data: { reason } }),
+
+  deleteComment: (commentId: number, reason?: string): Promise<ApiResponse<any>> =>
+    api.delete(`/admin/moderation/comments/${commentId}`, { data: { reason } }),
+
+  bulkDeletePosts: (postIds: number[], reason?: string): Promise<ApiResponse<any>> =>
+    api.post('/admin/moderation/posts/bulk-delete', { postIds, reason }),
+
+  restorePost: (postId: number): Promise<ApiResponse<Post>> =>
+    api.patch(`/admin/moderation/posts/${postId}/restore`),
+
+  featurePost: (postId: number): Promise<ApiResponse<Post>> =>
+    api.patch(`/admin/moderation/posts/${postId}/feature`),
 };
 
 // ===== REPORTS API =====
 export const reportsAPI = {
-  getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<Report>>> => 
+  getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<Report>>> =>
     api.get('/reports', { params }),
-  
-  getById: (reportId: number): Promise<ApiResponse<Report>> => 
-    api.get(`/reports/${reportId}`),
-  
-  updateStatus: (reportId: number, status: string, notes?: string): Promise<ApiResponse<Report>> => 
+  getById: (reportId: number): Promise<ApiResponse<Report>> => api.get(`/reports/${reportId}`),
+  updateStatus: (reportId: number, status: string, notes?: string): Promise<ApiResponse<Report>> =>
     api.patch(`/reports/${reportId}/status`, { status, moderator_notes: notes }),
-  
-  getStats: (): Promise<ApiResponse<any>> => 
-    api.get('/reports/stats')
+  getStats: (): Promise<ApiResponse<any>> => api.get('/reports/stats'),
 };
 
 // ===== CHALLENGES API =====
 export const challengesAPI = {
-  getAll: (category?: string): Promise<ApiResponse<PaginatedResponse<Challenge>>> => {
-    const params = category ? { category } : {};
-    return api.get('/challenges', { params });
-  },
-  
-  create: (data: any): Promise<ApiResponse<Challenge>> => 
-    api.post('/challenges', data),
-  
-  generateAI: (category: string): Promise<ApiResponse<Challenge>> => 
+  getAll: (category?: string): Promise<ApiResponse<PaginatedResponse<Challenge>>> =>
+    api.get('/challenges', { params: category ? { category } : {} }),
+  create: (data: any): Promise<ApiResponse<Challenge>> => api.post('/challenges', data),
+  generateAI: (category: string): Promise<ApiResponse<Challenge>> =>
     api.post('/challenges/generate', { category }),
-  
-  getPendingVerifications: (page = 1, limit = 20): Promise<ApiResponse<PaginatedResponse<any>>> => 
-    api.get(`/user-challenges/pending-verifications`, { params: { page, limit } })
+  getPendingVerifications: (page = 1, limit = 20): Promise<ApiResponse<PaginatedResponse<any>>> =>
+    api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
 };
 
 // ===== HEALTH CHECK =====
 export const healthCheck = async (): Promise<boolean> => {
   try {
-    console.log('🏥 Checking API health...');
-    const response = await axios.get(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/health`, {
-      timeout: 5000
-    });
-    console.log('✅ API is healthy:', response.data);
+    const response = await axios.get(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/health`, { timeout: 5000 });
     return response.data?.success === true;
-  } catch (error) {
-    console.error('❌ API health check failed:', error);
+  } catch {
     return false;
   }
 };

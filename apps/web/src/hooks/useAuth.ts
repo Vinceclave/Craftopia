@@ -15,19 +15,14 @@ export const useAuth = () => {
   useEffect(() => {
     const initAuth = () => {
       try {
-        console.log('🔄 Initializing auth state...');
-        
         const token = localStorage.getItem('adminToken');
         const refreshToken = localStorage.getItem('adminRefreshToken');
         const storedUser = localStorage.getItem('adminUser');
         
         if (token && refreshToken && storedUser) {
           const user = JSON.parse(storedUser) as IUser;
-          console.log('✅ Restored auth from localStorage:', user.username);
           setAuth(user, token);
-        } else {
-          console.log('ℹ️ No stored auth found');
-        }
+        } 
       } catch (err) {
         console.error('❌ Error initializing auth:', err);
         // Clear corrupted data
@@ -48,17 +43,9 @@ export const useAuth = () => {
     setError(null);
 
     try {
-      console.log('🔑 Starting login process for:', email);
       
       // Call API login
-      const { accessToken, refreshToken, user: userData } = await authAPI.login(email, password);
-      
-      console.log('📦 Login data received:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        hasUser: !!userData,
-        userRole: userData?.role
-      });
+      const { accessToken, user: userData } = await authAPI.login(email, password);
       
       // ✅ Check admin role
       if (userData.role !== 'admin') {
@@ -76,15 +63,12 @@ export const useAuth = () => {
         isEmailVerified: userData.isEmailVerified
       };
 
-      console.log('✅ Normalized user:', normalizedUser);
-
       // ✅ Save to localStorage (tokens already saved by authAPI.login)
       localStorage.setItem('adminUser', JSON.stringify(normalizedUser));
 
       // ✅ Update Zustand store
       setAuth(normalizedUser, accessToken);
 
-      console.log('✅ Login successful, navigating to dashboard');
       navigate('/admin/dashboard');
       
     } catch (err: any) {
@@ -107,7 +91,6 @@ export const useAuth = () => {
   // ✅ Logout function
   const logout = async () => {
     try {
-      console.log('👋 Logging out...');
       setLoading(true);
       
       // Call backend logout
@@ -119,7 +102,6 @@ export const useAuth = () => {
       // Navigate to login
       navigate('/admin/login');
       
-      console.log('✅ Logout successful');
     } catch (err) {
       console.error('❌ Logout error:', err);
       // Even if backend logout fails, clear local state
@@ -140,7 +122,6 @@ export const useAuth = () => {
   // ✅ Force refresh token (manual refresh)
   const refreshToken = async (): Promise<boolean> => {
     try {
-      console.log('🔄 Manually refreshing token...');
       
       const { accessToken, refreshToken: newRefreshToken } = await authAPI.refreshToken();
       
@@ -154,7 +135,6 @@ export const useAuth = () => {
         setAuth(currentUser, accessToken);
       }
       
-      console.log('✅ Token refreshed successfully');
       return true;
     } catch (err) {
       console.error('❌ Token refresh failed:', err);

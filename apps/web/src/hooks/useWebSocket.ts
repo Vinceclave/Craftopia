@@ -11,7 +11,6 @@ export const useWebSocket = () => {
   useEffect(() => {
     // Only connect once when authenticated
     if (isAuthenticated && token && !connectionAttempted.current) {
-      console.log('🔌 Initializing WebSocket connection...');
       websocketService.connect(token);
       connectionAttempted.current = true;
 
@@ -27,7 +26,6 @@ export const useWebSocket = () => {
 
     // Disconnect when not authenticated
     if (!isAuthenticated && connectionAttempted.current) {
-      console.log('👋 Disconnecting WebSocket (user logged out)...');
       websocketService.disconnect();
       connectionAttempted.current = false;
       setIsConnected(false);
@@ -137,6 +135,7 @@ export const useWebSocketPosts = (callbacks: {
 export const useWebSocketReports = (callbacks: {
   onCreated?: (data: any) => void;
   onUpdated?: (data: any) => void;
+  onResolved?: (data: any) => void;
 }) => {
   const { subscribe } = useWebSocket();
 
