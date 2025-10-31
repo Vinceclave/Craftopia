@@ -13,6 +13,7 @@ import AdminPosts from './pages/admin/Posts';
 import AdminReports from './pages/admin/Reports';
 import AdminChallenges from './pages/admin/Challenges';
 import { Landing } from './pages/Landing';
+import AdminAnnouncements from './pages/admin/Announcement';
 
 // Create QueryClient
 const queryClient = new QueryClient({
@@ -45,6 +46,7 @@ function App() {
               <Route path="posts" element={<AdminPosts />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="challenges" element={<AdminChallenges />} />
+              <Route path="/admin/announcements" element={<AdminAnnouncements />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
             </Route>
           </Route>

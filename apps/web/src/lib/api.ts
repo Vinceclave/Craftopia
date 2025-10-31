@@ -177,6 +177,22 @@ export interface DashboardStats {
   };
 }
 
+export interface Announcement {
+  announcement_id: number;
+  admin_id: number;
+  title: string;
+  content: string;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  admin?: {
+    user_id: number;
+    username: string;
+  };
+}
+
 // ===== TOKEN REFRESH LOGIC =====
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
@@ -446,6 +462,42 @@ export const challengesAPI = {
     api.post('/challenges/generate', { category }),
   getPendingVerifications: (page = 1, limit = 20): Promise<ApiResponse<PaginatedResponse<any>>> =>
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
+};
+
+// ===== ANNOUCEMENTS API =====
+export const announcementsAPI = {
+  getAll: (page = 1, limit = 10, includeExpired = false): Promise<ApiResponse<PaginatedResponse<Announcement>>> =>
+    api.get('/announcements', { params: { page, limit, includeExpired } }),
+  
+  getById: (announcementId: number): Promise<ApiResponse<Announcement>> =>
+    api.get(`/announcements/${announcementId}`),
+  
+  getActive: (limit = 5): Promise<ApiResponse<Announcement[]>> =>
+    api.get('/announcements/active', { params: { limit } }),
+  
+  create: (data: {
+    title: string;
+    content: string;
+    expires_at?: Date;
+  }): Promise<ApiResponse<Announcement>> =>
+    api.post('/announcements', data),
+  
+  update: (
+    announcementId: number,
+    data: Partial<{
+      title: string;
+      content: string;
+      is_active: boolean;
+      expires_at: Date | null;
+    }>
+  ): Promise<ApiResponse<Announcement>> =>
+    api.put(`/announcements/${announcementId}`, data),
+  
+  delete: (announcementId: number): Promise<ApiResponse<any>> =>
+    api.delete(`/announcements/${announcementId}`),
+  
+  toggleStatus: (announcementId: number): Promise<ApiResponse<Announcement>> =>
+    api.patch(`/announcements/${announcementId}/toggle-status`),
 };
 
 // ===== HEALTH CHECK =====

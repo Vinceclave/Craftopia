@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Wifi,
   WifiOff,
+  Megaphone,
 } from 'lucide-react';
 
 const AdminLayout = () => {
@@ -34,6 +35,7 @@ const AdminLayout = () => {
     { name: 'Content', href: '/admin/posts', icon: FileText, badge: null },
     { name: 'Challenges', href: '/admin/challenges', icon: Trophy, badge: null },
     { name: 'Reports', href: '/admin/reports', icon: AlertCircle, badge: null },
+    { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, badge: null },
   ];
 
   const handleLogout = () => {
