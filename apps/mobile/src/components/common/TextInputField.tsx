@@ -101,7 +101,7 @@ export const Input = forwardRef<TextInput, InputProps>(
         </View>
 
         {error && (
-          <View className="flex-row items-center mt-2">
+          <View className="absolute -top-2 right-0 flex-row items-center mt-2">
             <AlertCircle size={14} color="#DC2626" />
             <Text className="text-sm ml-1" style={{ color: '#DC2626' }}>
               {error}
