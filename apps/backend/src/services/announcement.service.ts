@@ -55,7 +55,7 @@ class AnnouncementService extends BaseService {
       title: announcement.title,
       content: announcement.content,
       expires_at: announcement.expires_at,
-      created_by: announcement.admin!.username
+      created_by: announcement.admin?.username || 'Admin'
     });
 
     return announcement;
@@ -63,27 +63,80 @@ class AnnouncementService extends BaseService {
 
   // Get announcements with pagination
   async getAnnouncements(page = 1, limit = 10, includeExpired = false) {
-    logger.debug('Fetching announcements', { page, limit, includeExpired });
+    logger.info('=== FETCHING ANNOUNCEMENTS ===', { page, limit, includeExpired });
 
     const now = new Date();
+    
+    // Build where clause - show all non-deleted announcements
     const where: any = {
-      deleted_at: null,
-      is_active: true
+      deleted_at: null
     };
 
+    // If not including expired, filter by expiration date
     if (!includeExpired) {
       where.OR = [
-        { expires_at: null },
-        { expires_at: { gt: now } }
+        { expires_at: null }, // Never expires
+        { expires_at: { gte: now } } // Not expired yet
       ];
+      
+      logger.info('Filtering expired announcements', { 
+        now: now.toISOString(),
+        includeExpired 
+      });
     }
 
-    return this.paginate(prisma.announcement, {
-      page,
-      limit,
-      where,
-      orderBy: { created_at: 'desc' }
-    });
+    logger.info('Where clause', JSON.stringify(where, null, 2));
+
+    // Use custom pagination to include admin data
+    const skip = (page - 1) * limit;
+    
+    try {
+      const [data, total] = await Promise.all([
+        prisma.announcement.findMany({
+          where,
+          orderBy: { created_at: 'desc' },
+          skip,
+          take: limit,
+          include: {
+            admin: {
+              select: { user_id: true, username: true }
+            }
+          }
+        }),
+        prisma.announcement.count({ where })
+      ]);
+
+      logger.info('=== QUERY RESULTS ===', { 
+        found: data.length, 
+        total,
+        page,
+        limit,
+        announcements: data.map(a => ({
+          id: a.announcement_id,
+          title: a.title,
+          is_active: a.is_active,
+          expires_at: a.expires_at,
+          deleted_at: a.deleted_at
+        }))
+      });
+
+      const lastPage = Math.ceil(total / limit) || 1;
+
+      return {
+        data,
+        meta: {
+          total,
+          page,
+          limit,
+          lastPage,
+          hasNextPage: page < lastPage,
+          hasPrevPage: page > 1
+        }
+      };
+    } catch (error) {
+      logger.error('Error fetching announcements', error);
+      throw error;
+    }
   }
 
   // Get announcement by ID
@@ -164,7 +217,7 @@ class AnnouncementService extends BaseService {
     logger.info('Announcement updated', { announcementId });
 
     // 🔥 WEBSOCKET: Notify users of announcement update
-    WebSocketEmitter.broadcast('announcement:updated', {
+    WebSocketEmitter.announcementUpdated({
       announcement_id: updated.announcement_id,
       title: updated.title,
       content: updated.content,
@@ -187,7 +240,12 @@ class AnnouncementService extends BaseService {
 
     logger.info('Deleting announcement', { announcementId });
 
-    return this.softDelete(prisma.announcement, announcementId, 'announcement_id');
+    const result = await this.softDelete(prisma.announcement, announcementId, 'announcement_id');
+
+    // 🔥 WEBSOCKET: Notify users of announcement deletion
+    WebSocketEmitter.announcementDeleted(announcementId);
+
+    return result;
   }
 
   // Get active announcements
@@ -206,7 +264,7 @@ class AnnouncementService extends BaseService {
         is_active: true,
         OR: [
           { expires_at: null },
-          { expires_at: { gt: now } }
+          { expires_at: { gte: now } }
         ]
       },
       orderBy: { created_at: 'desc' },
@@ -234,7 +292,7 @@ class AnnouncementService extends BaseService {
       currentStatus: announcement.is_active 
     });
 
-    return prisma.announcement.update({
+    const updated = await prisma.announcement.update({
       where: { announcement_id: announcementId },
       data: { is_active: !announcement.is_active },
       include: {
@@ -243,6 +301,17 @@ class AnnouncementService extends BaseService {
         }
       }
     });
+
+    // 🔥 WEBSOCKET: Notify users of status change
+    WebSocketEmitter.announcementUpdated({
+      announcement_id: updated.announcement_id,
+      title: updated.title,
+      content: updated.content,
+      is_active: updated.is_active,
+      expires_at: updated.expires_at
+    });
+
+    return updated;
   }
 }
 

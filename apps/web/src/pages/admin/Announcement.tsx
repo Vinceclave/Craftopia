@@ -21,6 +21,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertCircle,
   Bell,
   Plus,
@@ -35,6 +42,8 @@ import {
   Clock,
   CheckCircle,
   Megaphone,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -54,13 +63,15 @@ export default function AdminAnnouncements() {
     updateAnnouncement,
     deleteAnnouncement,
     toggleStatus,
+    goToPage,
+    nextPage,
+    prevPage,
+    setLimit,
     isCreating,
     isUpdating,
     isDeleting,
     isToggling,
   } = useAnnouncements();
-
-  console.log(announcements)
 
   const { isConnected } = useWebSocket();
 
@@ -264,7 +275,7 @@ export default function AdminAnnouncements() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1 font-nunito">Total Announcements</p>
-                <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{announcements.length}</p>
+                <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{meta?.total || 0}</p>
               </div>
             </CardContent>
           </Card>
@@ -349,20 +360,40 @@ export default function AdminAnnouncements() {
         {/* Filter Card */}
         <Card className="mb-6 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#2B4A2F] font-poppins">Filters</CardTitle>
+            <CardTitle className="text-[#2B4A2F] font-poppins">Filters & Settings</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="includeExpired"
-                checked={params.includeExpired}
-                onChange={(e) => setParams({ ...params, includeExpired: e.target.checked, page: 1 })}
-                className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
-              />
-              <label htmlFor="includeExpired" className="text-sm text-[#2B4A2F] font-poppins cursor-pointer">
-                Include Expired Announcements
-              </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="includeExpired"
+                  checked={params.includeExpired}
+                  onChange={(e) => setParams({ ...params, includeExpired: e.target.checked, page: 1 })}
+                  className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
+                />
+                <label htmlFor="includeExpired" className="text-sm text-[#2B4A2F] font-poppins cursor-pointer">
+                  Include Expired Announcements
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-[#2B4A2F] font-poppins">Items per page:</Label>
+                <Select
+                  value={String(params.limit)}
+                  onValueChange={(value) => setLimit(Number(value))}
+                >
+                  <SelectTrigger className="w-20 border-[#6CAC73]/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -370,12 +401,39 @@ export default function AdminAnnouncements() {
         {/* Announcements List Card */}
         <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardHeader>
-            <CardTitle className="text-[#2B4A2F] font-poppins">
-              All Announcements ({announcements.length})
-            </CardTitle>
-            <CardDescription className="font-nunito">
-              Manage all platform announcements
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[#2B4A2F] font-poppins">
+                  All Announcements
+                </CardTitle>
+                <CardDescription className="font-nunito">
+                  {meta?.total ? `Showing ${announcements.length} of ${meta.total} announcements` : 'Manage all platform announcements'}
+                </CardDescription>
+              </div>
+              {meta && meta.lastPage > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={prevPage}
+                    disabled={!meta.hasPrevPage}
+                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-[#2B4A2F] font-poppins min-w-[80px] text-center">
+                    Page {meta.page} of {meta.lastPage}
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={nextPage}
+                    disabled={!meta.hasNextPage}
+                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {announcements.length === 0 ? (
@@ -383,7 +441,9 @@ export default function AdminAnnouncements() {
                 <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 font-poppins">No announcements found</p>
                 <p className="text-sm text-gray-400 mt-2 font-nunito">
-                  Create your first announcement to get started
+                  {params.includeExpired 
+                    ? 'Try adjusting your filters'
+                    : 'Create your first announcement to get started'}
                 </p>
               </div>
             ) : (
@@ -508,7 +568,7 @@ export default function AdminAnnouncements() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-[#2B4A2F] font-poppins">
-                    Title
+                    Title <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="title"
@@ -521,7 +581,7 @@ export default function AdminAnnouncements() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="content" className="text-[#2B4A2F] font-poppins">
-                    Content
+                    Content <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
                     id="content"
@@ -593,7 +653,7 @@ export default function AdminAnnouncements() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-title" className="text-[#2B4A2F] font-poppins">
-                    Title
+                    Title <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="edit-title"
@@ -606,7 +666,7 @@ export default function AdminAnnouncements() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-content" className="text-[#2B4A2F] font-poppins">
-                    Content
+                    Content <span className="text-red-500">*</span>
                   </Label>
                   <Textarea
                     id="edit-content"

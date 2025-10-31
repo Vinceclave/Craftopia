@@ -33,6 +33,8 @@ export enum WebSocketEvent {
   
   // Announcement Events
   ANNOUNCEMENT_CREATED = 'announcement:created',
+  ANNOUNCEMENT_UPDATED = 'announcement:updated',
+  ANNOUNCEMENT_DELETED = 'announcement:deleted',
   
   // Moderation Events
   CONTENT_MODERATED = 'content:moderated',

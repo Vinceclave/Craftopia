@@ -29,3 +29,7 @@ export const getAnnouncementsQuerySchema = Joi.object({
   limit: Joi.number().min(1).max(100).default(10),
   includeExpired: commonSchemas.optionalBoolean
 });
+
+export const getActiveAnnouncementsQuerySchema = Joi.object({
+  limit: Joi.number().min(1).max(50).default(5)
+});

@@ -1,10 +1,12 @@
-import * as announcementController from "../controllers/annoucement.controller";
+import * as announcementController from "../controllers/announcement.controller";
 import { 
   createAnnouncementSchema, 
-  updateAnnouncementSchema
+  updateAnnouncementSchema,
+  getAnnouncementsQuerySchema,
+  getActiveAnnouncementsQuerySchema
 } from "../schemas/annoucement.schema";
 import { Router } from "express";
-import { validate } from "../utils/validation";
+import { validate, validateQuery } from "../utils/validation";
 import { requireAuth, requireAdmin } from "../middlewares/rolebase.middleware";
 
 const announcementRouter = Router();
@@ -40,11 +42,13 @@ announcementRouter.patch(
 announcementRouter.get(
   '/',
   requireAuth,
+  validateQuery(getAnnouncementsQuerySchema),
   announcementController.getAnnouncements
 );
 
 announcementRouter.get(
   '/active',
+  validateQuery(getActiveAnnouncementsQuerySchema),
   announcementController.getActiveAnnouncements
 );
 
