@@ -50,6 +50,18 @@ import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { challengesAPI } from '@/lib/api';
 
+// Helper function to get full image URL from backend
+const getImageUrl = (path: string) => {
+  if (!path) return '';
+  // If path already includes http/https, return as is
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  // Otherwise, prepend backend URL
+  const backendUrl = 'http://localhost:3001';
+  // Remove leading slash from path if present to avoid double slashes
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${backendUrl}/${cleanPath}`;
+};
+
 export default function AdminChallenges() {
   const {
     challenges,
@@ -830,7 +842,7 @@ export default function AdminChallenges() {
                                 {verification.proof_url && (
                                   <div className="mt-2">
                                     <a
-                                      href={verification.proof_url}
+                                      href={getImageUrl(verification.proof_url)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-[#6CAC73] hover:underline flex items-center gap-1"
@@ -998,7 +1010,7 @@ export default function AdminChallenges() {
                   </div>
                 </div>
 
-                {/* Proof Image */}
+                {/* Proof Image - FIXED: Now uses getImageUrl */}
                 {selectedVerification.proof_url ? (
                   <div className="p-4 bg-gray-50/80 rounded-lg border border-gray-200/40">
                     <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
@@ -1006,7 +1018,7 @@ export default function AdminChallenges() {
                       Proof of Completion
                     </h4>
                     <a
-                      href={selectedVerification.proof_url}
+                      href={getImageUrl(selectedVerification.proof_url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#6CAC73] hover:text-[#2B4A2F] hover:underline flex items-center gap-2 mb-3 font-nunito text-sm"
@@ -1016,13 +1028,14 @@ export default function AdminChallenges() {
                     </a>
                     <div className="border border-[#6CAC73]/20 rounded-lg overflow-hidden">
                       <img
-                        src={selectedVerification.proof_url}
+                        src={getImageUrl(selectedVerification.proof_url)}
                         alt="Proof of completion"
                         className="w-full h-auto max-h-96 object-contain bg-white"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                           e.currentTarget.parentElement!.innerHTML = 
-                            '<p class="text-red-600 p-4 text-center">Failed to load image</p>';
+                            '<p class="text-red-600 p-4 text-center">Failed to load image. URL: ' + 
+                            getImageUrl(selectedVerification.proof_url) + '</p>';
                         }}
                       />
                     </div>
