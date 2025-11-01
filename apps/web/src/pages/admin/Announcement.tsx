@@ -48,6 +48,7 @@ import {
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { Announcement } from '@/lib/api';
 
 export default function AdminAnnouncements() {
   const {
@@ -63,7 +64,6 @@ export default function AdminAnnouncements() {
     updateAnnouncement,
     deleteAnnouncement,
     toggleStatus,
-    goToPage,
     nextPage,
     prevPage,
     setLimit,
@@ -284,7 +284,7 @@ export default function AdminAnnouncements() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-1 font-nunito">Active</p>
                 <p className="text-3xl font-bold text-[#6CAC73] font-poppins">
-                  {announcements.filter((a) => a.is_active).length}
+                  {announcements.filter((a: Announcement) => a.is_active).length}
                 </p>
               </div>
             </CardContent>
@@ -322,7 +322,7 @@ export default function AdminAnnouncements() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {activeAnnouncements.map((announcement) => (
+                {activeAnnouncements.map((announcement: Announcement) => (
                   <div
                     key={announcement.announcement_id}
                     className="p-4 border border-blue-200 rounded-xl bg-blue-50/80 backdrop-blur-sm"
@@ -448,8 +448,8 @@ export default function AdminAnnouncements() {
               </div>
             ) : (
               <div className="space-y-4">
-                {announcements.map((announcement) => {
-                  const isExpired = announcement.expires_at && new Date(announcement.expires_at) < new Date();
+                {announcements.map((announcement: Announcement) => {
+                  const isExpired = !!(announcement.expires_at && new Date(announcement.expires_at) < new Date());
                   const isActive = announcement.is_active && !isExpired;
 
                   return (
@@ -511,7 +511,7 @@ export default function AdminAnnouncements() {
                           <Button
                             size="sm"
                             onClick={() => handleToggleStatus(announcement.announcement_id)}
-                            disabled={isToggling || isExpired}
+                            disabled={isToggling}
                             className={`h-8 w-8 p-0 border-[#6CAC73]/20 ${
                               announcement.is_active
                                 ? 'bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]'

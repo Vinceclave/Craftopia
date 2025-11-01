@@ -1,6 +1,6 @@
 // apps/web/src/hooks/useAnnouncements.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { announcementsAPI, Announcement, ApiResponse, PaginatedResponse } from '../lib/api';
+import { announcementsAPI } from '../lib/api';
 import { useState, useCallback, useEffect } from 'react';
 import { useWebSocket } from './useWebSocket';
 import { useToast } from './useToast';
@@ -31,13 +31,15 @@ export const useAnnouncements = () => {
   } = useQuery({
     queryKey: ['announcements', params],
     queryFn: async () => {
-      const response: ApiResponse<PaginatedResponse<Announcement>> = 
-        await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
+      const response: any = await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
       
-      const paginated = response?.data ?? { data: [], meta: {} };
+      console.log('📡 Raw API Response:', response);
+      
+      // Backend returns: { success: true, data: [...], meta: {...} }
+      // NOT nested as { success: true, data: { data: [...], meta: {...} } }
       return {
-        data: paginated.data,
-        meta: paginated.meta,
+        data: response?.data ?? [],
+        meta: response?.meta ?? {},
       };
     },
     retry: 1,
@@ -48,12 +50,13 @@ export const useAnnouncements = () => {
   // Fetch active announcements
   const {
     data: activeData,
-    refetch: refetchActive,
   } = useQuery({
     queryKey: ['active-announcements'],
     queryFn: async () => {
-      const response: ApiResponse<Announcement[]> = await announcementsAPI.getActive(5);
-      return response.data || [];
+      const response: any = await announcementsAPI.getActive(5);
+      console.log('📡 Active Announcements Response:', response);
+      // Backend returns: { success: true, data: [...] }
+      return response?.data ?? [];
     },
     staleTime: 60_000,
   });
@@ -65,8 +68,8 @@ export const useAnnouncements = () => {
       content: string;
       expires_at?: Date;
     }) => {
-      const response: ApiResponse<Announcement> = await announcementsAPI.create(announcementData);
-      return response.data;
+      const response: any = await announcementsAPI.create(announcementData);
+      return response?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
@@ -89,9 +92,8 @@ export const useAnnouncements = () => {
         expires_at: Date | null;
       }>;
     }) => {
-      const response: ApiResponse<Announcement> = 
-        await announcementsAPI.update(announcementId, updateData);
-      return response.data;
+      const response: any = await announcementsAPI.update(announcementId, updateData);
+      return response?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
@@ -115,9 +117,8 @@ export const useAnnouncements = () => {
   // Toggle status
   const toggleStatusMutation = useMutation({
     mutationFn: async (announcementId: number) => {
-      const response: ApiResponse<Announcement> = 
-        await announcementsAPI.toggleStatus(announcementId);
-      return response.data;
+      const response: any = await announcementsAPI.toggleStatus(announcementId);
+      return response?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
@@ -178,6 +179,14 @@ export const useAnnouncements = () => {
   const setLimit = useCallback((limit: number) => {
     setParams(prev => ({ ...prev, limit, page: 1 }));
   }, []);
+
+  console.log('🎯 Hook State:', {
+    announcements: data?.data,
+    meta: data?.meta,
+    activeAnnouncements: activeData,
+    isLoading,
+    error
+  });
 
   return {
     // Data
