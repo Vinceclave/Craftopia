@@ -462,6 +462,10 @@ export const challengesAPI = {
     api.post('/challenges/generate', { category }),
   getPendingVerifications: (page = 1, limit = 20): Promise<ApiResponse<PaginatedResponse<any>>> =>
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
+
+   manualVerify: (userChallengeId: number, approved: boolean, notes?: string): Promise<ApiResponse<any>> =>
+    api.post(`/user-challenges/${userChallengeId}/manual-verify`, { approved, notes }),
+
 };
 
 // ===== ANNOUCEMENTS API =====

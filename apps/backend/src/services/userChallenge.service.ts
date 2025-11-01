@@ -451,19 +451,58 @@ class UserChallengeService extends BaseService {
 
   // Get pending verifications (Admin)
   async getPendingVerifications(page: number = 1, limit: number = 20) {
-    logger.debug('Fetching pending verifications', { page, limit });
+  logger.debug('Fetching pending verifications', { page, limit });
 
-    return this.paginate(prisma.userChallenge, {
-      page,
-      limit,
-      where: {
-        status: ChallengeStatus.pending_verification,
-        verified_at: null,
-        deleted_at: null
+  const result = await this.paginate(prisma.userChallenge, {
+    page,
+    limit,
+    where: {
+      status: ChallengeStatus.pending_verification,
+      verified_at: null,
+      deleted_at: null
+    },
+    include: {
+      // ✅ CRITICAL: Include user with all details
+      user: {
+        select: {
+          user_id: true,
+          username: true,
+          email: true,
+          created_at: true,
+          profile: {
+            select: {
+              profile_picture_url: true,
+              points: true,
+              full_name: true
+            }
+          }
+        }
       },
-      orderBy: { completed_at: 'asc' }
-    });
-  }
+      // ✅ CRITICAL: Include challenge with all details
+      challenge: {
+        select: {
+          challenge_id: true,
+          title: true,
+          description: true,
+          points_reward: true,
+          waste_kg: true,
+          material_type: true,
+          category: true,
+          is_active: true,
+          created_by_admin: {
+            select: {
+              user_id: true,
+              username: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { completed_at: 'asc' }
+  });
+
+  return result;
+}
 
   // Manually verify challenge (Admin)
  async manualVerify(

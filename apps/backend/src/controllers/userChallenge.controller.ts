@@ -73,6 +73,7 @@ export const getPendingVerifications = asyncHandler(async (req: Request, res: Re
   const limit = Number(req.query.limit) || 20;
   
   const result = await userChallengeService.getPendingVerifications(page, limit);
+  console.log(result)
   sendPaginatedSuccess(res, result.data, result.meta, 'Pending verifications retrieved');
 });
 

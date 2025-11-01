@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Trophy,
   Plus,
@@ -37,11 +38,17 @@ import {
   Users,
   Zap,
   AlertCircle,
+  CheckCircle,
+  XCircle,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { challengesAPI } from '@/lib/api';
 
 export default function AdminChallenges() {
   const {
@@ -61,6 +68,17 @@ export default function AdminChallenges() {
   } = useChallenges();
 
   const { success, error: showError, info, warning } = useToast();
+
+  // Pagination state
+  const [challengesPage, setChallengesPage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Verification dialog state
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [selectedVerification, setSelectedVerification] = useState<any>(null);
+  const [verificationNotes, setVerificationNotes] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const notify = (
     title: string,
@@ -157,6 +175,43 @@ export default function AdminChallenges() {
     }
   };
 
+  // Manual verification handler
+  const handleManualVerify = async (approved: boolean) => {
+    if (!selectedVerification) return;
+
+    try {
+      setIsVerifying(true);
+      const response = await challengesAPI.manualVerify(
+        selectedVerification.user_challenge_id,
+        approved,
+        verificationNotes
+      );
+
+      if (response.success) {
+        notify(
+          'Success',
+          approved ? 'Challenge approved successfully!' : 'Challenge rejected',
+          approved ? 'success' : 'warning'
+        );
+        setVerifyDialogOpen(false);
+        setSelectedVerification(null);
+        setVerificationNotes('');
+        refetchPending();
+      }
+    } catch (err: any) {
+      notify('Error', err?.message || 'Failed to verify challenge', 'error');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const openVerifyDialog = (verification: any) => {
+    console.log('Opening verification dialog for:', verification);
+    setSelectedVerification(verification);
+    setVerificationNotes('');
+    setVerifyDialogOpen(true);
+  };
+
   // Normalize lists
   const challengeList = Array.isArray(challenges)
     ? challenges
@@ -165,6 +220,20 @@ export default function AdminChallenges() {
   const pendingList = Array.isArray(pendingVerifications)
     ? pendingVerifications
     : (pendingVerifications?.data ?? []);
+
+  // Pagination calculations
+  const totalChallengesPages = Math.ceil(challengeList.length / itemsPerPage);
+  const totalPendingPages = Math.ceil(pendingList.length / itemsPerPage);
+
+  const paginatedChallenges = challengeList.slice(
+    (challengesPage - 1) * itemsPerPage,
+    challengesPage * itemsPerPage
+  );
+
+  const paginatedPending = pendingList.slice(
+    (pendingPage - 1) * itemsPerPage,
+    pendingPage * itemsPerPage
+  );
 
   // Loading UI
   if (isLoading) {
@@ -182,7 +251,6 @@ export default function AdminChallenges() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-        {/* Background Floating Elements */}
         <div className="absolute inset-0 pointer-events-none">
           {[...Array(3)].map((_, i) => (
             <div
@@ -261,11 +329,14 @@ export default function AdminChallenges() {
             <div className="flex gap-2">
               <Button 
                 size="sm" 
-                onClick={() => refetch()} 
+                onClick={() => {
+                  refetch();
+                  refetchPending();
+                }} 
                 className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                Refresh All
               </Button>
 
               {/* Create Challenge Dialog */}
@@ -492,172 +563,560 @@ export default function AdminChallenges() {
           </CardContent>
         </Card>
 
-        {/* Filter */}
-        <Card className="mb-6 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-[#2B4A2F] font-poppins">Filter Challenges</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={category || 'all'}
-              onValueChange={(value) => setCategory(value === 'all' ? '' : value)}
+        {/* Main Tabs */}
+        <Tabs defaultValue="challenges" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
+            <TabsTrigger 
+              value="challenges"
+              className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
             >
-              <SelectTrigger className="w-64 border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
+              <Trophy className="w-4 h-4 mr-2" />
+              All Challenges ({challengeList.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="pending"
+              className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-poppins"
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Pending Verifications ({pendingList.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Challenges List */}
-        <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-[#2B4A2F] font-poppins">All Challenges ({challengeList.length})</CardTitle>
-            <CardDescription className="font-nunito">
-              Manage and monitor all active and AI-generated challenges
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {challengeList.length === 0 ? (
-              <div className="text-center py-12">
-                <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 font-poppins">No challenges found</p>
-                <p className="text-sm text-gray-400 mt-2 font-nunito">
-                  Create one manually or generate using AI
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {challengeList.map((challenge) => (
-                  <div
-                    key={challenge.challenge_id}
-                    className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:shadow-md transition-all duration-300"
+          {/* Challenges Tab */}
+          <TabsContent value="challenges">
+            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-[#2B4A2F] font-poppins">All Challenges</CardTitle>
+                    <CardDescription className="font-nunito">
+                      Manage and monitor all active and AI-generated challenges
+                    </CardDescription>
+                  </div>
+                  <Select
+                    value={category || 'all'}
+                    onValueChange={(value) => {
+                      setCategory(value === 'all' ? '' : value);
+                      setChallengesPage(1);
+                    }}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-[#2B4A2F] font-poppins">{challenge.title}</h3>
-                          {challenge.source === 'ai' && (
-                            <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
-                              <Sparkles className="w-3 h-3 mr-1" />
-                              AI
+                    <SelectTrigger className="w-48 border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {paginatedChallenges.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 font-poppins">No challenges found</p>
+                    <p className="text-sm text-gray-400 mt-2 font-nunito">
+                      Create one manually or generate using AI
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {paginatedChallenges.map((challenge) => (
+                        <div
+                          key={challenge.challenge_id}
+                          className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:shadow-md transition-all duration-300"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-[#2B4A2F] font-poppins">{challenge.title}</h3>
+                                {challenge.source === 'ai' && (
+                                  <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    AI
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 font-nunito mb-3">
+                                {challenge.description}
+                              </p>
+                              <div className="flex gap-2 flex-wrap">
+                                <Badge className="capitalize bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+                                  {challenge.category}
+                                </Badge>
+                                <Badge className="capitalize bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                  {challenge.material_type}
+                                </Badge>
+                                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+                                  {challenge.points_reward} points
+                                </Badge>
+                                {(challenge.waste_kg ?? 0) > 0 && (
+                                  <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                    {challenge.waste_kg} kg waste
+                                  </Badge>
+                                )}
+                                {challenge._count && (
+                                  <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                    <Users className="w-3 h-3 mr-1" />
+                                    {challenge._count.participants} participants
+                                  </Badge>
+                                )}
+                                {challenge.expires_at && (
+                                  <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Expires {new Date(challenge.expires_at).toLocaleDateString()}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 font-nunito">
+                                <span>
+                                  Created {new Date(challenge.created_at).toLocaleDateString()}
+                                </span>
+                                {challenge.created_by_admin && (
+                                  <span className="flex items-center gap-1">
+                                    <span>•</span>
+                                    <span>By {challenge.created_by_admin.username}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <Badge
+                              className={`font-poppins border-0 ${
+                                challenge.is_active 
+                                  ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]' 
+                                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+                              }`}
+                            >
+                              {challenge.is_active ? 'Active' : 'Inactive'}
                             </Badge>
-                          )}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 font-nunito mb-3">
-                          {challenge.description}
+                      ))}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalChallengesPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
+                        <p className="text-sm text-gray-600 font-nunito">
+                          Showing {(challengesPage - 1) * itemsPerPage + 1} to{' '}
+                          {Math.min(challengesPage * itemsPerPage, challengeList.length)} of{' '}
+                          {challengeList.length} challenges
                         </p>
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge className="capitalize bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-                            {challenge.category}
-                          </Badge>
-                          <Badge className="capitalize bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                            {challenge.material_type}
-                          </Badge>
-                          <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-                            {challenge.points_reward} points
-                          </Badge>
-                          {(challenge.waste_kg ?? 0) > 0 && (
-                            <span className="text-sm text-gray-600 font-nunito">{challenge.waste_kg} kg waste</span>
-                          )}
-                          {challenge._count && (
-                            <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                              <Users className="w-3 h-3 mr-1" />
-                              {challenge._count.participants} participants
-                            </Badge>
-                          )}
-                          {challenge.expires_at && (
-                            <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Expires{' '}
-                              {new Date(challenge.expires_at).toLocaleDateString()}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-2 text-xs text-gray-500 font-nunito">
-                          Created{' '}
-                          {new Date(challenge.created_at).toLocaleDateString()}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setChallengesPage((p) => Math.max(1, p - 1))}
+                            disabled={challengesPage === 1}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex items-center gap-1">
+                            {[...Array(totalChallengesPages)].map((_, i) => (
+                              <Button
+                                key={i}
+                                size="sm"
+                                onClick={() => setChallengesPage(i + 1)}
+                                className={`${
+                                  challengesPage === i + 1
+                                    ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white'
+                                    : 'border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]'
+                                }`}
+                              >
+                                {i + 1}
+                              </Button>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => setChallengesPage((p) => Math.min(totalChallengesPages, p + 1))}
+                            disabled={challengesPage === totalChallengesPages}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <Badge
-                        className={`font-poppins border-0 ${
-                          challenge.is_active 
-                            ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]' 
-                            : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                        }`}
-                      >
-                        {challenge.is_active ? 'Active' : 'Inactive'}
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pending Verifications Tab */}
+          <TabsContent value="pending">
+            <Card className="border border-orange-300/40 bg-white/80 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-[#2B4A2F] font-poppins flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-orange-600" />
+                      Pending Verifications
+                    </CardTitle>
+                    <CardDescription className="font-nunito">
+                      User submissions awaiting admin review and approval
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    onClick={() => refetchPending()} 
+                    className="border-orange-300/40 bg-white/80 hover:bg-orange-50 text-orange-600"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isPendingLoading ? (
+                  <div className="text-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-orange-600 mb-4" />
+                    <p className="text-gray-600 font-nunito">Loading pending verifications...</p>
+                  </div>
+                ) : paginatedPending.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 font-poppins">No pending verifications</p>
+                    <p className="text-sm text-gray-400 mt-2 font-nunito">
+                      All challenge submissions are up to date!
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {paginatedPending.map((verification: any) => (
+                        <div
+                          key={verification.user_challenge_id}
+                          className="p-4 border border-orange-300 rounded-xl bg-orange-50/80 backdrop-blur-sm hover:bg-orange-50 transition-all duration-300"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold text-[#2B4A2F] font-poppins">
+                                  {verification.challenge?.title || 'Challenge'}
+                                </h3>
+                                <Badge className="bg-orange-200 text-orange-700 border-0 font-poppins">
+                                  Pending
+                                </Badge>
+                              </div>
+                              
+                              <div className="space-y-2 text-sm font-nunito">
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Users className="w-4 h-4" />
+                                  <span>User: <strong>{verification.user?.username || 'Unknown'}</strong></span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Clock className="w-4 h-4" />
+                                  <span>
+                                    Submitted:{' '}
+                                    {verification.completed_at
+                                      ? new Date(verification.completed_at).toLocaleString()
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+
+                                {verification.challenge?.points_reward && (
+                                  <div className="flex items-center gap-2 text-gray-600">
+                                    <Trophy className="w-4 h-4" />
+                                    <span>Reward: <strong>{verification.challenge.points_reward} points</strong></span>
+                                  </div>
+                                )}
+
+                                {verification.proof_url && (
+                                  <div className="mt-2">
+                                    <a
+                                      href={verification.proof_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#6CAC73] hover:underline flex items-center gap-1"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      View proof image
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              onClick={() => openVerifyDialog(verification)}
+                              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Review
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPendingPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-orange-300/40">
+                        <p className="text-sm text-gray-600 font-nunito">
+                          Showing {(pendingPage - 1) * itemsPerPage + 1} to{' '}
+                          {Math.min(pendingPage * itemsPerPage, pendingList.length)} of{' '}
+                          {pendingList.length} pending
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
+                            disabled={pendingPage === 1}
+                            className="border-orange-300/40 bg-white/80 hover:bg-orange-50 text-orange-600"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex items-center gap-1">
+                            {[...Array(totalPendingPages)].map((_, i) => (
+                              <Button
+                                key={i}
+                                size="sm"
+                                onClick={() => setPendingPage(i + 1)}
+                                className={`${
+                                  pendingPage === i + 1
+                                    ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white'
+                                    : 'border-orange-300/40 bg-white/80 hover:bg-orange-50 text-orange-600'
+                                }`}
+                              >
+                                {i + 1}
+                              </Button>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => setPendingPage((p) => Math.min(totalPendingPages, p + 1))}
+                            disabled={pendingPage === totalPendingPages}
+                            className="border-orange-300/40 bg-white/80 hover:bg-orange-50 text-orange-600"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Manual Verification Dialog */}
+        <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/90 backdrop-blur-sm">
+            <DialogHeader>
+              <DialogTitle className="text-[#2B4A2F] font-poppins">Review Challenge Submission</DialogTitle>
+              <DialogDescription className="font-nunito">
+                Verify the user's challenge completion and provide feedback
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedVerification && (
+              <div className="space-y-4 py-4">
+                {/* Challenge Info */}
+                <div className="p-4 bg-gradient-to-r from-[#6CAC73]/10 to-[#2B4A2F]/5 rounded-lg border border-[#6CAC73]/20">
+                  <h4 className="font-semibold text-[#2B4A2F] mb-2 font-poppins flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-[#6CAC73]" />
+                    Challenge Details
+                  </h4>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="font-semibold text-lg text-[#2B4A2F]">
+                        {selectedVerification.challenge?.title || 'N/A'}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1 font-nunito">
+                        {selectedVerification.challenge?.description || 'No description'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 flex-wrap mt-3">
+                      <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+                        <Trophy className="w-3 h-3 mr-1" />
+                        {selectedVerification.challenge?.points_reward || 0} points
+                      </Badge>
+                      {selectedVerification.challenge?.waste_kg > 0 && (
+                        <Badge className="bg-white border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                          {selectedVerification.challenge?.waste_kg} kg waste
+                        </Badge>
+                      )}
+                      <Badge className="capitalize bg-white border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                        {selectedVerification.challenge?.material_type || 'N/A'}
+                      </Badge>
+                      <Badge className="capitalize bg-white border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                        {selectedVerification.challenge?.category || 'N/A'}
                       </Badge>
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* User Info */}
+                <div className="p-4 bg-blue-50/80 rounded-lg border border-blue-200/40">
+                  <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Submitted By
+                  </h4>
+                  <div className="space-y-2 text-sm font-nunito">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 font-semibold min-w-[80px]">User:</span>
+                      <span className="text-[#2B4A2F] font-semibold">
+                        {selectedVerification.user?.username || 'Unknown User'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 font-semibold min-w-[80px]">Email:</span>
+                      <span className="text-[#2B4A2F]">
+                        {selectedVerification.user?.email || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600 font-semibold min-w-[80px]">Submitted:</span>
+                      <span className="text-[#2B4A2F]">
+                        {selectedVerification.completed_at
+                          ? new Date(selectedVerification.completed_at).toLocaleString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    {selectedVerification.user?.profile?.points !== undefined && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600 font-semibold min-w-[80px]">User Points:</span>
+                        <span className="text-[#2B4A2F] font-semibold">
+                          {selectedVerification.user.profile.points} points
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Proof Image */}
+                {selectedVerification.proof_url ? (
+                  <div className="p-4 bg-gray-50/80 rounded-lg border border-gray-200/40">
+                    <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
+                      <Eye className="w-5 h-5 text-gray-600" />
+                      Proof of Completion
+                    </h4>
+                    <a
+                      href={selectedVerification.proof_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#6CAC73] hover:text-[#2B4A2F] hover:underline flex items-center gap-2 mb-3 font-nunito text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View full-size proof image in new tab
+                    </a>
+                    <div className="border border-[#6CAC73]/20 rounded-lg overflow-hidden">
+                      <img
+                        src={selectedVerification.proof_url}
+                        alt="Proof of completion"
+                        className="w-full h-auto max-h-96 object-contain bg-white"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = 
+                            '<p class="text-red-600 p-4 text-center">Failed to load image</p>';
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-yellow-50/80 rounded-lg border border-yellow-200/40">
+                    <p className="text-yellow-700 font-nunito text-sm flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      No proof image provided
+                    </p>
+                  </div>
+                )}
+
+                {/* Admin Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes" className="text-[#2B4A2F] font-poppins flex items-center gap-2">
+                    Admin Notes (Optional)
+                    <span className="text-xs text-gray-500 font-normal font-nunito">
+                      Provide feedback to the user
+                    </span>
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    value={verificationNotes}
+                    onChange={(e) => setVerificationNotes(e.target.value)}
+                    placeholder="Add feedback or reason for approval/rejection..."
+                    rows={4}
+                    className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 font-nunito"
+                  />
+                  <p className="text-xs text-gray-500 font-nunito">
+                    This message will be sent to the user along with the verification result.
+                  </p>
+                </div>
+
+                {/* Summary Box */}
+                <div className="p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200/40">
+                  <p className="text-sm font-nunito text-gray-700">
+                    <strong className="text-[#2B4A2F]">Review Summary:</strong> You are about to{' '}
+                    <strong className="text-green-600">approve</strong> or{' '}
+                    <strong className="text-red-600">reject</strong> this challenge submission for{' '}
+                    <strong>{selectedVerification.user?.username || 'Unknown'}</strong>.
+                  </p>
+                </div>
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Pending Verifications */}
-        {pendingList.length > 0 && (
-          <Card className="mt-6 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-[#2B4A2F] font-poppins">Pending Verifications</CardTitle>
-                  <CardDescription className="font-nunito">
-                    User submissions awaiting admin review
-                  </CardDescription>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => refetchPending()} 
-                  className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isPendingLoading ? (
-                <div className="text-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {pendingList.slice(0, 5).map((v: any) => (
-                    <div
-                      key={v.user_challenge_id}
-                      className="p-3 border border-orange-300 rounded-xl bg-orange-50/80 backdrop-blur-sm"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-sm text-[#2B4A2F] font-poppins">
-                            {v.challenge?.title || 'Challenge'}
-                          </p>
-                          <p className="text-xs text-gray-500 font-nunito">
-                            By {v.user?.username || 'Unknown'} •{' '}
-                            {v.completed_at
-                              ? new Date(v.completed_at).toLocaleDateString()
-                              : 'N/A'}
-                          </p>
-                        </div>
-                        <Badge className="text-orange-600 border-orange-300 bg-orange-100/80 font-poppins">
-                          Pending
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  setVerifyDialogOpen(false);
+                  setSelectedVerification(null);
+                  setVerificationNotes('');
+                }}
+                disabled={isVerifying}
+                className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleManualVerify(false)}
+                disabled={isVerifying}
+                className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Reject
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => handleManualVerify(true)}
+                disabled={isVerifying}
+                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

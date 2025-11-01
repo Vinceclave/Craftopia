@@ -14,6 +14,7 @@ export interface PaginationOptions {
   limit?: number;
   orderBy?: any;
   where?: any;
+  include?: any;
 }
 
 export interface PaginationResult<T> {
@@ -113,6 +114,7 @@ export abstract class BaseService {
     const { 
       page = 1, 
       limit = 10, 
+      include,
       orderBy = { created_at: 'desc' }, 
       where = {} 
     } = options;
@@ -133,6 +135,7 @@ export abstract class BaseService {
         model.findMany({
           where,
           skip,
+          include,
           take: limit,
           orderBy,
         }),
