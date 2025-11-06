@@ -3,9 +3,51 @@ import { AppError } from "../../utils/error";
 import { parseJsonFromMarkdown } from "../utils/responseParser";
 import { config } from "../../config";
 import { createChallengeVerificationPrompt } from "../prompt/image.prompt";
-import path from "path";
-import fs from 'fs'
 
+/**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ base64: string; contentType: string }> {
+  try {
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    // Check content type
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error("URL does not point to a valid image");
+    }
+
+    // Check file size
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > config.ai.maxFileSize) {
+      throw new Error(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`);
+    }
+
+    const imageArrayBuffer = await response.arrayBuffer();
+    
+    // Additional size check after download
+    if (imageArrayBuffer.byteLength > config.ai.maxFileSize) {
+      throw new Error(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`);
+    }
+
+    const base64ImageData = Buffer.from(imageArrayBuffer).toString("base64");
+
+    return {
+      base64: base64ImageData,
+      contentType
+    };
+  } catch (error: any) {
+    throw new AppError(`Failed to fetch image: ${error.message}`, 400);
+  }
+}
+
+/**
+ * Recognize recyclable materials from image URL
+ */
 export const recognizeImage = async (url: string) => {
   if (!url?.trim()) {
     throw new AppError("Image URL is required", 400);
@@ -33,43 +75,8 @@ export const recognizeImage = async (url: string) => {
     throw new AppError("Invalid image URL format", 400);
   }
 
-  let response: Response;
-  let imageArrayBuffer: ArrayBuffer;
-
-  try {
-    response = await fetch(url);
-  } catch (error) {
-    throw new AppError("Failed to fetch image from URL", 400);
-  }
-
-  if (!response.ok) {
-    throw new AppError(`Failed to fetch image: ${response.status} ${response.statusText}`, 400);
-  }
-
-  // Check file size
-  const contentLength = response.headers.get('content-length');
-  if (contentLength && parseInt(contentLength) > config.ai.maxFileSize) {
-    throw new AppError(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`, 400);
-  }
-
-  // Check content type
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.startsWith('image/')) {
-    throw new AppError("URL does not point to a valid image", 400);
-  }
-
-  try {
-    imageArrayBuffer = await response.arrayBuffer();
-  } catch (error) {
-    throw new AppError("Failed to read image data", 400);
-  }
-
-  // Additional size check after download
-  if (imageArrayBuffer.byteLength > config.ai.maxFileSize) {
-    throw new AppError(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`, 400);
-  }
-
-  const base64ImageData = Buffer.from(imageArrayBuffer).toString("base64");
+  // Fetch image and convert to base64
+  const { base64: base64ImageData, contentType } = await fetchImageAsBase64(url);
 
   const result = await ai.models.generateContent({
     model: config.ai.model,
@@ -126,6 +133,10 @@ export const recognizeImage = async (url: string) => {
   return parsed;
 };
 
+/**
+ * Verify challenge completion using AI
+ * Now works with S3 pre-signed URLs
+ */
 export const verifyChallengeAI = async (
   description: string,
   imageUrl: string,
@@ -136,17 +147,23 @@ export const verifyChallengeAI = async (
   if (!imageUrl?.trim()) throw new Error("Image URL required");
   if (!points || points <= 0) throw new Error("Valid challenge points required");
 
-  const filePath = path.join(process.cwd(), imageUrl);
-  if (!fs.existsSync(filePath)) throw new Error("Image file not found");
+  console.log("🔍 [verifyChallengeAI] Starting verification");
+  console.log("📸 Image URL:", imageUrl);
 
-  const imageBuffer = fs.readFileSync(filePath);
-  const base64ImageData = imageBuffer.toString("base64");
+  // Fetch image from S3 URL and convert to base64
+  const { base64: base64ImageData, contentType } = await fetchImageAsBase64(imageUrl);
 
-  const ext = path.extname(filePath).toLowerCase();
-  const contentType =
-    ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+  console.log("✅ Image fetched successfully, size:", base64ImageData.length);
 
-  const prompt = createChallengeVerificationPrompt(description, imageUrl, points, Date.now(), userId );
+  const prompt = createChallengeVerificationPrompt(
+    description, 
+    imageUrl, 
+    points, 
+    Date.now(), 
+    userId
+  );
+
+  console.log("🤖 Sending to AI for verification...");
 
   const result = await ai.models.generateContent({
     model: config.ai.model,
@@ -154,7 +171,12 @@ export const verifyChallengeAI = async (
       {
         role: "user",
         parts: [
-          { inlineData: { mimeType: contentType, data: base64ImageData } },
+          { 
+            inlineData: { 
+              mimeType: contentType, 
+              data: base64ImageData 
+            } 
+          },
           { text: prompt },
         ],
       },
@@ -162,11 +184,16 @@ export const verifyChallengeAI = async (
   });
 
   const text = result.text;
-  if (!text?.trim()) throw new Error("AI verification failed");
+  console.log("📝 AI Response:", text?.substring(0, 200));
+
+  if (!text?.trim()) throw new Error("AI verification failed - empty response");
 
   const verification = parseJsonFromMarkdown(text);
-  if (!verification || typeof verification !== "object")
+  if (!verification || typeof verification !== "object") {
     throw new Error("Invalid AI verification format");
+  }
+
+  console.log("✅ Verification result:", verification);
 
   return verification;
 };

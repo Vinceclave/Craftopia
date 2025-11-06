@@ -4,9 +4,45 @@ import { sendError, sendSuccess } from "../../utils/response";
 import { createChallengeVerificationPrompt } from "../prompt/image.prompt";
 import { ai } from "../gemini/client";
 import { parseJsonFromMarkdown } from "../utils/responseParser";
-import fs from "fs";
-import path from "path";
 import { config } from "../../config";
+
+/**
+ * Fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(imageUrl: string): Promise<{ base64: string; contentType: string }> {
+  try {
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error("URL does not point to a valid image");
+    }
+
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > config.ai.maxFileSize) {
+      throw new Error(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`);
+    }
+
+    const imageArrayBuffer = await response.arrayBuffer();
+    
+    if (imageArrayBuffer.byteLength > config.ai.maxFileSize) {
+      throw new Error(`Image too large (max ${config.ai.maxFileSize / (1024 * 1024)}MB)`);
+    }
+
+    const base64ImageData = Buffer.from(imageArrayBuffer).toString("base64");
+
+    return {
+      base64: base64ImageData,
+      contentType
+    };
+  } catch (error: any) {
+    throw new Error(`Failed to fetch image: ${error.message}`);
+  }
+}
 
 export const verifyChallengeWithUpload = asyncHandler(
   async (req: Request, res: Response) => {
@@ -24,22 +60,13 @@ export const verifyChallengeWithUpload = asyncHandler(
     }
 
     try {
-      const filePath = path.join(process.cwd(), imageUrl);
+      console.log("🔍 Starting challenge verification");
+      console.log("📸 Image URL:", imageUrl);
 
-      if (!fs.existsSync(filePath)) {
-        return sendError(res, "Proof image file not found", 404);
-      }
+      // Fetch image from S3 URL and convert to base64
+      const { base64: base64ImageData, contentType } = await fetchImageAsBase64(imageUrl);
 
-      // Read & encode image as base64
-      const imageBuffer = fs.readFileSync(filePath);
-      const base64ImageData = imageBuffer.toString("base64");
-
-      const ext = path.extname(filePath).toLowerCase();
-      const contentType = ext === ".png"
-        ? "image/png"
-        : ext === ".webp"
-        ? "image/webp"
-        : "image/jpeg";
+      console.log("✅ Image fetched successfully");
 
       // Create prompt for AI
       const prompt = createChallengeVerificationPrompt(
@@ -50,7 +77,7 @@ export const verifyChallengeWithUpload = asyncHandler(
         userId
       );
 
-      console.log("Sending request to AI for verification...");
+      console.log("🤖 Sending request to AI for verification...");
 
       const result = await ai.models.generateContent({
         model: config.ai.model,
@@ -74,7 +101,7 @@ export const verifyChallengeWithUpload = asyncHandler(
 
       const rawText = result.text;
 
-      console.log("Raw AI response:", rawText);
+      console.log("📝 Raw AI response:", rawText);
 
       if (!rawText?.trim()) {
         return sendError(res, "AI verification failed - empty response", 500);
@@ -83,9 +110,9 @@ export const verifyChallengeWithUpload = asyncHandler(
       let verification;
       try {
         verification = parseJsonFromMarkdown(rawText);
-        console.log("Parsed verification result:", verification);
+        console.log("✅ Parsed verification result:", verification);
       } catch (parseError) {
-        console.error("Failed to parse AI verification response:", parseError);
+        console.error("❌ Failed to parse AI verification response:", parseError);
         return sendError(res, "Invalid AI verification format", 500);
       }
 
@@ -111,7 +138,7 @@ export const verifyChallengeWithUpload = asyncHandler(
       // Success - return verification data
       return sendSuccess(res, verification, "Challenge verification completed");
     } catch (error: any) {
-      console.error("Challenge verification error:", error);
+      console.error("❌ Challenge verification error:", error);
 
       if (error.message?.includes("quota")) {
         return sendError(res, "AI service quota exceeded", 503);
@@ -119,6 +146,10 @@ export const verifyChallengeWithUpload = asyncHandler(
 
       if (error.message?.includes("network")) {
         return sendError(res, "Network error during AI verification", 502);
+      }
+
+      if (error.message?.includes("fetch image")) {
+        return sendError(res, error.message, 400);
       }
 
       return sendError(res, "Failed to verify challenge", 500);
