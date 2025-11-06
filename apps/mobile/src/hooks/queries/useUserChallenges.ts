@@ -1,4 +1,4 @@
-// apps/mobile/src/hooks/queries/useUserChallenges.ts - FIXED VERSION
+// apps/mobile/src/hooks/queries/useUserChallenges.ts - COMPLETE FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '~/services/base.service';
 import { API_ENDPOINTS } from '~/config/api';
@@ -51,7 +51,7 @@ export const userChallengeKeys = {
 };
 
 /**
- * Get user challenges by status
+ * ✅ COMPLETE FIX: Get user challenges by status
  */
 export const useUserChallenges = (status?: UserChallengeStatus) => {
   const { user } = useAuth();
@@ -59,41 +59,117 @@ export const useUserChallenges = (status?: UserChallengeStatus) => {
   return useQuery({
     queryKey: userChallengeKeys.list(user?.id || 0, status),
     queryFn: async (): Promise<UserChallenge[]> => {
-      if (!user?.id) throw new Error('User not authenticated');
+      console.log('🚀 [useUserChallenges] Starting fetch...');
+      console.log('👤 User:', { id: user?.id, username: user?.username });
       
-      const params = status ? `?status=${status}` : '';
-      const response: any = await apiService.request(
-        `${API_ENDPOINTS.USER_CHALLENGES.USER_LIST(user.id)}${params}`,
-        { method: 'GET' }
-      );
+      if (!user?.id) {
+        console.error('❌ [useUserChallenges] User not authenticated');
+        throw new Error('User not authenticated');
+      }
+      
+      try {
+        // Build URL with status query param if provided
+        const params = status ? `?status=${status}` : '';
+        const url = `${API_ENDPOINTS.USER_CHALLENGES.USER_LIST}${params}`;
+        
+        console.log('📡 [useUserChallenges] Fetching from:', url);
+        console.log('🔑 [useUserChallenges] Status filter:', status || 'none');
 
-      const challenges = response.data || response || [];
-      return challenges.map((item: any) => ({
-        user_challenge_id: item.user_challenge_id || item.id,
-        challenge_id: item.challenge_id,
-        user_id: item.user_id,
-        status: item.status,
-        proof_url: item.proof_url,
-        description: item.description,
-        points: item.points,
-        waste_kg_saved: Number(item.waste_kg_saved || 0),
-        verified_at: item.verified_at,
-        completed_at: item.completed_at || item.completedAt,
-        created_at: item.created_at,
-        challenge: item.challenge ? {
-          challenge_id: item.challenge.challenge_id || item.challenge.id,
-          title: item.challenge.title || 'No title',
-          description: item.challenge.description || 'No description',
-          points_reward: item.challenge.points_reward || item.challenge.points || 0,
-          waste_kg: Number(item.challenge.waste_kg || 0),
-          category: item.challenge.category || 'Other',
-          material_type: item.challenge.material_type || 'General',
-        } : undefined,
-      }));
+        // Make API request
+        const response: any = await apiService.request(url, { 
+          method: 'GET' 
+        });
+
+        console.log('📦 [useUserChallenges] Raw response:', {
+          responseType: typeof response,
+          isArray: Array.isArray(response),
+          hasData: !!response?.data,
+          dataIsArray: Array.isArray(response?.data),
+          keys: response ? Object.keys(response) : [],
+        });
+
+        // Handle different response formats
+        let challenges = [];
+        
+        if (Array.isArray(response)) {
+          console.log('✅ [useUserChallenges] Response is array');
+          challenges = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          console.log('✅ [useUserChallenges] Response.data is array');
+          challenges = response.data;
+        } else if (response?.data) {
+          console.log('⚠️ [useUserChallenges] Response.data is not array, wrapping');
+          challenges = [response.data];
+        } else {
+          console.warn('⚠️ [useUserChallenges] Unexpected response format:', response);
+          challenges = [];
+        }
+
+        console.log(`📊 [useUserChallenges] Found ${challenges.length} challenges`);
+
+        // Log first item for debugging
+        if (challenges.length > 0) {
+          console.log('🔍 [useUserChallenges] First challenge raw:', {
+            user_challenge_id: challenges[0].user_challenge_id,
+            challenge_id: challenges[0].challenge_id,
+            status: challenges[0].status,
+            hasChallenge: !!challenges[0].challenge,
+            challengeTitle: challenges[0].challenge?.title,
+          });
+        }
+
+        // Transform challenges
+        const transformedChallenges = challenges.map((item: any, index: number) => {
+          const transformed: UserChallenge = {
+            user_challenge_id: item.user_challenge_id || item.id,
+            challenge_id: item.challenge_id,
+            user_id: item.user_id,
+            status: item.status,
+            proof_url: item.proof_url || undefined,
+            description: item.description || undefined,
+            points: item.points_awarded || item.points || 0,
+            waste_kg_saved: Number(item.waste_kg_saved || 0),
+            verified_at: item.verified_at || undefined,
+            completed_at: item.completed_at || item.completedAt || undefined,
+            created_at: item.created_at,
+            challenge: item.challenge ? {
+              challenge_id: item.challenge.challenge_id || item.challenge.id,
+              title: item.challenge.title || 'Untitled Challenge',
+              description: item.challenge.description || 'No description available',
+              points_reward: item.challenge.points_reward || item.challenge.points || 0,
+              waste_kg: Number(item.challenge.waste_kg || 0),
+              category: item.challenge.category || 'Other',
+              material_type: item.challenge.material_type || 'mixed',
+            } : undefined,
+          };
+
+          console.log(`🔄 [useUserChallenges] Transformed [${index}]:`, {
+            user_challenge_id: transformed.user_challenge_id,
+            challenge_id: transformed.challenge_id,
+            title: transformed.challenge?.title,
+            status: transformed.status,
+          });
+
+          return transformed;
+        });
+
+        console.log(`✅ [useUserChallenges] Returning ${transformedChallenges.length} transformed challenges`);
+        return transformedChallenges;
+
+      } catch (error: any) {
+        console.error('❌ [useUserChallenges] Error:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        throw error;
+      }
     },
     enabled: !!user?.id,
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -106,16 +182,32 @@ export const useUserChallengeProgress = (challengeId: number) => {
   return useQuery({
     queryKey: userChallengeKeys.progress(challengeId, user?.id || 0),
     queryFn: async (): Promise<QuestProgress | null> => {
-      if (!user?.id || !challengeId) return null;
+      console.log('🚀 [useUserChallengeProgress] Starting fetch...');
+      console.log('🎯 Challenge ID:', challengeId);
+      console.log('👤 User ID:', user?.id);
+
+      if (!user?.id || !challengeId) {
+        console.log('⚠️ [useUserChallengeProgress] Missing user or challenge ID');
+        return null;
+      }
 
       try {
-        const response: any = await apiService.request(
-          `${API_ENDPOINTS.USER_CHALLENGES.BY_CHALLENGE_ID(challengeId)}`,
-          { method: 'GET' }
-        );
+        const url = API_ENDPOINTS.USER_CHALLENGES.BY_CHALLENGE_ID(challengeId);
+        console.log('📡 [useUserChallengeProgress] Fetching from:', url);
+
+        const response: any = await apiService.request(url, { method: 'GET' });
 
         const data = response.data || response;
-        if (!data) return null;
+        
+        if (!data) {
+          console.log('ℹ️ [useUserChallengeProgress] No progress found');
+          return null;
+        }
+
+        console.log('✅ [useUserChallengeProgress] Progress found:', {
+          user_challenge_id: data.user_challenge_id,
+          status: data.status,
+        });
 
         return {
           user_challenge_id: data.user_challenge_id,
@@ -130,8 +222,10 @@ export const useUserChallengeProgress = (challengeId: number) => {
         if (error.message?.includes('404') || 
             error.message?.includes('not found') ||
             error.response?.status === 404) {
+          console.log('ℹ️ [useUserChallengeProgress] Challenge not joined (404)');
           return null;
         }
+        console.error('❌ [useUserChallengeProgress] Error:', error);
         throw error;
       }
     },
@@ -158,13 +252,19 @@ export const useUserWasteStats = () => {
   return useQuery({
     queryKey: userChallengeKeys.wasteStats(user?.id || 0),
     queryFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
+      console.log('🚀 [useUserWasteStats] Fetching waste stats...');
+      
+      if (!user?.id) {
+        console.error('❌ [useUserWasteStats] User not authenticated');
+        throw new Error('User not authenticated');
+      }
 
       const response: any = await apiService.request(
         API_ENDPOINTS.USER_CHALLENGES.WASTE_STATS,
         { method: 'GET' }
       );
 
+      console.log('✅ [useUserWasteStats] Stats retrieved');
       return response.data || response;
     },
     enabled: !!user?.id,
@@ -181,6 +281,8 @@ export const useJoinChallenge = () => {
 
   return useMutation({
     mutationFn: async (challengeId: number) => {
+      console.log('🚀 [useJoinChallenge] Joining challenge:', challengeId);
+      
       const response = await apiService.request(
         API_ENDPOINTS.USER_CHALLENGES.JOIN,
         {
@@ -188,9 +290,13 @@ export const useJoinChallenge = () => {
           data: { challenge_id: challengeId },
         }
       );
+      
+      console.log('✅ [useJoinChallenge] Successfully joined');
       return response;
     },
     onSuccess: (data, challengeId) => {
+      console.log('🔄 [useJoinChallenge] Invalidating queries...');
+      
       queryClient.invalidateQueries({ 
         queryKey: userChallengeKeys.lists() 
       });
@@ -205,11 +311,14 @@ export const useJoinChallenge = () => {
         queryKey: ['challenges', 'detail', challengeId] 
       });
     },
+    onError: (error: any) => {
+      console.error('❌ [useJoinChallenge] Error:', error);
+    },
   });
 };
 
 /**
- * ✅ FIXED: Submit challenge verification with correct API endpoint
+ * Submit challenge verification
  */
 export const useSubmitChallengeVerification = () => {
   const queryClient = useQueryClient();
@@ -223,14 +332,8 @@ export const useSubmitChallengeVerification = () => {
       points?: number;
       challengeId: number;
     }) => {
-      console.log('📤 Sending verification request:', {
-        userChallengeId: params.userChallengeId,
-        proofUrl: params.proofUrl,
-        challengeId: params.challengeId,
-        userId: user?.id,
-      });
+      console.log('🚀 [useSubmitChallengeVerification] Submitting:', params);
 
-      // ✅ FIXED: Call the correct user challenge verification endpoint
       const response = await apiService.request(
         API_ENDPOINTS.USER_CHALLENGES.VERIFY(params.userChallengeId),
         {
@@ -245,76 +348,38 @@ export const useSubmitChallengeVerification = () => {
         }
       );
 
-      console.log('✅ Verification response:', response);
+      console.log('✅ [useSubmitChallengeVerification] Success:', response);
       return response;
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Verification successful, invalidating queries');
+      console.log('🔄 [useSubmitChallengeVerification] Invalidating queries...');
       
       if (user?.id) {
-        // Invalidate and refetch specific challenge progress
         queryClient.invalidateQueries({ 
           queryKey: userChallengeKeys.progress(variables.challengeId, user.id) 
         });
         
-        // Refetch immediately
         queryClient.refetchQueries({ 
           queryKey: userChallengeKeys.progress(variables.challengeId, user.id) 
         });
 
-        // Invalidate waste stats
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.wasteStats(user.id)
         });
       }
       
-      // Invalidate user challenges list
       queryClient.invalidateQueries({ 
         queryKey: userChallengeKeys.lists() 
       });
     },
-    onMutate: async (variables) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ 
-        queryKey: userChallengeKeys.progress(variables.challengeId, user?.id || 0) 
-      });
-
-      // Snapshot previous value
-      const previousProgress = queryClient.getQueryData(
-        userChallengeKeys.progress(variables.challengeId, user?.id || 0)
-      );
-
-      // Optimistically update to pending_verification
-      queryClient.setQueryData(
-        userChallengeKeys.progress(variables.challengeId, user?.id || 0),
-        (old: QuestProgress | null) => {
-          if (!old) return null;
-          return {
-            ...old,
-            status: 'pending_verification' as UserChallengeStatus,
-            proof_url: variables.proofUrl,
-          };
-        }
-      );
-
-      return { previousProgress };
-    },
-    onError: (err, variables, context) => {
-      console.error('❌ Verification error:', err);
-      
-      // Revert on error
-      if (context?.previousProgress) {
-        queryClient.setQueryData(
-          userChallengeKeys.progress(variables.challengeId, user?.id || 0),
-          context.previousProgress
-        );
-      }
+    onError: (error: any) => {
+      console.error('❌ [useSubmitChallengeVerification] Error:', error);
     },
   });
 };
 
 /**
- * ✅ NEW: Skip a challenge
+ * Skip a challenge
  */
 export const useSkipChallenge = () => {
   const queryClient = useQueryClient();
@@ -325,6 +390,8 @@ export const useSkipChallenge = () => {
       userChallengeId: number;
       reason?: string;
     }) => {
+      console.log('🚀 [useSkipChallenge] Skipping:', params);
+      
       const response = await apiService.request(
         API_ENDPOINTS.USER_CHALLENGES.SKIP(params.userChallengeId),
         {
@@ -332,14 +399,21 @@ export const useSkipChallenge = () => {
           data: { reason: params.reason },
         }
       );
+      
+      console.log('✅ [useSkipChallenge] Success');
       return response;
     },
     onSuccess: () => {
+      console.log('🔄 [useSkipChallenge] Invalidating queries...');
+      
       if (user?.id) {
         queryClient.invalidateQueries({ 
           queryKey: userChallengeKeys.lists() 
         });
       }
+    },
+    onError: (error: any) => {
+      console.error('❌ [useSkipChallenge] Error:', error);
     },
   });
 };

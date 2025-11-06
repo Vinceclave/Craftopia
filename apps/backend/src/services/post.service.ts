@@ -448,7 +448,7 @@ export class PostService {
       },
     });
 
-    return comments.map((comment) => ({
+    return comments.map(( comment) => ({
       comment_id: comment.comment_id,
       post_id: comment.post_id,
       content: comment.content,

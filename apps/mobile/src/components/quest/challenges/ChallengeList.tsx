@@ -1,9 +1,9 @@
-// ChallengeList.tsx - Redesigned to match HomeQuest style
-import React from 'react';
-import { Text, View, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+// apps/mobile/src/components/quest/challenges/ChallengeList.tsx - COMPLETE FIXED VERSION
+import React, { useEffect } from 'react';
+import { Text, View, TouchableOpacity, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Trophy, Clock, CheckCircle, XCircle, HourglassIcon, ChevronRight } from 'lucide-react-native';
+import { Trophy, Clock, CheckCircle, XCircle, HourglassIcon, ChevronRight, AlertCircle } from 'lucide-react-native';
 import { EcoQuestStackParamList } from '~/navigations/types';
 
 interface Challenge {
@@ -34,6 +34,21 @@ export const ChallengeList = ({
   onRetry
 }: ChallengeListProps) => {
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🎨 [ChallengeList] Rendering with:', {
+      challengesCount: challenges.length,
+      loading,
+      refreshing,
+      hasError: !!error,
+      errorMessage: error,
+    });
+
+    if (challenges.length > 0) {
+      console.log('🎨 [ChallengeList] First challenge:', challenges[0]);
+    }
+  }, [challenges, loading, refreshing, error]);
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -73,18 +88,27 @@ export const ChallengeList = ({
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-    console.log('🎯 Challenge pressed:', {
+    console.log('🎯 [ChallengeList] Challenge pressed:', {
       user_challenge_id: challenge.id,
       challenge_id: challenge.challenge_id,
-      title: challenge.title
+      title: challenge.title,
+      status: challenge.status,
     });
+
+    if (!challenge.challenge_id) {
+      console.error('❌ [ChallengeList] Missing challenge_id!');
+      return;
+    }
 
     navigation.navigate('QuestDetails', { 
       questId: challenge.challenge_id 
     });
   };
 
+  // Loading State
   if (loading && !refreshing) {
+    console.log('⏳ [ChallengeList] Showing loading state');
+    
     return (
       <View className="mx-4 mb-6">
         {/* Section Header Skeleton */}
@@ -116,29 +140,40 @@ export const ChallengeList = ({
             </View>
           </View>
         ))}
+
+        <View className="mt-4 items-center">
+          <ActivityIndicator size="small" color="#374A36" />
+          <Text className="text-xs text-craftopia-textSecondary mt-2">
+            Loading your challenges...
+          </Text>
+        </View>
       </View>
     );
   }
 
+  // Error State
   if (error) {
+    console.log('❌ [ChallengeList] Showing error state:', error);
+    
     return (
       <View className="mx-4 mb-6 mt-3">
-        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-red-500/20">
           <View className="w-12 h-12 rounded-full bg-red-500/10 items-center justify-center mb-3">
-            <Trophy size={20} color="#DC2626" />
+            <AlertCircle size={24} color="#DC2626" />
           </View>
           <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
             Failed to Load Challenges
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3 px-4">
             {error}
           </Text>
           {onRetry && (
             <TouchableOpacity 
-              className="bg-craftopia-primary rounded-full px-4 py-2"
+              className="bg-craftopia-primary rounded-full px-6 py-3"
               onPress={onRetry}
+              activeOpacity={0.7}
             >
-              <Text className="text-xs font-semibold text-white">
+              <Text className="text-sm font-semibold text-white">
                 Try Again
               </Text>
             </TouchableOpacity>
@@ -148,7 +183,10 @@ export const ChallengeList = ({
     );
   }
 
+  // Empty State
   if (!challenges || challenges.length === 0) {
+    console.log('📭 [ChallengeList] Showing empty state');
+    
     return (
       <View className="mx-4 mb-6 mt-3">
         <View className="flex-row items-center justify-between mb-3">
@@ -169,7 +207,7 @@ export const ChallengeList = ({
         
         <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
           <View className="w-12 h-12 rounded-full bg-craftopia-light/50 items-center justify-center mb-3">
-            <Trophy size={20} color="#5D6B5D" />
+            <Trophy size={24} color="#5D6B5D" />
           </View>
           <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
             No Challenges Yet
@@ -182,6 +220,7 @@ export const ChallengeList = ({
     );
   }
 
+  // Challenge Item Component
   const ChallengeItem = ({ challenge }: { challenge: Challenge }) => {
     const statusConfig = getStatusConfig(challenge.status);
     const StatusIcon = statusConfig.icon;
@@ -245,6 +284,9 @@ export const ChallengeList = ({
     );
   };
 
+  // Success State - Show Challenges
+  console.log('✅ [ChallengeList] Showing challenges:', challenges.length);
+
   return (
     <ScrollView
       className="flex-1"
@@ -255,6 +297,7 @@ export const ChallengeList = ({
             refreshing={refreshing || false}
             onRefresh={onRefresh}
             tintColor="#374A36"
+            colors={['#374A36']}
           />
         ) : undefined
       }

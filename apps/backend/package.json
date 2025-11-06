@@ -30,6 +30,7 @@
     "@types/jsonwebtoken": "^9.0.2",
     "@types/morgan": "^1.9.4",
     "@types/multer": "^2.0.0",
+    "@types/multer-s3": "^3.0.3",
     "@types/node": "^20.0.0",
     "@types/nodemailer": "^6.4.8",
     "nodemon": "^3.0.1",
@@ -38,9 +39,12 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/lib-storage": "^3.922.0",
     "@google/genai": "^1.17.0",
     "@prisma/client": "^6.17.1",
     "@types/socket.io": "^3.0.1",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
     "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
@@ -54,6 +58,7 @@
     "jsonwebtoken": "^9.0.1",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.9.3",
     "socket.io": "^4.8.1"

@@ -1,4 +1,4 @@
-// apps/mobile/src/config/api.ts
+// apps/mobile/src/config/api.ts - COMPLETE FIXED VERSION
 export const API_BASE_URL = __DEV__ 
   ? 'http://192.168.1.7:3001' // Replace with YOUR computer's IP address
   : 'https://your-production-api.com';
@@ -17,8 +17,7 @@ export const API_ENDPOINTS = {
   USER: {
     PROFILE: '/api/v1/users/profile',
     UPDATE_PROFILE: '/api/v1/users/profile',
-    STATS: 'api/v1/users/stats'
-
+    STATS: '/api/v1/users/stats'
   },
   CRAFTS: {
     LIST: `${API_BASE_URL}/api/v1/crafts`,
@@ -33,35 +32,33 @@ export const API_ENDPOINTS = {
     GENERATE_CHALLENGE: `${API_BASE_URL}/api/v1/craft/generate-challenge`,
     ANALYZE_IMAGE: `${API_BASE_URL}/api/v1/image/analyze`,
     CHATBOT: `${API_BASE_URL}/api/v1/ai/chatbot/chat`,
-
     DETECT_MATERIALS: `${API_BASE_URL}/api/v1/ai/material/detect`,
     GENERATE_PROJECTS: `${API_BASE_URL}/api/v1/ai/material/generate-projects`,
     ANALYZE_AND_GENERATE: `${API_BASE_URL}/api/v1/ai/material/analyze`,
-    VERIFY_CHALLENGE: `${API_BASE_URL}/api/v1/ai/image/verify-upload`, // ✅ FIXED: Added missing endpoint
-  
+    VERIFY_CHALLENGE: `${API_BASE_URL}/api/v1/ai/image/verify-upload`,
   },
   CHALLENGES: {
-    LIST: `/api/v1/challenges`,
-    CREATE: `/api/v1/challenges`,
-    GENERATE: `/api/v1/challenges/generate`,
+    LIST: '/api/v1/challenges',
+    CREATE: '/api/v1/challenges',
+    GENERATE: '/api/v1/challenges/generate',
     BY_ID: (id: number) => `/api/v1/challenges/${id}`,
   },
+  // ✅ FIXED: Complete USER_CHALLENGES endpoints
   USER_CHALLENGES: {
-    JOIN: `${API_BASE_URL}/api/v1/user-challenges/join`,
-    BY_CHALLENGE_ID: (challengeId: number) => `${API_BASE_URL}/api/v1/user-challenges/${challengeId}`,
-    COMPLETE: (id: string) => `${API_BASE_URL}/api/v1/user-challenges/${id}/complete`,
-    VERIFY: (id: number | undefined) => `${API_BASE_URL}/api/v1/user-challenges/${id}/verify`,
-    USER_LIST: (userId?: number) => `${API_BASE_URL}/api/v1/user-challenges/user${userId ? `/${userId}` : ''}`,
-    LEADERBOARD: `${API_BASE_URL}/api/v1/user-challenges/leaderboard`,
-    PENDING: `${API_BASE_URL}/api/v1/user-challenges/pending-verifications`,
-      SKIP: (id: number) => `${API_BASE_URL}/api/v1/user-challenges/${id}/skip`, // ✅ NEW: Skip endpoint
-    WASTE_STATS: `${API_BASE_URL}/api/v1/user-challenges/my-waste-stats`, // ✅ NEW: Waste stats endpoint
- 
+    JOIN: '/api/v1/user-challenges/join',
+    BY_CHALLENGE_ID: (challengeId: number) => `/api/v1/user-challenges/${challengeId}`,
+    COMPLETE: (id: number) => `/api/v1/user-challenges/${id}/complete`,
+    VERIFY: (id: number) => `/api/v1/user-challenges/${id}/verify`,
+    USER_LIST: '/api/v1/user-challenges/user', // ✅ Backend uses req.user.userId from token
+    LEADERBOARD: '/api/v1/user-challenges/leaderboard',
+    PENDING: '/api/v1/user-challenges/pending-verifications',
+    SKIP: (id: number) => `/api/v1/user-challenges/${id}/skip`,
+    WASTE_STATS: '/api/v1/user-challenges/my-waste-stats',
   },
   POSTS: {
     LIST: `${API_BASE_URL}/api/v1/posts`,
     TRENDING: `${API_BASE_URL}/api/v1/posts/trending`,
-    SEARCH: `${API_BASE_URL}/api/v1/posts/search`, // ✅ ADD BASE_URL
+    SEARCH: `${API_BASE_URL}/api/v1/posts/search`,
     CREATE: `${API_BASE_URL}/api/v1/posts`,
     BY_ID: (id: string) => `${API_BASE_URL}/api/v1/posts/${id}`,
     DELETE: (id: string) => `${API_BASE_URL}/api/v1/posts/${id}`,
@@ -81,7 +78,7 @@ export const API_ENDPOINTS = {
     MY_REPORTS: `${API_BASE_URL}/api/v1/reports/my-reports`,
   },
   UPLOAD: {
-    IMAGE: `${API_BASE_URL}/api/v1/upload/image`, // ✅ NEW: Upload endpoint
+    IMAGE: `${API_BASE_URL}/api/v1/upload/image`,
   }
 };
 
@@ -104,7 +101,7 @@ export interface UserProfile {
   points: number;
   location?: string;
 }
-// If you're getting the user profile from getCurrentUser, the response looks like this:
+
 export interface UserProfileResponse {
   user_id: number;
   username: string;
@@ -165,7 +162,6 @@ export interface PaginatedResponse<T> {
   timestamp: string;
 }
 
-// HTTP Status Codes
 export const HTTP_STATUS = {
   OK: 200,
   CREATED: 201,
@@ -177,7 +173,6 @@ export const HTTP_STATUS = {
   CONFLICT: 409,
   INTERNAL_SERVER_ERROR: 500,
 } as const;
-
 
 export interface DetectedMaterial {
   name: string;
@@ -222,7 +217,7 @@ export interface DIYProject {
   sustainabilityImpact: string;
   tags: string[];
 }
-// Common headers
+
 export const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',

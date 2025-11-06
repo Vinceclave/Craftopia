@@ -1,4 +1,3 @@
-// apps/mobile/src/components/common/TextInputField.tsx
 import React, { useState, forwardRef } from 'react';
 import { TextInput, View, Text, TouchableOpacity, TextInputProps } from 'react-native';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react-native';
@@ -45,16 +44,13 @@ export const Input = forwardRef<TextInput, InputProps>(
         )}
 
         <View
-          className={`flex-row items-center px-4 py-3 rounded-xl border-2 bg-white`}
+          className="flex-row items-center px-4 py-3 rounded-xl bg-white"
           style={{
-            borderColor: error
-              ? '#DC2626'
-              : isFocused
-              ? '#374A36'
-              : '#E5E7EB',
-            shadowColor: isFocused ? '#374A36' : 'transparent',
+            borderWidth: 2,
+            borderColor: error ? '#DC2626' : isFocused ? '#374A36' : '#E5E7EB',
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
+            shadowOpacity: isFocused ? 0.1 : 0,
             shadowRadius: 4,
             elevation: isFocused ? 2 : 0,
           }}
@@ -87,32 +83,26 @@ export const Input = forwardRef<TextInput, InputProps>(
               className="ml-2 p-1"
               activeOpacity={0.7}
             >
-              {showPassword ? (
-                <EyeOff size={20} color="#6B7280" />
-              ) : (
-                <Eye size={20} color="#6B7280" />
-              )}
+              {showPassword ? <EyeOff size={20} color="#6B7280" /> : <Eye size={20} color="#6B7280" />}
             </TouchableOpacity>
           )}
 
-          {rightIcon && !secure && (
-            <View className="ml-3">{rightIcon}</View>
-          )}
+          {rightIcon && !secure && <View className="ml-3">{rightIcon}</View>}
         </View>
 
-        {error && (
-          <View className="absolute -top-2 right-0 flex-row items-center mt-2">
+        {error ? (
+          <View className="flex-row items-center mt-2">
             <AlertCircle size={14} color="#DC2626" />
             <Text className="text-sm ml-1" style={{ color: '#DC2626' }}>
               {error}
             </Text>
           </View>
-        )}
-
-        {helper && !error && (
-          <Text className="text-xs mt-2" style={{ color: '#6B7280' }}>
-            {helper}
-          </Text>
+        ) : (
+          helper && (
+            <Text className="text-xs mt-2" style={{ color: '#6B7280' }}>
+              {helper}
+            </Text>
+          )
         )}
       </View>
     );
