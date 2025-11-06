@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react'
-import { ScrollView, View, Text, TouchableOpacity, Image, Alert, Modal } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, Alert, Modal } from 'react-native'
 import { Input } from '~/components/common/TextInputField'
 import Button from '~/components/common/Button'
+import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Image as ImageIcon, X, ArrowLeft, Camera, ImageIcon as Gallery, ChevronDown, Check } from 'lucide-react-native'
+import { ArrowLeft, ChevronDown, Check } from 'lucide-react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { postService } from '~/services/post.service'
 import { useAlert } from '~/hooks/useAlert'
@@ -38,8 +39,8 @@ export const CreatePostScreen = () => {
   const { success, error } = useAlert()
   const [loading, setLoading] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
-  const [showImagePicker, setShowImagePicker] = useState(false)
   const [tagsInput, setTagsInput] = useState('')
+  const [uploading, setUploading] = useState(false)
 
   const [formData, setFormData] = useState<CreatePostFormData>({
     title: '',
@@ -60,8 +61,6 @@ export const CreatePostScreen = () => {
     content: useRef(null),
     title: useRef(null),
     tags: useRef(null),
-    category: useRef(null),
-    image: useRef(null),
   }
 
   const handleChange = (field: keyof CreatePostFormData, value: string | boolean) => {
@@ -74,6 +73,10 @@ export const CreatePostScreen = () => {
     }
 
     if (field in errors) setErrors(prev => ({ ...prev, [field]: '' }))
+  }
+
+  const handleImageChange = (url?: string) => {
+    setFormData(prev => ({ ...prev, imageUrl: url || '' }))
   }
 
   const validateForm = (): boolean => {
@@ -123,22 +126,6 @@ export const CreatePostScreen = () => {
     }
   }
 
-  const handleImageUpload = (type: 'camera' | 'gallery' | 'url') => {
-    setShowImagePicker(false)
-    
-    switch (type) {
-      case 'camera':
-        Alert.alert('Camera', 'Camera functionality coming soon! For now, use image URL.')
-        break
-      case 'gallery':
-        Alert.alert('Gallery', 'Gallery picker coming soon! For now, use image URL.')
-        break
-      case 'url':
-        refs.image.current?.focus()
-        break
-    }
-  }
-
   const handleCategorySelect = (categoryId: string) => {
     handleChange('category', categoryId)
     setShowCategoryPicker(false)
@@ -149,7 +136,7 @@ export const CreatePostScreen = () => {
   }
 
   const getTagsAsString = (): string => tagsInput
-  const isFormValid = formData.title.trim() && formData.content.trim() && formData.category
+  const isFormValid = formData.title.trim() && formData.content.trim() && formData.category && !uploading
 
   return (
     <SafeAreaView className="flex-1 bg-craftopia-light" edges={['left', 'right']}>
@@ -194,7 +181,7 @@ export const CreatePostScreen = () => {
             value={formData.content}
             onChangeText={value => handleChange('content', value)}
             ref={refs.content}
-            nextInputRef={refs.image}
+            nextInputRef={refs.tags}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -202,51 +189,17 @@ export const CreatePostScreen = () => {
             containerClassName="mt-3 mb-3"
           />
 
-          {/* Image Section */}
-          <View className="mb-3">
-            <Text className="text-craftopia-textSecondary text-sm mb-2 font-medium">Image</Text>
-            
-            {formData.imageUrl ? (
-              <View className="relative">
-                <Image 
-                  source={{ uri: formData.imageUrl }} 
-                  className="w-full h-40 rounded-lg"
-                  resizeMode="cover"
-                />
-                <TouchableOpacity 
-                  className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5"
-                  onPress={() => handleChange('imageUrl', '')}
-                >
-                  <X size={14} color="white" />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                className="bg-craftopia-light border-2 border-dashed border-craftopia-light rounded-lg p-6 items-center"
-                activeOpacity={0.8}
-                onPress={() => setShowImagePicker(true)}
-              >
-                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mb-2">
-                  <ImageIcon size={20} color="#004E98" />
-                </View>
-                <Text className="text-craftopia-textPrimary font-medium mb-0.5">Add Photo</Text>
-                <Text className="text-craftopia-textSecondary text-xs text-center">
-                  Tap to upload from camera, gallery, or URL
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Image URL Input */}
-            <Input
-              label="Or paste image URL"
-              placeholder="https://example.com/image.jpg"
-              value={formData.imageUrl}
-              onChangeText={value => handleChange('imageUrl', value)}
-              ref={refs.image}
-              nextInputRef={refs.tags}
-              containerClassName="mt-2 mb-0"
-            />
-          </View>
+          {/* Image Upload Section */}
+          <ImageUploadPicker
+            label="Image"
+            description="Take a photo or choose from gallery"
+            value={formData.imageUrl}
+            onChange={handleImageChange}
+            folder="posts"
+            onUploadStart={() => setUploading(true)}
+            onUploadComplete={() => setUploading(false)}
+            disabled={loading}
+          />
 
           {/* Tags Input */}
           <View className="mb-3">
@@ -274,7 +227,7 @@ export const CreatePostScreen = () => {
                         setFormData(prev => ({ ...prev, tags: newTags }))
                       }}
                     >
-                      <X size={12} color="#004E98" />
+                      <Text className="text-craftopia-primary text-xs font-bold">×</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -315,69 +268,6 @@ export const CreatePostScreen = () => {
           />
         </View>
       </ScrollView>
-
-      {/* Image Picker Modal */}
-      <Modal
-        visible={showImagePicker}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowImagePicker(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-craftopia-surface rounded-t-xl p-4">
-            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
-            <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 text-center">Add Photo</Text>
-            
-            <View className="space-y-2">
-              <TouchableOpacity 
-                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
-                onPress={() => handleImageUpload('camera')}
-              >
-                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                  <Camera size={16} color="#004E98" />
-                </View>
-                <View>
-                  <Text className="font-medium text-craftopia-textPrimary">Take Photo</Text>
-                  <Text className="text-xs text-craftopia-textSecondary">Use camera to capture</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
-                onPress={() => handleImageUpload('gallery')}
-              >
-                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                  <Gallery size={16} color="#004E98" />
-                </View>
-                <View>
-                  <Text className="font-medium text-craftopia-textPrimary">Choose from Gallery</Text>
-                  <Text className="text-xs text-craftopia-textSecondary">Select from your photos</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
-                onPress={() => handleImageUpload('url')}
-              >
-                <View className="w-10 h-10 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                  <ImageIcon size={16} color="#004E98" />
-                </View>
-                <View>
-                  <Text className="font-medium text-craftopia-textPrimary">Paste URL</Text>
-                  <Text className="text-xs text-craftopia-textSecondary">Add image from web</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity 
-              className="mt-4 p-3 bg-craftopia-light rounded-lg"
-              onPress={() => setShowImagePicker(false)}
-            >
-              <Text className="text-center font-medium text-craftopia-textSecondary">Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Category Picker Modal */}
       <Modal
