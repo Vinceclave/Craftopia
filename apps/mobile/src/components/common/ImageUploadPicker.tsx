@@ -11,7 +11,6 @@ import {
 import * as ImagePicker from 'expo-image-picker'
 import { X, Camera, Image as ImageIcon, Upload, CheckCircle } from 'lucide-react-native'
 import { useLocalUpload } from '~/hooks/useUpload'
-import { API_BASE_URL } from '~/config/api'
 
 interface ImageUploadPickerProps {
   label?: string | null
@@ -121,8 +120,8 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
           <Image
             source={{ 
               uri: localImageUri 
-                ? localImageUri
-                : `${API_BASE_URL}${value}`
+                ? localImageUri  // Local file (before upload)
+                : value          // Pre-signed S3 URL (after upload)
             }}
             className="w-full rounded-xl"
             style={{ 

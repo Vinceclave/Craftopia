@@ -12,13 +12,13 @@ export const uploadImage = asyncHandler(async (req: AuthRequest, res: Response) 
   const folder = (req.query.folder as string) || 'posts';
 
   try {
-    // Upload file from memory directly to S3
+    // Upload file and get pre-signed URL
     const imageUrl = await uploadFileToS3(req.file, folder);
 
     sendSuccess(
       res,
       {
-        imageUrl,
+        imageUrl, // This is now a pre-signed URL
         filename: req.file.originalname,
         size: req.file.size,
         folder,

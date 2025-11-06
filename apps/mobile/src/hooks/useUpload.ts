@@ -1,4 +1,4 @@
-// hooks/useLocalUpload.ts
+// hooks/useUpload.ts
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '~/services/base.service';
@@ -8,6 +8,9 @@ export const useLocalUpload = () => {
   const [uploading, setUploading] = useState(false);
   const { error } = useAlert();
 
+  /**
+   * Upload image to S3 and get pre-signed URL
+   */
   const uploadToFolder = async (
     imageUri: string,
     folder: 'posts' | 'profiles' | 'crafts' | 'challenges' = 'posts'
@@ -22,7 +25,6 @@ export const useLocalUpload = () => {
         name: 'image.jpg',
       } as any);
 
-      // ✅ folder is sent via query param, not body
       const response: any = await apiService.request(`/api/v1/upload/image?folder=${folder}`, {
         method: 'POST',
         data: formData,
@@ -31,6 +33,7 @@ export const useLocalUpload = () => {
       });
 
       if (response.success && response.data?.imageUrl) {
+        // Returns pre-signed URL (valid for 7 days)
         return response.data.imageUrl;
       } else {
         throw new Error('Upload response invalid');
@@ -52,6 +55,31 @@ export const useLocalUpload = () => {
     }
   };
 
+  /**
+   * Refresh an expired pre-signed URL
+   */
+  const refreshUrl = async (imageUrl: string): Promise<string | null> => {
+    try {
+      const response: any = await apiService.request('/api/v1/upload/refresh-url', {
+        method: 'POST',
+        data: { imageUrl },
+        timeout: 10000,
+      });
+
+      if (response.success && response.data?.imageUrl) {
+        return response.data.imageUrl;
+      } else {
+        throw new Error('Refresh response invalid');
+      }
+    } catch (err: any) {
+      console.error('URL refresh error:', err);
+      return null;
+    }
+  };
+
+  /**
+   * Pick image and upload to S3
+   */
   const pickAndUpload = async (
     source: 'camera' | 'gallery',
     folder: 'posts' | 'profiles' | 'crafts' | 'challenges' = 'posts'
@@ -89,5 +117,10 @@ export const useLocalUpload = () => {
     return await uploadToFolder(result.assets[0].uri, folder);
   };
 
-  return { pickAndUpload, uploadToFolder, uploading };
+  return { 
+    pickAndUpload, 
+    uploadToFolder, 
+    refreshUrl, 
+    uploading 
+  };
 };
