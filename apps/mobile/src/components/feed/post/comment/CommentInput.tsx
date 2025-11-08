@@ -1,6 +1,7 @@
+// apps/mobile/src/components/feed/comment/CommentInput.tsx - FIXED
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, ActivityIndicator, Image, Text } from 'react-native';
-import { Send } from 'lucide-react-native';
+import { View, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Send, User } from 'lucide-react-native';
 
 interface CommentInputProps {
   onSend: (content: string) => Promise<void>;
@@ -21,34 +22,45 @@ export const CommentInput: React.FC<CommentInputProps> = ({ onSend, submitting =
   };
 
   return (
-    <View className="border-t border-craftopia-light px-4 py-3 bg-craftopia-surface">
-      <View className="flex-row items-center gap-2">
-        <Image source={{ uri: 'https://i.pravatar.cc/32?u=current_user' }} className="w-7 h-7 rounded-full" />
-        <View className="flex-1 bg-craftopia-light rounded-xl px-3 py-1.5 max-h-20">
+    <View className="border-t border-gray-200 px-5 py-4 bg-white">
+      <View className="flex-row items-end gap-3">
+        <View className="w-8 h-8 bg-gray-200 rounded-full items-center justify-center">
+          <User size={16} color="#6B7280" />
+        </View>
+        <View className="flex-1 bg-gray-100 rounded-2xl px-4 py-3">
           <TextInput
             value={text}
             onChangeText={setText}
             placeholder="Write a comment..."
+            placeholderTextColor="#9CA3AF"
             multiline
             maxLength={500}
-            className="text-sm text-craftopia-textPrimary"
-            style={{ minHeight: 20, maxHeight: 60 }}
+            className="text-gray-900 text-base"
+            style={{ minHeight: 20, maxHeight: 80 }}
             editable={!submitting}
           />
         </View>
         <TouchableOpacity
           onPress={handleSend}
           disabled={!text.trim() || submitting}
-          className={`w-9 h-9 rounded-full items-center justify-center ${
-            text.trim() && !submitting ? 'bg-craftopia-primary' : 'bg-gray-300'
+          className={`w-10 h-10 rounded-xl items-center justify-center ${
+            text.trim() && !submitting ? 'bg-gray-900' : 'bg-gray-300'
           }`}
           activeOpacity={0.8}
         >
-          {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Send size={16} color="#fff" />}
+          {submitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Send size={18} color="#FFFFFF" />
+          )}
         </TouchableOpacity>
       </View>
       {text.length > 400 && (
-        <Text className="text-xs text-craftopia-textSecondary mt-1 ml-10">{500 - text.length} characters left</Text>
+        <View className="ml-11 mt-2">
+          <Text className="text-xs text-gray-500">
+            {500 - text.length} characters left
+          </Text>
+        </View>
       )}
     </View>
   );

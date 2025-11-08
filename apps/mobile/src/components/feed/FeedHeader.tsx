@@ -1,75 +1,77 @@
+// apps/mobile/src/components/feed/FeedHeader.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Search, LayoutGrid, TrendingUp, Flame, Star } from 'lucide-react-native';
-import { FeedType } from '~/hooks/queries/usePosts';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Search, Filter } from 'lucide-react-native';
+import { FeedTabs } from './FeedTabs';
+import type { FeedType } from '~/hooks/queries/usePosts';
 
 interface FeedHeaderProps {
   activeTab: FeedType;
   onTabChange: (tab: FeedType) => void;
   onSearchPress: () => void;
+  onFilterPress: () => void;
+  hasActiveFilter: boolean;
 }
 
-const FEED_TABS = [
-  { key: 'all' as FeedType, label: 'All', icon: LayoutGrid },
-  { key: 'trending' as FeedType, label: 'Trending', icon: TrendingUp },
-  { key: 'popular' as FeedType, label: 'Popular', icon: Flame },
-  { key: 'featured' as FeedType, label: 'Featured', icon: Star },
-];
+// Create wrapped TouchableOpacity components
+const AnimatedTouchable = React.forwardRef<any, any>((props, ref) => (
+  <TouchableOpacity ref={ref} {...props} />
+));
+AnimatedTouchable.displayName = 'AnimatedTouchable';
 
 export const FeedHeader: React.FC<FeedHeaderProps> = ({
   activeTab,
   onTabChange,
   onSearchPress,
+  onFilterPress,
+  hasActiveFilter,
 }) => {
   return (
-    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
-      <View className="flex-row justify-between items-center mb-3">
-        <View>
-          <Text className="text-lg font-bold text-craftopia-textPrimary">Feed</Text>
-          <Text className="text-xs text-craftopia-textSecondary">Discover amazing projects</Text>
+    <View className="bg-white p-2 px-4  border-b border-gray-100">
+      {/* Main Header Row */}
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-1">
+          <Text className="text-2xl font-semibold text-gray-900">
+            Discover
+          </Text>
+          <Text className="text-sm text-gray-500 mt-0.5 font-normal">
+            Find what inspires you
+          </Text>
         </View>
-        <TouchableOpacity 
-          className="w-8 h-8 bg-craftopia-light rounded-full items-center justify-center"
-          onPress={onSearchPress}
-          activeOpacity={0.7}
-        >
-          <Search size={16} color="#5D6B5D" />
-        </TouchableOpacity>
+        
+        {/* Action Buttons */}
+        <View className="flex-row items-center gap-2">
+          <AnimatedTouchable 
+            className={`w-10 h-10 rounded-xl items-center justify-center ${
+              hasActiveFilter 
+                ? 'bg-black border border-gray-200' 
+                : 'bg-gray-50 border border-gray-100'
+            }`}
+            onPress={onFilterPress}
+            activeOpacity={0.8}
+          >
+            <Filter 
+              size={18} 
+              color={hasActiveFilter ? "#FFFFFF" : "#374151"} 
+              strokeWidth={1.5}
+            />
+            {hasActiveFilter && (
+              <View className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-400 rounded-full border border-white" />
+            )}
+          </AnimatedTouchable>
+          
+          <AnimatedTouchable 
+            className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-xl items-center justify-center"
+            onPress={onSearchPress}
+            activeOpacity={0.8}
+          >
+            <Search size={18} color="#374151" strokeWidth={1.5} />
+          </AnimatedTouchable>
+        </View>
       </View>
-
+      
       {/* Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 16 }}
-      >
-        {FEED_TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          const IconComponent = tab.icon;
-          return (
-            <TouchableOpacity
-              key={tab.key}
-              onPress={() => onTabChange(tab.key)}
-              className={`mr-3 pb-2 ${isActive ? 'border-b-2 border-craftopia-primary' : ''}`}
-              activeOpacity={0.7}
-            >
-              <View className="flex-row items-center">
-                <IconComponent 
-                  size={14} 
-                  color={isActive ? '#374A36' : '#5D6B5D'}
-                />
-                <Text 
-                  className={`text-sm font-medium ml-1.5 ${
-                    isActive ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
-                  }`}
-                >
-                  {tab.label}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <FeedTabs activeTab={activeTab} onTabChange={onTabChange} />
     </View>
   );
 };

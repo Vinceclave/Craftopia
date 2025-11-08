@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/EditPostModal.tsx
+// apps/mobile/src/components/feed/post/EditPostModal.tsx - MODERN MINIMALISTIC
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -11,8 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Edit3 } from 'lucide-react-native';
-import Button from '~/components/common/Button';
+import { X, Edit3, Tag, AlertCircle } from 'lucide-react-native';
 
 interface EditPostModalProps {
   visible: boolean;
@@ -98,6 +97,12 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
 
   const canSubmit = hasChanges && !loading && title.trim() && content.trim();
 
+  const CharacterCounter = ({ current, max, warningThreshold = 0.9 }: { current: number; max: number; warningThreshold?: number }) => (
+    <Text className={`text-xs ${current > max * warningThreshold ? 'text-orange-500' : 'text-gray-400'}`}>
+      {current}/{max}
+    </Text>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -105,39 +110,28 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-white">
         <KeyboardAvoidingView
           className="flex-1"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
-          <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <TouchableOpacity onPress={onClose} className="mr-3" disabled={loading}>
-                <X size={20} color="#1A1A1A" />
-              </TouchableOpacity>
+          <View className="px-5 py-4 border-b border-gray-100">
+            <View className="flex-row items-center justify-between">
               <View className="flex-row items-center">
-                <Edit3 size={16} color="#374A36" />
-                <Text className="text-base font-semibold text-craftopia-textPrimary ml-2">
+                <Edit3 size={20} color="#1F2937" />
+                <Text className="text-xl font-semibold text-gray-900 ml-2">
                   Edit Post
                 </Text>
               </View>
-            </View>
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-              className={`px-3 py-1.5 rounded-full ${
-                canSubmit ? 'bg-craftopia-primary' : 'bg-craftopia-light'
-              }`}
-            >
-              <Text
-                className={`text-sm font-medium ${
-                  canSubmit ? 'text-white' : 'text-craftopia-textSecondary'
-                }`}
+              <TouchableOpacity 
+                onPress={onClose}
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                disabled={loading}
               >
-                {loading ? 'Saving...' : 'Save'}
-              </Text>
-            </TouchableOpacity>
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Form */}
@@ -146,44 +140,45 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View className="p-4">
+            <View className="p-5 space-y-6">
               {/* Title Input */}
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-craftopia-textSecondary mb-2">
-                  Title *
-                </Text>
+              <View>
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-sm font-medium text-gray-700">
+                    Title
+                  </Text>
+                  <CharacterCounter current={title.length} max={255} />
+                </View>
                 <TextInput
                   value={title}
                   onChangeText={(text) => {
                     setTitle(text);
                     if (errors.title) setErrors({ ...errors, title: '' });
                   }}
-                  placeholder="Post title"
+                  placeholder="Enter post title..."
                   placeholderTextColor="#9CA3AF"
                   maxLength={255}
-                  className={`bg-craftopia-surface border rounded-lg px-3 py-2.5 text-craftopia-textPrimary ${
-                    errors.title ? 'border-red-400' : 'border-craftopia-light'
+                  className={`bg-gray-50 border rounded-xl px-4 py-3 text-gray-900 text-base ${
+                    errors.title ? 'border-red-300' : 'border-gray-200'
                   }`}
                   editable={!loading}
                 />
-                {errors.title ? (
-                  <Text className="text-xs text-red-500 mt-1">{errors.title}</Text>
-                ) : (
-                  <Text
-                    className={`text-xs mt-1 ${
-                      title.length > 230 ? 'text-orange-600' : 'text-craftopia-textSecondary'
-                    }`}
-                  >
-                    {title.length}/255 characters
-                  </Text>
+                {errors.title && (
+                  <View className="flex-row items-center mt-2">
+                    <AlertCircle size={14} color="#EF4444" />
+                    <Text className="text-red-500 text-sm ml-1">{errors.title}</Text>
+                  </View>
                 )}
               </View>
 
               {/* Content Input */}
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-craftopia-textSecondary mb-2">
-                  Content *
-                </Text>
+              <View>
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-sm font-medium text-gray-700">
+                    Content
+                  </Text>
+                  <CharacterCounter current={content.length} max={1000} />
+                </View>
                 <TextInput
                   value={content}
                   onChangeText={(text) => {
@@ -193,48 +188,46 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                   placeholder="Share your thoughts..."
                   placeholderTextColor="#9CA3AF"
                   multiline
-                  numberOfLines={6}
+                  numberOfLines={8}
                   maxLength={1000}
                   textAlignVertical="top"
-                  className={`bg-craftopia-surface border rounded-lg px-3 py-2.5 text-craftopia-textPrimary ${
-                    errors.content ? 'border-red-400' : 'border-craftopia-light'
+                  className={`bg-gray-50 border rounded-xl px-4 py-3 text-gray-900 text-base ${
+                    errors.content ? 'border-red-300' : 'border-gray-200'
                   }`}
-                  style={{ minHeight: 120 }}
+                  style={{ minHeight: 160 }}
                   editable={!loading}
                 />
-                {errors.content ? (
-                  <Text className="text-xs text-red-500 mt-1">{errors.content}</Text>
-                ) : (
-                  <Text
-                    className={`text-xs mt-1 ${
-                      content.length > 950 ? 'text-orange-600' : 'text-craftopia-textSecondary'
-                    }`}
-                  >
-                    {content.length}/1000 characters
-                  </Text>
+                {errors.content && (
+                  <View className="flex-row items-center mt-2">
+                    <AlertCircle size={14} color="#EF4444" />
+                    <Text className="text-red-500 text-sm ml-1">{errors.content}</Text>
+                  </View>
                 )}
               </View>
 
               {/* Tags Input */}
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-craftopia-textSecondary mb-2">
-                  Tags (optional)
-                </Text>
+              <View>
+                <View className="flex-row items-center mb-3">
+                  <Tag size={16} color="#6B7280" />
+                  <Text className="text-sm font-medium text-gray-700 ml-2">
+                    Tags (optional)
+                  </Text>
+                </View>
                 <TextInput
                   value={tagsInput}
                   onChangeText={setTagsInput}
-                  placeholder="craft, recycling, DIY (comma separated)"
+                  placeholder="craft, recycling, DIY..."
                   placeholderTextColor="#9CA3AF"
-                  className="bg-craftopia-surface border border-craftopia-light rounded-lg px-3 py-2.5 text-craftopia-textPrimary"
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-base"
                   editable={!loading}
                 />
-                <Text className="text-xs text-craftopia-textSecondary mt-1">
+                <Text className="text-xs text-gray-500 mt-2">
                   Separate tags with commas
                 </Text>
 
                 {/* Tag Preview */}
                 {tagsInput.trim() && (
-                  <View className="flex-row flex-wrap gap-1.5 mt-2">
+                  <View className="flex-row flex-wrap gap-2 mt-3">
                     {tagsInput
                       .split(',')
                       .map((tag) => tag.trim())
@@ -242,13 +235,13 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                       .map((tag, index) => (
                         <View
                           key={index}
-                          className="bg-craftopia-primary/10 px-2.5 py-1 rounded-full flex-row items-center"
+                          className="bg-blue-100 px-3 py-2 rounded-full flex-row items-center"
                         >
-                          <Text className="text-craftopia-primary text-xs font-medium">
+                          <Text className="text-blue-700 text-sm font-medium">
                             #{tag}
                           </Text>
                           <TouchableOpacity
-                            className="ml-1"
+                            className="ml-2"
                             onPress={() => {
                               const tags = tagsInput
                                 .split(',')
@@ -258,7 +251,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                             }}
                             disabled={loading}
                           >
-                            <X size={12} color="#374A36" />
+                            <X size={14} color="#1D4ED8" />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -267,39 +260,50 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
               </View>
 
               {/* Info Message */}
-              <View className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
-                <Text className="text-sm text-blue-800">
-                  ℹ️ Your changes will be saved immediately and visible to all users.
+              <View className="bg-blue-50 rounded-xl p-4">
+                <View className="flex-row items-start">
+                  <AlertCircle size={16} color="#3B82F6" className="mt-0.5" />
+                  <Text className="text-blue-700 text-sm ml-2 flex-1">
+                    Your changes will be saved immediately and visible to all users.
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Footer Actions */}
+          <View className="px-5 py-4 border-t border-gray-100 bg-white">
+            <View className="space-y-3">
+              <TouchableOpacity
+                onPress={handleSubmit}
+                disabled={!canSubmit}
+                className={`py-4 rounded-xl items-center ${
+                  canSubmit ? 'bg-gray-900' : 'bg-gray-300'
+                }`}
+              >
+                <Text className={`font-semibold text-base ${
+                  canSubmit ? 'text-white' : 'text-gray-500'
+                }`}>
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Action Buttons */}
-              <View className="space-y-2">
-                <Button
-                  title={loading ? 'Saving Changes...' : 'Save Changes'}
-                  onPress={handleSubmit}
-                  disabled={!canSubmit}
-                  loading={loading}
-                  size="md"
-                />
-
-                <TouchableOpacity
-                  onPress={onClose}
-                  className="py-3 items-center"
-                  activeOpacity={0.7}
-                  disabled={loading}
-                >
-                  <Text className="text-craftopia-textSecondary font-medium">Cancel</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={onClose}
+                className="py-3 items-center"
+                activeOpacity={0.7}
+                disabled={loading}
+              >
+                <Text className="text-gray-600 font-medium">Cancel</Text>
+              </TouchableOpacity>
 
               {!hasChanges && !loading && (
-                <Text className="text-center text-xs text-craftopia-textSecondary mt-2">
+                <Text className="text-center text-sm text-gray-400">
                   No changes made
                 </Text>
               )}
             </View>
-          </ScrollView>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>

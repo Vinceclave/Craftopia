@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react'
-import { ScrollView, View, Text, TouchableOpacity, Alert, Modal } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, Modal } from 'react-native'
 import { Input } from '~/components/common/TextInputField'
 import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, ChevronDown, Check } from 'lucide-react-native'
+import { ArrowLeft, ChevronDown, Check, Image as ImageIcon, Hash, Tag } from 'lucide-react-native'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
 import { postService } from '~/services/post.service'
 import { useAlert } from '~/hooks/useAlert'
@@ -138,88 +138,120 @@ export const CreatePostScreen = () => {
   const getTagsAsString = (): string => tagsInput
   const isFormValid = formData.title.trim() && formData.content.trim() && formData.category && !uploading
 
+  const CharacterCounter = ({ current, max, warningThreshold = 0.9 }: { current: number; max: number; warningThreshold?: number }) => (
+    <Text className={`text-xs ${current > max * warningThreshold ? 'text-orange-500' : 'text-gray-400'}`}>
+      {current}/{max}
+    </Text>
+  )
+
   return (
-    <SafeAreaView className="flex-1 bg-craftopia-light" edges={['left', 'right']}>
+    <SafeAreaView className="flex-1 bg-white" edges={['left', 'right']}>
       {/* Header */}
-      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light flex-row justify-between items-center">
-        <View className="flex-row items-center">
-          <TouchableOpacity className="mr-2 p-1" onPress={() => navigation.goBack()}>
-            <ArrowLeft size={20} color="#1A1A1A" />
+      <View className="px-5 py-4 border-b border-gray-100">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              className="w-10 h-10 items-center justify-center rounded-full bg-gray-100 mr-3"
+            >
+              <ArrowLeft size={20} color="#374151" />
+            </TouchableOpacity>
+            <Text className="text-xl font-bold text-gray-900">Create Post</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={!isFormValid || loading}
+            className={`px-6 py-2.5 rounded-xl ${
+              isFormValid && !loading ? 'bg-gray-900' : 'bg-gray-200'
+            }`}
+          >
+            <Text className={`font-medium text-sm ${
+              isFormValid && !loading ? 'text-white' : 'text-gray-500'
+            }`}>
+              {loading ? 'Sharing...' : 'Share'}
+            </Text>
           </TouchableOpacity>
-          <Text className="text-base font-semibold text-craftopia-textPrimary">Create Post</Text>
         </View>
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={!isFormValid || loading}
-          className={`px-3 py-1.5 rounded-full ${isFormValid && !loading ? 'bg-craftopia-primary' : 'bg-craftopia-light'}`}
-        >
-          <Text className={`text-sm font-medium ${isFormValid && !loading ? 'text-white' : 'text-craftopia-textSecondary'}`}>
-            {loading ? 'Sharing...' : 'Share'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Main Content Card */}
-        <View className="bg-craftopia-surface mx-4 mt-4 rounded-xl border border-craftopia-light p-4">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+        <View className="p-5 space-y-6">
           {/* Title Input */}
-          <Input
-            label="Title"
-            placeholder="What's your post about?"
-            value={formData.title}
-            onChangeText={value => handleChange('title', value)}
-            ref={refs.title}
-            nextInputRef={refs.content}
-            containerClassName="mb-0"
-            error={errors.title}
-          />
+          <View>
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm font-medium text-gray-700">Title</Text>
+              <CharacterCounter current={formData.title.length} max={255} />
+            </View>
+            <Input
+              placeholder="What's your post about?"
+              value={formData.title}
+              onChangeText={value => handleChange('title', value)}
+              ref={refs.title}
+              nextInputRef={refs.content}
+              error={errors.title}
+              className="bg-gray-50 border-gray-200 rounded-xl px-4 py-3 text-base"
+            />
+          </View>
 
           {/* Content Input */}
-          <Input
-            label="Content"
-            placeholder="Share your thoughts, ideas, or story..."
-            value={formData.content}
-            onChangeText={value => handleChange('content', value)}
-            ref={refs.content}
-            nextInputRef={refs.tags}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-            error={errors.content}
-            containerClassName="mt-3 mb-3"
-          />
+          <View>
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm font-medium text-gray-700">Content</Text>
+              <CharacterCounter current={formData.content.length} max={1000} />
+            </View>
+            <Input
+              placeholder="Share your thoughts, ideas, or story..."
+              value={formData.content}
+              onChangeText={value => handleChange('content', value)}
+              ref={refs.content}
+              nextInputRef={refs.tags}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              error={errors.content}
+              className="bg-gray-50 border-gray-200 rounded-xl px-4 py-3 text-base min-h-[120px]"
+            />
+          </View>
 
           {/* Image Upload Section */}
-          <ImageUploadPicker
-            label="Image"
-            description="Take a photo or choose from gallery"
-            value={formData.imageUrl}
-            onChange={handleImageChange}
-            folder="posts"
-            onUploadStart={() => setUploading(true)}
-            onUploadComplete={() => setUploading(false)}
-            disabled={loading}
-          />
+          <View>
+            <View className="flex-row items-center mb-3">
+              <ImageIcon size={18} color="#6B7280" />
+              <Text className="text-sm font-medium text-gray-700 ml-2">Image</Text>
+            </View>
+            <ImageUploadPicker
+              description="Take a photo or choose from gallery"
+              value={formData.imageUrl}
+              onChange={handleImageChange}
+              folder="posts"
+              onUploadStart={() => setUploading(true)}
+              onUploadComplete={() => setUploading(false)}
+              disabled={loading}
+            />
+          </View>
 
           {/* Tags Input */}
-          <View className="mb-3">
+          <View>
+            <View className="flex-row items-center mb-3">
+              <Hash size={18} color="#6B7280" />
+              <Text className="text-sm font-medium text-gray-700 ml-2">Tags</Text>
+            </View>
             <Input
-              label="Tags"
-              placeholder="craft, recycling, DIY (comma separated)"
+              placeholder="craft, recycling, DIY..."
               value={getTagsAsString()}
               onChangeText={value => handleChange('tags', value)}
               ref={refs.tags}
-              containerClassName="mb-2"
+              className="bg-gray-50 border-gray-200 rounded-xl px-4 py-3 text-base"
             />
             
             {/* Tag Preview */}
             {formData.tags.length > 0 && (
-              <View className="flex-row flex-wrap gap-1.5 mt-2">
+              <View className="flex-row flex-wrap gap-2 mt-3">
                 {formData.tags.map((tag, index) => (
-                  <View key={index} className="bg-craftopia-primary/10 px-2.5 py-1 rounded-full flex-row items-center">
-                    <Text className="text-craftopia-primary text-xs font-medium">#{tag}</Text>
+                  <View key={index} className="bg-blue-100 px-3 py-2 rounded-full flex-row items-center">
+                    <Text className="text-blue-700 text-sm font-medium">#{tag}</Text>
                     <TouchableOpacity 
-                      className="ml-1"
+                      className="ml-2"
                       onPress={() => {
                         const newTags = formData.tags.filter((_, i) => i !== index)
                         const newTagsInput = newTags.join(', ')
@@ -227,7 +259,7 @@ export const CreatePostScreen = () => {
                         setFormData(prev => ({ ...prev, tags: newTags }))
                       }}
                     >
-                      <Text className="text-craftopia-primary text-xs font-bold">×</Text>
+                      <Text className="text-blue-700 text-sm font-bold">×</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -236,36 +268,27 @@ export const CreatePostScreen = () => {
           </View>
 
           {/* Category Picker */}
-          <View className="mb-4">
-            <Text className="text-craftopia-textSecondary text-sm mb-2 font-medium">Category</Text>
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-3">Category</Text>
             <TouchableOpacity
               onPress={() => setShowCategoryPicker(true)}
-              className={`flex-row items-center justify-between p-3 border rounded-lg ${
-                errors.category ? 'border-red-400 bg-red-50' : 'border-craftopia-light bg-craftopia-light'
+              className={`flex-row items-center justify-between p-4 border rounded-xl ${
+                errors.category ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'
               }`}
             >
               <View className="flex-row items-center">
-                <Text className="text-xl mr-2">{getSelectedCategory().icon}</Text>
+                <Text className="text-xl mr-3">{getSelectedCategory().icon}</Text>
                 <View>
-                  <Text className="font-medium text-craftopia-textPrimary">{getSelectedCategory().label}</Text>
-                  <Text className="text-xs text-craftopia-textSecondary">{getSelectedCategory().description}</Text>
+                  <Text className="font-semibold text-gray-900 text-base">{getSelectedCategory().label}</Text>
+                  <Text className="text-sm text-gray-500 mt-0.5">{getSelectedCategory().description}</Text>
                 </View>
               </View>
-              <ChevronDown size={16} color="#6B7280" />
+              <ChevronDown size={20} color="#6B7280" />
             </TouchableOpacity>
             {errors.category && (
-              <Text className="text-red-500 text-xs mt-1">{errors.category}</Text>
+              <Text className="text-red-500 text-sm mt-2">{errors.category}</Text>
             )}
           </View>
-
-          {/* Submit Button */}
-          <Button 
-            title={loading ? 'Creating Post...' : 'Create Post'} 
-            onPress={handleSubmit} 
-            loading={loading} 
-            disabled={!isFormValid || loading} 
-            size="md"
-          />
         </View>
       </ScrollView>
 
@@ -276,48 +299,56 @@ export const CreatePostScreen = () => {
         animationType="slide"
         onRequestClose={() => setShowCategoryPicker(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-craftopia-surface rounded-t-xl p-4">
-            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-4" />
-            <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 text-center">Select Category</Text>
-            
-            <View className="space-y-1.5">
-              {CATEGORIES.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  className={`flex-row items-center justify-between p-3 rounded-lg ${
-                    formData.category === category.id ? 'bg-craftopia-primary/10 border border-craftopia-primary/20' : 'bg-craftopia-light'
-                  }`}
-                  onPress={() => handleCategorySelect(category.id)}
-                >
-                  <View className="flex-row items-center">
-                    <Text className="text-xl mr-3">{category.icon}</Text>
-                    <View>
-                      <Text className={`font-medium ${
-                        formData.category === category.id ? 'text-craftopia-primary' : 'text-craftopia-textPrimary'
-                      }`}>
-                        {category.label}
-                      </Text>
-                      <Text className={`text-xs ${
-                        formData.category === category.id ? 'text-craftopia-primary' : 'text-craftopia-textSecondary'
-                      }`}>
-                        {category.description}
-                      </Text>
-                    </View>
-                  </View>
-                  {formData.category === category.id && (
-                    <Check size={16} color="#004E98" />
-                  )}
-                </TouchableOpacity>
-              ))}
+        <View className="flex-1 bg-black/40 justify-end">
+          <View className="bg-white rounded-t-3xl p-5 max-h-[80%]">
+            {/* Header */}
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-bold text-gray-900">Select Category</Text>
+              <TouchableOpacity 
+                onPress={() => setShowCategoryPicker(false)}
+                className="w-8 h-8 items-center justify-center rounded-full bg-gray-100"
+              >
+                <Text className="text-gray-600 font-medium">×</Text>
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity 
-              className="mt-4 p-3 bg-craftopia-light rounded-lg"
-              onPress={() => setShowCategoryPicker(false)}
-            >
-              <Text className="text-center font-medium text-craftopia-textSecondary">Cancel</Text>
-            </TouchableOpacity>
+            {/* Categories List */}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="space-y-2">
+                {CATEGORIES.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    className={`flex-row items-center justify-between p-4 rounded-xl ${
+                      formData.category === category.id ? 'bg-blue-500' : 'bg-gray-50'
+                    }`}
+                    onPress={() => handleCategorySelect(category.id)}
+                  >
+                    <View className="flex-row items-center flex-1">
+                      <Text className={`text-xl mr-3 ${
+                        formData.category === category.id ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {category.icon}
+                      </Text>
+                      <View className="flex-1">
+                        <Text className={`font-semibold text-base ${
+                          formData.category === category.id ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {category.label}
+                        </Text>
+                        <Text className={`text-sm mt-0.5 ${
+                          formData.category === category.id ? 'text-blue-100' : 'text-gray-500'
+                        }`}>
+                          {category.description}
+                        </Text>
+                      </View>
+                    </View>
+                    {formData.category === category.id && (
+                      <Check size={20} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

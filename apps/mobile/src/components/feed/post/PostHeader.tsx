@@ -18,6 +18,7 @@ export const PostHeader: React.FC<PostHeaderProps> = memo(({
   created_at,
   onOptionsPress
 }) => {
+  console.log(user)
   const username = user?.username || 'Unknown User';
   const userId = user?.user_id || 0;
 

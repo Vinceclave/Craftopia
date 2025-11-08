@@ -1,9 +1,10 @@
+// apps/mobile/src/components/feed/comment/CommentModal.tsx - FIXED
 import React, { useRef } from 'react';
 import { 
   Modal, View, Text, ScrollView, ActivityIndicator, 
   KeyboardAvoidingView, Platform, TouchableOpacity
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, MessageCircle } from 'lucide-react-native';
 import { CommentItem } from './CommentItem';
 import { CommentInput } from './CommentInput';
 import { Comment } from '~/hooks/queries/usePosts';
@@ -36,45 +37,67 @@ export const CommentModal: React.FC<CommentModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-surface">
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      presentationStyle="pageSheet" 
+      onRequestClose={onClose}
+    >
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-white">
         <KeyboardAvoidingView 
           className="flex-1" 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-craftopia-light">
-            <View className="flex-1 pr-3">
-              <Text className="font-semibold text-craftopia-textPrimary text-base">Comments</Text>
-              <Text className="text-sm text-craftopia-textSecondary mt-0.5" numberOfLines={1}>
-                {postTitle}
-              </Text>
+          <View className="px-5 py-4 border-b border-gray-200">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <View className="flex-row items-center">
+                  <MessageCircle size={20} color="#374151" />
+                  <Text className="font-bold text-gray-900 text-xl ml-2">Comments</Text>
+                </View>
+                <Text className="text-gray-600 text-sm mt-1" numberOfLines={1}>
+                  {postTitle}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={onClose} 
+                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+              >
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} className="p-1" activeOpacity={0.8}>
-              <X size={20} color="#6B7280" />
-            </TouchableOpacity>
           </View>
 
           {/* Comments List */}
           <ScrollView
             ref={scrollRef}
-            className="flex-1 px-4"
+            className="flex-1 px-5"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {loading ? (
-              <View className="flex-1 justify-center items-center py-16">
-                <ActivityIndicator size="small" color="#004E98" />
-                <Text className="text-craftopia-textSecondary text-sm mt-2">Loading comments...</Text>
+              <View className="flex-1 justify-center items-center py-20">
+                <ActivityIndicator size="large" color="#6B7280" />
+                <Text className="text-gray-500 mt-3">Loading comments...</Text>
               </View>
             ) : comments.length === 0 ? (
-              <View className="flex-1 justify-center items-center py-16">
-                <Text className="text-craftopia-textSecondary text-sm text-center">
-                  No comments yet. Be the first to comment!
+              <View className="flex-1 justify-center items-center py-20">
+                <MessageCircle size={48} color="#D1D5DB" />
+                <Text className="text-gray-500 text-lg mt-3 text-center">
+                  No comments yet
+                </Text>
+                <Text className="text-gray-400 text-sm mt-1 text-center">
+                  Be the first to comment!
                 </Text>
               </View>
             ) : (
-              <View className="py-3">
+              <View className="py-4">
+                <View className="mb-4">
+                  <Text className="text-gray-900 font-semibold text-base">
+                    {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
+                  </Text>
+                </View>
                 {comments.map(comment => (
                   <CommentItem 
                     key={comment.comment_id} 
