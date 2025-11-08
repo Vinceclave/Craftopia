@@ -1,4 +1,4 @@
-// Fixed TabNavigator.tsx - AnimatedTabIcon component
+// TabNavigator.tsx - MATCHING HOME DESIGN
 import React, { useState, useEffect, forwardRef } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation, NavigationState } from "@react-navigation/native";
@@ -14,64 +14,38 @@ import { Platform, Animated } from "react-native";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-// ✅ FIXED: Wrap AnimatedTabIcon with forwardRef
+// ✅ Matching AnimatedTabIcon with home design
 const AnimatedTabIcon = forwardRef<any, { focused: boolean; children: React.ReactNode; color: string }>(
   ({ focused, children, color }, ref) => {
-    const scaleValue = React.useRef(new Animated.Value(focused ? 1.15 : 1)).current;
-    const bounceValue = React.useRef(new Animated.Value(0)).current;
-    const opacityValue = React.useRef(new Animated.Value(focused ? 1 : 0.7)).current;
+    const scaleValue = React.useRef(new Animated.Value(focused ? 1.1 : 1)).current;
+    const opacityValue = React.useRef(new Animated.Value(focused ? 1 : 0.6)).current;
 
     React.useEffect(() => {
       if (focused) {
-        // Scale and bounce animation
         Animated.parallel([
-          Animated.sequence([
-            Animated.timing(scaleValue, {
-              toValue: 1.25,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.spring(scaleValue, {
-              toValue: 1.15,
-              friction: 4,
-              tension: 180,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(bounceValue, {
-              toValue: -6,
-              duration: 250,
-              useNativeDriver: true,
-            }),
-            Animated.spring(bounceValue, {
-              toValue: 0,
-              friction: 5,
-              tension: 120,
-              useNativeDriver: true,
-            }),
-          ]),
+          Animated.spring(scaleValue, {
+            toValue: 1.1,
+            friction: 4,
+            tension: 200,
+            useNativeDriver: true,
+          }),
           Animated.timing(opacityValue, {
             toValue: 1,
-            duration: 200,
+            duration: 150,
             useNativeDriver: true,
           }),
         ]).start();
       } else {
         Animated.parallel([
-          Animated.timing(scaleValue, {
+          Animated.spring(scaleValue, {
             toValue: 1,
-            duration: 180,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bounceValue, {
-            toValue: 0,
-            duration: 150,
+            friction: 6,
+            tension: 200,
             useNativeDriver: true,
           }),
           Animated.timing(opacityValue, {
-            toValue: 0.7,
-            duration: 180,
+            toValue: 0.6,
+            duration: 150,
             useNativeDriver: true,
           }),
         ]).start();
@@ -82,10 +56,7 @@ const AnimatedTabIcon = forwardRef<any, { focused: boolean; children: React.Reac
       <Animated.View
         ref={ref}
         style={{
-          transform: [
-            { scale: scaleValue },
-            { translateY: bounceValue },
-          ],
+          transform: [{ scale: scaleValue }],
           opacity: opacityValue,
         }}
       >
@@ -95,7 +66,6 @@ const AnimatedTabIcon = forwardRef<any, { focused: boolean; children: React.Reac
   }
 );
 
-// Add display name for debugging
 AnimatedTabIcon.displayName = 'AnimatedTabIcon';
 
 export default function TabNavigator() {
@@ -104,7 +74,6 @@ export default function TabNavigator() {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('state', (e) => {
-      // Function to recursively find the current screen name
       const getCurrentScreenName = (state: NavigationState | undefined): string => {
         if (!state) return '';
         
@@ -127,59 +96,50 @@ export default function TabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#004E98",
-        tabBarInactiveTintColor: "#333333",
+        tabBarActiveTintColor: "#5A7160", // Matching home primary color
+        tabBarInactiveTintColor: "#9CA3AF", // Matching home secondary text color
         tabBarStyle: {
-          backgroundColor: "white",
+          backgroundColor: "#FFFFFF",
           position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          height: Platform.OS === "ios" ? 85 : 75,
-          paddingTop: 4,
-          paddingBottom: 2,
-          paddingHorizontal: 4,
-          borderTopWidth: 1,
-          borderTopColor: "rgba(0, 0, 0, 0.06)",
+          height: Platform.OS === "ios" ? 80 : 70,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === "ios" ? 24 : 6,
+          paddingHorizontal: 12,
+          borderTopWidth: 0,
+          // Matching home shadow style
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 8,
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
+          elevation: 4,
           display: tabBarVisible ? 'flex' : 'none',
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: "700",
-          marginTop: 3,
-          letterSpacing: 0.3,
-          textTransform: "uppercase",
-          fontFamily: Platform.OS === "ios" ? "SF Pro Text" : "Roboto",
+          fontWeight: "600",
+          marginTop: 2,
+          letterSpacing: 0.2,
+          // Using home font system
+          fontFamily: "nunito",
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 0,
         },
         tabBarItemStyle: {
-          borderRadius: 16,
-          marginHorizontal: 3,
-          paddingVertical: 4,
+          borderRadius: 12,
+          marginHorizontal: 2,
+          paddingVertical: 6,
           justifyContent: "center",
           alignItems: "center",
           flex: 1,
         },
-        tabBarActiveBackgroundColor: "rgba(0, 78, 152, 0.08)",
+        // Matching home background colors
+        tabBarActiveBackgroundColor: "rgba(90, 113, 96, 0.08)",
         tabBarShowLabel: true,
         tabBarHideOnKeyboard: true,
-        tabBarBackground: () => (
-          <Animated.View
-            style={{
-              flex: 1,
-              backgroundColor: "white",
-              borderTopWidth: 1,
-              borderTopColor: "rgba(0, 0, 0, 0.06)",
-            }}
-          />
-        ),
       }}
     >
       <Tab.Screen
@@ -190,25 +150,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ focused, color }) => (
             <AnimatedTabIcon focused={focused} color={color}>
               <Home
-                color={focused ? "#004E98" : "#333333"}
-                size={focused ? 25 : 23}
+                color={focused ? "#5A7160" : "#9CA3AF"}
+                size={focused ? 22 : 20}
                 strokeWidth={focused ? 2.2 : 1.8}
-                fill={focused ? "rgba(0, 78, 152, 0.15)" : "none"}
               />
-              {focused && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(0, 78, 152, 0.08)",
-                    zIndex: -1,
-                  }}
-                />
-              )}
             </AnimatedTabIcon>
           ),
         }}
@@ -221,25 +166,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ focused, color }) => (
             <AnimatedTabIcon focused={focused} color={color}>
               <List
-                color={focused ? "#00A896" : "#333333"}
-                size={focused ? 25 : 23}
+                color={focused ? "#5A7160" : "#9CA3AF"}
+                size={focused ? 22 : 20}
                 strokeWidth={focused ? 2.2 : 1.8}
-                fill={focused ? "rgba(0, 168, 150, 0.15)" : "none"}
               />
-              {focused && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(0, 168, 150, 0.08)",
-                    zIndex: -1,
-                  }}
-                />
-              )}
             </AnimatedTabIcon>
           ),
         }}
@@ -252,27 +182,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ focused, color }) => (
             <AnimatedTabIcon focused={focused} color={color}>
               <Hammer
-                color={focused ? "#FF6700" : "#333333"}
-                size={focused ? 26 : 24}
-                strokeWidth={focused ? 2.4 : 1.8}
-                fill={focused ? "rgba(255, 103, 0, 0.15)" : "none"}
+                color={focused ? "#D4A96A" : "#9CA3AF"} // Using home accent color
+                size={focused ? 22 : 20}
+                strokeWidth={focused ? 2.2 : 1.8}
               />
-              {focused && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: -4,
-                    left: -4,
-                    right: -4,
-                    bottom: -4,
-                    borderRadius: 14,
-                    backgroundColor: "rgba(255, 103, 0, 0.12)",
-                    borderWidth: 1.5,
-                    borderColor: "rgba(255, 103, 0, 0.25)",
-                    zIndex: -1,
-                  }}
-                />
-              )}
             </AnimatedTabIcon>
           ),
         }}
@@ -285,25 +198,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ focused, color }) => (
             <AnimatedTabIcon focused={focused} color={color}>
               <Leaf
-                color={focused ? "#7C9885" : "#333333"}
-                size={focused ? 25 : 23}
+                color={focused ? "#5A7160" : "#9CA3AF"}
+                size={focused ? 22 : 20}
                 strokeWidth={focused ? 2.2 : 1.8}
-                fill={focused ? "rgba(124, 152, 133, 0.15)" : "none"}
               />
-              {focused && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(124, 152, 133, 0.08)",
-                    zIndex: -1,
-                  }}
-                />
-              )}
             </AnimatedTabIcon>
           ),
         }}
@@ -316,25 +214,10 @@ export default function TabNavigator() {
           tabBarIcon: ({ focused, color }) => (
             <AnimatedTabIcon focused={focused} color={color}>
               <User
-                color={focused ? "#004E98" : "#333333"}
-                size={focused ? 25 : 23}
+                color={focused ? "#5A7160" : "#9CA3AF"}
+                size={focused ? 22 : 20}
                 strokeWidth={focused ? 2.2 : 1.8}
-                fill={focused ? "rgba(0, 78, 152, 0.15)" : "none"}
               />
-              {focused && (
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: -3,
-                    left: -3,
-                    right: -3,
-                    bottom: -3,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(0, 78, 152, 0.08)",
-                    zIndex: -1,
-                  }}
-                />
-              )}
             </AnimatedTabIcon>
           ),
         }}

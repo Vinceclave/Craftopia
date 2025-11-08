@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { Target, CheckCircle, Clock, ChevronRight, Flame, Calendar, Zap } from 'lucide-react-native';
+import { Target, CheckCircle, Clock, ChevronRight, Flame, Calendar, Zap, Sparkles } from 'lucide-react-native';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
 
@@ -10,8 +10,8 @@ type Quest = {
   title: string;
   description?: string;
   category?: string;
-  points_reward?: number; // prisma field
-  points?: number; // fallback if coming from API
+  points_reward?: number;
+  points?: number;
   completed?: boolean;
   status?: string;
   progress?: number;
@@ -63,42 +63,39 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
     on(WebSocketEvent.CHALLENGE_UPDATED, handleChallengeUpdated);
     on(WebSocketEvent.CHALLENGE_JOINED, handleChallengeJoined);
     on(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
-    on(WebSocketEvent.LEADERBOARD_UPDATED, () => {});
 
     return () => {
       off(WebSocketEvent.CHALLENGE_CREATED, handleChallengeCreated);
       off(WebSocketEvent.CHALLENGE_UPDATED, handleChallengeUpdated);
       off(WebSocketEvent.CHALLENGE_JOINED, handleChallengeJoined);
       off(WebSocketEvent.CHALLENGE_VERIFIED, handleChallengeVerified);
-      off(WebSocketEvent.LEADERBOARD_UPDATED, () => {});
     };
   }, [isConnected, on, off, refetch]);
 
   // Loading State
   if (loading) {
     return (
-      <View className="px-4 mb-4">
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full items-center justify-center mr-2" style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}>
-              <Target size={18} color="#374A36" />
-            </View>
-            <View>
-              <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Daily Quests</Text>
-              <Text className="text-xs" style={{ color: '#9CA3AF' }}>Loading your challenges...</Text>
-            </View>
+      <View className="px-6 mb-6">
+        <View className="flex-row items-center justify-between mb-4">
+          <View>
+            <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-1">
+              Today's Quests
+            </Text>
+            <Text className="text-lg font-poppinsBold text-craftopa-textPrimary tracking-tight">
+              Loading Adventures
+            </Text>
           </View>
         </View>
 
         {[1, 2, 3].map((item) => (
-          <View key={item} className="bg-white rounded-xl p-4 mb-2" style={{ backgroundColor: '#F9FAFB' }}>
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="w-16 h-5 rounded-lg" style={{ backgroundColor: '#E5E7EB' }} />
-              <View className="w-12 h-6 rounded-full" style={{ backgroundColor: '#E5E7EB' }} />
+          <View key={item} className="bg-white rounded-2xl p-5 mb-3 shadow-sm shadow-craftopa-light/10 border border-craftopa-light/5">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="w-20 h-6 rounded-lg bg-craftopa-light/10" />
+              <View className="w-12 h-6 rounded-lg bg-craftopa-light/10" />
             </View>
-            <View className="w-4/5 h-4 rounded mb-2" style={{ backgroundColor: '#E5E7EB' }} />
-            <View className="w-full h-3 rounded mb-3" style={{ backgroundColor: '#E5E7EB' }} />
-            <View className="w-full h-2 rounded" style={{ backgroundColor: '#E5E7EB' }} />
+            <View className="w-4/5 h-4 rounded mb-2 bg-craftopa-light/10" />
+            <View className="w-full h-3 rounded mb-4 bg-craftopa-light/10" />
+            <View className="w-full h-2 rounded bg-craftopa-light/10" />
           </View>
         ))}
       </View>
@@ -108,25 +105,30 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
   // Empty State
   if (!quests || quests.length === 0) {
     return (
-      <View className="px-4 mb-4">
-        <View className="flex-row items-center mb-3">
-          <View className="w-9 h-9 rounded-full items-center justify-center mr-2" style={{ backgroundColor: 'rgba(55, 74, 54, 0.1)' }}>
-            <Target size={18} color="#374A36" />
-          </View>
+      <View className="px-6 mb-6">
+        <View className="flex-row items-center justify-between mb-4">
           <View>
-            <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Daily Quests</Text>
-            <Text className="text-xs" style={{ color: '#9CA3AF' }}>No active quests today</Text>
+            <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-1">
+              Today's Quests
+            </Text>
+            <Text className="text-lg font-poppinsBold text-craftopa-textPrimary tracking-tight">
+              Your Adventures
+            </Text>
           </View>
         </View>
 
-        <View className="bg-white rounded-2xl p-6 items-center" style={{ shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
-          <View className="w-14 h-14 rounded-full items-center justify-center mb-3" style={{ backgroundColor: '#F3F4F6' }}>
-            <Target size={24} color="#9CA3AF" />
+        <View className="bg-white rounded-3xl p-8 items-center shadow-sm shadow-craftopa-light/10 border border-craftopa-light/5">
+          <View className="w-16 h-16 rounded-2xl bg-craftopa-primary/5 items-center justify-center mb-4 border border-craftopa-light/10">
+            <Target size={28} color="#5A7160" opacity={0.7} />
           </View>
-          <Text className="text-base font-bold mb-1" style={{ color: '#1A1A1A' }}>All Caught Up!</Text>
-          <Text className="text-sm text-center mb-4" style={{ color: '#6B7280' }}>New quests will appear tomorrow.</Text>
-          <TouchableOpacity className="px-5 py-2.5 rounded-xl" style={{ backgroundColor: '#374A36' }}>
-            <Text className="text-sm font-semibold text-white">Explore More</Text>
+          <Text className="text-lg font-poppinsBold text-craftopa-textPrimary mb-2 tracking-tight">
+            All Caught Up!
+          </Text>
+          <Text className="text-sm font-nunito text-craftopa-textSecondary text-center mb-6 tracking-wide">
+            New quests will appear tomorrow. Stay tuned for more adventures!
+          </Text>
+          <TouchableOpacity className="px-6 py-3 rounded-xl bg-craftopa-primary active:opacity-70">
+            <Text className="text-sm font-poppinsBold text-white">Explore More</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -137,97 +139,96 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
 
   const getCategoryIcon = (quest: Quest) => {
     const category = quest.category?.toLowerCase() || '';
-    if (category.includes('daily')) return <Flame size={12} color="#F59E0B" />;
-    if (category.includes('weekly')) return <Calendar size={12} color="#3B82F6" />;
-    return <Zap size={12} color="#374A36" />;
+    if (category.includes('daily')) return <Flame size={14} color="#F59E0B" />;
+    if (category.includes('weekly')) return <Calendar size={14} color="#3B82F6" />;
+    return <Zap size={14} color="#5A7160" />;
   };
 
-  const QuestItem: React.FC<{ quest: Quest }> = ({ quest }) => {
+    const QuestItem: React.FC<{ quest: Quest }> = ({ quest }) => {
     const isCompleted = quest.completed || quest.status === 'completed';
     const progress = quest.progress ?? 0;
     const total = quest.total ?? 1;
     const progressPercent = (progress / total) * 100;
 
-    // ✅ Fix TS error: always pass a number to Set.has()
     const challengeKey = (quest.challenge_id ?? quest.id) ?? -1;
     const isUpdated = updatedChallengeIds.has(challengeKey);
 
     return (
       <TouchableOpacity
-        className="bg-white rounded-xl p-4 mb-2"
+        className="bg-white rounded-xl p-3.5 mb-2 shadow-sm border border-craftopa-light/5 active:opacity-70"
         style={{
-          shadowOpacity: isCompleted ? 0.03 : 0.05,
-          elevation: 2,
-          backgroundColor: isUpdated ? 'rgba(55, 74, 54, 0.08)' : isCompleted ? 'rgba(55, 74, 54, 0.03)' : '#FFFFFF',
-          borderWidth: isCompleted || isUpdated ? 1 : 0,
-          borderColor: isUpdated ? 'rgba(55, 74, 54, 0.3)' : isCompleted ? 'rgba(55, 74, 54, 0.15)' : 'transparent',
+          backgroundColor: isUpdated ? 'rgba(90, 113, 96, 0.05)' : isCompleted ? 'rgba(90, 113, 96, 0.03)' : '#FFFFFF',
+          borderColor: isUpdated ? 'rgba(90, 113, 96, 0.2)' : isCompleted ? 'rgba(90, 113, 96, 0.1)' : 'rgba(90, 113, 96, 0.05)',
           transform: isUpdated ? [{ scale: 1.02 }] : [{ scale: 1 }],
         }}
         onPress={() => onQuestPress?.(quest)}
-        activeOpacity={0.7}
       >
         {isUpdated && (
-          <View className="absolute -top-2 -right-2 px-2 py-1 rounded-full" style={{ backgroundColor: '#374A36' }}>
-            <Text className="text-xs font-bold text-white">Updated!</Text>
+          <View className="absolute -top-1 -right-1 px-2 py-0.5 rounded bg-craftopa-primary shadow-sm">
+            <Text className="text-xs font-poppinsBold text-white">Updated!</Text>
           </View>
         )}
 
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center px-2.5 py-1 rounded-full" style={{
-            backgroundColor: isCompleted ? 'rgba(55,74,54,0.1)' : 'rgba(55,74,54,0.08)',
-            borderWidth: 1,
-            borderColor: isCompleted ? 'rgba(55,74,54,0.2)' : 'rgba(55,74,54,0.15)',
-          }}>
-            {isCompleted ? <CheckCircle size={11} color="#374A36" /> : getCategoryIcon(quest)}
-            <Text className="text-xs font-bold uppercase tracking-wide ml-1" style={{ color: '#374A36' }}>
-              {isCompleted ? 'Done' : quest.category || 'Quest'}
+        <View className="flex-row items-center justify-between mb-2.5">
+          <View className="flex-row items-center px-2 py-1 rounded-lg bg-craftopa-primary/5 border border-craftopa-primary/10">
+            {isCompleted ? <CheckCircle size={12} color="#5A7160" /> : getCategoryIcon(quest)}
+            <Text className="text-xs font-poppinsBold uppercase tracking-wide ml-1 text-craftopa-textPrimary">
+              {isCompleted ? 'Completed' : quest.category || 'Quest'}
             </Text>
           </View>
 
-          <View className="px-2.5 py-1 rounded-full" style={{ backgroundColor: 'rgba(212,169,106,0.15)' }}>
-            <Text className="text-xs font-bold" style={{ color: '#D4A96A' }}>
+          <View className="px-2 py-1 rounded-lg bg-craftopa-accent/10 border border-craftopa-accent/10">
+            <Text className="text-xs font-poppinsBold text-craftopa-accent">
               +{quest.points_reward ?? quest.points ?? 0}
             </Text>
           </View>
         </View>
 
-        <Text className="text-sm font-bold mb-1" style={{ color: '#1A1A1A' }}>{quest.title}</Text>
-        <Text className="text-xs mb-3" style={{ color: '#6B7280' }} numberOfLines={2}>
+        {/* Content */}
+        <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-1.5 tracking-tight">
+          {quest.title}
+        </Text>
+        <Text className="text-xs font-nunito text-craftopa-textSecondary mb-3 tracking-wide" numberOfLines={2}>
           {quest.description || 'Complete this challenge to earn rewards'}
         </Text>
 
+        {/* Progress */}
         {!isCompleted && (
-          <View className="mb-3">
-            <View className="flex-row justify-between mb-1.5">
-              <Text className="text-xs font-semibold" style={{ color: '#6B7280' }}>Progress</Text>
-              <Text className="text-xs font-bold" style={{ color: '#374A36' }}>{progress}/{total}</Text>
+          <View className="mb-2.5">
+            <View className="flex-row justify-between items-center mb-1.5">
+              <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">Progress</Text>
+              <Text className="text-xs font-poppinsBold text-craftopa-textPrimary">{progress}/{total}</Text>
             </View>
 
-            <View className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#E5E7EB' }}>
-              <View className="h-full rounded-full" style={{ width: `${progressPercent}%`, backgroundColor: '#374A36' }} />
+            <View className="h-1.5 rounded-full overflow-hidden bg-craftopa-light/10">
+              <View 
+                className="h-full rounded-full bg-craftopa-primary" 
+                style={{ width: `${progressPercent}%` }} 
+              />
             </View>
           </View>
         )}
 
-        <View className="flex-row items-center justify-between pt-3" style={{ borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
+        {/* Footer */}
+        <View className="flex-row items-center justify-between pt-2.5 border-t border-craftopa-light/10">
           <View className="flex-row items-center">
             {!isCompleted ? (
               <>
-                <Clock size={13} color="#9CA3AF" />
-                <Text className="text-xs font-medium ml-1.5" style={{ color: '#6B7280' }}>In Progress</Text>
+                <Clock size={12} color="#6B7280" />
+                <Text className="text-xs font-nunito text-craftopa-textSecondary ml-1.5 tracking-wide">In Progress</Text>
               </>
             ) : (
               <>
-                <CheckCircle size={13} color="#374A36" />
-                <Text className="text-xs font-semibold ml-1.5" style={{ color: '#374A36' }}>Completed!</Text>
+                <CheckCircle size={12} color="#5A7160" />
+                <Text className="text-xs font-poppinsBold text-craftopa-textPrimary ml-1.5">Completed!</Text>
               </>
             )}
           </View>
 
           <View className="flex-row items-center">
-            <Text className="text-xs font-bold mr-0.5" style={{ color: '#374A36' }}>View</Text>
-            <ChevronRight size={12} color="#374A36" />
+            <Text className="text-xs font-poppinsBold text-craftopa-textPrimary mr-0.5">View</Text>
+            <ChevronRight size={12} color="#5A7160" />
           </View>
         </View>
       </TouchableOpacity>
@@ -239,65 +240,70 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
   const completionPercent = (completedCount / totalCount) * 100;
 
   return (
-    <View className="px-4 mb-4">
-
+    <View className="px-5 mb-4">
+      {/* New Challenge Alert */}
       {newChallengeAlert && (
-        <View className="mb-3 p-3 rounded-xl flex-row items-center"
-          style={{ backgroundColor: 'rgba(55,74,54,0.15)', borderWidth: 1, borderColor: 'rgba(55,74,54,0.3)' }}>
-          <Zap size={16} color="#374A36" />
-          <Text className="text-sm font-bold ml-2 flex-1" style={{ color: '#374A36' }}>
+        <View className="mb-3 p-3 rounded-xl bg-gradient-to-r from-craftopa-primary/10 to-craftopa-accent/5 border border-craftopa-primary/20 flex-row items-center">
+          <Zap size={16} color="#5A7160" />
+          <Text className="text-sm font-poppinsBold text-craftopa-textPrimary ml-2 flex-1 tracking-tight">
             New challenge available! 🎯
           </Text>
         </View>
       )}
 
+      {/* Section Header */}
       <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center">
-          <View className="w-9 h-9 rounded-full items-center justify-center mr-2"
-            style={{ backgroundColor: 'rgba(55,74,54,0.1)' }}>
-            <Target size={18} color="#374A36" />
-          </View>
-          <View>
-            <View className="flex-row items-center">
-              <Text className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Daily Quests</Text>
-              {isConnected && <View className="w-2 h-2 rounded-full bg-green-500 ml-2" />}
-            </View>
-            <Text className="text-xs" style={{ color: '#9CA3AF' }}>
-              {completedCount}/{totalCount} completed today
+        <View>
+          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+            Today's Quests
+          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-base font-poppinsBold text-craftopa-textPrimary tracking-tight mr-1.5">
+              Your Adventures
             </Text>
+            {isConnected && <View className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />}
           </View>
+          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mt-0.5">
+            {completedCount}/{totalCount} completed today
+          </Text>
         </View>
 
-        {totalCount > 3 && (
-          <TouchableOpacity onPress={onSeeAll} className="flex-row items-center px-3 py-1.5 rounded-full"
-            style={{ backgroundColor: '#F3F4F6' }}>
-            <Text className="text-xs font-bold mr-0.5" style={{ color: '#374A36' }}>See All</Text>
-            <ChevronRight size={12} color="#374A36" />
+        {totalCount > 2 && ( // Updated from 3 to 2
+          <TouchableOpacity 
+            onPress={onSeeAll} 
+            className="flex-row items-center px-3 py-1.5 rounded-lg bg-craftopa-primary/5 active:opacity-70"
+          >
+            <Text className="text-xs font-poppinsBold text-craftopa-textPrimary mr-1">See All</Text>
+            <ChevronRight size={12} color="#5A7160" />
           </TouchableOpacity>
         )}
       </View>
 
+      {/* Quest Items */}
       <View className="mb-3">
         {visibleQuests.map((quest, idx) => (
           <QuestItem key={quest.id ?? quest.challenge_id ?? idx} quest={quest} />
         ))}
       </View>
 
-      <View className="bg-white rounded-xl p-4" style={{ shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+      {/* Progress Summary */}
+      <View className="bg-white rounded-xl p-3.5 shadow-sm border border-craftopa-light/5">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-sm font-bold" style={{ color: '#1A1A1A' }}>Daily Progress</Text>
-          <Text className="text-sm font-bold" style={{ color: '#374A36' }}>{Math.round(completionPercent)}%</Text>
+          <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">Daily Progress</Text>
+          <Text className="text-sm font-poppinsBold text-craftopa-textPrimary">{Math.round(completionPercent)}%</Text>
         </View>
 
-        <View className="h-1.5 rounded-full overflow-hidden mb-2" style={{ backgroundColor: '#E5E7EB' }}>
-          <View className="h-full rounded-full"
-            style={{ width: `${completionPercent}%`, backgroundColor: '#374A36' }} />
+        <View className="h-1.5 rounded-full overflow-hidden bg-craftopa-light/10 mb-2">
+          <View 
+            className="h-full rounded-full bg-gradient-to-r from-craftopa-primary to-craftopa-accent" 
+            style={{ width: `${completionPercent}%` }} 
+          />
         </View>
 
-        <Text className="text-xs" style={{ color: '#6B7280' }}>
+        <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
           {completedCount === totalCount
-            ? '🎉 All quests completed! Come back tomorrow.'
-            : `Keep going! ${totalCount - completedCount} quests remaining.`}
+            ? '🎉 All quests completed! Amazing work!'
+            : `Keep going! ${totalCount - completedCount} quest${totalCount - completedCount > 1 ? 's' : ''} remaining.`}
         </Text>
       </View>
     </View>

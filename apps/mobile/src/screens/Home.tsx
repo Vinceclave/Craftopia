@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Home.tsx - REAL-TIME VERSION
+// apps/mobile/src/screens/Home.tsx - REDESIGNED WITH MODERN AESTHETIC
 import React, { useEffect, useCallback } from 'react';
 import { ScrollView, Platform, View, RefreshControl, Text } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { useChallenges } from '~/hooks/queries/useChallenges';
 import { useNavigation } from '@react-navigation/native';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
+import { Wifi, WifiOff } from 'lucide-react-native';
 
 const SafeAreaView = Platform.OS === 'web' ? View : RNSafeAreaView;
 
@@ -106,7 +107,6 @@ export const HomeScreen = () => {
   }, [navigation]);
 
   const handleQuestPress = useCallback((quest) => {
-    console.log('Quest pressed:', quest);
     navigation.navigate('EcoQuest', { 
       screen: 'QuestDetails', 
       params: { questId: quest.challenge_id || quest.id } 
@@ -117,44 +117,44 @@ export const HomeScreen = () => {
     <SafeAreaView 
       edges={['left', 'right']} 
       className="flex-1"
-      style={{ backgroundColor: '#F9FAFB' }}
+      style={{ backgroundColor: '#F8FAF7' }}
     >
       <HomeHeader />
       
-      {/* Connection Status Banner (only shown when disconnected) */}
+      {/* Connection Status Banner */}
       {!isConnected && (
-        <View 
-          className="mx-4 mt-2 p-3 rounded-xl flex-row items-center"
-          style={{ 
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderWidth: 1,
-            borderColor: 'rgba(239, 68, 68, 0.2)',
-          }}
-        >
-          <View className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-          <Text className="text-xs font-semibold flex-1" style={{ color: '#DC2626' }}>
-            Connecting to real-time updates...
-          </Text>
+        <View className="mx-5 mt-2 p-3 rounded-xl bg-white shadow-sm border border-craftopa-light/5 flex-row items-center">
+          <View className="w-6 h-6 rounded-lg bg-red-50 items-center justify-center mr-2 border border-red-100">
+            <WifiOff size={14} color="#EF4444" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
+              Connection Lost
+            </Text>
+            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+              Reconnecting to real-time updates...
+            </Text>
+          </View>
         </View>
       )}
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 60 }} // Reduced padding
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#374A36"
-            colors={['#374A36']}
+            tintColor="#5A7160"
+            colors={['#5A7160']}
           />
         }
       >
-        {/* Stats Card - Real-time updates */}
+        {/* Stats Section */}
         <HomeStats />
 
-        {/* Daily Quests Section - Real-time updates */}
+        {/* Daily Quests Section */}
         <HomeQuest 
           quests={challenges} 
           loading={isLoading}
@@ -167,7 +167,7 @@ export const HomeScreen = () => {
         <HomeActivity />
 
         {/* Bottom Spacer */}
-        <View className="h-4" />
+        <View className="h-4" /> {/* Reduced spacer */}
       </ScrollView>
     </SafeAreaView>
   );

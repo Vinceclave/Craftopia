@@ -7,6 +7,10 @@
     presets: [require("nativewind/preset")],
     theme: {
       extend: {
+        fontFamily: {
+          nunito: ['Nunito'],        // variable font
+          poppinsBold: ['Poppins-Bold'], // bold only
+        },
         colors: {
           craftopia: {
             primary: "#374A36",       // Dark olive green
