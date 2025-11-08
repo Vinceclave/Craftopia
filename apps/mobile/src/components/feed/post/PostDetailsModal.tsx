@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/PostDetailsModal.tsx - REDESIGNED
+// apps/mobile/src/components/feed/PostDetailsModal.tsx - FIXED IMAGE DISPLAY
 import React, { useState } from 'react';
 import {
   Modal,
@@ -11,7 +11,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Heart, MessageCircle, Share2, Clock, Edit, User } from 'lucide-react-native';
+import { X, Heart, MessageCircle, Share2, Clock, Edit, User, AlertCircle } from 'lucide-react-native';
 import { usePost, useComments, useAddComment } from '~/hooks/queries/usePosts';
 import { formatTimeAgo } from '~/utils/time';
 import { CommentItem } from './comment/CommentItem';
@@ -51,6 +51,14 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
+  // Debug logging
+  console.log('📷 [PostDetailsModal] Post data:', {
+    postId,
+    hasPost: !!post,
+    imageUrl: post?.image_url,
+    imageUrlType: typeof post?.image_url,
+  });
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -70,10 +78,13 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
   };
 
   const handleImageLoad = () => {
+    console.log('📷 [PostDetailsModal] Image loaded successfully');
     setImageLoading(false);
+    setImageError(false);
   };
 
-  const handleImageError = () => {
+  const handleImageError = (error: any) => {
+    console.error('📷 [PostDetailsModal] Image load error:', error);
     setImageLoading(false);
     setImageError(true);
   };
@@ -183,27 +194,56 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                   {post.content}
                 </Text>
 
-                {/* Image - Same rendering as PostContent */}
-                {post.image_url && !imageError ? (
-                  <View className="relative w-full h-80 rounded-xl mb-3 overflow-hidden bg-gray-100">
+                {/* Image - FIXED VERSION */}
+                {post.image_url && post.image_url.trim() && (
+                  <View className="w-full rounded-2xl overflow-hidden bg-gray-100">
                     {imageLoading && (
                       <View className="absolute inset-0 items-center justify-center z-10">
-                        <ActivityIndicator size="small" color="#6B7280" />
+                        <ActivityIndicator size="large" color="#3B82F6" />
+                        <Text className="text-gray-500 text-sm mt-2">Loading image...</Text>
                       </View>
                     )}
-                    <Image
-                      source={{ uri: post.image_url }}
-                      className="w-full h-80"
-                      resizeMode="cover"
-                      onLoad={handleImageLoad}
-                      onError={handleImageError}
-                    />
+                    
+                    {imageError ? (
+                      <View className="w-full h-64 items-center justify-center bg-gray-100">
+                        <AlertCircle size={48} color="#EF4444" />
+                        <Text className="text-gray-500 text-sm mt-3">Failed to load image</Text>
+                        <Text className="text-gray-400 text-xs mt-1 px-4 text-center">
+                          {post.image_url}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            console.log('📷 [PostDetailsModal] Retrying image load');
+                            setImageError(false);
+                            setImageLoading(true);
+                          }}
+                          className="mt-3 bg-gray-900 px-4 py-2 rounded-lg"
+                        >
+                          <Text className="text-white text-sm font-medium">Retry</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ 
+                          uri: post.image_url,
+                          cache: 'force-cache',
+                        }}
+                        style={{ 
+                          width: '100%', 
+                          height: 400,
+                          backgroundColor: '#F3F4F6',
+                        }}
+                        resizeMode="cover"
+                        onLoad={handleImageLoad}
+                        onError={handleImageError}
+                        onLoadStart={() => {
+                          console.log('📷 [PostDetailsModal] Image load started:', post.image_url);
+                          setImageLoading(true);
+                        }}
+                      />
+                    )}
                   </View>
-                ) : imageError ? (
-                  <View className="w-full h-48 rounded-xl mb-3 bg-gray-100 items-center justify-center">
-                    <Text className="text-gray-400 text-sm">Image not available</Text>
-                  </View>
-                ) : null}
+                )}
 
                 {/* Tags */}
                 {post.tags && post.tags.length > 0 && (

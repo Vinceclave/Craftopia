@@ -159,8 +159,43 @@ export const useTrendingTags = () => {
   return useQuery({
     queryKey: postKeys.trendingTags(),
     queryFn: async () => {
+      console.log('🔍 [useTrendingTags] Fetching trending tags...');
       const response = await postService.getTrendingTags();
-      return response.data || [];
+      console.log('🔍 [useTrendingTags] Raw response:', response);
+
+      let rawTags: any[] = [];
+
+      // ✅ Handle all possible backend formats
+      if (Array.isArray(response)) {
+        rawTags = response;
+      } else if (Array.isArray(response?.data)) {
+        rawTags = response.data;
+      } else if (Array.isArray(response?.tags)) {
+        rawTags = response.tags;
+      } else {
+        console.warn('⚠️ Unexpected trending tags format:', response);
+      }
+
+      // ✅ Normalize the tags array
+      const normalizedTags = rawTags.map((t: any, index: number) => {
+        if (typeof t === 'string') {
+          // Simple string tag (backend returned just ["tag1", "tag2"])
+          return { tag: t, count: 1, growth: undefined };
+        } else if (typeof t === 'object' && t !== null) {
+          // Proper structured object
+          return {
+            tag: t.tag || t.name || t.tagName || `unknown-${index}`,
+            count: Number(t.count || t.post_count || t.postCount || 0),
+            growth: t.growth ? Number(t.growth) : undefined,
+          };
+        } else {
+          console.warn('⚠️ Unknown tag entry type:', t);
+          return { tag: `unknown-${index}`, count: 0 };
+        }
+      });
+
+      console.log('✅ [useTrendingTags] Normalized tags:', normalizedTags);
+      return normalizedTags;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
