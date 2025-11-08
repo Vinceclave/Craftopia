@@ -1,6 +1,6 @@
-// apps/mobile/src/components/feed/FeedListFooter.tsx
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { Sparkles } from 'lucide-react-native';
 
 interface FeedListFooterProps {
   isFetchingNextPage: boolean;
@@ -16,9 +16,9 @@ export const FeedListFooter: React.FC<FeedListFooterProps> = ({
   if (isFetchingNextPage) {
     return (
       <View className="py-4 items-center">
-        <ActivityIndicator size="small" color="#374A36" />
-        <Text className="text-craftopia-textSecondary text-xs mt-2">
-          Loading more posts...
+        <ActivityIndicator size="small" color="#5A7160" />
+        <Text className="text-craftopa-textSecondary text-xs mt-1 font-nunito tracking-wide">
+          Loading more...
         </Text>
       </View>
     );
@@ -26,10 +26,13 @@ export const FeedListFooter: React.FC<FeedListFooterProps> = ({
 
   if (!hasNextPage && postsCount > 0) {
     return (
-      <View className="py-6 items-center">
-        <Text className="text-craftopia-textSecondary text-xs">
-          🎉 You've reached the end!
-        </Text>
+      <View className="py-4 items-center">
+        <View className="flex-row items-center gap-1.5">
+          <Sparkles size={12} color="#D4A96A" />
+          <Text className="text-craftopa-textSecondary text-xs font-nunito tracking-wide">
+            You've reached the end!
+          </Text>
+        </View>
       </View>
     );
   }

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/comment/CommentItem.tsx - FIXED
+// apps/mobile/src/components/feed/comment/CommentItem.tsx - CRAFTOPIA REDESIGN
 import React, { memo } from 'react';
 import { View, Text } from 'react-native';
 import { User } from 'lucide-react-native';
@@ -11,18 +11,22 @@ interface CommentItemProps {
 
 export const CommentItem: React.FC<CommentItemProps> = memo(({ comment }) => (
   <View className="flex-row mb-4">
-    <View className="w-8 h-8 bg-gray-200 rounded-full items-center justify-center mr-3">
-      <User size={16} color="#6B7280" />
+    <View className="w-8 h-8 bg-craftopa-light/5 rounded-full items-center justify-center mr-3 border border-craftopa-light/10">
+      <User size={16} color="#5A7160" />
     </View>
     <View className="flex-1">
-      <View className="bg-gray-100 rounded-2xl px-4 py-3 mb-2">
-        <Text className="font-semibold text-gray-900 text-sm mb-1">
+      <View className="bg-white rounded-2xl px-4 py-3 mb-2 border border-craftopa-light/10 shadow-sm">
+        <Text className="font-poppinsBold text-craftopa-textPrimary text-sm mb-1 tracking-tight">
           {comment.user.username}
         </Text>
-        <Text className="text-gray-700 text-base leading-6">{comment.content}</Text>
+        <Text className="text-craftopa-textSecondary text-base leading-6 font-nunito tracking-wide">
+          {comment.content}
+        </Text>
       </View>
       <View className="flex-row items-center ml-1">
-        <Text className="text-xs text-gray-500">{formatTimeAgo(comment.created_at)}</Text>
+        <Text className="text-xs text-craftopa-textSecondary font-nunito tracking-wide">
+          {formatTimeAgo(comment.created_at)}
+        </Text>
       </View>
     </View>
   </View>

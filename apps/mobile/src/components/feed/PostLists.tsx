@@ -35,17 +35,21 @@ export const PostList: React.FC<PostListProps> = ({
   const renderFooter = () => {
     if (loadingMore) {
       return (
-        <View className="py-3 items-center">
-          <ActivityIndicator size="small" color="#374A36" />
-          <Text className="text-craftopia-textSecondary mt-1 text-xs">Loading more...</Text>
+        <View className="py-6 items-center">
+          <ActivityIndicator size="small" color="#5A7160" />
+          <Text className="text-craftopa-textSecondary text-sm mt-2 font-nunito tracking-wide">
+            Loading more posts...
+          </Text>
         </View>
       );
     }
 
     if (!hasMore && posts.length > 0) {
       return (
-        <View className="py-4 items-center">
-          <Text className="text-craftopia-textSecondary text-xs">You've reached the end!</Text>
+        <View className="py-8 items-center">
+          <Text className="text-craftopa-textSecondary text-sm font-nunito tracking-wide">
+            🎉 You've reached the end!
+          </Text>
         </View>
       );
     }
@@ -56,42 +60,46 @@ export const PostList: React.FC<PostListProps> = ({
   const renderEmpty = () => {
     if (loading) {
       return (
-        <View className="flex-1 justify-center items-center py-6">
-          <ActivityIndicator size="small" color="#374A36" />
-          <Text className="text-craftopia-textSecondary text-sm mt-2">Loading posts...</Text>
+        <View className="flex-1 justify-center items-center py-12">
+          <ActivityIndicator size="small" color="#5A7160" />
+          <Text className="text-craftopa-textSecondary text-sm mt-3 font-nunito tracking-wide">
+            Loading posts...
+          </Text>
         </View>
       );
     }
 
     if (error) {
       return (
-        <View className="flex-1 justify-center items-center py-6 px-4">
-          <Text className="text-craftopia-textPrimary text-base font-semibold text-center mb-1">
+        <View className="flex-1 justify-center items-center py-12 px-5">
+          <Text className="text-craftopa-textPrimary text-lg font-poppinsBold text-center mb-2 tracking-tight">
             Something went wrong
           </Text>
-          <Text className="text-craftopia-textSecondary text-sm text-center mb-3">{error}</Text>
+          <Text className="text-craftopa-textSecondary text-sm text-center mb-4 font-nunito tracking-wide">
+            {error}
+          </Text>
           <TouchableOpacity 
             onPress={onRefresh} 
-            className="bg-craftopia-primary px-4 py-2 rounded-lg"
+            className="bg-craftopa-primary px-6 py-3 rounded-xl active:opacity-70"
             activeOpacity={0.7}
           >
-            <Text className="text-craftopia-surface text-sm font-medium">Try Again</Text>
+            <Text className="text-white text-sm font-poppinsBold tracking-tight">Try Again</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <View className="flex-1 justify-center items-center py-6 px-4">
-        <Text className="text-craftopia-textSecondary text-center text-sm mb-3">
+      <View className="flex-1 justify-center items-center py-12 px-5">
+        <Text className="text-craftopa-textSecondary text-center text-sm mb-4 font-nunito tracking-wide">
           No posts found
         </Text>
         <TouchableOpacity 
           onPress={onRefresh} 
-          className="bg-craftopia-primary px-4 py-2 rounded-lg"
+          className="bg-craftopa-primary px-6 py-3 rounded-xl active:opacity-70"
           activeOpacity={0.7}
         >
-          <Text className="text-craftopia-surface text-sm font-medium">Refresh</Text>
+          <Text className="text-white text-sm font-poppinsBold tracking-tight">Refresh</Text>
         </TouchableOpacity>
       </View>
     );
@@ -114,5 +122,5 @@ export const PostList: React.FC<PostListProps> = ({
         flexGrow: 1 
       }}
     />
-  );
+  ); 
 };

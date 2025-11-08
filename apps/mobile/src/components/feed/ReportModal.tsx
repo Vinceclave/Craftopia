@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/ReportModal.tsx - IMPROVED VERSION
+// apps/mobile/src/components/feed/ReportModal.tsx - CRAFTOPIA REDESIGN
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { X, Flag, AlertTriangle, CheckCircle } from 'lucide-react-native';
@@ -29,38 +29,38 @@ const REPORT_OPTIONS: ReportOption[] = [
   },
   {
     id: 'harassment',
-    label: 'Harassment or Bullying',
+    label: 'Harassment',
     description: 'Targeting individuals with harmful content',
     icon: '⚠️'
   },
   {
     id: 'inappropriate',
-    label: 'Inappropriate Content',
+    label: 'Inappropriate',
     description: 'Adult content or graphic material',
     icon: '🔞'
   },
   {
     id: 'misinformation',
     label: 'False Information',
-    description: 'Spreading misinformation or fake news',
+    description: 'Spreading misinformation',
     icon: '❌'
   },
   {
     id: 'violence',
-    label: 'Violence or Dangerous Content',
+    label: 'Violence',
     description: 'Content promoting violence or harm',
     icon: '⚔️'
   },
   {
     id: 'copyright',
-    label: 'Copyright Violation',
-    description: 'Unauthorized use of copyrighted material',
+    label: 'Copyright',
+    description: 'Unauthorized use of material',
     icon: '©️'
   },
   {
     id: 'other',
     label: 'Other',
-    description: 'Another reason not listed above',
+    description: 'Another reason not listed',
     icon: '💬'
   }
 ];
@@ -100,7 +100,6 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   }, [visible]);
 
   const handleReasonSelect = (reason: ReportReason) => {
-    console.log('📢 Reason selected:', reason);
     setSelectedReason(reason);
     setError(null);
     setStep('details');
@@ -127,13 +126,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       return;
     }
 
-    // Validate that details are provided for 'other' category
     if (selectedReason === 'other' && !details.trim()) {
       setError('Please provide details for your report');
       return;
     }
 
-    // Validate details length
     if (details.length > 500) {
       setError('Details cannot exceed 500 characters');
       return;
@@ -143,12 +140,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({
     setError(null);
 
     try {
-      console.log('📢 Submitting report:', { selectedReason, details: details.trim(), contentId });
       await onSubmit(selectedReason, details.trim());
-      console.log('✅ Report submitted successfully');
-      // Modal will be closed by parent component on success
     } catch (err: any) {
-      console.error('❌ Report submission error:', err);
       setError(err.message || 'Failed to submit report');
     } finally {
       setIsSubmitting(false);
@@ -165,31 +158,31 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       onRequestClose={handleClose}
     >
       <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-craftopia-surface rounded-t-xl max-h-[80%]">
+        <View className="bg-white rounded-t-3xl max-h-[85%] shadow-xl">
           {/* Header */}
-          <View className="flex-row items-center justify-between p-4 border-b border-craftopia-light">
+          <View className="flex-row items-center justify-between p-5 border-b border-craftopa-light/10">
             <TouchableOpacity
               onPress={handleBack}
-              className="w-8 h-8 items-center justify-center"
+              className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/5 active:opacity-70 border border-craftopa-light/10"
               activeOpacity={0.7}
               disabled={isSubmitting}
             >
-              <X size={20} color="#1A1A1A" />
+              <X size={18} color="#5A7160" />
             </TouchableOpacity>
             <View className="flex-row items-center">
               <Flag size={18} color="#EF4444" />
-              <Text className="text-base font-semibold text-craftopia-textPrimary ml-2">
+              <Text className="text-lg font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">
                 Report {contentType}
               </Text>
             </View>
-            <View className="w-8" />
+            <View className="w-9" />
           </View>
 
           {/* Error Message */}
           {error && (
-            <View className="bg-red-50 border border-red-200 mx-4 mt-4 p-3 rounded-lg flex-row items-center">
+            <View className="bg-red-50 border border-red-200 mx-5 mt-4 p-3 rounded-xl flex-row items-center">
               <AlertTriangle size={16} color="#EF4444" />
-              <Text className="text-sm text-red-800 ml-2 flex-1">{error}</Text>
+              <Text className="text-sm text-red-800 ml-2 flex-1 font-nunito tracking-wide">{error}</Text>
             </View>
           )}
 
@@ -197,10 +190,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
             {step === 'select' ? (
               /* Step 1: Select Reason */
-              <View className="p-4">
-                <View className="bg-craftopia-light/50 p-3 rounded-lg mb-4 flex-row">
-                  <AlertTriangle size={20} color="#F59E0B" />
-                  <Text className="text-sm text-craftopia-textSecondary ml-2 flex-1">
+              <View className="p-5">
+                <View className="bg-craftopa-primary/5 p-4 rounded-2xl mb-4 flex-row border border-craftopa-primary/10">
+                  <AlertTriangle size={20} color="#5A7160" />
+                  <Text className="text-sm text-craftopa-textSecondary ml-3 flex-1 font-nunito tracking-wide">
                     Help us understand what's wrong with this {contentType}
                   </Text>
                 </View>
@@ -209,15 +202,15 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                   <TouchableOpacity
                     key={option.id}
                     onPress={() => handleReasonSelect(option.id)}
-                    className="bg-craftopia-light p-4 rounded-lg mb-2 flex-row items-center active:bg-craftopia-light/70"
+                    className="bg-white p-4 rounded-2xl mb-2 flex-row items-center border border-craftopa-light/10 shadow-sm active:opacity-70"
                     activeOpacity={0.7}
                   >
                     <Text className="text-2xl mr-3">{option.icon}</Text>
                     <View className="flex-1">
-                      <Text className="text-base font-medium text-craftopia-textPrimary mb-0.5">
+                      <Text className="text-base font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
                         {option.label}
                       </Text>
-                      <Text className="text-xs text-craftopia-textSecondary">
+                      <Text className="text-xs text-craftopa-textSecondary font-nunito tracking-wide">
                         {option.description}
                       </Text>
                     </View>
@@ -226,17 +219,17 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               </View>
             ) : (
               /* Step 2: Add Details */
-              <View className="p-4">
+              <View className="p-5">
                 {/* Selected Reason */}
-                <View className="bg-craftopia-primary/10 p-3 rounded-lg mb-4">
-                  <Text className="text-sm text-craftopia-textSecondary mb-1">
+                <View className="bg-craftopa-primary/5 p-4 rounded-2xl mb-4 border border-craftopa-primary/10">
+                  <Text className="text-sm text-craftopa-textSecondary mb-1 font-nunito tracking-wide">
                     Reporting for:
                   </Text>
                   <View className="flex-row items-center">
                     <Text className="text-xl mr-2">
                       {REPORT_OPTIONS.find(o => o.id === selectedReason)?.icon}
                     </Text>
-                    <Text className="text-base font-medium text-craftopia-primary">
+                    <Text className="text-base font-poppinsBold text-craftopa-primary tracking-tight">
                       {REPORT_OPTIONS.find(o => o.id === selectedReason)?.label}
                     </Text>
                   </View>
@@ -244,7 +237,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
                 {/* Details Input */}
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-craftopia-textPrimary mb-2">
+                  <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-2 tracking-tight">
                     Additional details {selectedReason === 'other' ? '(Required)' : '(Optional)'}
                   </Text>
                   <TextInput
@@ -259,20 +252,20 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     numberOfLines={4}
                     maxLength={500}
                     textAlignVertical="top"
-                    className="bg-craftopia-light border border-craftopia-light rounded-lg p-3 text-craftopia-textPrimary"
+                    className="bg-white border border-craftopa-light/10 rounded-xl p-4 text-craftopa-textPrimary font-nunito tracking-wide"
                     style={{ minHeight: 100 }}
                     editable={!isSubmitting}
                   />
-                  <Text className={`text-xs mt-1 ${details.length > 450 ? 'text-orange-600' : 'text-craftopia-textSecondary'}`}>
+                  <Text className={`text-xs mt-2 font-nunito tracking-wide ${details.length > 450 ? 'text-orange-600' : 'text-craftopa-textSecondary'}`}>
                     {details.length}/500 characters
                   </Text>
                 </View>
 
                 {/* Info Box */}
-                <View className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
+                <View className="bg-craftopa-primary/5 border border-craftopa-primary/10 p-4 rounded-2xl mb-4">
                   <View className="flex-row items-start">
-                    <CheckCircle size={16} color="#3B82F6" className="mt-0.5" />
-                    <Text className="text-sm text-blue-800 ml-2 flex-1">
+                    <CheckCircle size={16} color="#5A7160" className="mt-0.5" />
+                    <Text className="text-sm text-craftopa-textPrimary ml-3 flex-1 font-nunito tracking-wide">
                       Your report will be reviewed by our moderation team. We'll take appropriate action if this violates our community guidelines.
                     </Text>
                   </View>
@@ -290,11 +283,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 {/* Cancel Button */}
                 <TouchableOpacity
                   onPress={handleBack}
-                  className="mt-3 py-3 items-center"
+                  className="mt-3 py-3 items-center active:opacity-70"
                   activeOpacity={0.7}
                   disabled={isSubmitting}
                 >
-                  <Text className="text-craftopia-textSecondary font-medium">
+                  <Text className="text-craftopa-textSecondary font-poppinsBold tracking-tight">
                     Back
                   </Text>
                 </TouchableOpacity>

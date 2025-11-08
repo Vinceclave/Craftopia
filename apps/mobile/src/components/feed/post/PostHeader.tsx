@@ -1,7 +1,7 @@
-// PostHeader.tsx
+// apps/mobile/src/components/feed/post/PostHeader.tsx - CRAFTOPIA REDESIGN
 import React, { memo } from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MoreHorizontal, Sparkles } from 'lucide-react-native';
 import type { User } from './type';
 import { formatTimeAgo } from '~/utils/time';
 
@@ -9,7 +9,7 @@ interface PostHeaderProps {
   user?: User | null;
   featured?: boolean;
   created_at?: string | null;
-  onOptionsPress?: () => void; // <-- new
+  onOptionsPress?: () => void;
 }
 
 export const PostHeader: React.FC<PostHeaderProps> = memo(({ 
@@ -18,40 +18,48 @@ export const PostHeader: React.FC<PostHeaderProps> = memo(({
   created_at,
   onOptionsPress
 }) => {
-  console.log(user)
   const username = user?.username || 'Unknown User';
   const userId = user?.user_id || 0;
 
   return (
-    <View className="flex-row items-center justify-between mb-3">
+    <View className="flex-row items-center justify-between mb-4">
       <View className="flex-row items-center flex-1">
         <Image
           source={{ uri: `https://i.pravatar.cc/32?u=${userId}` }}
-          className="w-8 h-8 rounded-full"
+          className="w-9 h-9 rounded-xl border border-craftopa-light/10"
         />
-        <View className="flex-1 ml-2">
-          <Text className="font-medium text-craftopia-textPrimary text-sm">
+        <View className="flex-1 ml-3">
+          <Text className="font-poppinsBold text-craftopa-textPrimary text-sm tracking-tight">
             {username}
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary">
+          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
             {formatTimeAgo(created_at)}
           </Text>
         </View>
       </View>
 
-      {featured && (
-        <View className="bg-craftopia-accent/20 rounded-full px-2 py-1 mr-2">
-          <Text className="text-xs font-medium text-craftopia-accent">
-            Featured
-          </Text>
-        </View>
-      )}
+      <View className="flex-row items-center gap-2">
+        {featured && (
+          <View className="bg-craftopa-accent/10 rounded-lg px-2.5 py-1 border border-craftopa-accent/20">
+            <View className="flex-row items-center gap-1">
+              <Sparkles size={12} color="#D4A96A" />
+              <Text className="text-xs font-poppinsBold text-craftopa-accent tracking-tight">
+                Featured
+              </Text>
+            </View>
+          </View>
+        )}
 
-      {onOptionsPress && (
-        <TouchableOpacity onPress={onOptionsPress}>
-          <Ionicons name="ellipsis-vertical" size={20} color="gray" />
-        </TouchableOpacity>
-      )}
+        {onOptionsPress && (
+          <TouchableOpacity 
+            onPress={onOptionsPress}
+            className="w-8 h-8 rounded-lg items-center justify-center active:opacity-70 bg-craftopa-light/5 border border-craftopa-light/10"
+            activeOpacity={0.7}
+          >
+            <MoreHorizontal size={16} color="#5A7160" />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 });

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/EditPostModal.tsx - MODERN MINIMALISTIC
+// apps/mobile/src/components/feed/post/EditPostModal.tsx - CRAFTOPIA REDESIGN
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Edit3, Tag, AlertCircle } from 'lucide-react-native';
@@ -98,7 +99,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
   const canSubmit = hasChanges && !loading && title.trim() && content.trim();
 
   const CharacterCounter = ({ current, max, warningThreshold = 0.9 }: { current: number; max: number; warningThreshold?: number }) => (
-    <Text className={`text-xs ${current > max * warningThreshold ? 'text-orange-500' : 'text-gray-400'}`}>
+    <Text className={`text-xs font-nunito tracking-wide ${current > max * warningThreshold ? 'text-orange-500' : 'text-craftopa-textSecondary'}`}>
       {current}/{max}
     </Text>
   );
@@ -116,20 +117,21 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
-          <View className="px-5 py-4 border-b border-gray-100">
+          <View className="px-5 py-4 border-b border-craftopa-light/10">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center">
-                <Edit3 size={20} color="#1F2937" />
-                <Text className="text-xl font-semibold text-gray-900 ml-2">
+                <Edit3 size={20} color="#5A7160" />
+                <Text className="text-xl font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">
                   Edit Post
                 </Text>
               </View>
               <TouchableOpacity 
                 onPress={onClose}
-                className="w-10 h-10 items-center justify-center rounded-full bg-gray-100"
+                className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/5 active:opacity-70 border border-craftopa-light/10"
                 disabled={loading}
+                activeOpacity={0.7}
               >
-                <X size={20} color="#6B7280" />
+                <X size={18} color="#5A7160" />
               </TouchableOpacity>
             </View>
           </View>
@@ -144,7 +146,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
               {/* Title Input */}
               <View>
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-sm font-medium text-gray-700">
+                  <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">
                     Title
                   </Text>
                   <CharacterCounter current={title.length} max={255} />
@@ -158,15 +160,15 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                   placeholder="Enter post title..."
                   placeholderTextColor="#9CA3AF"
                   maxLength={255}
-                  className={`bg-gray-50 border rounded-xl px-4 py-3 text-gray-900 text-base ${
-                    errors.title ? 'border-red-300' : 'border-gray-200'
+                  className={`bg-white border rounded-2xl px-4 py-3 text-craftopa-textPrimary text-base font-nunito tracking-wide ${
+                    errors.title ? 'border-red-300' : 'border-craftopa-light/10'
                   }`}
                   editable={!loading}
                 />
                 {errors.title && (
                   <View className="flex-row items-center mt-2">
                     <AlertCircle size={14} color="#EF4444" />
-                    <Text className="text-red-500 text-sm ml-1">{errors.title}</Text>
+                    <Text className="text-red-500 text-sm ml-1 font-nunito tracking-wide">{errors.title}</Text>
                   </View>
                 )}
               </View>
@@ -174,7 +176,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
               {/* Content Input */}
               <View>
                 <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-sm font-medium text-gray-700">
+                  <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">
                     Content
                   </Text>
                   <CharacterCounter current={content.length} max={1000} />
@@ -191,8 +193,8 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                   numberOfLines={8}
                   maxLength={1000}
                   textAlignVertical="top"
-                  className={`bg-gray-50 border rounded-xl px-4 py-3 text-gray-900 text-base ${
-                    errors.content ? 'border-red-300' : 'border-gray-200'
+                  className={`bg-white border rounded-2xl px-4 py-3 text-craftopa-textPrimary text-base font-nunito tracking-wide ${
+                    errors.content ? 'border-red-300' : 'border-craftopa-light/10'
                   }`}
                   style={{ minHeight: 160 }}
                   editable={!loading}
@@ -200,7 +202,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                 {errors.content && (
                   <View className="flex-row items-center mt-2">
                     <AlertCircle size={14} color="#EF4444" />
-                    <Text className="text-red-500 text-sm ml-1">{errors.content}</Text>
+                    <Text className="text-red-500 text-sm ml-1 font-nunito tracking-wide">{errors.content}</Text>
                   </View>
                 )}
               </View>
@@ -208,8 +210,8 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
               {/* Tags Input */}
               <View>
                 <View className="flex-row items-center mb-3">
-                  <Tag size={16} color="#6B7280" />
-                  <Text className="text-sm font-medium text-gray-700 ml-2">
+                  <Tag size={16} color="#5A7160" />
+                  <Text className="text-sm font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">
                     Tags (optional)
                   </Text>
                 </View>
@@ -218,10 +220,10 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                   onChangeText={setTagsInput}
                   placeholder="craft, recycling, DIY..."
                   placeholderTextColor="#9CA3AF"
-                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-base"
+                  className="bg-white border border-craftopa-light/10 rounded-2xl px-4 py-3 text-craftopa-textPrimary text-base font-nunito tracking-wide"
                   editable={!loading}
                 />
-                <Text className="text-xs text-gray-500 mt-2">
+                <Text className="text-xs text-craftopa-textSecondary mt-2 font-nunito tracking-wide">
                   Separate tags with commas
                 </Text>
 
@@ -235,13 +237,13 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                       .map((tag, index) => (
                         <View
                           key={index}
-                          className="bg-blue-100 px-3 py-2 rounded-full flex-row items-center"
+                          className="bg-craftopa-primary/5 px-3 py-2 rounded-full flex-row items-center border border-craftopa-primary/10"
                         >
-                          <Text className="text-blue-700 text-sm font-medium">
+                          <Text className="text-craftopa-primary text-sm font-poppinsBold tracking-tight">
                             #{tag}
                           </Text>
                           <TouchableOpacity
-                            className="ml-2"
+                            className="ml-2 active:opacity-70"
                             onPress={() => {
                               const tags = tagsInput
                                 .split(',')
@@ -250,8 +252,9 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
                               setTagsInput(tags.join(', '));
                             }}
                             disabled={loading}
+                            activeOpacity={0.7}
                           >
-                            <X size={14} color="#1D4ED8" />
+                            <X size={14} color="#5A7160" />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -260,10 +263,10 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
               </View>
 
               {/* Info Message */}
-              <View className="bg-blue-50 rounded-xl p-4">
+              <View className="bg-craftopa-primary/5 rounded-2xl p-4 border border-craftopa-primary/10">
                 <View className="flex-row items-start">
-                  <AlertCircle size={16} color="#3B82F6" className="mt-0.5" />
-                  <Text className="text-blue-700 text-sm ml-2 flex-1">
+                  <AlertCircle size={16} color="#5A7160" className="mt-0.5" />
+                  <Text className="text-craftopa-textPrimary text-sm ml-3 flex-1 font-nunito tracking-wide">
                     Your changes will be saved immediately and visible to all users.
                   </Text>
                 </View>
@@ -272,33 +275,45 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
           </ScrollView>
 
           {/* Footer Actions */}
-          <View className="px-5 py-4 border-t border-gray-100 bg-white">
+          <View className="px-5 py-4 border-t border-craftopa-light/10 bg-white">
             <View className="space-y-3">
               <TouchableOpacity
                 onPress={handleSubmit}
                 disabled={!canSubmit}
-                className={`py-4 rounded-xl items-center ${
-                  canSubmit ? 'bg-gray-900' : 'bg-gray-300'
+                className={`py-4 rounded-2xl items-center flex-row justify-center active:opacity-70 border ${
+                  canSubmit 
+                    ? 'bg-craftopa-primary border-craftopa-primary/20' 
+                    : 'bg-craftopa-light/10 border-craftopa-light/20'
                 }`}
+                activeOpacity={0.7}
               >
-                <Text className={`font-semibold text-base ${
-                  canSubmit ? 'text-white' : 'text-gray-500'
-                }`}>
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </Text>
+                {loading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text className="text-white text-base font-poppinsBold ml-2 tracking-tight">
+                      Saving...
+                    </Text>
+                  </>
+                ) : (
+                  <Text className={`text-base font-poppinsBold tracking-tight ${
+                    canSubmit ? 'text-white' : 'text-craftopa-textSecondary'
+                  }`}>
+                    Save Changes
+                  </Text>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={onClose}
-                className="py-3 items-center"
+                className="py-3 items-center active:opacity-70"
                 activeOpacity={0.7}
                 disabled={loading}
               >
-                <Text className="text-gray-600 font-medium">Cancel</Text>
+                <Text className="text-craftopa-textSecondary font-poppinsBold tracking-tight">Cancel</Text>
               </TouchableOpacity>
 
               {!hasChanges && !loading && (
-                <Text className="text-center text-sm text-gray-400">
+                <Text className="text-center text-sm text-craftopa-textSecondary font-nunito tracking-wide">
                   No changes made
                 </Text>
               )}

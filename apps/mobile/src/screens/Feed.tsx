@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Feed.tsx - MODULARIZED VERSION
+// apps/mobile/src/screens/Feed.tsx - CRAFTOPIA REDESIGN
 import React, { useState, useEffect, useCallback } from 'react';
 import { FlatList, RefreshControl, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -109,18 +109,16 @@ export const FeedScreen = () => {
     try {
       await toggleReactionMutation.mutateAsync(postId);
     } catch (error) {
-      console.error('❌ Failed to toggle reaction:', error);
+      console.error('Failed to toggle reaction:', error);
     }
   };
 
   const handleRefresh = useCallback(() => {
-    console.log('🔄 Manual refresh triggered');
     refetch();
   }, [refetch]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
-      console.log('📄 Loading next page...');
       fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -134,8 +132,6 @@ export const FeedScreen = () => {
   };
 
   const handleSearchResult = (result: any) => {
-    console.log('🔍 Search result selected:', result);
-    
     switch (result.type) {
       case 'post':
         setShowSearchModal(false);
@@ -152,25 +148,21 @@ export const FeedScreen = () => {
   };
 
   const handleSearch = (query: string) => {
-    console.log('🔍 Searching:', query);
     setSearchQuery(query);
     setActiveTab('all');
   };
 
   const handleTagPress = (tag: string) => {
-    console.log('🏷️ Tag pressed:', tag);
     setSelectedTag(tag);
     setActiveTab('all');
   };
 
   const handleCategorySelect = (categoryId: string) => {
-    console.log('📁 Category selected:', categoryId);
     setSelectedCategory(categoryId);
     setShowCategoryFilter(false);
   };
 
   const handleTabChange = (tab: FeedType) => {
-    console.log('📑 Switching to tab:', tab);
     setActiveTab(tab);
     clearAllFilters();
   };
@@ -193,7 +185,7 @@ export const FeedScreen = () => {
   const renderPost = useCallback(({ item, index }: { item: Post; index: number }) => {
     // Validate post has required data
     if (!item || !item.post_id || !item.title) {
-      console.warn('⚠️ Invalid post data:', item);
+      console.warn('Invalid post data:', item);
       return null;
     }
 
@@ -208,15 +200,13 @@ export const FeedScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopa-light/5">
       {/* Header */}
       <FeedHeader
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onSearchPress={handleSearchPress}
         onFilterPress={() => setShowCategoryFilter(true)}
-        isConnected={isConnected}
-        connectionPulse={connectionPulse}
         hasActiveFilter={selectedCategory !== 'all'}
       />
 
@@ -265,8 +255,8 @@ export const FeedScreen = () => {
           <RefreshControl 
             refreshing={isRefetching && !isLoading} 
             onRefresh={handleRefresh} 
-            colors={['#374A36']}
-            tintColor="#374A36"
+            colors={['#5A7160']}
+            tintColor="#5A7160"
           />
         }
         showsVerticalScrollIndicator={false}

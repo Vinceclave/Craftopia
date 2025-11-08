@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/Post.tsx - MODERN MINIMALISTIC
+// apps/mobile/src/components/feed/post/Post.tsx - CRAFTOPIA REDESIGN
 import React, { memo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import type { PostProps } from './type';
@@ -13,7 +13,7 @@ export const Post: React.FC<PostProps> = memo((props) => {
   }
 
   return (
-    <View className="bg-white border-b border-gray-100 pb-2 mb-1">
+    <View className="bg-white border-b border-craftopa-light/10 pb-3 mb-1">
       <View className="px-5 pt-4">
         <PostHeader 
           user={props.user} 
@@ -27,7 +27,7 @@ export const Post: React.FC<PostProps> = memo((props) => {
           onPress={props.onPress}
           activeOpacity={0.9}
           disabled={!props.onPress}
-          className="rounded-lg active:bg-gray-50"
+          className="rounded-xl active:bg-craftopa-light/5"
         >
           <PostContent
             title={props.title}

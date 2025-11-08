@@ -1,4 +1,3 @@
-// apps/mobile/src/components/feed/FeedHeader.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Search, Filter } from 'lucide-react-native';
@@ -13,12 +12,6 @@ interface FeedHeaderProps {
   hasActiveFilter: boolean;
 }
 
-// Create wrapped TouchableOpacity components
-const AnimatedTouchable = React.forwardRef<any, any>((props, ref) => (
-  <TouchableOpacity ref={ref} {...props} />
-));
-AnimatedTouchable.displayName = 'AnimatedTouchable';
-
 export const FeedHeader: React.FC<FeedHeaderProps> = ({
   activeTab,
   onTabChange,
@@ -27,46 +20,46 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
   hasActiveFilter,
 }) => {
   return (
-    <View className="bg-white p-2 px-4  border-b border-gray-100">
+    <View className="px-5 pt-10 pb-3 bg-white border-b border-craftopa-light/10">
       {/* Main Header Row */}
-      <View className="flex-row justify-between items-center mb-4">
+      <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1">
-          <Text className="text-2xl font-semibold text-gray-900">
+          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
             Discover
           </Text>
-          <Text className="text-sm text-gray-500 mt-0.5 font-normal">
-            Find what inspires you
+          <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
+            Find Inspiration
           </Text>
         </View>
         
         {/* Action Buttons */}
         <View className="flex-row items-center gap-2">
-          <AnimatedTouchable 
-            className={`w-10 h-10 rounded-xl items-center justify-center ${
+          <TouchableOpacity 
+            className={`w-9 h-9 rounded-lg items-center justify-center border active:opacity-70 ${
               hasActiveFilter 
-                ? 'bg-black border border-gray-200' 
-                : 'bg-gray-50 border border-gray-100'
-            }`}
+                ? 'bg-craftopa-primary border-craftopa-primary/20' 
+                : 'bg-white border-craftopa-light/10'
+            } shadow-sm`}
             onPress={onFilterPress}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <Filter 
-              size={18} 
-              color={hasActiveFilter ? "#FFFFFF" : "#374151"} 
-              strokeWidth={1.5}
+              size={16} 
+              color={hasActiveFilter ? "#FFFFFF" : "#5A7160"} 
+              strokeWidth={2}
             />
             {hasActiveFilter && (
-              <View className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-400 rounded-full border border-white" />
+              <View className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-craftopa-accent rounded-full border border-white shadow-sm" />
             )}
-          </AnimatedTouchable>
+          </TouchableOpacity>
           
-          <AnimatedTouchable 
-            className="w-10 h-10 bg-gray-50 border border-gray-100 rounded-xl items-center justify-center"
+          <TouchableOpacity 
+            className="w-9 h-9 bg-white border border-craftopa-light/10 rounded-lg items-center justify-center shadow-sm active:opacity-70"
             onPress={onSearchPress}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Search size={18} color="#374151" strokeWidth={1.5} />
-          </AnimatedTouchable>
+            <Search size={16} color="#5A7160" strokeWidth={2} />
+          </TouchableOpacity>
         </View>
       </View>
       

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/PostContent.tsx - FIXED IMAGE
+// apps/mobile/src/components/feed/post/PostContent.tsx - CRAFTOPIA REDESIGN
 import React, { memo, useState } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
 
@@ -28,24 +28,24 @@ export const PostContent: React.FC<PostContentProps> = memo(({
   };
 
   return (
-    <View className="mb-3">
+    <View className="mb-4">
       {title && (
-        <Text className="font-semibold text-gray-900 mb-2 text-lg leading-6">
+        <Text className="font-poppinsBold text-craftopa-textPrimary mb-2 text-lg leading-6 tracking-tight">
           {title}
         </Text>
       )}
       
       {content && (
-        <Text className="text-gray-600 text-base leading-6 mb-3">
+        <Text className="font-nunito text-craftopa-textSecondary text-base leading-6 mb-3 tracking-wide">
           {content}
         </Text>
       )}
 
       {image_url && !imageError ? (
-        <View className="relative w-full h-48 rounded-xl mb-3 overflow-hidden bg-gray-100">
+        <View className="relative w-full h-48 rounded-2xl mb-3 overflow-hidden bg-craftopa-light/5 border border-craftopa-light/10">
           {imageLoading && (
             <View className="absolute inset-0 items-center justify-center z-10">
-              <ActivityIndicator size="small" color="#6B7280" />
+              <ActivityIndicator size="small" color="#5A7160" />
             </View>
           )}
           <Image
@@ -57,8 +57,8 @@ export const PostContent: React.FC<PostContentProps> = memo(({
           />
         </View>
       ) : imageError ? (
-        <View className="w-full h-32 rounded-xl mb-3 bg-gray-100 items-center justify-center">
-          <Text className="text-gray-400 text-sm">Image not available</Text>
+        <View className="w-full h-32 rounded-2xl mb-3 bg-craftopa-light/5 border border-craftopa-light/10 items-center justify-center">
+          <Text className="text-craftopa-textSecondary text-sm font-nunito tracking-wide">Image not available</Text>
         </View>
       ) : null}
 
@@ -67,9 +67,9 @@ export const PostContent: React.FC<PostContentProps> = memo(({
           {tags.slice(0, 3).map((tag, idx) => (
             <View 
               key={`${tag}-${idx}`} 
-              className="bg-gray-100 rounded-full px-3 py-1.5"
+              className="bg-craftopa-light/5 rounded-full px-3 py-1.5 border border-craftopa-light/10"
             >
-              <Text className="text-xs font-medium text-gray-600">#{tag}</Text>
+              <Text className="text-xs font-poppinsBold text-craftopa-textPrimary tracking-tight">#{tag}</Text>
             </View>
           ))}
         </View>
@@ -78,4 +78,4 @@ export const PostContent: React.FC<PostContentProps> = memo(({
   );
 });
 
-PostContent.displayName = 'PostContent';  
+PostContent.displayName = 'PostContent';
