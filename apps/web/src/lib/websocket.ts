@@ -1,7 +1,17 @@
-// apps/web/src/lib/websocket.ts
+// apps/web/src/lib/websocket.ts - FIXED VERSION
 import { io, Socket } from 'socket.io-client';
 
-const WS_URL = import.meta.env.VITE_BASE_URL;
+// ✅ FIX: WebSocket should connect to BACKEND server, not frontend
+const isDevelopment = import.meta.env.DEV;
+console.log(isDevelopment)
+
+// For development: connect to local backend
+// For production: use your actual backend WebSocket server URL
+const WS_URL = isDevelopment
+  ? 'http://localhost:3001'
+  : (import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || 'https://your-backend-server.com');
+
+console.log('🔌 WebSocket connecting to:', WS_URL);
 
 export enum WebSocketEvent {
   // Challenge Events
@@ -55,15 +65,23 @@ class WebSocketService {
   private reconnectDelay = 1000;
 
   connect(token: string): void {
-    if (this.socket?.connected) return;
+    if (this.socket?.connected) {
+      console.log('✅ WebSocket already connected');
+      return;
+    }
+
+    console.log('🔌 Attempting WebSocket connection to:', WS_URL);
 
     this.socket = io(WS_URL, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket', 'polling'], // Try WebSocket first, fallback to polling
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: this.reconnectDelay,
       timeout: 10000,
+      // Additional options for better compatibility
+      withCredentials: false,
+      forceNew: true,
     });
 
     this.setupEventHandlers();
@@ -73,18 +91,36 @@ class WebSocketService {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
+      console.log('✅ WebSocket connected successfully');
       this.reconnectAttempts = 0;
       this.resubscribeEvents();
     });
 
-    this.socket.on('connected', () => {});
-    this.socket.on('disconnect', () => {});
-    this.socket.on('connect_error', () => {
-      this.reconnectAttempts++;
+    this.socket.on('connected', (data) => {
+      console.log('🎉 WebSocket server acknowledged connection:', data);
     });
 
-    this.socket.on('error', () => {});
-    this.socket.on('pong', () => {});
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ WebSocket disconnected:', reason);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      this.reconnectAttempts++;
+      console.error('❌ WebSocket connection error:', error.message);
+      console.error('Attempted URL:', WS_URL);
+      
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('⛔ Max reconnection attempts reached. Please check your backend server.');
+      }
+    });
+
+    this.socket.on('error', (error) => {
+      console.error('❌ WebSocket error:', error);
+    });
+
+    this.socket.on('pong', () => {
+      console.log('🏓 Pong received from server');
+    });
   }
 
   private resubscribeEvents(): void {
@@ -95,6 +131,8 @@ class WebSocketService {
         this.socket?.on(event, callback);
       });
     });
+
+    console.log('🔄 Resubscribed to', this.eventHandlers.size, 'event types');
   }
 
   on(event: WebSocketEvent | string, callback: EventCallback): void {
@@ -119,7 +157,10 @@ class WebSocketService {
   }
 
   emit(event: string, data?: any): void {
-    if (!this.socket?.connected) return;
+    if (!this.socket?.connected) {
+      console.warn('⚠️ WebSocket not connected, cannot emit:', event);
+      return;
+    }
     this.socket.emit(event, data);
   }
 
@@ -129,6 +170,7 @@ class WebSocketService {
 
   disconnect(): void {
     if (this.socket) {
+      console.log('👋 Disconnecting WebSocket');
       this.socket.disconnect();
       this.socket = null;
       this.eventHandlers.clear();

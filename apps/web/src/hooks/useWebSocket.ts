@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useWebSocket.ts
+// apps/web/src/hooks/useWebSocket.ts - FIXED TOKEN HANDLING
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { websocketService, WebSocketEvent } from '@/lib/websocket';
 import { useAuthStore } from '@/store/authStore';
@@ -9,9 +9,20 @@ export const useWebSocket = () => {
   const connectionAttempted = useRef(false);
 
   useEffect(() => {
-    // Only connect once when authenticated
-    if (isAuthenticated && token && !connectionAttempted.current) {
-      websocketService.connect(token);
+    // ✅ FIX: Get token from localStorage (most reliable source)
+    const storedToken = localStorage.getItem('adminToken');
+    
+    console.log('🔐 Auth State:', {
+      isAuthenticated,
+      hasZustandToken: !!token,
+      hasStoredToken: !!storedToken,
+      tokenPreview: storedToken ? `${storedToken.substring(0, 20)}...` : 'none'
+    });
+
+    // Only connect if authenticated AND we have a valid token
+    if (isAuthenticated && storedToken && !connectionAttempted.current) {
+      console.log('✅ Attempting WebSocket connection with token');
+      websocketService.connect(storedToken);
       connectionAttempted.current = true;
 
       // Update connection status
@@ -26,6 +37,7 @@ export const useWebSocket = () => {
 
     // Disconnect when not authenticated
     if (!isAuthenticated && connectionAttempted.current) {
+      console.log('🔌 Disconnecting WebSocket (no longer authenticated)');
       websocketService.disconnect();
       connectionAttempted.current = false;
       setIsConnected(false);
