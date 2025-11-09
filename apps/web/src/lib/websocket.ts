@@ -1,10 +1,7 @@
 // apps/web/src/lib/websocket.ts
 import { io, Socket } from 'socket.io-client';
 
-const isDevelopment = import.meta.env.DEV;
-const WS_URL = isDevelopment 
-  ? 'http://localhost:3001'
-  : (import.meta.env.VITE_BASE_URL || 'https://your-production-api.com');
+const WS_URL = import.meta.env.VITE_BASE_URL;
 
 export enum WebSocketEvent {
   // Challenge Events
