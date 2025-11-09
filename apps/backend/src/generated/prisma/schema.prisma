@@ -1,0 +1,345 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id              Int                  @id @default(autoincrement())
+  username             String               @unique
+  email                String               @unique
+  password_hash        String
+  role                 UserRole             @default(user)
+  is_email_verified    Boolean              @default(false)
+  is_active            Boolean              @default(true)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  deleted_at           DateTime?
+  announcements        Announcement[]
+  chatbotConversations ChatbotConversation?
+  comments             Comment[]
+  craftIdeas           CraftIdea[]
+  createdChallenges    EcoChallenge[]
+  likes                Like[]
+  moderationLogs       ModerationLog[]      @relation("ModerationByAdmin")
+  moderationTargets    ModerationLog[]      @relation("ModerationTargetUser")
+  posts                Post[]
+  reportsFiled         Report[]             @relation("reporter")
+  reportsResolved      Report[]             @relation("resolver")
+  userChallenges       UserChallenge[]
+  verifiedChallenges   UserChallenge[]      @relation("VerifiedBy")
+  profile              UserProfile?
+  refreshTokens        RefreshToken[]
+  createdSponsors      Sponsor[]            @relation("CreatedSponsor")
+  redemptions          UserRedemption[]
+}
+
+model UserProfile {
+  user_id               Int       @id
+  full_name             String?
+  bio                   String?
+  profile_picture_url   String?
+  points                Int       @default(0)
+  total_waste_kg        Float     @default(0) // NEW
+  skipped_challenges    Int[]     @default([]) // NEW: Track skipped challenge IDs
+  home_dashboard_layout Json?
+  deleted_at            DateTime?
+  user                  User      @relation(fields: [user_id], references: [user_id])
+}
+
+model RefreshToken {
+  token_id   Int       @id @default(autoincrement())
+  user_id    Int
+  token_hash String    @unique
+  expires_at DateTime
+  created_at DateTime  @default(now())
+  last_used  DateTime?
+  deleted_at DateTime?
+  user       User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model CraftIdea {
+  idea_id              Int       @id @default(autoincrement())
+  generated_by_user_id Int?
+  idea_json            Json
+  recycled_materials   Json?
+  created_at           DateTime  @default(now())
+  deleted_at           DateTime?
+  generated_by_user    User?     @relation(fields: [generated_by_user_id], references: [user_id])
+}
+
+model ChatbotConversation {
+  conversation_id Int              @id @default(autoincrement())
+  user_id         Int              @unique
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @default(now())
+  deleted_at      DateTime?
+  user            User             @relation(fields: [user_id], references: [user_id])
+  messages        ChatbotMessage[]
+}
+
+model ChatbotMessage {
+  message_id      Int                 @id @default(autoincrement())
+  conversation_id Int
+  sender          MessageSender
+  content         String
+  created_at      DateTime            @default(now())
+  deleted_at      DateTime?
+  conversation    ChatbotConversation @relation(fields: [conversation_id], references: [conversation_id])
+}
+
+model Post {
+  post_id    Int       @id @default(autoincrement())
+  user_id    Int
+  title      String
+  content    String
+  image_url  String?
+  tags       String[]
+  category   Category
+  featured   Boolean   @default(false)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+  comments   Comment[]
+  likes      Like[]
+  user       User      @relation(fields: [user_id], references: [user_id])
+  reports    Report[]
+}
+
+model Comment {
+  comment_id Int       @id @default(autoincrement())
+  post_id    Int
+  user_id    Int
+  content    String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+  post       Post      @relation(fields: [post_id], references: [post_id])
+  user       User      @relation(fields: [user_id], references: [user_id])
+  reports    Report[]
+}
+
+model Like {
+  like_id    Int       @id @default(autoincrement())
+  post_id    Int
+  user_id    Int
+  created_at DateTime  @default(now())
+  deleted_at DateTime?
+  post       Post      @relation(fields: [post_id], references: [post_id])
+  user       User      @relation(fields: [user_id], references: [user_id])
+
+  @@unique([post_id, user_id])
+}
+
+model EcoChallenge {
+  challenge_id        Int               @id @default(autoincrement())
+  title               String
+  description         String
+  points_reward       Int
+  waste_kg            Float             @default(0) // NEW
+  is_active           Boolean           @default(true)
+  source              ChallengeSource   @default(admin)
+  material_type       MaterialType
+  category            ChallengeCategory
+  created_by_admin_id Int?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @default(now())
+  deleted_at          DateTime?
+  start_at            DateTime          @default(now())
+  expires_at          DateTime?
+  created_by_admin    User?             @relation(fields: [created_by_admin_id], references: [user_id])
+  participants        UserChallenge[]
+}
+
+model UserChallenge {
+  user_challenge_id    Int               @id @default(autoincrement())
+  user_id              Int
+  challenge_id         Int
+  status               ChallengeStatus   @default(in_progress)
+  proof_url            String?
+  completed_at         DateTime?
+  verified_at          DateTime?
+  verified_by_admin_id Int?
+  verification_type    VerificationType?
+  ai_confidence_score  Float?
+  points_awarded       Int               @default(0)
+  waste_kg_saved       Float             @default(0) // NEW
+  admin_notes          String?
+  created_at           DateTime          @default(now())
+  deleted_at           DateTime?
+  skipped_at           DateTime?
+  challenge            EcoChallenge      @relation(fields: [challenge_id], references: [challenge_id])
+  user                 User              @relation(fields: [user_id], references: [user_id])
+  verified_by          User?             @relation("VerifiedBy", fields: [verified_by_admin_id], references: [user_id])
+
+  @@unique([user_id, challenge_id])
+}
+
+model Report {
+  report_id            Int          @id @default(autoincrement())
+  reporter_id          Int
+  reported_post_id     Int?
+  reported_comment_id  Int?
+  reason               String
+  status               ReportStatus @default(pending)
+  moderator_notes      String?
+  resolved_by_admin_id Int?
+  created_at           DateTime     @default(now())
+  resolved_at          DateTime?
+  deleted_at           DateTime?
+  reported_comment     Comment?     @relation(fields: [reported_comment_id], references: [comment_id])
+  reported_post        Post?        @relation(fields: [reported_post_id], references: [post_id])
+  reporter             User         @relation("reporter", fields: [reporter_id], references: [user_id])
+  resolver             User?        @relation("resolver", fields: [resolved_by_admin_id], references: [user_id])
+}
+
+model Announcement {
+  announcement_id Int       @id @default(autoincrement())
+  admin_id        Int?
+  title           String
+  content         String
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  expires_at      DateTime?
+  deleted_at      DateTime?
+  admin           User?     @relation(fields: [admin_id], references: [user_id])
+}
+
+model ModerationLog {
+  log_id         Int              @id @default(autoincrement())
+  admin_id       Int?
+  action         ModerationAction
+  target_id      String
+  target_user_id Int?
+  reason         String?
+  created_at     DateTime         @default(now())
+  deleted_at     DateTime?
+  admin          User?            @relation("ModerationByAdmin", fields: [admin_id], references: [user_id])
+  target_user    User?            @relation("ModerationTargetUser", fields: [target_user_id], references: [user_id])
+}
+
+model Sponsor {
+  sponsor_id          Int             @id @default(autoincrement())
+  name                String          @unique
+  logo_url            String?
+  description         String?
+  contact_email       String?
+  is_active           Boolean         @default(true)
+  created_by_admin_id Int?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+  deleted_at          DateTime?
+  created_by_admin    User?           @relation("CreatedSponsor", fields: [created_by_admin_id], references: [user_id])
+  rewards             SponsorReward[]
+}
+
+model SponsorReward {
+  reward_id              Int              @id @default(autoincrement())
+  sponsor_id             Int
+  title                  String
+  description            String?
+  points_cost            Int
+  quantity               Int?
+  redeemed_count         Int              @default(0)
+  is_active              Boolean          @default(true)
+  display_on_leaderboard Boolean          @default(true)
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  expires_at             DateTime?
+  deleted_at             DateTime?
+  sponsor                Sponsor          @relation(fields: [sponsor_id], references: [sponsor_id])
+  claims                 UserRedemption[]
+}
+
+model UserRedemption {
+  redemption_id Int              @id @default(autoincrement())
+  user_id       Int
+  reward_id     Int
+  status        RedemptionStatus @default(pending)
+  claimed_at    DateTime         @default(now())
+  fulfilled_at  DateTime?
+  deleted_at    DateTime?
+  user          User             @relation(fields: [user_id], references: [user_id])
+  reward        SponsorReward    @relation(fields: [reward_id], references: [reward_id])
+
+  @@unique([user_id, reward_id])
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum ReportStatus {
+  pending
+  in_review
+  resolved
+}
+
+enum ModerationAction {
+  warn_user
+  ban_user
+  delete_post
+  delete_comment
+}
+
+enum MessageSender {
+  user
+  ai
+}
+
+enum Category {
+  Social
+  Tutorial
+  Challenge
+  Marketplace
+  Other
+}
+
+enum ChallengeStatus {
+  in_progress
+  pending_verification
+  completed
+  rejected
+}
+
+enum ChallengeSource {
+  admin
+  ai
+}
+
+enum MaterialType {
+  plastic
+  paper
+  glass
+  metal
+  electronics
+  organic
+  textile
+  mixed
+}
+
+enum ChallengeCategory {
+  daily
+  weekly
+  monthly
+}
+
+enum VerificationType {
+  manual
+  ai
+}
+
+enum RedemptionStatus {
+  pending
+  fulfilled
+  cancelled
+}
