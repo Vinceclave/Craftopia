@@ -690,7 +690,7 @@ export default function AdminChallenges() {
                                 {challenge.created_by_admin && (
                                   <span className="flex items-center gap-1">
                                     <span>•</span>
-                                    <span>By {challenge.created_by_admin.username}</span>
+                                    <span>By {challenge.created_by_admin}</span>
                                   </span>
                                 )}
                               </div>

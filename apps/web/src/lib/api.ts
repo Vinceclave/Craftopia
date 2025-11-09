@@ -136,6 +136,7 @@ export interface Challenge {
   category: 'daily' | 'weekly' | 'monthly';
   is_active: boolean;
   source: 'admin' | 'ai';
+  created_by_admin?: string;
   created_at: string;
   expires_at?: string;
   _count?: {
