@@ -36,37 +36,33 @@ app.disable('x-powered-by');
 // ============================================
 
 const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Postman, mobile apps, curl
+
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:8081',
       'http://127.0.0.1:8081',
       'http://192.168.1.10:8081',
+      'https://craftopia-web.vercel.app',
+      'capacitor://localhost', // mobile app (iOS/Android)
+      'ionic://localhost',     // another mobile variant
       config.frontend.url
     ];
-    
-    // Allow all localhost origins in development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return callback(null, true);
-    }
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      logger.logSecurityEvent('CORS Blocked Origin', 'low', { origin });
-      callback(new Error('Not allowed by CORS'));
-    }
+
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    logger.logSecurityEvent('CORS Blocked Origin', 'low', { origin });
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
+  exposedHeaders: ['Content-Type','Authorization'],
   maxAge: 86400,
 };
+
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
