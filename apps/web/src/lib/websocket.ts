@@ -4,7 +4,7 @@ import { io, Socket } from 'socket.io-client';
 const isDevelopment = import.meta.env.DEV;
 const WS_URL = isDevelopment 
   ? 'http://localhost:3001'
-  : (import.meta.env.VITE_WS_URL || 'https://your-production-api.com');
+  : (import.meta.env.VITE_BASE_URL || 'https://your-production-api.com');
 
 export enum WebSocketEvent {
   // Challenge Events
