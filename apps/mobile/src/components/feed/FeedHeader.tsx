@@ -20,14 +20,14 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
   hasActiveFilter,
 }) => {
   return (
-    <View className="px-5 pt-10 pb-3 bg-white border-b border-craftopa-light/10">
+    <View className="px-5 pt-10 pb-3 bg-white border-b border-[#5A7160]/10">
       {/* Main Header Row */}
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1">
-          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+          <Text className="text-xs font-nunito text-gray-500 tracking-wider mb-0.5">
             Discover
           </Text>
-          <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
+          <Text className="text-xl font-bold font-poppins text-gray-800 tracking-tight">
             Find Inspiration
           </Text>
         </View>
@@ -35,11 +35,14 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
         {/* Action Buttons */}
         <View className="flex-row items-center gap-2">
           <TouchableOpacity 
-            className={`w-9 h-9 rounded-lg items-center justify-center border active:opacity-70 ${
-              hasActiveFilter 
-                ? 'bg-craftopa-primary border-craftopa-primary/20' 
-                : 'bg-white border-craftopa-light/10'
-            } shadow-sm`}
+            className={`
+              w-9 h-9 rounded-lg items-center justify-center border
+              shadow-sm
+              ${hasActiveFilter 
+                ? 'bg-[#5A7160] border-[#5A7160]/20' 
+                : 'bg-white border-[#5A7160]/10'
+              }
+            `}
             onPress={onFilterPress}
             activeOpacity={0.7}
           >
@@ -49,12 +52,12 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
               strokeWidth={2}
             />
             {hasActiveFilter && (
-              <View className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-craftopa-accent rounded-full border border-white shadow-sm" />
+              <View className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#D4A96A] rounded-full border border-white shadow-sm" />
             )}
           </TouchableOpacity>
           
           <TouchableOpacity 
-            className="w-9 h-9 bg-white border border-craftopa-light/10 rounded-lg items-center justify-center shadow-sm active:opacity-70"
+            className="w-9 h-9 rounded-lg items-center justify-center border border-[#5A7160]/10 bg-white shadow-sm"
             onPress={onSearchPress}
             activeOpacity={0.7}
           >

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/CategoryFilterModal.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/CategoryFilterModal.tsx - NATIVEWIND VERSION
 import React from 'react';
 import {
   View,
@@ -6,8 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
+  Dimensions,
 } from 'react-native';
 import { X, Check, Grid, Users, BookOpen, Trophy, ShoppingBag, MoreHorizontal } from 'lucide-react-native';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 interface Category {
   id: string;
@@ -39,7 +42,9 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
     const iconColor = isSelected ? '#FFFFFF' : '#5A7160';
     const iconSize = 20;
 
-    switch (categoryId) {
+    const id = categoryId?.toLowerCase() || '';
+
+    switch (id) {
       case 'social':
         return <Users size={iconSize} color={iconColor} />;
       case 'tutorial':
@@ -50,10 +55,14 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
         return <ShoppingBag size={iconSize} color={iconColor} />;
       case 'other':
         return <MoreHorizontal size={iconSize} color={iconColor} />;
+      case 'all':
+        return <Grid size={iconSize} color={iconColor} />;
       default:
         return <Grid size={iconSize} color={iconColor} />;
     }
   };
+
+  if (!visible) return null;
 
   return (
     <Modal
@@ -71,80 +80,93 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
           onPress={onClose}
         />
         
-        {/* Modal Content */}
+        {/* Modal Content Container */}
         <View 
-          className="bg-white rounded-t-3xl pt-5 pb-8 max-h-[70%] shadow-xl"
+          className="bg-white rounded-t-3xl shadow-lg"
+          style={{ height: SCREEN_HEIGHT * 0.7 }}
         >
           {/* Header */}
-          <View className="px-5 pb-4 border-b border-craftopa-light/10">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
-                  Filter By
-                </Text>
-                <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
-                  Categories
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={onClose}
-                className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/10 active:opacity-70 border border-craftopa-light/10"
-              >
-                <X size={18} color="#5A7160" />
-              </TouchableOpacity>
+          <View className="flex-row items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
+            <View className="flex-1">
+              <Text className="text-sm text-gray-500 mb-0.5">Filter By</Text>
+              <Text className="text-xl font-bold text-gray-800">Categories</Text>
             </View>
+            <TouchableOpacity
+              onPress={onClose}
+              className="w-9 h-9 items-center justify-center rounded-xl bg-gray-100"
+              activeOpacity={0.7}
+            >
+              <X size={18} color="#5A7160" />
+            </TouchableOpacity>
           </View>
 
           {/* Categories List */}
-          <ScrollView 
-            className="flex-1"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingVertical: 12 }}
-          >
-            {/* Category List */}
-            {categories.map((category) => {
-              const isSelected = selectedCategory === category.id;
-              
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  className={`flex-row items-center justify-between mx-5 p-4 rounded-2xl mb-2 active:opacity-70 border ${
-                    isSelected 
-                      ? 'bg-craftopa-primary border-craftopa-primary/20' 
-                      : 'bg-white border-craftopa-light/10'
-                  } shadow-sm`}
-                  onPress={() => handleCategoryPress(category.id)}
-                >
-                  <View className="flex-row items-center flex-1">
-                    <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 border ${
-                      isSelected ? 'bg-white/20 border-white/30' : 'bg-craftopa-light/5 border-craftopa-light/10'
-                    }`}>
-                      {getCategoryIcon(category.id, isSelected)}
-                    </View>
-                    <Text className={`font-poppinsBold text-base tracking-tight ${
-                      isSelected ? 'text-white' : 'text-craftopa-textPrimary'
-                    }`}>
-                      {category.label}
-                    </Text>
-                  </View>
+          <View className="flex-1 px-5">
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingVertical: 16 }}
+            >
+              {categories && categories.length > 0 ? (
+                categories.map((category, index) => {
+                  if (!category || !category.id) return null;
+
+                  const isSelected = selectedCategory === category.id;
                   
-                  {isSelected && (
-                    <Check size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                  return (
+                    <TouchableOpacity
+                      key={`${category.id}-${index}`}
+                      className={`
+                        flex-row items-center justify-between p-4 rounded-2xl mb-2 
+                        border shadow-sm
+                        ${isSelected 
+                          ? 'bg-[#5A7160] border-[#5A7160]/20' 
+                          : 'bg-white border-gray-100'
+                        }
+                      `}
+                      onPress={() => handleCategoryPress(category.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View className="flex-row items-center flex-1">
+                        <View className={`
+                          w-10 h-10 rounded-xl items-center justify-center mr-3 
+                          border
+                          ${isSelected 
+                            ? 'bg-white/20 border-white/30' 
+                            : 'bg-gray-50 border-gray-100'
+                          }
+                        `}>
+                          {getCategoryIcon(category.id, isSelected)}
+                        </View>
+                        <Text className={`
+                          font-bold text-base
+                          ${isSelected ? 'text-white' : 'text-gray-800'}
+                        `}>
+                          {category.label || category.id}
+                        </Text>
+                      </View>
+                      
+                      {isSelected && (
+                        <Check size={20} color="#FFFFFF" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View className="py-10 items-center justify-center">
+                  <Text className="text-sm text-gray-500">No categories available</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
 
           {/* Done Button */}
-          <View className="px-5 pt-4">
+          <View className="px-5 pt-4 pb-8 border-t border-gray-100">
             <TouchableOpacity
               onPress={onClose}
-              className="bg-craftopa-primary py-4 rounded-2xl items-center active:opacity-70 shadow-sm border border-craftopa-primary/20"
+              className="bg-[#5A7160] py-4 rounded-2xl items-center shadow-md"
+              activeOpacity={0.7}
             >
-              <Text className="text-white font-poppinsBold text-base tracking-tight">
-                Apply Filter
-              </Text>
+              <Text className="text-white font-bold text-base">Apply Filter</Text>
             </TouchableOpacity>
           </View>
         </View>

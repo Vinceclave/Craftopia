@@ -17,7 +17,7 @@ interface FeedTabsProps {
 
 export const FeedTabs: React.FC<FeedTabsProps> = ({ activeTab, onTabChange }) => {
   return (
-    <View className="flex-row justify-center bg-white/80 rounded-lg p-1 border border-craftopa-light/10">
+    <View className="flex-row justify-center bg-white/80 rounded-lg p-1 border border-[#5A7160]/10">
       {FEED_TABS.map((tab) => {
         const isActive = activeTab === tab.key;
         const IconComponent = tab.icon;
@@ -25,11 +25,13 @@ export const FeedTabs: React.FC<FeedTabsProps> = ({ activeTab, onTabChange }) =>
           <TouchableOpacity
             key={tab.key}
             onPress={() => onTabChange(tab.key)}
-            className={`flex-1 mx-0.5 py-2 rounded-lg active:opacity-70 ${
-              isActive 
-                ? 'bg-craftopa-primary shadow-sm' 
+            className={`
+              flex-1 mx-0.5 py-2 rounded-lg
+              ${isActive 
+                ? 'bg-[#5A7160] shadow-sm' 
                 : 'bg-transparent'
-            }`}
+              }
+            `}
             activeOpacity={0.7}
           >
             <View className="flex-row items-center justify-center">
@@ -38,9 +40,10 @@ export const FeedTabs: React.FC<FeedTabsProps> = ({ activeTab, onTabChange }) =>
                 color={isActive ? '#FFFFFF' : '#6B7280'} 
                 strokeWidth={isActive ? 2.5 : 2}
               />
-              <Text className={`text-xs font-poppinsBold ml-1 tracking-tight ${
-                isActive ? 'text-white' : 'text-craftopa-textSecondary'
-              }`}>
+              <Text className={`
+                text-xs font-bold ml-1 tracking-tight
+                ${isActive ? 'text-white' : 'text-gray-500'}
+              `}>
                 {tab.label}
               </Text>
             </View>

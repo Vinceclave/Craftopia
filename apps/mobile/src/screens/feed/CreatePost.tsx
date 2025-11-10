@@ -1,15 +1,15 @@
+// apps/mobile/src/screens/feed/CreatePost.tsx - FIXED: Using props only
 import React, { useRef, useState } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Modal } from 'react-native'
 import { Input } from '~/components/common/TextInputField'
 import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, ChevronDown, Check, Image as ImageIcon, Hash, Tag } from 'lucide-react-native'
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native'
+import { ArrowLeft, ChevronDown, Check, Image as ImageIcon, Hash } from 'lucide-react-native'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import type { FeedStackParamList } from '~/navigations/types'
 import { postService } from '~/services/post.service'
 import { useAlert } from '~/hooks/useAlert'
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import type { FeedStackParamList } from '~/navigations/types'
 
 interface CreatePostFormData {
   title: string
@@ -28,12 +28,10 @@ const CATEGORIES = [
   { id: 'Other', label: 'Other', icon: '📝', description: 'General posts' },
 ]
 
-type CreatePostNavigationProp = NativeStackNavigationProp<FeedStackParamList, 'Create'>
-type CreatePostRouteProp = RouteProp<FeedStackParamList, 'Create'>
+// ✅ Use screen props instead of hooks
+type CreatePostScreenProps = NativeStackScreenProps<FeedStackParamList, 'Create'>;
 
-export const CreatePostScreen = () => {
-  const navigation = useNavigation<CreatePostNavigationProp>()
-  const route = useRoute<CreatePostRouteProp>()
+export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }) => {
   const onPostCreated = route.params?.onPostCreated
 
   const { success, error } = useAlert()

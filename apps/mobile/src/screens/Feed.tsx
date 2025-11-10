@@ -1,7 +1,8 @@
-// apps/mobile/src/screens/Feed.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/screens/Feed.tsx - FIXED: Using props only, no useNavigation
 import React, { useState, useEffect, useCallback } from 'react';
 import { FlatList, RefreshControl, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { PostContainer } from '~/components/feed/post/PostContainer';
 import { FeedHeader } from '~/components/feed/FeedHeader';
@@ -12,9 +13,7 @@ import { CreatePostFAB } from '~/components/feed/CreatePostFab';
 import { CategoryFilterModal } from '~/components/feed/CategoryFilterModal';
 import { SearchModal } from '~/components/feed/post/SearchModal';
 
-import { FeedStackParamList } from '~/navigations/types';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { FeedStackParamList } from '~/navigations/types';
 
 import { 
   useInfinitePosts, 
@@ -34,8 +33,10 @@ const CATEGORIES = [
   { id: 'Other', label: 'Other', icon: '📝' },
 ];
 
-export const FeedScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<FeedStackParamList>>();
+// ✅ Use screen props instead of useNavigation hook
+type FeedScreenProps = NativeStackScreenProps<FeedStackParamList, 'Feed'>;
+
+export const FeedScreen: React.FC<FeedScreenProps> = ({ navigation }) => {
   
   // State
   const [activeTab, setActiveTab] = useState<FeedType>('all');
@@ -102,16 +103,16 @@ export const FeedScreen = () => {
     } else {
       connectionPulse.setValue(1);
     }
-  }, [isConnected]);
+  }, [isConnected, connectionPulse]);
 
   // Handlers
-  const handleToggleReaction = async (postId: number) => {
+  const handleToggleReaction = useCallback(async (postId: number) => {
     try {
       await toggleReactionMutation.mutateAsync(postId);
     } catch (error) {
       console.error('Failed to toggle reaction:', error);
     }
-  };
+  }, [toggleReactionMutation]);
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -123,15 +124,15 @@ export const FeedScreen = () => {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const handleCreatePost = () => {
+  const handleCreatePost = useCallback(() => {
     navigation.navigate('Create', { onPostCreated: handleRefresh });
-  };
+  }, [navigation, handleRefresh]);
 
-  const handleSearchPress = () => {
+  const handleSearchPress = useCallback(() => {
     setShowSearchModal(true);
-  };
+  }, []);
 
-  const handleSearchResult = (result: any) => {
+  const handleSearchResult = useCallback((result: any) => {
     switch (result.type) {
       case 'post':
         setShowSearchModal(false);
@@ -145,42 +146,42 @@ export const FeedScreen = () => {
         setShowSearchModal(false);
         break;
     }
-  };
+  }, []);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
     setActiveTab('all');
-  };
+  }, []);
 
-  const handleTagPress = (tag: string) => {
+  const handleTagPress = useCallback((tag: string) => {
     setSelectedTag(tag);
     setActiveTab('all');
-  };
+  }, []);
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
     setShowCategoryFilter(false);
-  };
+  }, []);
 
-  const handleTabChange = (tab: FeedType) => {
+  const handleTabChange = useCallback((tab: FeedType) => {
     setActiveTab(tab);
     clearAllFilters();
-  };
+  }, []);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedCategory('all');
     setSelectedTag(null);
-  };
+  }, []);
 
   const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedTag;
 
   // Generate unique, stable key for each post
-  const getPostKey = (item: Post, index: number) => {
+  const getPostKey = useCallback((item: Post, index: number) => {
     const postId = item?.post_id || `temp-${index}`;
     const timestamp = item?.updated_at || item?.created_at || '';
     return `post-${postId}-${timestamp}`;
-  };
+  }, []);
 
   const renderPost = useCallback(({ item, index }: { item: Post; index: number }) => {
     // Validate post has required data
@@ -197,7 +198,7 @@ export const FeedScreen = () => {
         onToggleReaction={() => handleToggleReaction(item.post_id)}
       />
     );
-  }, []);
+  }, [getPostKey, handleToggleReaction]);
 
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopa-light/5">
