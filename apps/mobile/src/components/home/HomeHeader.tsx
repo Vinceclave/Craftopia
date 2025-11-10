@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View, Image, TouchableOpacity } from 'react-native';
+import { Text, View, TouchableOpacity } from 'react-native';
 import { Bell, Sparkles, User } from 'lucide-react-native';
 import { useCurrentUser } from '~/hooks/useAuth';
 
@@ -25,10 +25,10 @@ export const HomeHeader = () => {
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1">
           <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
-            Good {greeting} 🌱
+            {`Good ${greeting} 🌱`}
           </Text>
           <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
-            {user?.username || 'Crafter'}
+            {String(user?.username || 'Crafter')}
           </Text>
         </View>
         
@@ -50,7 +50,7 @@ export const HomeHeader = () => {
           </View>
           <View className="flex-1">
             <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
-              {getMotivationalMessage()}
+              {String(getMotivationalMessage())}
             </Text>
             <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
               Complete today's quests to unlock rewards

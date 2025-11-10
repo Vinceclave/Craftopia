@@ -1,4 +1,4 @@
-// HomeActivity.tsx - Redesigned with modern Craftopia aesthetic
+// HomeActivity.tsx - Fixed version
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Activity, Award, MessageCircle, Heart, ChevronRight, Trophy, Sparkles, FileText, CheckCircle, Clock, Target } from 'lucide-react-native';
@@ -36,7 +36,7 @@ const fetchUserActivity = async (): Promise<ActivityItem[]> => {
             id: `post-${post.post_id}`,
             type: 'post',
             title: 'Post Created',
-            description: post.title || 'Created a new post',
+            description: String(post.title || 'Created a new post'),
             time: formatTimeAgo(post.created_at),
             created_at: post.created_at,
             metadata: { 
@@ -51,7 +51,7 @@ const fetchUserActivity = async (): Promise<ActivityItem[]> => {
               id: `post-likes-${post.post_id}`,
               type: 'like',
               title: 'Post Liked',
-              description: `${post.likeCount || post.like_count} people liked your post`,
+              description: `${String(post.likeCount || post.like_count)} people liked your post`,
               time: formatTimeAgo(post.created_at),
               created_at: post.created_at,
               metadata: { postId: post.post_id }
@@ -63,7 +63,7 @@ const fetchUserActivity = async (): Promise<ActivityItem[]> => {
               id: `post-comments-${post.post_id}`,
               type: 'comment',
               title: 'Post Commented',
-              description: `${post.commentCount || post.comment_count} comments on your post`,
+              description: `${String(post.commentCount || post.comment_count)} comments on your post`,
               time: formatTimeAgo(post.created_at),
               created_at: post.created_at,
               metadata: { postId: post.post_id }
@@ -84,7 +84,7 @@ const fetchUserActivity = async (): Promise<ActivityItem[]> => {
       if (challengesResponse.data && Array.isArray(challengesResponse.data)) {
         challengesResponse.data.slice(0, 10).forEach((uc: any) => {
           const challenge = uc.challenge;
-          const challengeTitle = challenge?.title || 'Challenge';
+          const challengeTitle = String(challenge?.title || 'Challenge');
 
           if (uc.status === 'verified') {
             activities.push({
@@ -181,7 +181,7 @@ export const HomeActivity = () => {
         id: `post-rt-${Date.now()}`,
         type: 'post',
         title: 'Post Created',
-        description: data.title || 'Created a new post',
+        description: String(data.title || 'Created a new post'),
         time: 'Just now',
         isNew: true,
         created_at: new Date().toISOString(),
@@ -202,7 +202,7 @@ export const HomeActivity = () => {
         id: `like-rt-${Date.now()}`,
         type: 'like',
         title: 'Post Liked',
-        description: `${data.username} liked your post`,
+        description: `${String(data.username)} liked your post`,
         time: 'Just now',
         isNew: true,
         created_at: new Date().toISOString(),
@@ -222,7 +222,7 @@ export const HomeActivity = () => {
         id: `comment-rt-${Date.now()}`,
         type: 'comment',
         title: 'New Comment',
-        description: `${data.username} commented on your post`,
+        description: `${String(data.username)} commented on your post`,
         time: 'Just now',
         isNew: true,
         created_at: new Date().toISOString(),
@@ -242,7 +242,7 @@ export const HomeActivity = () => {
         id: `challenge-verified-rt-${Date.now()}`,
         type: 'challenge_verified',
         title: 'Quest Verified',
-        description: `${data.challenge?.title || 'Quest'} completed`,
+        description: `${String(data.challenge?.title || 'Quest')} completed`,
         time: 'Just now',
         points: data.points_awarded || 0,
         isNew: true,
@@ -267,7 +267,7 @@ export const HomeActivity = () => {
         id: `points-rt-${Date.now()}`,
         type: 'points',
         title: 'Points Earned',
-        description: data.reason || 'You earned points!',
+        description: String(data.reason || 'You earned points!'),
         time: 'Just now',
         points: data.points || data.amount || 0,
         isNew: true,
@@ -319,7 +319,7 @@ export const HomeActivity = () => {
   };
 
   // Loading State
-    if (isLoading) {
+  if (isLoading) {
     return (
       <View className="px-5 mb-4">
         <View className="flex-row items-center justify-between mb-3">
@@ -404,7 +404,7 @@ export const HomeActivity = () => {
 
       {/* Activity Timeline */}
       <View className="bg-white rounded-2xl shadow-sm border border-craftopa-light/5 overflow-hidden mb-3">
-        {activities.slice(0, 4).map((activity, index) => ( // Reduced from 5 to 4
+        {activities.slice(0, 4).map((activity, index) => (
           <TouchableOpacity
             key={activity.id}
             className="px-4 py-3 active:opacity-70"
@@ -425,7 +425,7 @@ export const HomeActivity = () => {
                 <View className="flex-row items-center justify-between mb-1">
                   <View className="flex-row items-center flex-1">
                     <Text className="text-sm font-poppinsBold text-craftopa-textPrimary flex-1 tracking-tight">
-                      {activity.title}
+                      {String(activity.title)}
                     </Text>
                     {activity.isNew && (
                       <View className="px-1.5 py-0.5 rounded bg-craftopa-primary/10 ml-1.5">
@@ -438,16 +438,16 @@ export const HomeActivity = () => {
                   {activity.points && activity.points > 0 && (
                     <View className="px-2 py-0.5 rounded bg-craftopa-accent/10 ml-1.5">
                       <Text className="text-xs font-poppinsBold text-craftopa-accent">
-                        +{activity.points}
+                        {`+${activity.points}`}
                       </Text>
                     </View>
                   )}
                 </View>
                 <Text className="text-xs font-nunito text-craftopa-textSecondary mb-1 tracking-wide" numberOfLines={2}>
-                  {activity.description}
+                  {String(activity.description)}
                 </Text>
                 <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
-                  {activity.time}
+                  {String(activity.time)}
                 </Text>
               </View>
             </View>
@@ -455,13 +455,15 @@ export const HomeActivity = () => {
         ))}
       </View>
 
-      {/* Motivational Footer */}
+      {/* Motivational Footer - FIXED */}
       <View className="rounded-xl px-3 py-2 bg-gradient-to-r from-craftopa-primary/5 to-craftopa-accent/3 border border-craftopa-light/10">
         <View className="flex-row items-center justify-center">
           <Sparkles size={14} color="#5A7160" />
-          <Text className="text-xs font-nunito text-craftopa-textPrimary text-center flex-1 ml-1.5 tracking-wide">
-            Every action creates positive change! 🌱
-          </Text>
+          <View className="flex-1 ml-1.5">
+            <Text className="text-xs font-nunito text-craftopa-textPrimary text-center tracking-wide">
+              {`Every action creates positive change! 🌱`}
+            </Text>
+          </View>
         </View>
       </View>
     </View>

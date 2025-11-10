@@ -138,13 +138,13 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
   const visibleQuests = quests.slice(0, 3);
 
   const getCategoryIcon = (quest: Quest) => {
-    const category = quest.category?.toLowerCase() || '';
+    const category = String(quest.category?.toLowerCase() || '');
     if (category.includes('daily')) return <Flame size={14} color="#F59E0B" />;
     if (category.includes('weekly')) return <Calendar size={14} color="#3B82F6" />;
     return <Zap size={14} color="#5A7160" />;
   };
 
-    const QuestItem: React.FC<{ quest: Quest }> = ({ quest }) => {
+  const QuestItem: React.FC<{ quest: Quest }> = ({ quest }) => {
     const isCompleted = quest.completed || quest.status === 'completed';
     const progress = quest.progress ?? 0;
     const total = quest.total ?? 1;
@@ -174,23 +174,23 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
           <View className="flex-row items-center px-2 py-1 rounded-lg bg-craftopa-primary/5 border border-craftopa-primary/10">
             {isCompleted ? <CheckCircle size={12} color="#5A7160" /> : getCategoryIcon(quest)}
             <Text className="text-xs font-poppinsBold uppercase tracking-wide ml-1 text-craftopa-textPrimary">
-              {isCompleted ? 'Completed' : quest.category || 'Quest'}
+              {String(isCompleted ? 'Completed' : quest.category || 'Quest')}
             </Text>
           </View>
 
           <View className="px-2 py-1 rounded-lg bg-craftopa-accent/10 border border-craftopa-accent/10">
             <Text className="text-xs font-poppinsBold text-craftopa-accent">
-              +{quest.points_reward ?? quest.points ?? 0}
+              {`+${quest.points_reward ?? quest.points ?? 0}`}
             </Text>
           </View>
         </View>
 
         {/* Content */}
         <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-1.5 tracking-tight">
-          {quest.title}
+          {String(quest.title)}
         </Text>
         <Text className="text-xs font-nunito text-craftopa-textSecondary mb-3 tracking-wide" numberOfLines={2}>
-          {quest.description || 'Complete this challenge to earn rewards'}
+          {String(quest.description || 'Complete this challenge to earn rewards')}
         </Text>
 
         {/* Progress */}
@@ -198,7 +198,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
           <View className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1.5">
               <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">Progress</Text>
-              <Text className="text-xs font-poppinsBold text-craftopa-textPrimary">{progress}/{total}</Text>
+              <Text className="text-xs font-poppinsBold text-craftopa-textPrimary">{`${progress}/${total}`}</Text>
             </View>
 
             <View className="h-1.5 rounded-full overflow-hidden bg-craftopa-light/10">
@@ -246,7 +246,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
         <View className="mb-3 p-3 rounded-xl bg-gradient-to-r from-craftopa-primary/10 to-craftopa-accent/5 border border-craftopa-primary/20 flex-row items-center">
           <Zap size={16} color="#5A7160" />
           <Text className="text-sm font-poppinsBold text-craftopa-textPrimary ml-2 flex-1 tracking-tight">
-            New challenge available! 🎯
+            {`New challenge available! 🎯`}
           </Text>
         </View>
       )}
@@ -264,11 +264,11 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
             {isConnected && <View className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />}
           </View>
           <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mt-0.5">
-            {completedCount}/{totalCount} completed today
+            {`${completedCount}/${totalCount} completed today`}
           </Text>
         </View>
 
-        {totalCount > 2 && ( // Updated from 3 to 2
+        {totalCount > 2 && (
           <TouchableOpacity 
             onPress={onSeeAll} 
             className="flex-row items-center px-3 py-1.5 rounded-lg bg-craftopa-primary/5 active:opacity-70"
@@ -290,7 +290,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
       <View className="bg-white rounded-xl p-3.5 shadow-sm border border-craftopa-light/5">
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">Daily Progress</Text>
-          <Text className="text-sm font-poppinsBold text-craftopa-textPrimary">{Math.round(completionPercent)}%</Text>
+          <Text className="text-sm font-poppinsBold text-craftopa-textPrimary">{`${Math.round(completionPercent)}%`}</Text>
         </View>
 
         <View className="h-1.5 rounded-full overflow-hidden bg-craftopa-light/10 mb-2">
