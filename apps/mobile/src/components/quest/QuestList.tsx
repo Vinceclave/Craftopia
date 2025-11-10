@@ -1,4 +1,4 @@
-// QuestList.tsx - Redesigned to match HomeQuest style
+// QuestList.tsx - FIXED: All text properly wrapped in Text components
 import React from 'react';
 import { Text, View, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Target, ChevronRight, Flame, TrendingUp, Calendar } from 'lucide-react-native';
@@ -186,23 +186,23 @@ export const QuestList = ({
         {quest.description || 'Complete this challenge to earn points'}
       </Text>
 
-      {/* Footer with stats and action */}
+      {/* Footer with stats and action - FIXED */}
       <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
         <View className="flex-row items-center">
-          {quest.waste_kg && quest.waste_kg > 0 && (
+          {quest.waste_kg && quest.waste_kg > 0 ? (
             <View className="flex-row items-center mr-3">
               <Text className="text-xs text-craftopia-textSecondary">
                 🌱 {quest.waste_kg}kg impact
               </Text>
             </View>
-          )}
-          {quest.participantCount && quest.participantCount > 0 && (
+          ) : null}
+          {quest.participantCount && quest.participantCount > 0 ? (
             <View className="flex-row items-center">
               <Text className="text-xs text-craftopia-textSecondary">
                 👥 {quest.participantCount} joined
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View className="flex-row items-center">
