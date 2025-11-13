@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { Bell, Sparkles, User } from 'lucide-react-native';
+import { Bell, Sparkles } from 'lucide-react-native';
 import { useCurrentUser } from '~/hooks/useAuth';
 
 export const HomeHeader = () => {
@@ -20,39 +20,39 @@ export const HomeHeader = () => {
   };
 
   return (
-    <View className="px-5 pt-10 pb-4 bg-craftopia-surface">
+    <View className="px-4 pt-8 pb-3 bg-craftopia-surface border-b border-craftopia-light">
       {/* Main Header Row */}
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1">
-          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+          <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
             {`Good ${greeting} 🌱`}
           </Text>
-          <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
-            {String(user?.username || 'Crafter')}
+          <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
+            {user?.username || 'Crafter'}
           </Text>
         </View>
         
-        <View className="flex-row items-center space-x-2">
+        <View className="flex-row items-center">
           <TouchableOpacity className="relative active:opacity-70">
-            <View className="w-9 h-9 rounded-lg bg-white items-center justify-center shadow-sm border border-craftopa-light/10">
-              <Bell size={18} color="#5A7160" />
+            <View className="w-9 h-9 rounded-lg bg-craftopia-light items-center justify-center border border-craftopia-light">
+              <Bell size={16} color="#3B6E4D" />
             </View>
-            <View className="absolute -top-1 -right-1 w-2 h-2 bg-craftopa-accent rounded-full border border-craftopa-surface shadow-sm" />
+            <View className="absolute -top-1 -right-1 w-2 h-2 bg-craftopia-accent rounded-full border-2 border-craftopia-surface" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Motivational Card */}
-      <View className="bg-white rounded-xl px-3 py-3 shadow-sm border border-craftopa-light/5">
+      <View className="bg-craftopia-light rounded-xl p-3 border border-craftopia-light">
         <View className="flex-row items-center">
-          <View className="w-8 h-8 rounded-lg bg-craftopa-accent/10 items-center justify-center mr-2">
-            <Sparkles size={16} color="#5A7160" />
+          <View className="w-8 h-8 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3 border border-craftopia-primary/20">
+            <Sparkles size={16} color="#3B6E4D" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
-              {String(getMotivationalMessage())}
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
+              {getMotivationalMessage()}
             </Text>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">
               Complete today's quests to unlock rewards
             </Text>
           </View>

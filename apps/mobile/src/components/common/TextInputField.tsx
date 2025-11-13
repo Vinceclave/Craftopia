@@ -36,31 +36,31 @@ export const Input = forwardRef<TextInput, InputProps>(
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className={`mb-4 ${containerClassName}`}>
+      <View className={`mb-3 ${containerClassName}`}>
         {label && (
-          <Text className="text-sm font-poppinsBold mb-2 text-craftopia-text-primary">
+          <Text className="text-sm font-poppinsBold mb-2 text-craftopia-textPrimary">
             {label}
           </Text>
         )}
 
         <View
-          className="flex-row items-center px-4 py-3 rounded-xl bg-white"
+          className="flex-row items-center px-3 py-2.5 rounded-lg bg-craftopia-surface"
           style={{
-            borderWidth: 2,
-            borderColor: error ? '#DC2626' : isFocused ? '#374A36' : '#E5E7EB',
+            borderWidth: 1,
+            borderColor: error ? '#D66B4E' : isFocused ? '#3B6E4D' : '#F5F7F2',
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
+            shadowOffset: { width: 0, height: 1 },
             shadowOpacity: isFocused ? 0.1 : 0,
-            shadowRadius: 4,
-            elevation: isFocused ? 2 : 0,
+            shadowRadius: 2,
+            elevation: isFocused ? 1 : 0,
           }}
         >
-          {leftIcon && <View className="mr-3">{leftIcon}</View>}
+          {leftIcon && <View className="mr-2">{leftIcon}</View>}
 
           <TextInput
             ref={ref}
-            className="flex-1 text-base font-nunito text-craftopia-text-primary"
-            placeholderTextColor="#9CA3AF"
+            className="flex-1 text-sm font-nunito text-craftopia-textPrimary"
+            placeholderTextColor="#5F6F64"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
             blurOnSubmit={isLastInput}
@@ -79,26 +79,26 @@ export const Input = forwardRef<TextInput, InputProps>(
           {secure && (
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              className="ml-2 p-1"
+              className="ml-1 p-1"
               activeOpacity={0.7}
             >
-              {showPassword ? <EyeOff size={20} color="#6B7280" /> : <Eye size={20} color="#6B7280" />}
+              {showPassword ? <EyeOff size={16} color="#5F6F64" /> : <Eye size={16} color="#5F6F64" />}
             </TouchableOpacity>
           )}
 
-          {rightIcon && !secure && <View className="ml-3">{rightIcon}</View>}
+          {rightIcon && !secure && <View className="ml-2">{rightIcon}</View>}
         </View>
 
         {error ? (
-          <View className="flex-row items-center mt-2">
-            <AlertCircle size={14} color="#DC2626" />
-            <Text className="text-sm font-nunito ml-1 text-red-600">
+          <View className="flex-row items-center mt-1">
+            <AlertCircle size={12} color="#D66B4E" />
+            <Text className="text-xs font-nunito ml-1 text-craftopia-error">
               {error}
             </Text>
           </View>
         ) : (
           helper && (
-            <Text className="text-xs font-nunito mt-2 text-gray-500">
+            <Text className="text-xs font-nunito mt-1 text-craftopia-textSecondary">
               {helper}
             </Text>
           )

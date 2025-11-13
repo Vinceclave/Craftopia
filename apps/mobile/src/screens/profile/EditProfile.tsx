@@ -1,4 +1,4 @@
-// EditProfileScreen.tsx - Fixed version
+// EditProfileScreen.tsx - Refined version
 import React, { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -134,7 +134,7 @@ export function EditProfileScreen() {
   const canSave = hasChanges && validation.isValid && !loading;
 
   return (
-    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-background">
       <EditProfileHeader onBackPress={handleBackPress} />
       
       <ScrollView
@@ -166,6 +166,7 @@ export function EditProfileScreen() {
             size="md"
             disabled={!canSave}
             loading={loading}
+            fullWidth
           />
           
           {!hasChanges && !loading && (
@@ -175,7 +176,7 @@ export function EditProfileScreen() {
           )}
           
           {!validation.isValid && (
-            <Text className="text-center text-xs text-red-500 mt-2">
+            <Text className="text-center text-xs text-craftopia-error mt-2">
               {validation.error}
             </Text>
           )}

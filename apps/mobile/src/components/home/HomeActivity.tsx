@@ -1,4 +1,3 @@
-// HomeActivity.tsx - Fixed version
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Activity, Award, MessageCircle, Heart, ChevronRight, Trophy, Sparkles, FileText, CheckCircle, Clock, Target } from 'lucide-react-native';
@@ -300,42 +299,42 @@ export const HomeActivity = () => {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'post':
-        return <FileText size={18} color="#5A7160" />;
+        return <FileText size={16} color="#3B6E4D" />;
       case 'like':
-        return <Heart size={18} color="#EF4444" />;
+        return <Heart size={16} color="#D66B4E" />;
       case 'comment':
-        return <MessageCircle size={18} color="#9333EA" />;
+        return <MessageCircle size={16} color="#5C89B5" />;
       case 'challenge_verified':
-        return <CheckCircle size={18} color="#10B981" />;
+        return <CheckCircle size={16} color="#5BA776" />;
       case 'challenge_pending':
-        return <Clock size={18} color="#F59E0B" />;
+        return <Clock size={16} color="#E3A84F" />;
       case 'challenge_completed':
-        return <Target size={18} color="#5A7160" />;
+        return <Target size={16} color="#3B6E4D" />;
       case 'points':
-        return <Award size={18} color="#D4A96A" />;
+        return <Award size={16} color="#E3A84F" />;
       default:
-        return <Activity size={18} color="#6B7280" />;
+        return <Activity size={16} color="#5F6F64" />;
     }
   };
 
   // Loading State
   if (isLoading) {
     return (
-      <View className="px-5 mb-4">
+      <View className="px-4 mb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
               Recent Activity
             </Text>
-            <Text className="text-base font-poppinsBold text-craftopa-textPrimary tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
               Loading Your Journey
             </Text>
           </View>
         </View>
         
-        <View className="bg-white rounded-2xl p-6 items-center justify-center shadow-sm border border-craftopa-light/5 min-h-24">
-          <ActivityIndicator size="small" color="#5A7160" />
-          <Text className="text-xs font-nunito text-craftopa-textSecondary mt-2 tracking-wide">
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center justify-center border border-craftopia-light min-h-24">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-xs font-nunito text-craftopia-textSecondary mt-2">
             Loading your activities...
           </Text>
         </View>
@@ -346,26 +345,26 @@ export const HomeActivity = () => {
   // Empty State
   if (activities.length === 0) {
     return (
-      <View className="px-5 mb-4">
+      <View className="px-4 mb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
               Recent Activity
             </Text>
-            <Text className="text-base font-poppinsBold text-craftopa-textPrimary tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
               Your Journey
             </Text>
           </View>
         </View>
         
-        <View className="bg-white rounded-2xl p-5 items-center shadow-sm border border-craftopa-light/5">
-          <View className="w-12 h-12 rounded-xl bg-craftopa-primary/5 items-center justify-center mb-2 border border-craftopa-light/10">
-            <Sparkles size={20} color="#5A7160" opacity={0.7} />
+        <View className="bg-craftopia-surface rounded-xl p-5 items-center border border-craftopia-light">
+          <View className="w-12 h-12 rounded-xl bg-craftopia-primary/10 items-center justify-center mb-3 border border-craftopia-primary/20">
+            <Sparkles size={20} color="#3B6E4D" />
           </View>
-          <Text className="text-base font-poppinsBold text-craftopa-textPrimary mb-1 tracking-tight">
+          <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-2">
             Start Your Journey!
           </Text>
-          <Text className="text-xs font-nunito text-craftopa-textSecondary text-center tracking-wide">
+          <Text className="text-sm font-nunito text-craftopia-textSecondary text-center">
             Complete quests and create posts to see activity here.
           </Text>
         </View>
@@ -374,49 +373,48 @@ export const HomeActivity = () => {
   }
 
   return (
-    <View className="px-5 mb-4">
+    <View className="px-4 mb-4">
       {/* Section Header */}
       <View className="flex-row items-center justify-between mb-3">
         <View>
-          <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+          <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
             Recent Activity
           </Text>
           <View className="flex-row items-center">
-            <Text className="text-base font-poppinsBold text-craftopa-textPrimary tracking-tight mr-1.5">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary mr-2">
               Your Journey
             </Text>
             {isConnected && (
-              <View className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
+              <View className="w-1.5 h-1.5 rounded-full bg-craftopia-success" />
             )}
           </View>
         </View>
         
         <TouchableOpacity 
-          className="flex-row items-center px-3 py-1.5 rounded-lg active:opacity-70"
-          style={{ backgroundColor: 'rgba(90, 113, 96, 0.08)' }}
+          className="flex-row items-center px-3 py-1.5 rounded-lg bg-craftopia-primary/10 active:opacity-70"
         >
-          <Text className="text-xs font-poppinsBold mr-1 text-craftopa-textPrimary">
+          <Text className="text-xs font-poppinsBold mr-1 text-craftopia-textPrimary">
             View All
           </Text>
-          <ChevronRight size={12} color="#5A7160" />
+          <ChevronRight size={12} color="#3B6E4D" />
         </TouchableOpacity>
       </View>
 
       {/* Activity Timeline */}
-      <View className="bg-white rounded-2xl shadow-sm border border-craftopa-light/5 overflow-hidden mb-3">
+      <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden mb-3">
         {activities.slice(0, 4).map((activity, index) => (
           <TouchableOpacity
             key={activity.id}
             className="px-4 py-3 active:opacity-70"
             style={{
               borderBottomWidth: index < Math.min(activities.length, 4) - 1 ? 1 : 0,
-              borderBottomColor: 'rgba(90, 113, 96, 0.05)',
-              backgroundColor: activity.isNew ? 'rgba(90, 113, 96, 0.03)' : 'transparent',
+              borderBottomColor: '#F5F7F2',
+              backgroundColor: activity.isNew ? 'rgba(59, 110, 77, 0.05)' : 'transparent',
             }}
           >
             <View className="flex-row items-start">
               {/* Icon */}
-              <View className="w-8 h-8 rounded-lg bg-white items-center justify-center mr-2.5 shadow-sm border border-craftopa-light/5">
+              <View className="w-8 h-8 rounded-lg bg-craftopia-light items-center justify-center mr-3 border border-craftopia-light">
                 {getActivityIcon(activity.type)}
               </View>
 
@@ -424,30 +422,30 @@ export const HomeActivity = () => {
               <View className="flex-1">
                 <View className="flex-row items-center justify-between mb-1">
                   <View className="flex-row items-center flex-1">
-                    <Text className="text-sm font-poppinsBold text-craftopa-textPrimary flex-1 tracking-tight">
-                      {String(activity.title)}
+                    <Text className="text-sm font-poppinsBold text-craftopia-textPrimary flex-1">
+                      {activity.title}
                     </Text>
                     {activity.isNew && (
-                      <View className="px-1.5 py-0.5 rounded bg-craftopa-primary/10 ml-1.5">
-                        <Text className="text-xs font-poppinsBold text-craftopa-textPrimary">
+                      <View className="px-1.5 py-0.5 rounded bg-craftopia-primary/10 ml-2">
+                        <Text className="text-xs font-poppinsBold text-craftopia-textPrimary">
                           NEW
                         </Text>
                       </View>
                     )}
                   </View>
                   {activity.points && activity.points > 0 && (
-                    <View className="px-2 py-0.5 rounded bg-craftopa-accent/10 ml-1.5">
-                      <Text className="text-xs font-poppinsBold text-craftopa-accent">
-                        {`+${activity.points}`}
+                    <View className="px-2 py-0.5 rounded bg-craftopia-warning/10 ml-2">
+                      <Text className="text-xs font-poppinsBold text-craftopia-warning">
+                        +{activity.points}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text className="text-xs font-nunito text-craftopa-textSecondary mb-1 tracking-wide" numberOfLines={2}>
-                  {String(activity.description)}
+                <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1" numberOfLines={2}>
+                  {activity.description}
                 </Text>
-                <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
-                  {String(activity.time)}
+                <Text className="text-xs font-nunito text-craftopia-textSecondary">
+                  {activity.time}
                 </Text>
               </View>
             </View>
@@ -455,15 +453,13 @@ export const HomeActivity = () => {
         ))}
       </View>
 
-      {/* Motivational Footer - FIXED */}
-      <View className="rounded-xl px-3 py-2 bg-gradient-to-r from-craftopa-primary/5 to-craftopa-accent/3 border border-craftopa-light/10">
+      {/* Motivational Footer */}
+      <View className="rounded-xl p-3 bg-craftopia-primary/5 border border-craftopia-primary/20">
         <View className="flex-row items-center justify-center">
-          <Sparkles size={14} color="#5A7160" />
-          <View className="flex-1 ml-1.5">
-            <Text className="text-xs font-nunito text-craftopa-textPrimary text-center tracking-wide">
-              {`Every action creates positive change! 🌱`}
-            </Text>
-          </View>
+          <Sparkles size={14} color="#3B6E4D" />
+          <Text className="text-xs font-nunito text-craftopia-textPrimary text-center ml-2">
+            Every action creates positive change! 🌱
+          </Text>
         </View>
       </View>
     </View>

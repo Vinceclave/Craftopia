@@ -34,7 +34,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
       setUploading(true)
       try {
         const uploadedPath = await uploadToFolder(asset.uri, 'profiles');
-
         if (!uploadedPath) throw new Error('Upload failed');
 
         const fullUrl = uploadedPath.startsWith('http') 
@@ -52,32 +51,32 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
   }
 
   return (
-    <View className="bg-craftopia-surface rounded-lg p-3 border border-craftopia-light/50 mt-2">
-      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
+    <View className="bg-craftopia-surface mx-4 mt-3 rounded-xl p-4 border border-craftopia-light">
+      <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-3">
         Profile Photo
       </Text>
 
       <View className="items-center">
         <TouchableOpacity onPress={() => setShowPicker(true)} disabled={uploading}>
           <View className="relative">
-            <View className="w-16 h-16 bg-craftopia-light rounded-lg items-center justify-center overflow-hidden border border-craftopia-light/50">
+            <View className="w-16 h-16 bg-craftopia-light rounded-xl items-center justify-center overflow-hidden border border-craftopia-light">
               {isEmoji ? (
                 <Text className="text-base">{avatar}</Text>
               ) : (
                 <Image
                   source={{ uri: avatar }}
-                  className="w-full h-full rounded-lg"
+                  className="w-full h-full rounded-xl"
                   resizeMode="cover"
                 />
               )}
             </View>
-            <View className="absolute -bottom-1 -right-1 w-5 h-5 bg-craftopia-primary rounded-full items-center justify-center border border-craftopia-surface">
-              <Camera size={10} color="#FEFEFE" />
+            <View className="absolute -bottom-1 -right-1 w-5 h-5 bg-craftopia-primary rounded-full items-center justify-center border-2 border-craftopia-surface">
+              <Camera size={10} color="#FFFFFF" />
             </View>
           </View>
         </TouchableOpacity>
 
-        <Text className="text-xs text-craftopia-textSecondary mt-1.5">
+        <Text className="text-xs font-nunito text-craftopia-textSecondary mt-2">
           Tap to change photo
         </Text>
       </View>
@@ -90,8 +89,8 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
       >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-craftopia-surface rounded-t-xl p-4">
-            <View className="w-8 h-0.5 bg-craftopia-light rounded-full self-center mb-3" />
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3 text-center">
+            <View className="w-8 h-1 bg-craftopia-light rounded-full self-center mb-3" />
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-3 text-center">
               Select Image
             </Text>
 
@@ -99,10 +98,10 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
               className="flex-row items-center p-3 bg-craftopia-light rounded-lg mb-2"
               onPress={() => pickImage(true)}
             >
-              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <Camera size={14} color="#374A36" />
+              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-lg items-center justify-center mr-3">
+                <Camera size={16} color="#3B6E4D" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
+              <Text className="text-sm font-nunito text-craftopia-textPrimary">
                 Take Photo
               </Text>
             </TouchableOpacity>
@@ -111,10 +110,10 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
               className="flex-row items-center p-3 bg-craftopia-light rounded-lg"
               onPress={() => pickImage(false)}
             >
-              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-full items-center justify-center mr-3">
-                <ImageIcon size={14} color="#374A36" />
+              <View className="w-8 h-8 bg-craftopia-primary/10 rounded-lg items-center justify-center mr-3">
+                <ImageIcon size={16} color="#3B6E4D" />
               </View>
-              <Text className="text-craftopia-textPrimary font-medium text-sm">
+              <Text className="text-sm font-nunito text-craftopia-textPrimary">
                 Choose from Gallery
               </Text>
             </TouchableOpacity>
@@ -123,7 +122,7 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
               className="mt-3 p-3 bg-craftopia-light rounded-lg"
               onPress={() => setShowPicker(false)}
             >
-              <Text className="text-center font-medium text-craftopia-textSecondary text-sm">
+              <Text className="text-center text-sm font-nunito text-craftopia-textSecondary">
                 Cancel
               </Text>
             </TouchableOpacity>

@@ -9,20 +9,20 @@ export default function DraggableButton() {
   const insets = useSafeAreaInsets();
 
   const isSmallScreen = dimensions.width < 375;
-  const buttonSize = isSmallScreen ? 50 : 60;
+  const buttonSize = isSmallScreen ? 50 : 56;
   
   const initialX = dimensions.width - buttonSize - (isSmallScreen ? 16 : 20);
   const initialY = dimensions.height - (Platform.OS === 'web' ? buttonSize + 40 : 200 + insets.bottom);
 
   const pan = useRef(new Animated.ValueXY({ x: initialX, y: initialY })).current;
-    const panPos = useRef({ x: initialX, y: initialY });
+  const panPos = useRef({ x: initialX, y: initialY });
 
-    useEffect(() => {
-      pan.addListener(({ x, y }) => {
-        panPos.current = { x, y };
-      });
-      return () => pan.removeAllListeners();
-    }, [pan]);
+  useEffect(() => {
+    pan.addListener(({ x, y }) => {
+      panPos.current = { x, y };
+    });
+    return () => pan.removeAllListeners();
+  }, [pan]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
@@ -129,17 +129,17 @@ export default function DraggableButton() {
           borderRadius: buttonSize / 2,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: isDragging ? '#5D8AA8' : '#6B8E6B',
-          elevation: isDragging ? 12 : 6,
+          backgroundColor: isDragging ? '#4F8A63' : '#3B6E4D',
+          elevation: isDragging ? 8 : 4,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: isDragging ? 6 : 3 },
-          shadowOpacity: isDragging ? 0.4 : 0.3,
-          shadowRadius: isDragging ? 8 : 4,
+          shadowOffset: { width: 0, height: isDragging ? 4 : 2 },
+          shadowOpacity: isDragging ? 0.3 : 0.2,
+          shadowRadius: isDragging ? 6 : 3,
           zIndex: 9999,
           transform: [
             { translateX: pan.x },
             { translateY: pan.y },
-            { scale: isDragging ? 1.15 : 1 },
+            { scale: isDragging ? 1.1 : 1 },
           ],
           cursor: Platform.OS === 'web' ? 'pointer' : undefined,
         } as any}
@@ -148,9 +148,15 @@ export default function DraggableButton() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleOpenChat}
-          style={{ opacity: isDragging ? 0.9 : 1 }}
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            opacity: isDragging ? 0.9 : 1 
+          }}
         >
-          <BotIcon size={isSmallScreen ? 28 : 32} />
+          <BotIcon size={isSmallScreen ? 24 : 28} />
         </TouchableOpacity>
       </Animated.View>
 

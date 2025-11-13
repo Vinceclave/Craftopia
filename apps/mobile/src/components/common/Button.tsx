@@ -39,15 +39,15 @@ const Button: React.FC<ButtonProps> = ({
       ? size === 'sm'
         ? 'p-2'
         : size === 'lg'
-        ? 'p-4'
-        : 'p-3'
+        ? 'p-3'
+        : 'p-2.5'
       : size === 'sm'
-      ? 'py-2 px-4'
+      ? 'py-2 px-3'
       : size === 'lg'
-      ? 'py-4 px-8'
-      : 'py-3 px-6';
+      ? 'py-3 px-6'
+      : 'py-2.5 px-4';
 
-    const baseStyles = `${sizeStyles} items-center justify-center rounded-xl ${
+    const baseStyles = `${sizeStyles} items-center justify-center rounded-lg ${
       iconOnly ? '' : 'flex-row'
     } ${fullWidth ? 'w-full' : ''}`;
 
@@ -57,7 +57,7 @@ const Button: React.FC<ButtonProps> = ({
         variantStyles = isDisabled ? 'bg-gray-100' : 'bg-craftopia-light';
         break;
       case 'outline':
-        variantStyles = isDisabled ? 'bg-transparent border border-gray-200' : 'bg-transparent border-2 border-craftopia-primary';
+        variantStyles = isDisabled ? 'bg-transparent border border-gray-200' : 'bg-transparent border border-craftopia-primary';
         break;
       case 'ghost':
         variantStyles = 'bg-transparent';
@@ -70,12 +70,12 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextStyles = () => {
-    const sizeText = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
+    const sizeText = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-base' : 'text-sm';
     const color =
       variant === 'primary'
         ? isDisabled
           ? 'text-gray-500'
-          : 'text-white'
+          : 'text-craftopia-surface'
         : variant === 'secondary'
         ? isDisabled
           ? 'text-gray-400'
@@ -87,7 +87,7 @@ const Button: React.FC<ButtonProps> = ({
     return `${sizeText} font-poppinsBold ${textClassName || color}`;
   };
 
-  const getActivityIndicatorColor = () => (variant === 'primary' ? '#fff' : '#374A36');
+  const getActivityIndicatorColor = () => (variant === 'primary' ? '#FFFFFF' : '#3B6E4D');
 
   return (
     <TouchableOpacity
@@ -95,7 +95,7 @@ const Button: React.FC<ButtonProps> = ({
       style={[
         style,
         {
-          shadowColor: !isDisabled && variant === 'primary' ? '#374A36' : 'transparent',
+          shadowColor: !isDisabled && variant === 'primary' ? '#3B6E4D' : 'transparent',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
@@ -119,4 +119,4 @@ const Button: React.FC<ButtonProps> = ({
   );
 };
 
-export default Button;
+export default Button;  

@@ -23,7 +23,7 @@ type SettingsItemProps = {
   icon?: React.ComponentType<any>;
   onPress?: () => void;
   showArrow?: boolean;
-  rightElement?: React.ReactNode; // ✅ optional now
+  rightElement?: React.ReactNode;
 };
 
 export function SettingsScreen() {
@@ -40,39 +40,39 @@ export function SettingsScreen() {
   }) => (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center justify-between py-2.5 px-4 border-b border-craftopia-light/50 last:border-b-0"
+      className="flex-row items-center justify-between py-3 px-4 border-b border-craftopia-light active:bg-craftopia-light/20"
       activeOpacity={0.7}
     >
       <View className="flex-row items-center flex-1">
         {Icon && (
-          <View className="w-8 h-8 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3">
-            <Icon size={14} color="#374A36" />
+          <View className="w-9 h-9 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3 border border-craftopia-primary/20">
+            <Icon size={16} color="#3B6E4D" />
           </View>
         )}
-        <Text className="text-sm text-craftopia-textPrimary font-medium flex-1">
+        <Text className="text-sm font-nunito text-craftopia-textPrimary flex-1">
           {title}
         </Text>
       </View>
       
-      {rightElement || (showArrow && <ChevronRight size={14} color="#5D6B5D" />)}
+      {rightElement || (showArrow && <ChevronRight size={16} color="#5F6F64" />)}
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-background">
       {/* Header */}
-      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light/30">
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
         <View className="flex-row items-center">
           <Button 
             title=""
             iconOnly
-            leftIcon={<ChevronLeft size={16} color="#1D261D" />}
+            leftIcon={<ChevronLeft size={16} color="#3B6E4D" />}
             onPress={() => navigation.goBack()}
-            className="bg-transparent p-1 mr-2"
+            className="bg-craftopia-light p-2 mr-3 rounded-lg"
           />
           <View>
-            <Text className="text-sm font-semibold text-craftopia-textPrimary">Settings</Text>
-            <Text className="text-xs text-craftopia-textSecondary">Manage your account</Text>
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary">Settings</Text>
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">Manage your preferences</Text>
           </View>
         </View>
       </View>
@@ -85,12 +85,12 @@ export function SettingsScreen() {
       >
         <View className="px-4 py-3">
           {/* Account Section */}
-          <View className="mb-5">
-            <Text className="text-xs font-medium text-craftopia-textSecondary mb-3 uppercase tracking-wider">
+          <View className="mb-4">
+            <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               Account
             </Text>
 
-            <View className="bg-craftopia-surface rounded-lg border border-craftopia-light/50 overflow-hidden">
+            <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
               <SettingsItem 
                 title="Edit Profile"
                 icon={User}
@@ -106,38 +106,39 @@ export function SettingsScreen() {
           </View>
 
           {/* Preferences Section */}
-          <View className="mb-5">
-            <Text className="text-xs font-medium text-craftopia-textSecondary mb-3 uppercase tracking-wider">
+          <View className="mb-4">
+            <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               Preferences
             </Text>
             
-            <View className="bg-craftopia-surface rounded-lg border border-craftopia-light/50 overflow-hidden">
-              <View className="flex-row items-center justify-between py-2.5 px-4">
+            <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
+              <View className="flex-row items-center justify-between py-3 px-4 border-b border-craftopia-light">
                 <View className="flex-row items-center flex-1">
-                  <View className="w-8 h-8 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3">
-                    <Bell size={14} color="#374A36" />
+                  <View className="w-9 h-9 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3 border border-craftopia-primary/20">
+                    <Bell size={16} color="#3B6E4D" />
                   </View>
-                  <Text className="text-sm text-craftopia-textPrimary font-medium flex-1">
+                  <Text className="text-sm font-nunito text-craftopia-textPrimary flex-1">
                     Notifications
                   </Text>
                 </View>
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={setNotificationsEnabled}
-                  trackColor={{ false: '#F2F4F3', true: '#374A36' }}
+                  trackColor={{ false: '#E8ECE8', true: '#3B6E4D' }}
                   thumbColor="#FFFFFF"
+                  ios_backgroundColor="#E8ECE8"
                 />
               </View>
             </View>
           </View>
 
           {/* Support Section */}
-          <View className="mb-5">
-            <Text className="text-xs font-medium text-craftopia-textSecondary mb-3 uppercase tracking-wider">
+          <View className="mb-4">
+            <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               Support
             </Text>
 
-            <View className="bg-craftopia-surface rounded-lg border border-craftopia-light/50 overflow-hidden">
+            <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
               <SettingsItem 
                 title="Help Center"
                 icon={HelpCircle}
@@ -159,12 +160,12 @@ export function SettingsScreen() {
           </View>
 
           {/* Legal Section */}
-          <View className="mb-5">
-            <Text className="text-xs font-medium text-craftopia-textSecondary mb-3 uppercase tracking-wider">
+          <View className="mb-4">
+            <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               Legal
             </Text>
 
-            <View className="bg-craftopia-surface rounded-lg border border-craftopia-light/50 overflow-hidden">
+            <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
               <SettingsItem 
                 title="Privacy Policy"
                 icon={FileText}
@@ -180,11 +181,11 @@ export function SettingsScreen() {
           </View>
 
           {/* App Info */}
-          <View className="bg-craftopia-surface rounded-lg border border-craftopia-light/50 p-3 mb-5">
-            <Text className="text-xs font-medium text-craftopia-textSecondary mb-1">
+          <View className="bg-craftopia-surface rounded-xl border border-craftopia-light p-3 mb-4">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
               App Version
             </Text>
-            <Text className="text-sm text-craftopia-textPrimary">
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
               Craftopia v1.0.0
             </Text>
           </View>
@@ -195,8 +196,8 @@ export function SettingsScreen() {
             title="Log Out"
             leftIcon={<LogOut size={16} color="#FFFFFF" />}
             variant="primary"
-            className="mt-2"
-            size="md"
+            className="mt-2 rounded-lg"
+            size="lg"
           />
         </View>
       </ScrollView>

@@ -131,28 +131,28 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
       className={`flex-row mb-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}
     >
       {!message.isUser && (
-        <View className="w-7 h-7 bg-craftopa-primary rounded-full items-center justify-center mr-2 shadow-sm border border-craftopa-light/10">
-          <Bot size={14} color="white" />
+        <View className="w-7 h-7 bg-craftopia-primary rounded-full items-center justify-center mr-2 border border-craftopia-light">
+          <Bot size={14} color="#FFFFFF" />
         </View>
       )}
       
       <View
-        className={`max-w-[80%] p-3 rounded-2xl shadow-sm border ${
+        className={`max-w-[80%] p-3 rounded-xl border ${
           message.isUser 
-            ? 'bg-craftopa-primary border-craftopa-primary/20' 
-            : 'bg-white border-craftopa-light/5'
+            ? 'bg-craftopia-primary border-craftopia-primary/20' 
+            : 'bg-craftopia-surface border-craftopia-light'
         } ${message.isUser ? 'rounded-br-md' : 'rounded-bl-md'}`}
       >
         <Text
           className={`text-sm leading-5 font-nunito ${
-            message.isUser ? 'text-black' : 'text-craftopa-textPrimary'
+            message.isUser ? 'text-white' : 'text-craftopia-textPrimary'
           }`}
         >
           {message.text}
         </Text>
         <Text
           className={`text-xs mt-1 font-nunito ${
-            message.isUser ? 'text-black/70' : 'text-craftopa-textSecondary'
+            message.isUser ? 'text-white/80' : 'text-craftopia-textSecondary'
           }`}
         >
           {new Date(message.timestamp).toLocaleTimeString('en-US', { 
@@ -163,8 +163,8 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
       </View>
       
       {message.isUser && (
-        <View className="w-7 h-7 bg-craftopa-accent rounded-full items-center justify-center ml-2 shadow-sm border border-craftopa-accent/20">
-          <User size={14} color="white" />
+        <View className="w-7 h-7 bg-craftopia-accent rounded-full items-center justify-center ml-2 border border-craftopia-accent/20">
+          <User size={14} color="#FFFFFF" />
         </View>
       )}
     </View>
@@ -206,7 +206,7 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
 
         {/* Floating Chat Container */}
         <Animated.View
-          className="absolute bottom-0 bg-white shadow-xl rounded-t-3xl"
+          className="absolute bottom-0 bg-white rounded-t-3xl"
           style={{
             position: 'absolute',
             bottom: 0,
@@ -231,20 +231,20 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
           }}
         >
           {/* Header */}
-          <View className="px-4 py-3 border-b border-craftopa-light/10">
+          <View className="px-4 py-3 border-b border-craftopia-light">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <View className="w-10 h-10 bg-craftopa-primary rounded-xl items-center justify-center mr-3 shadow-sm border border-craftopa-light/10">
-                  <Bot size={20} color="white" />
+                <View className="w-10 h-10 bg-craftopia-primary rounded-xl items-center justify-center mr-3 border border-craftopia-light">
+                  <Bot size={20} color="#FFFFFF" />
                 </View>
                 <View>
                   <View className="flex-row items-center">
-                    <Text className="text-lg font-poppinsBold text-craftopa-textPrimary mr-2 tracking-tight">
+                    <Text className="text-lg font-poppinsBold text-craftopia-textPrimary mr-2">
                       Craftopia AI
                     </Text>
-                    <Sparkles size={16} color="#D4A96A" />
+                    <Sparkles size={16} color="#E3A84F" />
                   </View>
-                  <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide">
+                  <Text className="text-sm font-nunito text-craftopia-textSecondary">
                     {isTyping ? 'Thinking...' : 'Ready to help'}
                   </Text>
                 </View>
@@ -255,23 +255,23 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
                   <TouchableOpacity
                     onPress={handleClearHistory}
                     disabled={clearHistoryMutation.isPending}
-                    className="w-9 h-9 bg-craftopa-light/10 rounded-lg items-center justify-center active:opacity-70 border border-craftopa-light/10"
+                    className="w-9 h-9 bg-craftopia-light rounded-lg items-center justify-center active:opacity-70 border border-craftopia-light"
                     activeOpacity={0.7}
                   >
                     {clearHistoryMutation.isPending ? (
-                      <ActivityIndicator size="small" color="#5A7160" />
+                      <ActivityIndicator size="small" color="#3B6E4D" />
                     ) : (
-                      <Trash2 size={16} color="#5A7160" />
+                      <Trash2 size={16} color="#3B6E4D" />
                     )}
                   </TouchableOpacity>
                 )}
                 
                 <TouchableOpacity
                   onPress={onClose}
-                  className="w-9 h-9 bg-craftopa-light/10 rounded-lg items-center justify-center active:opacity-70 border border-craftopa-light/10"
+                  className="w-9 h-9 bg-craftopia-light rounded-lg items-center justify-center active:opacity-70 border border-craftopia-light"
                   activeOpacity={0.7}
                 >
-                  <X size={16} color="#5A7160" />
+                  <X size={16} color="#3B6E4D" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -279,17 +279,17 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
 
           {isLoading ? (
             <View className="flex-1 justify-center items-center">
-              <ActivityIndicator size="large" color="#5A7160" />
-              <Text className="text-craftopa-textSecondary mt-3 text-sm font-nunito tracking-wide">
+              <ActivityIndicator size="large" color="#3B6E4D" />
+              <Text className="text-craftopia-textSecondary mt-3 text-sm font-nunito">
                 Loading conversation...
               </Text>
             </View>
           ) : historyError ? (
             <View className="flex-1 justify-center items-center px-4">
-              <Text className="text-craftopa-textPrimary text-base font-poppinsBold mb-2 tracking-tight">
+              <Text className="text-craftopia-textPrimary text-base font-poppinsBold mb-2">
                 Failed to Load Conversation
               </Text>
-              <Text className="text-craftopa-textSecondary text-sm font-nunito text-center tracking-wide">
+              <Text className="text-craftopia-textSecondary text-sm font-nunito text-center">
                 {historyError.message || 'Something went wrong'}
               </Text>
             </View>
@@ -310,7 +310,7 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
                 
                 {messages.length <= 1 && !isTyping && (
                   <View className="mt-4">
-                    <Text className="text-xs font-poppinsBold text-craftopa-textSecondary mb-3 tracking-wide uppercase">
+                    <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase">
                       Try asking:
                     </Text>
                     <View className="flex-row flex-wrap gap-2">
@@ -318,10 +318,10 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
                         <TouchableOpacity
                           key={index}
                           onPress={() => sendMessage(prompt)}
-                          className="bg-white px-3 py-2 rounded-xl border border-craftopa-light/10 shadow-sm active:opacity-70"
+                          className="bg-craftopia-surface px-3 py-2 rounded-lg border border-craftopia-light active:opacity-70"
                           activeOpacity={0.7}
                         >
-                          <Text className="text-xs font-nunito text-craftopa-textPrimary tracking-wide">
+                          <Text className="text-xs font-nunito text-craftopia-textPrimary">
                             {prompt}
                           </Text>
                         </TouchableOpacity>
@@ -332,13 +332,13 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
                 
                 {isTyping && (
                   <View className="flex-row justify-start mb-3">
-                    <View className="w-7 h-7 bg-craftopa-primary rounded-full items-center justify-center mr-2 shadow-sm border border-craftopa-light/10">
-                      <Bot size={14} color="white" />
+                    <View className="w-7 h-7 bg-craftopia-primary rounded-full items-center justify-center mr-2 border border-craftopia-light">
+                      <Bot size={14} color="#FFFFFF" />
                     </View>
-                    <View className="bg-white p-3 rounded-2xl rounded-bl-md shadow-sm border border-craftopa-light/5">
+                    <View className="bg-craftopia-surface p-3 rounded-xl rounded-bl-md border border-craftopia-light">
                       <View className="flex-row items-center gap-2">
-                        <ActivityIndicator size="small" color="#5A7160" />
-                        <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+                        <ActivityIndicator size="small" color="#3B6E4D" />
+                        <Text className="text-xs font-nunito text-craftopia-textSecondary">
                           Crafting response...
                         </Text>
                       </View>
@@ -348,15 +348,15 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
               </ScrollView>
 
               {/* Input */}
-              <View className="px-4 py-3 border-t border-craftopa-light/10 bg-white">
+              <View className="px-4 py-3 border-t border-craftopia-light bg-craftopia-surface">
                 <View className="flex-row items-center">
-                  <View className="flex-1 bg-craftopa-light/5 rounded-2xl px-4 py-3 mr-3 border border-craftopa-light/10">
+                  <View className="flex-1 bg-craftopia-light rounded-xl px-4 py-3 mr-3 border border-craftopia-light">
                     <TextInput
                       value={inputText}
                       onChangeText={setInputText}
                       placeholder="Ask me about crafting ideas..."
-                      placeholderTextColor="#9CA3AF"
-                      className="text-craftopa-textPrimary text-sm font-nunito tracking-wide"
+                      placeholderTextColor="#5F6F64"
+                      className="text-craftopia-textPrimary text-sm font-nunito"
                       style={Platform.OS === 'web' ? { outlineStyle: 'none' } as any : {}}
                       multiline
                       maxLength={500}
@@ -368,21 +368,21 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
                   <TouchableOpacity
                     onPress={() => sendMessage()}
                     disabled={!inputText.trim() || isTyping}
-                    className={`w-12 h-12 rounded-2xl items-center justify-center active:opacity-70 border ${
+                    className={`w-12 h-12 rounded-xl items-center justify-center active:opacity-70 border ${
                       inputText.trim() && !isTyping 
-                        ? 'bg-craftopa-primary border-craftopa-primary/20' 
-                        : 'bg-craftopa-light/10 border-craftopa-light/10'
+                        ? 'bg-craftopia-primary border-craftopia-primary' 
+                        : 'bg-craftopia-light border-craftopia-light'
                     }`}
                     activeOpacity={0.8}
                   >
                     <Send
                       size={18}
-                      color={inputText.trim() && !isTyping ? 'white' : '#9CA3AF'}
+                      color={inputText.trim() && !isTyping ? '#FFFFFF' : '#5F6F64'}
                     />
                   </TouchableOpacity>
                 </View>
                 {inputText.length > 0 && (
-                  <Text className="text-xs font-nunito text-craftopa-textSecondary mt-2 text-center tracking-wide">
+                  <Text className="text-xs font-nunito text-craftopia-textSecondary mt-2 text-center">
                     {500 - inputText.length} characters remaining
                   </Text>
                 )}
@@ -394,4 +394,3 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({ visible, onClo
     </Modal>
   );
 };
-

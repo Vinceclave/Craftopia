@@ -65,20 +65,12 @@ export const ProfileScreen = () => {
     { 
       label: 'Crafts', 
       icon: Folder, 
-      color: 'primary' as const, 
       onPress: () => navigation.navigate("MyCrafts"),
       badge: 3
     },
     { 
-      label: 'Achievements', 
-      icon: Trophy, 
-      color: 'growth' as const, 
-      onPress: () => navigation.navigate("Achievements"),
-    },
-    { 
       label: 'Activity', 
       icon: Zap, 
-      color: 'accent' as const, 
       onPress: () => navigation.navigate("ActivityLog") 
     },
   ];

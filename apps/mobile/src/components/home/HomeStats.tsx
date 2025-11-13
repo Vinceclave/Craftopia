@@ -58,33 +58,32 @@ export const HomeStats = () => {
   }, [isConnected, on, off, refetch]);
 
   return (
-    <View className="px-5 pt-2 pb-3">
+    <View className="px-4 pt-2 pb-3">
       {/* Main Impact Card */}
-      <View className="bg-white rounded-2xl p-4 mb-3 shadow-sm border border-craftopa-light/5">
+      <View className="bg-craftopia-surface rounded-xl p-4 mb-3 border border-craftopia-light">
         {/* Header */}
-        <View className="flex-row items-center justify-between mb-4">
+        <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
               Your Impact
             </Text>
-            <Text className="text-base font-poppinsBold text-craftopa-textPrimary tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
               Making a Difference 🌍
             </Text>
           </View>
           <TouchableOpacity 
-            className="flex-row items-center px-3 py-1.5 rounded-lg active:opacity-70"
-            style={{ backgroundColor: 'rgba(90, 113, 96, 0.08)' }}
+            className="flex-row items-center px-3 py-1.5 rounded-lg bg-craftopia-primary/10 active:opacity-70"
           >
-            <Text className="text-xs font-poppinsBold mr-1 text-craftopa-textPrimary">
+            <Text className="text-xs font-poppinsBold mr-1 text-craftopia-textPrimary">
               Insights
             </Text>
-            <ChevronRight size={12} color="#5A7160" />
+            <ChevronRight size={12} color="#3B6E4D" />
           </TouchableOpacity>
         </View>
 
         {/* Primary Stat - Waste Saved */}
         <View 
-          className="rounded-xl p-3 mb-3 bg-gradient-to-r from-craftopa-accent/5 to-craftopa-primary/3 border border-craftopa-light/10"
+          className="rounded-xl p-3 mb-3 bg-craftopia-primary/5 border border-craftopia-primary/20"
           style={{ 
             transform: animateWaste ? [{ scale: 1.02 }] : [{ scale: 1 }],
           }}
@@ -92,23 +91,23 @@ export const HomeStats = () => {
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
               <View className="flex-row items-center mb-2">
-                <View className="w-8 h-8 rounded-lg bg-white shadow-sm items-center justify-center mr-2 border border-craftopa-light/5">
-                  <Leaf size={18} color="#5A7160" />
+                <View className="w-8 h-8 rounded-lg bg-craftopia-surface items-center justify-center mr-3 border border-craftopia-light">
+                  <Leaf size={16} color="#3B6E4D" />
                 </View>
                 <View>
-                  <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+                  <Text className="text-xs font-nunito text-craftopia-textSecondary">
                     Waste Diverted
                   </Text>
-                  <Text className="text-2xl font-poppinsBold text-craftopa-textPrimary tracking-tight mt-0.5">
+                  <Text className="text-xl font-poppinsBold text-craftopia-textPrimary mt-0.5">
                     {stats.wasteSaved}
-                    <Text className="text-sm font-nunito text-craftopa-textSecondary"> kg</Text>
+                    <Text className="text-sm font-nunito text-craftopia-textSecondary"> kg</Text>
                   </Text>
                 </View>
               </View>
               
               <View className="flex-row items-center mt-1">
-                <Sparkles size={12} color="#5A7160" />
-                <Text className="text-xs font-nunito ml-1.5 text-craftopa-textPrimary">
+                <Sparkles size={12} color="#3B6E4D" />
+                <Text className="text-xs font-nunito ml-1.5 text-craftopia-textPrimary">
                   {animateWaste ? 'Impact updated! ✨' : 'Creating positive change'}
                 </Text>
               </View>
@@ -120,60 +119,60 @@ export const HomeStats = () => {
         <View className="flex-row gap-2">
           {/* Points Card */}
           <View 
-            className="flex-1 rounded-lg p-2.5 bg-white border border-craftopa-light/5 shadow-sm"
+            className="flex-1 rounded-lg p-2.5 bg-craftopia-surface border border-craftopia-light"
             style={{ 
               transform: animatePoints ? [{ scale: 1.05 }] : [{ scale: 1 }],
-              backgroundColor: animatePoints ? 'rgba(212, 169, 106, 0.08)' : '#FFFFFF',
+              backgroundColor: animatePoints ? 'rgba(227, 168, 79, 0.08)' : '#FFFFFF',
             }}
           >
             <View className="flex-row items-center mb-1.5">
-              <View className="w-7 h-7 rounded-lg bg-craftopa-accent/10 items-center justify-center mr-1.5">
-                <Award size={14} color="#D4A96A" />
+              <View className="w-7 h-7 rounded-lg bg-craftopia-warning/10 items-center justify-center mr-1.5">
+                <Award size={14} color="#E3A84F" />
               </View>
-              <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+              <Text className="text-xs font-nunito text-craftopia-textSecondary">
                 Points
               </Text>
             </View>
-            <Text className="text-lg font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-0.5">
               {stats.points}
             </Text>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">
               +{Math.floor(stats.points * 0.1)} today
             </Text>
           </View>
 
           {/* Crafts Card */}
-          <View className="flex-1 rounded-lg p-2.5 bg-white border border-craftopa-light/5 shadow-sm">
+          <View className="flex-1 rounded-lg p-2.5 bg-craftopia-surface border border-craftopia-light">
             <View className="flex-row items-center mb-1.5">
-              <View className="w-7 h-7 rounded-lg bg-purple-500/10 items-center justify-center mr-1.5">
-                <Palette size={14} color="#9333EA" />
+              <View className="w-7 h-7 rounded-lg bg-craftopia-secondary/10 items-center justify-center mr-1.5">
+                <Palette size={14} color="#89A67E" />
               </View>
-              <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+              <Text className="text-xs font-nunito text-craftopia-textSecondary">
                 Crafts
               </Text>
             </View>
-            <Text className="text-lg font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-0.5">
               {stats.crafts}
             </Text>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">
               Created
             </Text>
           </View>
 
           {/* Quests Card */}
-          <View className="flex-1 rounded-lg p-2.5 bg-white border border-craftopa-light/5 shadow-sm">
+          <View className="flex-1 rounded-lg p-2.5 bg-craftopia-surface border border-craftopia-light">
             <View className="flex-row items-center mb-1.5">
-              <View className="w-7 h-7 rounded-lg bg-craftopa-primary/10 items-center justify-center mr-1.5">
-                <Trophy size={14} color="#5A7160" />
+              <View className="w-7 h-7 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-1.5">
+                <Trophy size={14} color="#3B6E4D" />
               </View>
-              <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+              <Text className="text-xs font-nunito text-craftopia-textSecondary">
                 Quests
               </Text>
             </View>
-            <Text className="text-lg font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
+            <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-0.5">
               {stats.challenges}
             </Text>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">
               Completed
             </Text>
           </View>

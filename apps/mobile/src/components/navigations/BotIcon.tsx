@@ -20,9 +20,11 @@ export default function BotIcon({ size = 32 }: BotIconProps) {
       <View style={{ 
         width: 24, 
         height: 20, 
-        backgroundColor: 'white', 
+        backgroundColor: '#FFFFFF', 
         borderRadius: 8, 
-        marginBottom: 2 
+        marginBottom: 2,
+        borderWidth: 1,
+        borderColor: '#3B6E4D'
       }}>
         {/* Eyes */}
         <View style={{ 
@@ -32,17 +34,39 @@ export default function BotIcon({ size = 32 }: BotIconProps) {
           flex: 1, 
           paddingHorizontal: 4 
         }}>
-          <View style={{ width: 4, height: 4, backgroundColor: '#004E98', borderRadius: 2 }} />
-          <View style={{ width: 4, height: 4, backgroundColor: '#004E98', borderRadius: 2 }} />
+          <View style={{ width: 4, height: 4, backgroundColor: '#3B6E4D', borderRadius: 2 }} />
+          <View style={{ width: 4, height: 4, backgroundColor: '#3B6E4D', borderRadius: 2 }} />
         </View>
       </View>
       
       {/* Bot body */}
-      <View style={{ width: 20, height: 8, backgroundColor: 'white', borderRadius: 4 }} />
+      <View style={{ 
+        width: 20, 
+        height: 8, 
+        backgroundColor: '#FFFFFF', 
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#3B6E4D'
+      }} />
       
       {/* Antenna */}
-      <View style={{ position: 'absolute', top: -2, left: 14, width: 2, height: 6, backgroundColor: 'white' }}>
-        <View style={{ position: 'absolute', top: -2, left: -2, width: 4, height: 4, backgroundColor: 'white', borderRadius: 2 }} />
+      <View style={{ 
+        position: 'absolute', 
+        top: -2, 
+        left: 14, 
+        width: 2, 
+        height: 6, 
+        backgroundColor: '#3B6E4D' 
+      }}>
+        <View style={{ 
+          position: 'absolute', 
+          top: -2, 
+          left: -2, 
+          width: 4, 
+          height: 4, 
+          backgroundColor: '#3B6E4D', 
+          borderRadius: 2 
+        }} />
       </View>
     </View>
   );

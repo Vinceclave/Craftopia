@@ -15,13 +15,8 @@ export const PersonalDetailsForm: React.FC<Props> = ({
   username, 
   onNameChange 
 }) => (
-  <FormSection 
-    title="Personal Details" 
-    icon={User} 
-    iconColor="#374A36" 
-    iconBgColor="#374A36/10"
-  >
-    <View className="space-y-2">
+  <FormSection title="Personal Details" icon={User}>
+    <View className="space-y-3">
       <Input 
         label="Full Name" 
         value={name} 

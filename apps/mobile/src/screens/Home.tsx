@@ -1,4 +1,3 @@
-// apps/mobile/src/screens/Home.tsx - POLISHED VERSION
 import React, { useEffect, useCallback, useState } from 'react';
 import { ScrollView, Platform, View, RefreshControl, Text } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
@@ -61,7 +60,6 @@ export const HomeScreen = () => {
         screen: 'EcoQuest',
       },
     });
-
   }, [navigation]);
 
   const handleQuestPress = useCallback(
@@ -78,21 +76,21 @@ export const HomeScreen = () => {
   );
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1" style={{ backgroundColor: '#F8FAF7' }}>
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
       {/* Header */}
       <HomeHeader />
 
       {/* Connection Banner */}
       {!isConnected && (
-        <View className="mx-5 mt-2 p-3 rounded-xl bg-white shadow-sm border border-craftopa-light/5 flex-row items-center">
-          <View className="w-6 h-6 rounded-lg bg-red-50 items-center justify-center mr-2 border border-red-100">
-            <WifiOff size={14} color="#EF4444" />
+        <View className="mx-4 mt-2 p-3 rounded-xl bg-craftopia-surface border border-craftopia-light flex-row items-center">
+          <View className="w-6 h-6 rounded-lg bg-craftopia-error/10 items-center justify-center mr-3 border border-craftopia-error/20">
+            <WifiOff size={14} color="#D66B4E" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-0.5 tracking-tight">
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
               Connection Lost
             </Text>
-            <Text className="text-xs font-nunito text-craftopa-textSecondary tracking-wide">
+            <Text className="text-xs font-nunito text-craftopia-textSecondary">
               Reconnecting to real-time updates...
             </Text>
           </View>
@@ -103,13 +101,26 @@ export const HomeScreen = () => {
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 60 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#5A7160" colors={['#5A7160']} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh} 
+            tintColor="#3B6E4D" 
+            colors={['#3B6E4D']} 
+          />
+        }
       >
         {/* Stats Section */}
         <HomeStats />
 
         {/* Daily Quests Section */}
-        <HomeQuest quests={challenges} loading={isLoading} onSeeAll={handleSeeAllQuests} onQuestPress={handleQuestPress} refetch={async () => { await refetch(); }}  />
+        <HomeQuest 
+          quests={challenges} 
+          loading={isLoading} 
+          onSeeAll={handleSeeAllQuests} 
+          onQuestPress={handleQuestPress} 
+          refetch={async () => { await refetch(); }} 
+        />
 
         {/* Recent Activity Section */}
         <HomeActivity />

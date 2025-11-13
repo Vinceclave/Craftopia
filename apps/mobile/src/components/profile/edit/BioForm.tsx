@@ -10,12 +10,7 @@ interface Props {
 }
 
 export const BioForm: React.FC<Props> = ({ bio, onBioChange, characterLimit }) => (
-  <FormSection 
-    title="About You" 
-    icon={FileText} 
-    iconColor="#6B8E6B" 
-    iconBgColor="#6B8E6B/10"
-  >
+  <FormSection title="About You" icon={FileText}>
     <Input
       label="Bio"
       placeholder="Tell us about yourself..."
