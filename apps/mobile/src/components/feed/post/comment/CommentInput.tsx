@@ -1,6 +1,6 @@
 // apps/mobile/src/components/feed/comment/CommentInput.tsx - CRAFTOPIA REDESIGN
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Send, User } from 'lucide-react-native';
 
 interface CommentInputProps {

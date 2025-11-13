@@ -43,3 +43,8 @@ export type RootTabParamList = {
   ProfileStack: NavigatorScreenParams<ProfileStackParamList>;
   ChatBotStack: NavigatorScreenParams<ChatBotStackParamList>; // Add this line
 };
+
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<RootTabParamList>;
+};

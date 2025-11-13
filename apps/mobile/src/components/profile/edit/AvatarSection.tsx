@@ -33,10 +33,13 @@ export const AvatarSection: React.FC<Props> = ({ avatar = '🧑‍🎨', onChang
       const asset = result.assets[0]
       setUploading(true)
       try {
-        const uploadedPath = await uploadToFolder(asset.uri, 'profiles')
+        const uploadedPath = await uploadToFolder(asset.uri, 'profiles');
+
+        if (!uploadedPath) throw new Error('Upload failed');
+
         const fullUrl = uploadedPath.startsWith('http') 
           ? uploadedPath 
-          : `${API_BASE_URL}${uploadedPath}`
+          : `${API_BASE_URL}${uploadedPath}`;
 
         if (fullUrl) onChange?.(fullUrl)
         setShowPicker(false)

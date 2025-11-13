@@ -6,10 +6,11 @@ import { LucideIcon } from 'lucide-react-native'
 interface QuickAction {
   label: string
   icon: LucideIcon
-  color: 'primary' | 'accent' | 'success' | 'warning'
+  color: 'primary' | 'accent' | 'success' | 'warning' | 'growth'
   onPress: () => void
   badge?: number
 }
+
 
 interface QuickActionsProps {
   actions: QuickAction[]

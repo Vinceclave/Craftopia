@@ -11,13 +11,15 @@ import { useNavigation } from '@react-navigation/native';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
 import { WifiOff } from 'lucide-react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '~/navigations/MainNavigator';
 
 const SafeAreaView = Platform.OS === 'web' ? View : RNSafeAreaView;
 
 export const HomeScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: challenges = [], isLoading, refetch } = useChallenges('daily');
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation();
   const { isConnected, on, off } = useWebSocket();
 
   // Pull-to-refresh handler
@@ -53,14 +55,23 @@ export const HomeScreen = () => {
   }, [isConnected, on, off, refetch]);
 
   const handleSeeAllQuests = useCallback(() => {
-    navigation.navigate('EcoQuest');
+    navigation.navigate('MainTabs', {
+      screen: 'EcoQuestStack',
+      params: {
+        screen: 'EcoQuest',
+      },
+    });
+
   }, [navigation]);
 
   const handleQuestPress = useCallback(
     (quest: any) => {
-      navigation.navigate('EcoQuest', {
-        screen: 'QuestDetails',
-        params: { questId: quest.challenge_id || quest.id },
+      navigation.navigate('MainTabs', {
+        screen: 'EcoQuestStack',
+        params: {
+          screen: 'QuestDetails',
+          params: { questId: quest.challenge_id || quest.id },
+        },
       });
     },
     [navigation]
@@ -98,7 +109,7 @@ export const HomeScreen = () => {
         <HomeStats />
 
         {/* Daily Quests Section */}
-        <HomeQuest quests={challenges} loading={isLoading} onSeeAll={handleSeeAllQuests} onQuestPress={handleQuestPress} refetch={refetch} />
+        <HomeQuest quests={challenges} loading={isLoading} onSeeAll={handleSeeAllQuests} onQuestPress={handleQuestPress} refetch={async () => { await refetch(); }}  />
 
         {/* Recent Activity Section */}
         <HomeActivity />

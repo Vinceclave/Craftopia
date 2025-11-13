@@ -103,39 +103,40 @@ const LoginScreen: React.FC = () => {
           onSubmit={handleLogin}
           error={errors.password}
         />
-
+         <View className="mt-2 items-end">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ForgotPassword')}
+              disabled={loginMutation.isPending}
+            >
+              <Text className="text-sm font-nunito text-craftopia-spark">
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
+          </View>
         <View className="mt-6">
           <Button
             title="Sign In"
             onPress={handleLogin}
-            loading={loginMutation.isPending} // TanStack Query loading state
+            loading={loginMutation.isPending}
             disabled={!isFormValid || loginMutation.isPending}
           />
         </View>
 
         <View className="mt-8 items-center">
           <View className="flex-row items-center mb-4">
-            <Text className="text-craftopia-text-secondary text-base">
+            <Text className="text-base font-nunito text-craftopia-text-secondary">
               Don't have an account?
             </Text>
             <TouchableOpacity 
               onPress={() => navigation.navigate('Register')}
               disabled={loginMutation.isPending}
             >
-              <Text className="text-craftopia-digital text-base font-semibold ml-1">
+              <Text className="text-base font-poppinsBold text-craftopia-digital ml-1">
                 Sign Up
               </Text>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            className="mt-2"
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('ForgotPassword')}
-            disabled={loginMutation.isPending}
-          >
-            <Text className="text-craftopia-spark text-sm">Forgot Password?</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </AuthLayout>

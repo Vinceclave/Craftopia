@@ -84,7 +84,7 @@ const Button: React.FC<ButtonProps> = ({
         ? 'text-gray-400'
         : 'text-craftopia-primary';
 
-    return `${sizeText} font-semibold ${textClassName || color}`;
+    return `${sizeText} font-poppinsBold ${textClassName || color}`;
   };
 
   const getActivityIndicatorColor = () => (variant === 'primary' ? '#fff' : '#374A36');

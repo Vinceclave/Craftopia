@@ -15,6 +15,14 @@ export default function DraggableButton() {
   const initialY = dimensions.height - (Platform.OS === 'web' ? buttonSize + 40 : 200 + insets.bottom);
 
   const pan = useRef(new Animated.ValueXY({ x: initialX, y: initialY })).current;
+    const panPos = useRef({ x: initialX, y: initialY });
+
+    useEffect(() => {
+      pan.addListener(({ x, y }) => {
+        panPos.current = { x, y };
+      });
+      return () => pan.removeAllListeners();
+    }, [pan]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isChatVisible, setIsChatVisible] = useState(false);
@@ -51,8 +59,8 @@ export default function DraggableButton() {
         setIsDragging(false);
         
         pan.setOffset({
-          x: pan.x._value,
-          y: pan.y._value,
+          x: panPos.current.x,
+          y: panPos.current.y,
         });
         pan.setValue({ x: 0, y: 0 });
       },
@@ -82,8 +90,8 @@ export default function DraggableButton() {
         const maxY = dimensions.height - buttonSize - (Platform.OS === 'web' ? 20 : insets.bottom);
         const minY = Platform.OS === 'web' ? 20 : insets.top;
 
-        const finalX = Math.min(Math.max(0, pan.x._value), maxX);
-        const finalY = Math.min(Math.max(minY, pan.y._value), maxY);
+        const finalX = Math.min(Math.max(0, panPos.current.x), maxX);
+        const finalY = Math.min(Math.max(minY, panPos.current.y), maxY);
 
         Animated.spring(pan, {
           toValue: { x: finalX, y: finalY },

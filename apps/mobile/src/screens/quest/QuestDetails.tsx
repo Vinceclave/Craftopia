@@ -146,7 +146,10 @@ export const QuestDetailsScreen = () => {
   }
 
   // Loading state
-  const isLoading = questLoading || (progressLoading && !progressError?.message?.includes('not found'))
+  const isLoading =
+  questLoading ||
+  (progressLoading &&
+    !(progressError && 'message' in progressError && (progressError as any).message.includes('not found')));
 
   // Determine if user has joined
   const isJoined = !!userProgress

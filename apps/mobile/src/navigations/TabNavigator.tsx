@@ -77,7 +77,7 @@ export default function TabNavigator() {
       const getCurrentScreenName = (state: NavigationState | undefined): string => {
         if (!state) return '';
         
-        const route = state.routes[state.index];
+        const route:any = state.routes[state.index];
         if (route.state) {
           return getCurrentScreenName(route.state);
         }

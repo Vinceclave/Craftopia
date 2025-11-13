@@ -63,7 +63,7 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingRight: 16 }}
       >
-        {trendingTags.map((item, index) => {
+        {trendingTags.map((item: any, index: any) => {
           const tagValue = item?.tag || item?.name || item?.tagName || 'unknown';
           const countValue = Number(item?.count || item?.post_count || item?.postCount || 0);
           const growthValue = item?.growth ? Number(item.growth) : undefined;

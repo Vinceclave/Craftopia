@@ -174,7 +174,7 @@ export const FeedScreen: React.FC<FeedScreenProps> = ({ navigation }) => {
     setSelectedTag(null);
   }, []);
 
-  const hasActiveFilters = searchQuery || selectedCategory !== 'all' || selectedTag;
+  const hasActiveFilters = Boolean(searchQuery || selectedCategory !== 'all' || selectedTag);
 
   // Generate unique, stable key for each post
   const getPostKey = useCallback((item: Post, index: number) => {

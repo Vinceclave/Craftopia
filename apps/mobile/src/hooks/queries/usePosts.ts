@@ -170,8 +170,6 @@ export const useTrendingTags = () => {
         rawTags = response;
       } else if (Array.isArray(response?.data)) {
         rawTags = response.data;
-      } else if (Array.isArray(response?.tags)) {
-        rawTags = response.tags;
       } else {
         console.warn('⚠️ Unexpected trending tags format:', response);
       }
@@ -360,7 +358,7 @@ export const useTogglePostReaction = () => {
 
       const mutationPromise = (async () => {
         try {
-          const response = await postService.toggleReaction(postId.toString());
+          const response: any = await postService.toggleReaction(postId.toString());
           return { postId, ...response.data };
         } finally {
           pendingMutations.current.delete(postId);

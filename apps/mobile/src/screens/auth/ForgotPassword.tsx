@@ -36,7 +36,7 @@ const ForgotPassword = () => {
     setForm(updatedForm)
 
     const validationErrors = validateForgotPassword(updatedForm, step)
-    setErrors((prev) => ({ ...prev, ...validationErrors }))
+    setErrors((prev: any) => ({ ...prev, ...validationErrors }))
   }
 
   const handleNext = useCallback(async () => {

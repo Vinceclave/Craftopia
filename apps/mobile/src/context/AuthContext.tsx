@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const registerMutation = useRegister();
 
   // Overall loading state
-  const isLoading = authLoading || (authStatus?.isAuthenticated && userLoading);
+  const isLoading: boolean = !!authLoading || !!(authStatus?.isAuthenticated && userLoading);
   const isAuthenticated = authStatus?.isAuthenticated ?? false;
 
   // Wrapper functions

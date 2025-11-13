@@ -38,7 +38,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     return (
       <View className={`mb-4 ${containerClassName}`}>
         {label && (
-          <Text className="text-sm font-semibold mb-2" style={{ color: '#1A1A1A' }}>
+          <Text className="text-sm font-poppinsBold mb-2 text-craftopia-text-primary">
             {label}
           </Text>
         )}
@@ -59,8 +59,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           <TextInput
             ref={ref}
-            className="flex-1 text-base"
-            style={{ color: '#1A1A1A' }}
+            className="flex-1 text-base font-nunito text-craftopia-text-primary"
             placeholderTextColor="#9CA3AF"
             secureTextEntry={secure && !showPassword}
             returnKeyType={isLastInput ? 'done' : 'next'}
@@ -93,13 +92,13 @@ export const Input = forwardRef<TextInput, InputProps>(
         {error ? (
           <View className="flex-row items-center mt-2">
             <AlertCircle size={14} color="#DC2626" />
-            <Text className="text-sm ml-1" style={{ color: '#DC2626' }}>
+            <Text className="text-sm font-nunito ml-1 text-red-600">
               {error}
             </Text>
           </View>
         ) : (
           helper && (
-            <Text className="text-xs mt-2" style={{ color: '#6B7280' }}>
+            <Text className="text-xs font-nunito mt-2 text-gray-500">
               {helper}
             </Text>
           )
