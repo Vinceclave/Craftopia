@@ -1,8 +1,21 @@
-// apps/mobile/src/components/feed/ReportModal.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/ReportModal.tsx - COMPLETE FINAL VERSION
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Modal, 
+  ScrollView, 
+  TextInput, 
+  ActivityIndicator, 
+  Dimensions, 
+  KeyboardAvoidingView, 
+  Platform 
+} from 'react-native';
 import { X, Flag, AlertTriangle, CheckCircle } from 'lucide-react-native';
 import Button from '~/components/common/Button';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export type ReportReason = 
   | 'spam'
@@ -88,7 +101,6 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state when modal opens
   useEffect(() => {
     if (visible) {
       setSelectedReason(null);
@@ -156,9 +168,40 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       transparent={true}
       animationType="slide"
       onRequestClose={handleClose}
+      statusBarTranslucent={true}
     >
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl max-h-[85%] shadow-xl">
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        {/* Backdrop */}
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={handleClose}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          }}
+        />
+
+        {/* Modal Content */}
+        <View 
+          style={{
+            backgroundColor: 'white',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: SCREEN_HEIGHT * 0.85,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 5,
+          }}
+        >
           {/* Header */}
           <View className="flex-row items-center justify-between p-5 border-b border-craftopa-light/10">
             <TouchableOpacity
@@ -187,7 +230,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           )}
 
           {/* Content */}
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {step === 'select' ? (
               /* Step 1: Select Reason */
               <View className="p-5">
@@ -264,7 +311,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 {/* Info Box */}
                 <View className="bg-craftopa-primary/5 border border-craftopa-primary/10 p-4 rounded-2xl mb-4">
                   <View className="flex-row items-start">
-                    <CheckCircle size={16} color="#5A7160" className="mt-0.5" />
+                    <CheckCircle size={16} color="#5A7160" style={{ marginTop: 2 }} />
                     <Text className="text-sm text-craftopa-textPrimary ml-3 flex-1 font-nunito tracking-wide">
                       Your report will be reviewed by our moderation team. We'll take appropriate action if this violates our community guidelines.
                     </Text>
@@ -295,7 +342,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

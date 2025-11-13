@@ -1,8 +1,9 @@
+// apps/mobile/src/components/feed/FeedHeader.tsx - COMPLETE FINAL VERSION
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Search, Filter } from 'lucide-react-native';
 import { FeedTabs } from './FeedTabs';
-import type { FeedType } from '~/hooks/queries/usePosts';
+import type { FeedType } from './FeedTabs';
 
 interface FeedHeaderProps {
   activeTab: FeedType;
@@ -67,7 +68,12 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
       </View>
       
       {/* Tabs */}
-      <FeedTabs activeTab={activeTab} onTabChange={onTabChange} />
+      <FeedTabs 
+        activeTab={activeTab} 
+        onTabChange={onTabChange} 
+      />
     </View>
   );
 };
+
+export type { FeedType };

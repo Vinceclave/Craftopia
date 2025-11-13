@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/PostContainer.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/post/PostContainer.tsx - COMPLETE FINAL VERSION
 import React, { useState, useCallback } from 'react';
 import { Share, Platform } from 'react-native';
 
@@ -62,6 +62,7 @@ export const PostContainer: React.FC<PostContainerProps> = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const submitReportMutation = useSubmitReport();
   const deletePostMutation = useDeletePost();
@@ -69,24 +70,31 @@ export const PostContainer: React.FC<PostContainerProps> = ({
   const addCommentMutation = useAddComment();
   const toggleReactionMutation = useTogglePostReaction();
 
-  // Extract user ID from multiple possible properties
   const currentUserId = currentUser?.id;
-
-  // Calculate if this is user's own post
   const isOwnPost = currentUserId !== undefined && 
                     currentUserId !== null && 
                     Number(currentUserId) === Number(user_id);
 
-  // TanStack Query for comments
-  const { data: comments = [], isLoading: loadingComments } = useComments(postId);
+  // Get comments with error handling for deleted posts
+  const { data: comments = [], isLoading: loadingComments } = useComments(postId, {
+    enabled: !isDeleted,
+    retry: false,
+    onError: (error: any) => {
+      if (error?.message?.includes('Post not found') || error?.message?.includes('not found')) {
+        console.log('Post was deleted, ignoring fetch error');
+        setIsDeleted(true);
+      }
+    }
+  });
 
-  // === POST CLICK HANDLER ===
   const handlePostPress = () => {
+    if (isDeleted) return;
     setShowDetailsModal(true);
   };
 
-  // === SHARE HANDLER ===
   const handleShare = async () => {
+    if (isDeleted) return;
+    
     try {
       const shareContent = {
         title: `${title} - Craftopia`,
@@ -115,13 +123,13 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }
   };
 
-  // === DELETE HANDLER ===
   const handleDeletePost = () => {
     setShowDeleteConfirm(false);
     
     setTimeout(async () => {
       try {
         await deletePostMutation.mutateAsync(postId);
+        setIsDeleted(true);
         success('Post Deleted', 'Your post has been deleted successfully.');
       } catch (error: any) {
         showError('Delete Failed', error.message || 'Failed to delete post');
@@ -129,18 +137,18 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }, 100);
   };
 
-  // === DELETE CONFIRMATION ===
   const showDeleteConfirmation = () => {
     setShowDeleteConfirm(true);
   };
 
-  // === EDIT HANDLER ===
   const handleEdit = () => {
+    if (isDeleted) return;
     setShowEditModal(true);
   };
 
-  // === OPTIONS HANDLER - USING ACTIONSHEET ===
   const handleOptions = () => {
+    if (isDeleted) return;
+    
     if (isOwnPost) {
       actionSheet.show(
         'Post Options',
@@ -173,8 +181,9 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }
   };
 
-  // === EDIT POST HANDLER ===
   const handleEditPost = async (updatedData: { title: string; content: string; tags?: string[] }) => {
+    if (isDeleted) return;
+    
     try {
       await updatePostMutation.mutateAsync({
         postId,
@@ -188,8 +197,9 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }
   };
 
-  // === REPORT HANDLER ===
   const handleReport = async (reason: ReportReason, details: string) => {
+    if (isDeleted) return;
+    
     try {
       await submitReportMutation.mutateAsync({
         type: 'post',
@@ -211,10 +221,10 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }
   };
 
-  // === COMMENT HANDLERS ===
   const handleOpenComments = useCallback(() => {
+    if (isDeleted) return;
     setShowCommentModal(true);
-  }, [postId]);
+  }, [isDeleted]);
 
   const handleCloseComments = useCallback(() => {
     setShowCommentModal(false);
@@ -222,18 +232,19 @@ export const PostContainer: React.FC<PostContainerProps> = ({
 
   const handleAddComment = useCallback(
     async (content: string) => {
-      if (!content.trim()) return;
+      if (!content.trim() || isDeleted) return;
       try {
         await addCommentMutation.mutateAsync({ postId, content });
       } catch (error) {
         showError('Comment Failed', 'Failed to add comment. Please try again.');
       }
     },
-    [addCommentMutation, postId]
+    [addCommentMutation, postId, isDeleted]
   );
 
-  // === TOGGLE REACTION HANDLER FOR DETAILS MODAL ===
   const handleToggleReactionInDetails = async () => {
+    if (isDeleted) return;
+    
     try {
       await toggleReactionMutation.mutateAsync(postId);
     } catch (error) {
@@ -241,12 +252,11 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     }
   };
 
-  // Validation
-  if (!postId || !title) {
+  // Don't render if deleted
+  if (!postId || !title || isDeleted) {
     return null;
   }
 
-  // === RENDER ===
   return (
     <>
       <Post
@@ -272,7 +282,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
         onPress={handlePostPress}
       />
 
-      {/* ActionSheet for Options */}
       <ActionSheet
         visible={actionSheet.visible}
         title={actionSheet.config.title}
@@ -281,7 +290,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
         onClose={actionSheet.hide}
       />
 
-      {/* Delete Confirmation ActionSheet */}
       <ActionSheet
         visible={showDeleteConfirm}
         title="Delete Post"
@@ -301,50 +309,50 @@ export const PostContainer: React.FC<PostContainerProps> = ({
         onClose={() => setShowDeleteConfirm(false)}
       />
 
-      {/* Comment Modal */}
-      <CommentModal
-        visible={showCommentModal}
-        onClose={handleCloseComments}
-        postTitle={title}
-        comments={comments}
-        onAddComment={handleAddComment}
-        loading={loadingComments}
-        submitting={addCommentMutation.isPending}
-      />
+      {!isDeleted && (
+        <>
+          <CommentModal
+            visible={showCommentModal}
+            onClose={handleCloseComments}
+            postTitle={title}
+            comments={comments}
+            onAddComment={handleAddComment}
+            loading={loadingComments}
+            submitting={addCommentMutation.isPending}
+          />
 
-      {/* Post Details Modal */}
-      <PostDetailsModal
-        visible={showDetailsModal}
-        postId={postId}
-        onClose={() => setShowDetailsModal(false)}
-        onToggleReaction={handleToggleReactionInDetails}
-        onShare={handleShare}
-      />
+          <PostDetailsModal
+            visible={showDetailsModal}
+            postId={postId}
+            onClose={() => setShowDetailsModal(false)}
+            onToggleReaction={handleToggleReactionInDetails}
+            onShare={handleShare}
+          />
 
-      {/* Edit Modal - Only for own posts */}
-      {isOwnPost && (
-        <EditPostModal
-          visible={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onSubmit={handleEditPost}
-          initialData={{
-            title,
-            content,
-            tags,
-          }}
-          loading={updatePostMutation.isPending}
-        />
+          {isOwnPost && (
+            <EditPostModal
+              visible={showEditModal}
+              onClose={() => setShowEditModal(false)}
+              onSubmit={handleEditPost}
+              initialData={{
+                title,
+                content,
+                tags,
+              }}
+              loading={updatePostMutation.isPending}
+            />
+          )}
+
+          <ReportModal
+            visible={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            onSubmit={handleReport}
+            contentType="post"
+            contentId={postId}
+            loading={submitReportMutation.isPending}
+          />
+        </>
       )}
-
-      {/* Report Modal - For other's posts */}
-      <ReportModal
-        visible={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        onSubmit={handleReport}
-        contentType="post"
-        contentId={postId}
-        loading={submitReportMutation.isPending}
-      />
     </>
   );
 };
