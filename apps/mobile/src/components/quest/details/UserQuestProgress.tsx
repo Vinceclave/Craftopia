@@ -1,4 +1,4 @@
-// apps/mobile/src/components/quest/details/UserQuestProgress.tsx - FIXED VERSION
+// apps/mobile/src/components/quest/details/UserQuestProgress.tsx - FIXED VERSION WITH RE-UPLOAD
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
 import { CheckCircle, Clock, Upload, Leaf, AlertCircle } from 'lucide-react-native'
@@ -6,6 +6,7 @@ import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { useUserChallengeProgress, useSubmitChallengeVerification } from '~/hooks/queries/useUserChallenges'
 import { useAlert } from '~/hooks/useAlert'
+import { useLocalUpload } from '~/hooks/useUpload'
 
 interface UserQuestProgressProps {
   id: number
@@ -21,10 +22,10 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   wasteKg = 0,
 }) => {
   const { success, error } = useAlert()
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
+  const [imageUri, setImageUri] = useState<string | null>(null)  // ✅ Store local URI
   const [isUploading, setIsUploading] = useState(false)
 
-  // Get user's progress for this challenge
   const { 
     data: challengeData, 
     isLoading: loading,
@@ -32,38 +33,18 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     refetch 
   } = useUserChallengeProgress(id)
 
-  // Submit verification mutation
   const submitVerificationMutation = useSubmitChallengeVerification()
 
-  // Set initial image URL when data loads
+  // Set initial image URI when data loads
   React.useEffect(() => {
-    if (challengeData?.proof_url && !imageUrl) {
-      setImageUrl(challengeData.proof_url)
+    if (challengeData?.proof_url && !imageUri) {
+      setImageUri(challengeData.proof_url)
     }
-  }, [challengeData?.proof_url, imageUrl])
+  }, [challengeData?.proof_url, imageUri])
 
   const handleVerify = async () => {
-    // ✅ FIXED: Better validation
-    if (!imageUrl) {
+    if (!imageUri) {
       error('Error', 'Please upload a proof image first')
-      return
-    }
-
-    // ✅ FIXED: Check if image is still uploading
-    if (isUploading) {
-      error('Error', 'Please wait for image upload to complete')
-      return
-    }
-
-    // ✅ FIXED: Check if image is still a local file
-    if (imageUrl.startsWith('file://')) {
-      error('Error', 'Image upload in progress. Please wait...')
-      return
-    }
-
-    // ✅ FIXED: Validate URL format
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') && !imageUrl.startsWith('/uploads/')) {
-      error('Error', 'Invalid image URL. Please re-upload the image.')
       return
     }
     
@@ -73,9 +54,31 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     }
 
     try {
+      setIsUploading(true)
+      let uploadedImageUrl = imageUri
+
+      // ✅ UPLOAD IMAGE ONLY ON SUBMIT
+      if (imageUri.startsWith('file://')) {
+        console.log('📤 Uploading image to AWS...')
+        const url = await uploadToFolder(imageUri, 'challenges')
+        if (!url) {
+          error('Upload Failed', 'Failed to upload image. Please try again.')
+          return
+        }
+        uploadedImageUrl = url
+        console.log('✅ Image uploaded:', uploadedImageUrl)
+      }
+
+      // Validate URL format
+      if (!uploadedImageUrl.startsWith('http://') && !uploadedImageUrl.startsWith('https://') && !uploadedImageUrl.startsWith('/uploads/')) {
+        error('Error', 'Invalid image URL. Please re-upload the image.')
+        setImageUri(null)
+        return
+      }
+
       console.log('🔍 Submitting verification:', {
         userChallengeId: challengeData.user_challenge_id,
-        proofUrl: imageUrl,
+        proofUrl: uploadedImageUrl,
         description,
         points,
         challengeId: id,
@@ -83,26 +86,25 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
       await submitVerificationMutation.mutateAsync({
         userChallengeId: challengeData.user_challenge_id,
-        proofUrl: imageUrl,
+        proofUrl: uploadedImageUrl,
         description: description || '',
         points: points || 0,
         challengeId: id,
       })
       
       success('Success', 'Challenge submitted for verification!')
-      // Refetch to get updated status
       refetch()
     } catch (err: any) {
       console.error('❌ Verification error:', err)
       
-      // ✅ FIXED: Better error messages
       if (err.message?.includes('valid uri') || err.message?.includes('URI')) {
         error('Error', 'Invalid image URL. Please re-upload your proof image.')
-        setImageUrl(null) // Clear invalid URL
+        setImageUri(null)
       } else {
-        const msg = err.message || 'Something went wrong.'
-        error('Error', msg)
+        error('Error', err.message || 'Something went wrong.')
       }
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -131,8 +133,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   }
 
   const getButtonTitle = () => {
-    if (submitVerificationMutation.isPending) return 'Verifying...'
-    if (isUploading) return 'Uploading Image...'
+    if (submitVerificationMutation.isPending || isUploading) return 'Submitting...'
     if (!challengeData) return 'Submit for Verification'
     switch (challengeData.status) {
       case 'pending_verification': return 'Waiting for Verification'
@@ -144,20 +145,20 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   const isDisabled = () => {
     if (!challengeData) {
-      // Not joined yet - disable if no valid uploaded image
-      return isUploading || !imageUrl || imageUrl.startsWith('file://')
+      return !imageUri
     }
     
     return (
       submitVerificationMutation.isPending || 
       isUploading || 
-      !imageUrl ||
-      imageUrl.startsWith('file://') || 
-      ['pending_verification', 'completed'].includes(challengeData.status)
+      !imageUri ||
+      ['pending_verification', 'completed'].includes(challengeData.status)  // ✅ Removed 'rejected' from disabled states
     )
   }
 
-  // ✅ FIXED: Better error handling
+  // Check if image is local file
+  const isLocalFile = imageUri?.startsWith('file://')
+
   if (progressError && !progressError.message?.includes('not found')) {
     return (
       <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
@@ -181,7 +182,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     )
   }
 
-  // If user hasn't joined the challenge yet, don't show the progress component
   if (!challengeData && !loading) {
     return null;
   }
@@ -197,65 +197,65 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         </View>
       ) : (
         <>
-          {/* ✅ FIXED: Only disable upload after completion, not during pending */}
-          <ImageUploadPicker
-            label="Proof Image"
-            description="Upload from camera or gallery"
-            value={imageUrl || undefined}
-            onChange={(url) => {
-              console.log('📸 Image changed:', url)
-              setImageUrl(url || null)
-            }}
-            folder="challenges"
-            onUploadStart={() => {
-              console.log('📤 Upload started')
-              setIsUploading(true)
-            }}
-            onUploadComplete={() => {
-              console.log('✅ Upload completed')
-              setIsUploading(false)
-            }}
-            disabled={challengeData?.status === 'completed'}
-          />
+          {/* Image Upload */}
+          <View className="mb-2">
+            <Text className="text-xs text-craftopia-textSecondary mb-2 font-nunito">
+              {challengeData?.status === 'rejected' 
+                ? 'Upload a clearer photo to resubmit'
+                : 'Upload a photo showing your completion'}
+            </Text>
+            <ImageUploadPicker
+              label="Proof Image"
+              description="Upload from camera or gallery"
+              value={imageUri || undefined}
+              onChange={(uri) => {
+                console.log('📸 Image changed:', uri)
+                setImageUri(uri || null)
+              }}
+              disabled={challengeData?.status === 'completed' || challengeData?.status === 'pending_verification'}
+            />
+          </View>
 
-          {/* ✅ NEW: Show upload status */}
-          {isUploading && (
-            <View className="flex-row items-center mt-2 bg-craftopia-info/10 p-2 rounded">
-              <ActivityIndicator size="small" color="#5C89B5" />
-              <Text className="text-xs text-craftopia-info ml-2 font-nunito">Uploading image...</Text>
-            </View>
-          )}
-
-          {/* ✅ NEW: Show warning if image is still local */}
-          {imageUrl && imageUrl.startsWith('file://') && !isUploading && (
-            <View className="flex-row items-center mt-2 bg-craftopia-warning/10 p-2 rounded">
-              <AlertCircle size={14} color="#E3A84F" />
-              <Text className="text-xs text-craftopia-warning ml-2 font-nunito">
-                Image not uploaded yet. Please wait...
+          {/* Status Messages */}
+          {isLocalFile && (
+            <View className="flex-row items-center mt-2 bg-craftopia-accent/10 p-2 rounded">
+              <CheckCircle size={14} color="#E6B655" />
+              <Text className="text-xs text-craftopia-accent ml-2 font-nunito">
+                Image ready - will upload on submit
               </Text>
             </View>
           )}
 
-          {/* ✅ NEW: Show success indicator when image is uploaded */}
-          {imageUrl && !imageUrl.startsWith('file://') && !isUploading && !challengeData?.verified_at && (
+          {imageUri && !isLocalFile && !isUploading && !challengeData?.verified_at && (
             <View className="flex-row items-center mt-2 bg-craftopia-success/10 p-2 rounded">
               <CheckCircle size={14} color="#5BA776" />
               <Text className="text-xs text-craftopia-success ml-2 font-nunito">
-                Image uploaded successfully
+                Image ready for submission
               </Text>
             </View>
           )}
 
+          {isUploading && (
+            <View className="flex-row items-center mt-2 bg-craftopia-info/10 p-2 rounded">
+              <ActivityIndicator size="small" color="#5C89B5" />
+              <Text className="text-xs text-craftopia-info ml-2 font-nunito">
+                Uploading and submitting...
+              </Text>
+            </View>
+          )}
+
+          {/* Submit Button */}
           <Button
             title={getButtonTitle()}
             onPress={handleVerify}
             disabled={isDisabled()}
             leftIcon={submitVerificationMutation.isPending || isUploading ? undefined : <Upload size={14} color="#fff" />}
-            loading={submitVerificationMutation.isPending}
+            loading={submitVerificationMutation.isPending || isUploading}
             size="md"
             className="mt-2"
           />
 
+          {/* Status Bar */}
           {challengeData && (
             <View className="flex flex-row mt-3 pt-2 border-t border-craftopia-light items-center justify-between">
               <View className="flex-row items-center">
@@ -265,7 +265,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                 </Text>
               </View>
 
-              {/* Show waste saved if completed */}
               {challengeData.status === 'completed' && challengeData.waste_kg_saved > 0 && (
                 <View className="flex-row items-center bg-craftopia-success/10 px-2 py-1 rounded-full">
                   <Leaf size={12} color="#5BA776" />
@@ -275,7 +274,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                 </View>
               )}
 
-              {/* Show verified date if completed */}
               {challengeData.verified_at && challengeData.status === 'completed' && (
                 <View className="flex-row items-center">
                   <CheckCircle size={12} color="#5BA776" />
@@ -287,14 +285,17 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             </View>
           )}
 
-          {/* ✅ NEW: Show rejection reason if rejected */}
+          {/* Rejection Notice */}
           {challengeData?.status === 'rejected' && (
             <View className="mt-2 p-2 bg-craftopia-error/5 rounded border border-craftopia-error/20">
-              <Text className="text-xs text-craftopia-error font-medium mb-1 font-nunito">
-                Verification Failed
-              </Text>
-              <Text className="text-xs text-craftopia-error font-nunito">
-                Please upload a clearer proof image and try again.
+              <View className="flex-row items-center mb-1">
+                <AlertCircle size={14} color="#D66B4E" />
+                <Text className="text-xs text-craftopia-error font-medium ml-1 font-nunito">
+                  Verification Failed
+                </Text>
+              </View>
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                Your previous submission was rejected. Please upload a clearer proof image and resubmit.
               </Text>
             </View>
           )}

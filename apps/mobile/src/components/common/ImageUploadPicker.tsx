@@ -1,4 +1,4 @@
-// Enhanced ImageUploadPicker with additional features
+// Enhanced ImageUploadPicker - ONLY UPLOADS ON SUBMIT
 import React, { useState } from 'react'
 import { 
   View, 
@@ -12,7 +12,6 @@ import {
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { X, Camera, Image as ImageIcon, CheckCircle } from 'lucide-react-native'
-import { useLocalUpload } from '~/hooks/useUpload'
 
 export interface ImageUploadPickerProps {
   label?: string;
@@ -20,12 +19,7 @@ export interface ImageUploadPickerProps {
   value?: string | null;
   onChange?: (value: string | undefined) => void;
   folder?: string;
-  onUploadStart?: () => void;
-  onUploadComplete?: () => void;
   disabled?: boolean;
-}
-
-interface EnhancedImageUploadPickerProps extends ImageUploadPickerProps {
   maxSizeMB?: number;
   allowedFormats?: string[];
   aspectRatio?: [number, number];
@@ -34,17 +28,11 @@ interface EnhancedImageUploadPickerProps extends ImageUploadPickerProps {
   onError?: (error: string) => void;
 }
 
-const allowedFolderValues = ["posts", "challenges", "profiles", "crafts"] as const
-type AllowedFolder = typeof allowedFolderValues[number]
-
-export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
+export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
   label = 'Upload Image',
   description = 'Take a photo or choose from gallery',
   value,
   onChange,
-  folder = 'posts',
-  onUploadStart,
-  onUploadComplete,
   disabled = false,
   maxSizeMB = 10,
   allowedFormats = ['image/jpeg', 'image/png', 'image/jpg'],
@@ -53,16 +41,7 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
   showPreview = true,
   onError,
 }) => {
-  const { uploadToFolder } = useLocalUpload()
-  const [uploading, setUploading] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
-  const [localImageUri, setLocalImageUri] = useState<string | undefined>(undefined)
-  const [uploadProgress, setUploadProgress] = useState(0)
-
-  // Convert to allowed folder
-  const safeFolder: AllowedFolder = allowedFolderValues.includes(folder as AllowedFolder)
-    ? (folder as AllowedFolder)
-    : "posts"
 
   const validateImage = (asset: ImagePicker.ImagePickerAsset): boolean => {
     if (asset.fileSize && asset.fileSize > maxSizeMB * 1024 * 1024) {
@@ -116,46 +95,12 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
 
         if (!validateImage(asset)) return
 
-        setLocalImageUri(asset.uri)
+        // ✅ ONLY store local URI - NO upload yet!
+        onChange?.(asset.uri)
         setShowPicker(false)
-        setUploading(true)
-        setUploadProgress(0)
-        onUploadStart?.()
-
-        try {
-          const interval = setInterval(() => {
-            setUploadProgress(prev => (prev >= 90 ? 90 : prev + 10))
-          }, 200)
-
-          const uploadedUrl = await uploadToFolder(asset.uri, safeFolder)
-
-          clearInterval(interval)
-          setUploadProgress(100)
-
-          if (uploadedUrl) {
-            onChange?.(uploadedUrl)
-            setTimeout(() => setLocalImageUri(undefined), 400)
-          } else {
-            onError?.('Upload failed. Please try again.')
-            onChange?.(undefined)
-            setLocalImageUri(undefined)
-          }
-        } catch (err) {
-          onError?.(err instanceof Error ? err.message : 'Upload failed')
-          onChange?.(undefined)
-          setLocalImageUri(undefined)
-        } finally {
-          setUploading(false)
-          setUploadProgress(0)
-          onUploadComplete?.()
-        }
       }
     } catch (error) {
       onError?.(error instanceof Error ? error.message : 'Image selection failed')
-      setLocalImageUri(undefined)
-      setUploading(false)
-      setUploadProgress(0)
-      onUploadComplete?.()
     }
   }
 
@@ -169,20 +114,18 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
           { 
             text: 'Remove', 
             style: 'destructive',
-            onPress: () => {
-              setLocalImageUri(undefined)
-              onChange?.(undefined)
-            }
+            onPress: () => onChange?.(undefined)
           },
         ]
       )
     } else {
-      setLocalImageUri(undefined)
       onChange?.(undefined)
     }
   }
 
-  const displayImageUri = localImageUri || value || undefined
+  // Check if it's a local file or uploaded URL
+  const isLocalFile = value?.startsWith('file://')
+  const isUploadedUrl = value && !isLocalFile
 
   return (
     <View className="mb-4">
@@ -196,28 +139,16 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
         </View>
       )}
 
-      {displayImageUri && showPreview ? (
+      {value && showPreview ? (
         <View className="relative">
           <Image
-            source={displayImageUri ? { uri: displayImageUri } : undefined}
+            source={{ uri: value }}
             className="w-full rounded-xl"
             style={{ height: 200, backgroundColor: '#F3F4F6' }}
             resizeMode="cover"
           />
 
-          {uploading && (
-            <View className="absolute inset-0 rounded-xl items-center justify-center"
-              style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-              <ActivityIndicator size="large" color="#fff" />
-              <View className="w-32 bg-gray-300 rounded-full h-2 mt-3">
-                <View className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${uploadProgress}%` }} />
-              </View>
-              <Text className="text-white text-sm mt-2">{uploadProgress}%</Text>
-            </View>
-          )}
-
-          {!disabled && !uploading && (
+          {!disabled && (
             <TouchableOpacity
               className="absolute top-3 right-3 p-2 rounded-full"
               style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
@@ -226,7 +157,16 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
             </TouchableOpacity>
           )}
 
-          {!uploading && value && (
+          {/* Show status badge */}
+          {isLocalFile && (
+            <View className="absolute top-3 left-3 flex-row items-center px-3 py-1.5 rounded-full"
+              style={{ backgroundColor: 'rgba(229, 182, 85, 0.9)' }}>
+              <ImageIcon size={14} color="white" />
+              <Text className="text-xs font-semibold text-white ml-1">Ready to Upload</Text>
+            </View>
+          )}
+
+          {isUploadedUrl && (
             <View className="absolute top-3 left-3 flex-row items-center px-3 py-1.5 rounded-full"
               style={{ backgroundColor: 'rgba(74, 124, 89, 0.9)' }}>
               <CheckCircle size={14} color="white" />
@@ -236,7 +176,7 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
         </View>
       ) : (
         <TouchableOpacity
-          disabled={uploading || disabled}
+          disabled={disabled}
           onPress={() => setShowPicker(true)}
           className="rounded-xl overflow-hidden border-2 border-dashed"
           style={{
@@ -246,32 +186,23 @@ export const ImageUploadPicker: React.FC<EnhancedImageUploadPickerProps> = ({
             opacity: disabled ? 0.6 : 1,
           }}>
           
-          {uploading ? (
-            <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color="#374A36" size="large" />
-              <Text className="text-sm font-medium mt-3" style={{ color: '#6B7280' }}>
-                Uploading... {uploadProgress}%
-              </Text>
+          <View className="flex-1 items-center justify-center p-4">
+            <View className="w-16 h-16 rounded-full items-center justify-center mb-3"
+              style={{ backgroundColor: 'rgba(55,74,54,0.1)' }}>
+              <ImageIcon size={28} color="#374A36" />
             </View>
-          ) : (
-            <View className="flex-1 items-center justify-center p-4">
-              <View className="w-16 h-16 rounded-full items-center justify-center mb-3"
-                style={{ backgroundColor: 'rgba(55,74,54,0.1)' }}>
-                <ImageIcon size={28} color="#374A36" />
-              </View>
-              <Text className="text-base font-semibold mb-1 text-center" style={{ color: '#1A1A1A' }}>
-                {value && !showPreview ? 'Change Image' : 'Add Image'}
+            <Text className="text-base font-semibold mb-1 text-center" style={{ color: '#1A1A1A' }}>
+              {value && !showPreview ? 'Change Image' : 'Add Image'}
+            </Text>
+            {description && (
+              <Text className="text-sm text-center" style={{ color: '#6B7280' }}>
+                {description}
               </Text>
-              {description && (
-                <Text className="text-sm text-center" style={{ color: '#6B7280' }}>
-                  {description}
-                </Text>
-              )}
-              <Text className="text-xs text-center mt-1" style={{ color: '#9CA3AF' }}>
-                Max {maxSizeMB}MB • {allowedFormats.join(', ')}
-              </Text>
-            </View>
-          )}
+            )}
+            <Text className="text-xs text-center mt-1" style={{ color: '#9CA3AF' }}>
+              Max {maxSizeMB}MB • {allowedFormats.join(', ')}
+            </Text>
+          </View>
         </TouchableOpacity>
       )}
 

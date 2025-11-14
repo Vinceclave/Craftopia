@@ -1,3 +1,4 @@
+// QuestDetail.tsx - UPLOAD ONLY ON SUBMIT
 import { Award, Users, Leaf, CheckCircle, Clock, Upload, AlertCircle, PlayCircle, Target } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
@@ -5,6 +6,7 @@ import Button from '~/components/common/Button'
 import { ImageUploadPicker } from '~/components/common/ImageUploadPicker'
 import { useUserChallengeProgress, useSubmitChallengeVerification } from '~/hooks/queries/useUserChallenges'
 import { useAlert } from '~/hooks/useAlert'
+import { useLocalUpload } from '~/hooks/useUpload'
 
 interface QuestDetailProps {
   participants: number
@@ -20,7 +22,6 @@ interface QuestDetailProps {
   progressDescription?: string
 }
 
-// Safe hook wrapper to prevent navigation errors
 const useSafeUserChallengeProgress = (questId: number) => {
   try {
     return useUserChallengeProgress(questId)
@@ -61,7 +62,8 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
   progressDescription,
 }) => {
   const { success, error } = useSafeAlert()
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
+  const [imageUri, setImageUri] = useState<string | null>(null)  // ✅ Local URI instead of URL
   const [isUploading, setIsUploading] = useState(false)
 
   const { 
@@ -74,22 +76,14 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
   const submitVerificationMutation = useSubmitChallengeVerification()
 
   React.useEffect(() => {
-    if (challengeData?.proof_url && !imageUrl) {
-      setImageUrl(challengeData.proof_url)
+    if (challengeData?.proof_url && !imageUri) {
+      setImageUri(challengeData.proof_url)
     }
-  }, [challengeData?.proof_url, imageUrl])
+  }, [challengeData?.proof_url, imageUri])
 
   const handleVerify = async () => {
-    if (!imageUrl) {
+    if (!imageUri) {
       error('Error', 'Please upload a proof image first')
-      return
-    }
-    if (isUploading || imageUrl.startsWith('file://')) {
-      error('Error', 'Please wait for image upload to complete')
-      return
-    }
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') && !imageUrl.startsWith('/uploads/')) {
-      error('Error', 'Invalid image URL. Please re-upload the image.')
       return
     }
     if (!challengeData?.user_challenge_id) {
@@ -98,23 +92,48 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
     }
 
     try {
+      setIsUploading(true)
+      let uploadedImageUrl = imageUri
+
+      // ✅ UPLOAD IMAGE ONLY ON SUBMIT
+      if (imageUri.startsWith('file://')) {
+        console.log('📤 Uploading image to AWS...')
+        const url = await uploadToFolder(imageUri, 'challenges')
+        if (!url) {
+          error('Upload Failed', 'Failed to upload image. Please try again.')
+          return
+        }
+        uploadedImageUrl = url
+        console.log('✅ Image uploaded:', uploadedImageUrl)
+      }
+
+      // Validate URL format
+      if (!uploadedImageUrl.startsWith('http://') && !uploadedImageUrl.startsWith('https://') && !uploadedImageUrl.startsWith('/uploads/')) {
+        error('Error', 'Invalid image URL. Please re-upload the image.')
+        setImageUri(null)
+        return
+      }
+
       await submitVerificationMutation.mutateAsync({
         userChallengeId: challengeData.user_challenge_id,
-        proofUrl: imageUrl,
+        proofUrl: uploadedImageUrl,
         description: progressDescription || '',
         points: points || 0,
         challengeId: questId,
       })
+      
       success('Success', 'Challenge submitted for verification!')
       refetch()
     } catch (err: any) {
       console.error('❌ Verification error:', err)
       if (err.message?.includes('valid uri') || err.message?.includes('URI')) {
         error('Error', 'Invalid image URL. Please re-upload your proof image.')
-        setImageUrl(null)
+        setImageUri(null)
       } else {
         error('Error', err.message || 'Something went wrong.')
       }
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -164,8 +183,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
   }
 
   const getProgressButtonTitle = () => {
-    if (submitVerificationMutation.isPending) return 'Verifying...'
-    if (isUploading) return 'Uploading Image...'
+    if (submitVerificationMutation.isPending || isUploading) return 'Submitting...'
     if (!challengeData) return 'Submit for Verification'
     switch (challengeData.status) {
       case 'pending_verification': return 'Waiting for Verification'
@@ -177,20 +195,22 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
 
   const isProgressDisabled = () => {
     if (!challengeData) {
-      return isUploading || !imageUrl || imageUrl.startsWith('file://')
+      return !imageUri
     }
+    
     return (
       submitVerificationMutation.isPending || 
       isUploading || 
-      !imageUrl ||
-      imageUrl.startsWith('file://') || 
+      !imageUri ||
       ['pending_verification', 'completed'].includes(challengeData.status)
     )
   }
 
   const statusConfig = getStatusConfig(challengeData?.status)
 
-  // Loading state
+  // Check if image is local file
+  const isLocalFile = imageUri?.startsWith('file://')
+
   if (isLoading) {
     return (
       <View className="mx-4 mt-4">
@@ -214,9 +234,9 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
 
   return (
     <View className="mx-4 mt-4">
-      {/* Main Quest Card - Home style with clean layout */}
+      {/* Main Quest Card */}
       <View className="bg-craftopia-surface rounded-xl px-5 py-4 border border-craftopia-light mb-3">
-        {/* Header Row - Category & Status */}
+        {/* Header Row */}
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center px-3 py-1.5 rounded-full bg-craftopia-accent/10 border border-craftopia-accent/20">
             <Target size={14} color="#E6B655" />
@@ -243,10 +263,9 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
           {description}
         </Text>
 
-        {/* Stats Row - Similar to HomeStats compact layout */}
+        {/* Stats Row */}
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center gap-2">
-            {/* Points */}
             <View className="flex-row items-center bg-craftopia-primary/10 px-3 py-2 rounded-xl">
               <Award size={16} color="#3B6E4D" />
               <Text className="text-base font-bold text-craftopia-primary ml-1.5 font-poppinsBold">
@@ -255,7 +274,6 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
               <Text className="text-xs text-craftopia-textSecondary ml-0.5 font-nunito">pts</Text>
             </View>
 
-            {/* Waste Impact */}
             {wasteKg > 0 && (
               <View className="flex-row items-center bg-craftopia-success/10 px-3 py-2 rounded-xl">
                 <Leaf size={16} color="#5BA776" />
@@ -267,7 +285,6 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
             )}
           </View>
           
-          {/* Participants */}
           <View className="flex-row items-center bg-craftopia-light px-3 py-2 rounded-xl">
             <Users size={16} color="#5F6F64" />
             <Text className="text-sm font-bold text-craftopia-textSecondary ml-1.5 font-poppinsBold">
@@ -302,10 +319,9 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
         )}
       </View>
 
-      {/* Progress Section - Only show if joined but not completed */}
+      {/* Progress Section */}
       {isJoined && challengeData?.status !== 'completed' && (
         <View className="bg-craftopia-surface rounded-xl px-4 py-4 border border-craftopia-light mb-3">
-          {/* Section Header - Home style */}
           <View className="flex-row items-center mb-3">
             <View className="w-8 h-8 rounded-full bg-craftopia-primary/10 items-center justify-center mr-2">
               <Clock size={16} color="#3B6E4D" />
@@ -345,30 +361,36 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 <ImageUploadPicker
                   label=""
                   description="Tap to upload image"
-                  value={imageUrl || undefined}
-                  onChange={(url) => setImageUrl(url || null)}
-                  folder="challenges"
-                  onUploadStart={() => setIsUploading(true)}
-                  onUploadComplete={() => setIsUploading(false)}
+                  value={imageUri || undefined}
+                  onChange={(uri) => setImageUri(uri || null)}
                   disabled={challengeData?.status === 'pending_verification'}
                 />
               </View>
 
-              {/* Upload Status Messages */}
-              {isUploading && (
+              {/* Status Messages */}
+              {isLocalFile && (
                 <View className="flex-row items-center bg-craftopia-accent/10 px-3 py-2 rounded-lg mb-2">
-                  <ActivityIndicator size="small" color="#E6B655" />
+                  <CheckCircle size={16} color="#E6B655" />
                   <Text className="text-xs text-craftopia-accent ml-2 font-medium font-nunito">
-                    Uploading your image...
+                    Image ready - will upload on submit
                   </Text>
                 </View>
               )}
 
-              {imageUrl && !imageUrl.startsWith('file://') && !isUploading && (
+              {imageUri && !isLocalFile && !isUploading && (
                 <View className="flex-row items-center bg-craftopia-success/10 px-3 py-2 rounded-lg mb-2">
                   <CheckCircle size={16} color="#5BA776" />
                   <Text className="text-xs text-craftopia-success ml-2 font-medium font-nunito">
                     Image ready for submission
+                  </Text>
+                </View>
+              )}
+
+              {isUploading && (
+                <View className="flex-row items-center bg-craftopia-info/10 px-3 py-2 rounded-lg mb-2">
+                  <ActivityIndicator size="small" color="#5C89B5" />
+                  <Text className="text-xs text-craftopia-info ml-2 font-medium font-nunito">
+                    Uploading and submitting...
                   </Text>
                 </View>
               )}
@@ -379,7 +401,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 onPress={handleVerify}
                 disabled={isProgressDisabled()}
                 leftIcon={submitVerificationMutation.isPending || isUploading ? undefined : <Upload size={16} color="#fff" />}
-                loading={submitVerificationMutation.isPending}
+                loading={submitVerificationMutation.isPending || isUploading}
                 size="md"
                 className="rounded-full"
               />
@@ -403,7 +425,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
         </View>
       )}
 
-      {/* Completed Stats Card - Home style success card */}
+      {/* Completed Stats Card */}
       {isJoined && challengeData?.status === 'completed' && (
         <View className="bg-craftopia-success/10 rounded-xl px-4 py-4 border border-craftopia-success/30 mb-3">
           <View className="flex-row items-center justify-between mb-3">
@@ -439,7 +461,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
         </View>
       )}
 
-      {/* Tips Card - Home style encouragement */}
+      {/* Tips Card */}
       <View className="bg-craftopia-light rounded-xl px-3 py-2.5 mb-3">
         <Text className="text-xs font-medium text-craftopia-textPrimary text-center font-nunito">
           💡 Complete challenges to earn points and make an impact!

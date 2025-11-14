@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/feed/CreatePost.tsx - CRAFTOPIA REFINED
+// apps/mobile/src/screens/feed/CreatePost.tsx - UPLOAD ONLY ON SUBMIT
 import React, { useRef, useState } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Modal } from 'react-native'
 import { Input } from '~/components/common/TextInputField'
@@ -10,11 +10,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import type { FeedStackParamList } from '~/navigations/types'
 import { postService } from '~/services/post.service'
 import { useAlert } from '~/hooks/useAlert'
+import { useLocalUpload } from '~/hooks/useUpload'
 
 interface CreatePostFormData {
   title: string
   content: string
-  imageUrl: string
+  imageUri: string  // ✅ Store local URI, not URL
   tags: string[]
   category: string
   featured: boolean
@@ -28,22 +29,21 @@ const CATEGORIES = [
   { id: 'Other', label: 'Other', icon: '📝', description: 'General posts' },
 ]
 
-// ✅ Use screen props instead of hooks
 type CreatePostScreenProps = NativeStackScreenProps<FeedStackParamList, 'Create'>;
 
 export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, route }) => {
   const onPostCreated = route.params?.onPostCreated
 
   const { success, error } = useAlert()
+  const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
   const [loading, setLoading] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
   const [tagsInput, setTagsInput] = useState('')
-  const [uploading, setUploading] = useState(false)
 
   const [formData, setFormData] = useState<CreatePostFormData>({
     title: '',
     content: '',
-    imageUrl: '',
+    imageUri: '',  // ✅ Local URI
     tags: [],
     category: 'Other',
     featured: false,
@@ -73,8 +73,8 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
     if (field in errors) setErrors(prev => ({ ...prev, [field]: '' }))
   }
 
-  const handleImageChange = (url?: string) => {
-    setFormData(prev => ({ ...prev, imageUrl: url || '' }))
+  const handleImageChange = (uri?: string) => {
+    setFormData(prev => ({ ...prev, imageUri: uri || '' }))
   }
 
   const validateForm = (): boolean => {
@@ -99,17 +99,36 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
 
     setLoading(true)
     try {
+      let uploadedImageUrl: string | undefined = undefined
+
+      // ✅ UPLOAD IMAGE ONLY ON SUBMIT
+      if (formData.imageUri && formData.imageUri.startsWith('file://')) {
+        console.log('📤 Uploading image to AWS...')
+        const url = await uploadToFolder(formData.imageUri, 'posts')
+        if (!url) {
+          error('Upload Failed', 'Failed to upload image. Please try again.')
+          setLoading(false)
+          return
+        }
+        uploadedImageUrl = url
+        console.log('✅ Image uploaded:', uploadedImageUrl)
+      } else if (formData.imageUri) {
+        // Already uploaded (e.g., from edit mode)
+        uploadedImageUrl = formData.imageUri
+      }
+
       const payload = {
         title: formData.title.trim(),
         content: formData.content.trim(),
-        imageUrl: formData.imageUrl.trim() || undefined,
+        imageUrl: uploadedImageUrl,
         tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
         category: formData.category as 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other',
         featured: formData.featured,
       }
 
+      console.log('📤 Creating post with payload:', payload)
       const response = await postService.createPost(payload)
-      console.log('Post created:', response.data)
+      console.log('✅ Post created:', response.data)
 
       onPostCreated?.()
 
@@ -117,7 +136,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
         navigation.goBack()
       })
     } catch (err: any) {
-      console.error('Failed to create post:', err)
+      console.error('❌ Failed to create post:', err)
       error('Failed to Create Post', err.message || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
@@ -134,7 +153,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
   }
 
   const getTagsAsString = (): string => tagsInput
-  const isFormValid = formData.title.trim() && formData.content.trim() && formData.category && !uploading
+  const isFormValid = formData.title.trim() && formData.content.trim() && formData.category
 
   const CharacterCounter = ({ current, max, warningThreshold = 0.9 }: { current: number; max: number; warningThreshold?: number }) => (
     <Text className={`text-xs font-nunito ${current > max * warningThreshold ? 'text-craftopia-warning' : 'text-craftopia-textSecondary'}`}>
@@ -224,17 +243,19 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
           <View>
             <View className="flex-row items-center mb-2">
               <ImageIcon size={16} color="#3B6E4D" />
-              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary ml-1.5">Image</Text>
+              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary ml-1.5">Image (Optional)</Text>
             </View>
             <ImageUploadPicker
               description="Take a photo or choose from gallery"
-              value={formData.imageUrl}
+              value={formData.imageUri}
               onChange={handleImageChange}
-              folder="posts"
-              onUploadStart={() => setUploading(true)}
-              onUploadComplete={() => setUploading(false)}
               disabled={loading}
             />
+            {formData.imageUri && formData.imageUri.startsWith('file://') && (
+              <Text className="text-xs text-craftopia-textSecondary mt-1 font-nunito">
+                💡 Image will be uploaded when you submit
+              </Text>
+            )}
           </View>
 
           {/* Tags Input */}
@@ -310,7 +331,6 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
       >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-craftopia-surface rounded-t-xl p-4 max-h-[80%]">
-            {/* Header */}
             <View className="flex-row items-center justify-between mb-3">
               <View>
                 <Text className="text-sm font-nunito text-craftopia-textSecondary mb-0.5">
@@ -327,7 +347,6 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
               </TouchableOpacity>
             </View>
 
-            {/* Categories List */}
             <ScrollView showsVerticalScrollIndicator={false}>
               <View className="space-y-1.5">
                 {CATEGORIES.map((category) => (
