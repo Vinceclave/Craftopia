@@ -55,6 +55,12 @@ router.post(
   authController.forgotPassword
 );
 
+// ✅ NEW: Email link redirect for password reset
+router.get(
+  '/reset-password-redirect',
+  authController.resetPasswordRedirect
+);
+
 router.post(
   '/reset-password', 
   validate(resetPasswordSchema), 

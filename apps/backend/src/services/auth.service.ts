@@ -1,4 +1,4 @@
-// apps/backend/src/services/auth.service.ts - REFACTORED VERSION
+// apps/backend/src/services/auth.service.ts - FIXED VERSION WITH PROPER EMAIL HANDLING
 import crypto from 'crypto';
 import * as userService from './user.service';
 import { hashPassword, comparePassword } from '../utils/hash';
@@ -205,7 +205,7 @@ class AuthService {
 
     const user = await userService.findUserByUsernameOrEmail(email);
     if (!user) {
-      // Don't reveal if email exists
+      // Don't reveal if email exists (security best practice)
       return { 
         message: 'If the email exists, password reset instructions have been sent' 
       };
@@ -303,10 +303,13 @@ class AuthService {
     return { message: 'Verification email sent successfully' };
   }
 
-  // Helper: Send verification email
+  // ✅ FIXED: Helper - Send verification email
   private async sendVerificationEmail(user: { user_id: number; email: string }) {
     const token = generateEmailToken(user.user_id);
-    const verificationUrl = `${config.frontend.url}/api/v1/auth/verify-email?token=${token}`;
+    
+    // ✅ Use backend URL for the verification endpoint
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${config.port}`;
+    const verificationUrl = `${backendUrl}/api/v1/auth/verify-email?token=${token}`;
     const userName = user.email.split('@')[0];
 
     const html = `
@@ -314,27 +317,34 @@ class AuthService {
       <html lang="en">
       <head>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Verify Your Account - Craftopia</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #F9FAFB;">
+      <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #F9FAFB;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #F3F4F6; padding: 40px;">
           <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
-            <div style="font-size: 24px; font-weight: 800; color: #004E98;">CRAFTOPIA</div>
+            <div style="font-size: 24px; font-weight: 800; color: #004E98;">🎨 CRAFTOPIA</div>
           </div>
           
-          <h1 style="font-size: 20px; font-weight: 700; color: #111827;">Welcome to Craftopia!</h1>
+          <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 16px;">Welcome to Craftopia!</h1>
           
-          <p style="color: #6B7280;">Hello <strong>${userName}</strong>,</p>
+          <p style="color: #6B7280; margin-bottom: 8px;">Hello <strong style="color: #004E98;">${userName}</strong>,</p>
           
-          <p style="color: #6B7280;">Please verify your email address to complete your registration.</p>
+          <p style="color: #6B7280; margin-bottom: 24px;">Thanks for signing up! Please verify your email address to complete your registration and start your crafting journey.</p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" style="display: inline-block; background-color: #004E98; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600;">Verify Email</a>
+            <a href="${verificationUrl}" style="display: inline-block; background-color: #004E98; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
           </div>
           
-          <p style="font-size: 13px; color: #6B7280;">
-            This link expires in <strong>24 hours</strong>. If you didn't create an account, ignore this email.
+          <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">
+            This link expires in <strong>24 hours</strong>. If you didn't create a Craftopia account, you can safely ignore this email.
           </p>
+          
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">
+            <p style="font-size: 12px; color: #9CA3AF; text-align: center;">
+              © ${new Date().getFullYear()} Craftopia. All rights reserved.
+            </p>
+          </div>
         </div>
       </body>
       </html>
@@ -343,37 +353,53 @@ class AuthService {
     return sendEmail(user.email, 'Verify Your Craftopia Account', html);
   }
 
-  // Helper: Send password reset email
+  // ✅ FIXED: Helper - Send password reset email (with deep link support)
   private async sendPasswordResetEmail(user: { user_id: number; email: string }, token: string) {
-    const resetUrl = `${config.frontend.url}/reset-password?token=${token}`;
+    // ✅ Use backend URL for mobile deep linking
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${config.port}`;
+    const resetUrl = `${backendUrl}/api/v1/auth/reset-password-redirect?token=${token}`;
     const userName = user.email.split('@')[0];
 
     const html = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Password Reset - Craftopia</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #F9FAFB;">
+      <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #F9FAFB;">
         <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #F3F4F6; padding: 40px;">
           <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
-            <div style="font-size: 24px; font-weight: 800; color: #6D28D9;">CRAFTOPIA</div>
+            <div style="font-size: 24px; font-weight: 800; color: #6D28D9;">🔒 CRAFTOPIA</div>
           </div>
           
-          <h1 style="font-size: 20px; font-weight: 700; color: #111827;">Reset Your Password</h1>
+          <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 16px;">Reset Your Password</h1>
           
-          <p style="color: #6B7280;">Hello <strong>${userName}</strong>,</p>
+          <p style="color: #6B7280; margin-bottom: 8px;">Hello <strong style="color: #6D28D9;">${userName}</strong>,</p>
           
-          <p style="color: #6B7280;">We received a request to reset your password. Click the button below:</p>
+          <p style="color: #6B7280; margin-bottom: 24px;">We received a request to reset your password. Click the button below to create a new password:</p>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background-color: #6D28D9; color: #FFFFFF; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">Reset Password</a>
+            <a href="${resetUrl}" style="display: inline-block; background-color: #6D28D9; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reset Password</a>
           </div>
           
-          <p style="font-size: 14px; color: #6B7280;">
-            This link expires in <strong>24 hours</strong>. If you didn't request this, ignore this email.
+          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 14px; color: #92400E;">
+              <strong>Security Note:</strong> This link expires in <strong>24 hours</strong>. If you didn't request a password reset, please ignore this email and your password will remain unchanged.
+            </p>
+          </div>
+          
+          <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${resetUrl}" style="color: #6D28D9; word-break: break-all;">${resetUrl}</a>
           </p>
+          
+          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">
+            <p style="font-size: 12px; color: #9CA3AF; text-align: center;">
+              © ${new Date().getFullYear()} Craftopia. All rights reserved.
+            </p>
+          </div>
         </div>
       </body>
       </html>

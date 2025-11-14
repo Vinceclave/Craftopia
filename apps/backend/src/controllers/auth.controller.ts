@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess } from '../utils/response';
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { logger } from "../utils/logger";
+import { config } from "../config";
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
@@ -111,8 +112,8 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     } else {
       // Web Browser: Redirect to frontend
       const successUrl = result.is_email_verified
-        ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/email-verified?already=true`
-        : `${process.env.FRONTEND_URL || 'http://localhost:3000'}/email-verified?success=true`;
+        ? `${config.frontend.url}/email-verified?already=true`
+        : `${config.frontend.url}/email-verified?success=true`;
       res.redirect(successUrl);
     }
   } catch (error: any) {
@@ -128,7 +129,7 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
         timestamp: new Date().toISOString()
       });
     } else {
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/email-verified?error=${encodeURIComponent(error.message)}`);
+      res.redirect(`${config.frontend.url}/email-verified?error=${encodeURIComponent(error.message)}`);
     }
   }
 });
@@ -180,4 +181,37 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   logger.info('Password reset successful');
   
   sendSuccess(res, null, 'Password reset successfully');
+});
+
+// ✅ NEW: Reset password redirect endpoint (for email links)
+export const resetPasswordRedirect = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.query;
+  
+  if (!token || typeof token !== 'string') {
+    logger.warn('Reset password redirect attempted without token');
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Reset token is required',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  logger.info('Reset password redirect');
+  
+  // Check if it's a mobile/API request or browser
+  const isMobile = req.headers['user-agent']?.includes('okhttp') || 
+                   req.headers['user-agent']?.includes('Dart') ||
+                   !req.headers.accept?.includes('text/html');
+  
+  if (isMobile) {
+    // Mobile: Return JSON with token for the app to handle
+    return sendSuccess(res, {
+      token,
+      message: 'Use this token to reset your password'
+    }, 'Reset token validated');
+  } else {
+    // Web Browser: Redirect to frontend reset password page
+    const resetUrl = `${config.frontend.url}/reset-password?token=${encodeURIComponent(token)}`;
+    res.redirect(resetUrl);
+  }
 });

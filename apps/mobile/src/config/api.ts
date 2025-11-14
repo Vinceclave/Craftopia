@@ -1,6 +1,6 @@
 // apps/mobile/src/config/api.ts - COMPLETE FIXED VERSION
 export const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.1.7:3001' // Replace with YOUR computer's IP address
+  ? 'http://192.168.1.3:3001' // Replace with YOUR computer's IP address
   : 'https://your-production-api.com';
 
 export const API_ENDPOINTS = {
