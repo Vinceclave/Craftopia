@@ -164,7 +164,7 @@ const RegisterScreen: React.FC = () => {
 
         <View className="mt-8 items-center space-y-4">
           <View className="flex-row items-center">
-            <Text className="text-craftopia-text-secondary text-base">
+            <Text className="text-craftopia-textSecondary text-base font-nunito">
               Already have an account?{' '}
             </Text>
             <TouchableOpacity
@@ -172,13 +172,13 @@ const RegisterScreen: React.FC = () => {
               onPress={() => navigation.navigate('Login')}
               disabled={registerMutation.isPending}
             >
-              <Text className="text-craftopia-digital text-base font-semibold">
+              <Text className="text-craftopia-primary text-base font-poppinsBold">
                 Sign In
               </Text>
             </TouchableOpacity>
           </View>
 
-          <Text className="text-craftopia-text-secondary text-sm text-center leading-relaxed">
+          <Text className="text-craftopia-textSecondary text-sm text-center leading-relaxed font-nunito">
             By creating an account, you agree to our Terms of Service and Privacy Policy
           </Text>
         </View>

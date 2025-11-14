@@ -109,7 +109,7 @@ const LoginScreen: React.FC = () => {
               onPress={() => navigation.navigate('ForgotPassword')}
               disabled={loginMutation.isPending}
             >
-              <Text className="text-sm font-nunito text-craftopia-spark">
+              <Text className="text-sm font-nunito text-craftopia-accent">
                 Forgot Password?
               </Text>
             </TouchableOpacity>
@@ -125,14 +125,14 @@ const LoginScreen: React.FC = () => {
 
         <View className="mt-8 items-center">
           <View className="flex-row items-center mb-4">
-            <Text className="text-base font-nunito text-craftopia-text-secondary">
+            <Text className="text-base font-nunito text-craftopia-textSecondary">
               Don't have an account?
             </Text>
             <TouchableOpacity 
               onPress={() => navigation.navigate('Register')}
               disabled={loginMutation.isPending}
             >
-              <Text className="text-base font-poppinsBold text-craftopia-digital ml-1">
+              <Text className="text-base font-poppinsBold text-craftopia-primary ml-1">
                 Sign Up
               </Text>
             </TouchableOpacity>

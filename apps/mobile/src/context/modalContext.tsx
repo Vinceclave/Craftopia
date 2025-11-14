@@ -23,19 +23,19 @@ const ModalContext = createContext<ModalContextType | undefined>(undefined);
 const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ config, onClose }) => {
   const getIcon = () => {
     switch (config.type) {
-      case 'success': return <CheckCircle size={32} color="#7C9885" />;
-      case 'error': return <XCircle size={32} color="#FF6B6B" />;
-      case 'warning': return <AlertTriangle size={32} color="#FF6700" />;
-      default: return <Info size={32} color="#004E98" />;
+      case 'success': return <CheckCircle size={32} color="#5BA776" />;
+      case 'error': return <XCircle size={32} color="#D66B4E" />;
+      case 'warning': return <AlertTriangle size={32} color="#E3A84F" />;
+      default: return <Info size={32} color="#3B6E4D" />;
     }
   };
 
   const getBackgroundColor = () => {
     switch (config.type) {
-      case 'success': return '#7C988512';
-      case 'error': return '#FF6B6B12';
-      case 'warning': return '#FF670012';
-      default: return '#004E9812';
+      case 'success': return '#5BA77612';
+      case 'error': return '#D66B4E12';
+      case 'warning': return '#E3A84F12';
+      default: return '#3B6E4D12';
     }
   };
 
@@ -53,7 +53,7 @@ const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ c
     <Modal transparent animationType="fade" visible={true}>
       <View className="flex-1 bg-black/50 justify-center items-center px-6">
         <View 
-          className="bg-white rounded-2xl p-6 w-full max-w-sm"
+          className="bg-craftopia-surface rounded-2xl p-6 w-full max-w-sm"
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 10 },
@@ -71,12 +71,12 @@ const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ c
           </View>
 
           {/* Title */}
-          <Text className="text-xl font-bold text-center mb-3" style={{ color: '#004E98' }}>
+          <Text className="text-xl font-bold text-center mb-3 text-craftopia-textPrimary font-poppinsBold">
             {config.title}
           </Text>
 
           {/* Message */}
-          <Text className="text-base text-center mb-6 leading-relaxed" style={{ color: '#333333' }}>
+          <Text className="text-base text-center mb-6 leading-relaxed text-craftopia-textSecondary font-nunito">
             {config.message}
           </Text>
 
@@ -85,10 +85,9 @@ const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ c
             {config.onConfirm && (
               <TouchableOpacity
                 onPress={handleConfirm}
-                className="rounded-xl py-4 items-center"
-                style={{ backgroundColor: '#004E98' }}
+                className="rounded-xl py-4 items-center bg-craftopia-primary"
               >
-                <Text className="text-white font-bold text-lg">
+                <Text className="text-white font-bold text-lg font-nunito">
                   {config.confirmText || 'OK'}
                 </Text>
               </TouchableOpacity>
@@ -97,9 +96,9 @@ const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ c
             {config.onCancel && (
               <TouchableOpacity
                 onPress={handleCancel}
-                className="bg-gray-200 rounded-xl py-4 items-center"
+                className="bg-craftopia-light rounded-xl py-4 items-center"
               >
-                <Text className="font-bold text-lg" style={{ color: '#333333' }}>
+                <Text className="font-bold text-lg text-craftopia-textSecondary font-nunito">
                   {config.cancelText || 'Cancel'}
                 </Text>
               </TouchableOpacity>
@@ -108,10 +107,9 @@ const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ c
             {!config.onConfirm && !config.onCancel && (
               <TouchableOpacity
                 onPress={onClose}
-                className="rounded-xl py-4 items-center"
-                style={{ backgroundColor: '#004E98' }}
+                className="rounded-xl py-4 items-center bg-craftopia-primary"
               >
-                <Text className="text-white font-bold text-lg">OK</Text>
+                <Text className="text-white font-bold text-lg font-nunito">OK</Text>
               </TouchableOpacity>
             )}
           </View>
