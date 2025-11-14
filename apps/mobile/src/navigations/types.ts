@@ -29,6 +29,12 @@ export type ProfileStackParamList = {
   Profile: undefined;
   Settings: undefined;
   EditProfile: undefined;
+  ChangePassword: undefined;
+  HelpCenter: undefined;
+  ContactUs: undefined;
+  AboutUs: undefined;
+  PrivacyPolicy: undefined;
+  TermsOfService: undefined;
 };
 
 export type ChatBotStackParamList = {

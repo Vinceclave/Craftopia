@@ -85,7 +85,7 @@ export default function TabNavigator() {
       };
 
       const currentScreenName = getCurrentScreenName(e.data.state);
-      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges'];
+      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges', 'PrivacyPolicy', 'TermsOfService', 'ContactUs', 'AboutUS', 'HelpCenter'];
       setTabBarVisible(!hideOnScreens.includes(currentScreenName));
     });
 

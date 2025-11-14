@@ -17,6 +17,8 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import Button from "~/components/common/Button";
 import { useAuth } from "~/context/AuthContext";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { ProfileStackParamList } from "~/navigations/types";
 
 type SettingsItemProps = {
   title: string;
@@ -26,9 +28,12 @@ type SettingsItemProps = {
   rightElement?: React.ReactNode;
 };
 
+type Nav = NativeStackNavigationProp<ProfileStackParamList>;
+
+
 export function SettingsScreen() {
   const { logout } = useAuth();
-  const navigation = useNavigation();
+const navigation = useNavigation<Nav>();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
 
   const SettingsItem: React.FC<SettingsItemProps> = ({ 
@@ -94,7 +99,7 @@ export function SettingsScreen() {
               <SettingsItem 
                 title="Edit Profile"
                 icon={User}
-                onPress={() => navigation.navigate('EditProfile')}
+                onPress={() => navigation.navigate('EditProfile')}  
               />
               
               <SettingsItem 
@@ -148,13 +153,13 @@ export function SettingsScreen() {
               <SettingsItem 
                 title="Contact Us"
                 icon={Mail}
-                onPress={() => navigation.navigate('Contact')}
+                onPress={() => navigation.navigate('ContactUs')}
               />
               
               <SettingsItem 
                 title="About"
                 icon={Info}
-                onPress={() => navigation.navigate('About')}
+                onPress={() => navigation.navigate('AboutUs')}
               />
             </View>
           </View>
@@ -175,7 +180,7 @@ export function SettingsScreen() {
               <SettingsItem 
                 title="Terms of Service"
                 icon={Shield}
-                onPress={() => navigation.navigate('Terms')}
+                onPress={() => navigation.navigate('TermsOfService')}
               />
             </View>
           </View>

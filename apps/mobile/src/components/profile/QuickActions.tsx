@@ -3,10 +3,10 @@ import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { LucideIcon } from 'lucide-react-native'
 
-interface QuickAction {
+export interface QuickAction {
   label: string
   icon: LucideIcon
-  color: 'primary' | 'accent' | 'success' | 'warning'
+  color?: 'primary' | 'accent' | 'success' | 'warning'
   onPress: () => void
   badge?: number
 }
@@ -51,7 +51,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
       <View className="flex-row justify-between items-center">
         {actions.map((action, index) => {
           const Icon = action.icon
-          const colorClasses = getColorClasses(action.color)
+          const colorClasses = getColorClasses(action.color ?? 'primary')
           
           return (
             <TouchableOpacity

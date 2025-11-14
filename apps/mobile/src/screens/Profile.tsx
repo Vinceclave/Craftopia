@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ProfileHeader } from '~/components/profile/ProfileHeader'
 import { ProfileCard } from '~/components/profile/ProfileCard'
-import { QuickActions } from '~/components/profile/QuickActions'
+import { QuickAction, QuickActions } from '~/components/profile/QuickActions'
 import { useAuth } from '~/context/AuthContext'
 
 export const ProfileScreen = () => {
@@ -61,19 +61,23 @@ export const ProfileScreen = () => {
   }
 
   // Compact quick actions
-  const quickActions = [
-    { 
-      label: 'Crafts', 
-      icon: Folder, 
-      onPress: () => navigation.navigate("MyCrafts"),
-      badge: 3
-    },
-    { 
-      label: 'Activity', 
-      icon: Zap, 
-      onPress: () => navigation.navigate("ActivityLog") 
-    },
-  ];
+  const quickActions: QuickAction[] = [
+      { 
+        label: 'Crafts',
+        icon: Folder,
+        color: 'primary',
+        onPress: () => navigation.navigate("MyCrafts"),
+        badge: 3
+      },
+      { 
+        label: 'Activity',
+        icon: Zap,
+        color: 'accent',
+        onPress: () => navigation.navigate("ActivityLog")
+      },
+    ];
+
+
 
   const stats = [
     {

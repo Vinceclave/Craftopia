@@ -10,9 +10,23 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { X, AlertCircle, Check } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 
-// ... existing interfaces ...
+export interface ActionSheetOption {
+  text: string;
+  onPress: () => void;
+  icon?: React.ReactNode;
+  style?: 'default' | 'destructive' | 'cancel';
+}
+
+export interface ActionSheetProps {
+  visible: boolean;
+  title?: string;
+  message?: string;
+  options: ActionSheetOption[];
+  onClose: () => void;
+}
+
 
 interface EnhancedActionSheetProps extends ActionSheetProps {
   maxHeight?: number;
