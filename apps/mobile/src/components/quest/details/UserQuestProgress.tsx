@@ -110,21 +110,21 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     if (!challengeData) return null
     switch (challengeData.status) {
       case 'completed':
-        return <CheckCircle size={14} color="#16a34a" />
+        return <CheckCircle size={14} color="#5BA776" />
       case 'pending_verification':
-        return <Clock size={14} color="#FF6700" />
+        return <Clock size={14} color="#E6B655" />
       case 'rejected':
-        return <AlertCircle size={14} color="#ef4444" />
+        return <AlertCircle size={14} color="#D66B4E" />
       default:
-        return <Clock size={14} color="#6b7280" />
+        return <Clock size={14} color="#5F6F64" />
     }
   }
 
   const getStatusColor = () => {
     if (!challengeData) return 'text-craftopia-textSecondary'
     switch (challengeData.status) {
-      case 'completed': return 'text-green-600'
-      case 'rejected': return 'text-red-600'
+      case 'completed': return 'text-craftopia-success'
+      case 'rejected': return 'text-craftopia-error'
       case 'pending_verification': return 'text-craftopia-accent'
       default: return 'text-craftopia-textSecondary'
     }
@@ -161,13 +161,13 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   if (progressError && !progressError.message?.includes('not found')) {
     return (
       <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
-        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">Your Progress</Text>
+        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3 font-poppinsBold">Your Progress</Text>
         <View className="items-center py-4">
-          <AlertCircle size={24} color="#ef4444" />
-          <Text className="text-sm text-red-500 text-center mt-2">
+          <AlertCircle size={24} color="#D66B4E" />
+          <Text className="text-sm text-craftopia-error text-center mt-2 font-nunito">
             Failed to load progress
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary text-center mt-1">
+          <Text className="text-xs text-craftopia-textSecondary text-center mt-1 font-nunito">
             {progressError.message}
           </Text>
           <Button
@@ -188,12 +188,12 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   return (
     <View className="mx-4 my-3 p-3 bg-craftopia-surface rounded-lg border border-craftopia-light">
-      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">Your Progress</Text>
+      <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3 font-poppinsBold">Your Progress</Text>
 
       {loading ? (
         <View className="items-center py-2">
-          <ActivityIndicator size="small" color="#004E98" />
-          <Text className="text-xs text-craftopia-textSecondary mt-1">Loading progress...</Text>
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-xs text-craftopia-textSecondary mt-1 font-nunito">Loading progress...</Text>
         </View>
       ) : (
         <>
@@ -220,17 +220,17 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
           {/* ✅ NEW: Show upload status */}
           {isUploading && (
-            <View className="flex-row items-center mt-2 bg-blue-50 p-2 rounded">
-              <ActivityIndicator size="small" color="#3b82f6" />
-              <Text className="text-xs text-blue-600 ml-2">Uploading image...</Text>
+            <View className="flex-row items-center mt-2 bg-craftopia-info/10 p-2 rounded">
+              <ActivityIndicator size="small" color="#5C89B5" />
+              <Text className="text-xs text-craftopia-info ml-2 font-nunito">Uploading image...</Text>
             </View>
           )}
 
           {/* ✅ NEW: Show warning if image is still local */}
           {imageUrl && imageUrl.startsWith('file://') && !isUploading && (
-            <View className="flex-row items-center mt-2 bg-yellow-50 p-2 rounded">
-              <AlertCircle size={14} color="#f59e0b" />
-              <Text className="text-xs text-yellow-600 ml-2">
+            <View className="flex-row items-center mt-2 bg-craftopia-warning/10 p-2 rounded">
+              <AlertCircle size={14} color="#E3A84F" />
+              <Text className="text-xs text-craftopia-warning ml-2 font-nunito">
                 Image not uploaded yet. Please wait...
               </Text>
             </View>
@@ -238,9 +238,9 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
           {/* ✅ NEW: Show success indicator when image is uploaded */}
           {imageUrl && !imageUrl.startsWith('file://') && !isUploading && !challengeData?.verified_at && (
-            <View className="flex-row items-center mt-2 bg-green-50 p-2 rounded">
-              <CheckCircle size={14} color="#16a34a" />
-              <Text className="text-xs text-green-600 ml-2">
+            <View className="flex-row items-center mt-2 bg-craftopia-success/10 p-2 rounded">
+              <CheckCircle size={14} color="#5BA776" />
+              <Text className="text-xs text-craftopia-success ml-2 font-nunito">
                 Image uploaded successfully
               </Text>
             </View>
@@ -260,16 +260,16 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
             <View className="flex flex-row mt-3 pt-2 border-t border-craftopia-light items-center justify-between">
               <View className="flex-row items-center">
                 {getStatusIcon()}
-                <Text className={`text-xs font-medium ml-1 ${getStatusColor()}`}>
+                <Text className={`text-xs font-medium ml-1 ${getStatusColor()} font-nunito`}>
                   {challengeData.status.replace('_', ' ').toUpperCase()}
                 </Text>
               </View>
 
               {/* Show waste saved if completed */}
               {challengeData.status === 'completed' && challengeData.waste_kg_saved > 0 && (
-                <View className="flex-row items-center bg-green-50 px-2 py-1 rounded-full">
-                  <Leaf size={12} color="#16a34a" />
-                  <Text className="text-xs text-green-600 ml-1 font-medium">
+                <View className="flex-row items-center bg-craftopia-success/10 px-2 py-1 rounded-full">
+                  <Leaf size={12} color="#5BA776" />
+                  <Text className="text-xs text-craftopia-success ml-1 font-medium font-nunito">
                     {challengeData.waste_kg_saved.toFixed(2)} kg saved
                   </Text>
                 </View>
@@ -278,8 +278,8 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
               {/* Show verified date if completed */}
               {challengeData.verified_at && challengeData.status === 'completed' && (
                 <View className="flex-row items-center">
-                  <CheckCircle size={12} color="#16a34a" />
-                  <Text className="text-xs text-green-600 ml-1">
+                  <CheckCircle size={12} color="#5BA776" />
+                  <Text className="text-xs text-craftopia-success ml-1 font-nunito">
                     {new Date(challengeData.verified_at).toLocaleDateString()}
                   </Text>
                 </View>
@@ -289,11 +289,11 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
           {/* ✅ NEW: Show rejection reason if rejected */}
           {challengeData?.status === 'rejected' && (
-            <View className="mt-2 p-2 bg-red-50 rounded border border-red-200">
-              <Text className="text-xs text-red-600 font-medium mb-1">
+            <View className="mt-2 p-2 bg-craftopia-error/5 rounded border border-craftopia-error/20">
+              <Text className="text-xs text-craftopia-error font-medium mb-1 font-nunito">
                 Verification Failed
               </Text>
-              <Text className="text-xs text-red-500">
+              <Text className="text-xs text-craftopia-error font-nunito">
                 Please upload a clearer proof image and try again.
               </Text>
             </View>

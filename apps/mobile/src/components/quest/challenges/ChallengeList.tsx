@@ -55,7 +55,7 @@ export const ChallengeList = ({
       case 'completed':
         return {
           icon: CheckCircle,
-          color: '#4A7C59',
+          color: '#5BA776',
           bgColor: 'bg-craftopia-success/10',
           borderColor: 'border-craftopia-success/30',
           label: 'Completed',
@@ -63,7 +63,7 @@ export const ChallengeList = ({
       case 'pending_verification':
         return {
           icon: HourglassIcon,
-          color: '#D4A96A',
+          color: '#E6B655',
           bgColor: 'bg-craftopia-accent/10',
           borderColor: 'border-craftopia-accent/30',
           label: 'Pending Review',
@@ -71,17 +71,17 @@ export const ChallengeList = ({
       case 'rejected':
         return {
           icon: XCircle,
-          color: '#DC2626',
-          bgColor: 'bg-red-500/10',
-          borderColor: 'border-red-500/30',
+          color: '#D66B4E',
+          bgColor: 'bg-craftopia-error/10',
+          borderColor: 'border-craftopia-error/30',
           label: 'Rejected',
         };
       default:
         return {
           icon: Clock,
-          color: '#5D6B5D',
+          color: '#5F6F64',
           bgColor: 'bg-craftopia-primary/10',
-          borderColor: 'border-craftopia-light/50',
+          borderColor: 'border-craftopia-light',
           label: 'In Progress',
         };
     }
@@ -126,7 +126,7 @@ export const ChallengeList = ({
         {[1, 2, 3].map((item) => (
           <View 
             key={item} 
-            className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light/50"
+            className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light"
           >
             <View className="flex-row items-center mb-2">
               <View className="w-14 h-5 bg-craftopia-light rounded mr-2" />
@@ -134,7 +134,7 @@ export const ChallengeList = ({
             </View>
             <View className="w-3/4 h-4 bg-craftopia-light rounded mb-2" />
             <View className="w-full h-3 bg-craftopia-light rounded mb-2" />
-            <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
+            <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light">
               <View className="w-24 h-3 bg-craftopia-light rounded" />
               <View className="w-20 h-3 bg-craftopia-light rounded" />
             </View>
@@ -142,8 +142,8 @@ export const ChallengeList = ({
         ))}
 
         <View className="mt-4 items-center">
-          <ActivityIndicator size="small" color="#374A36" />
-          <Text className="text-xs text-craftopia-textSecondary mt-2">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-xs text-craftopia-textSecondary mt-2 font-nunito">
             Loading your challenges...
           </Text>
         </View>
@@ -157,14 +157,14 @@ export const ChallengeList = ({
     
     return (
       <View className="mx-4 mb-6 mt-3">
-        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-red-500/20">
-          <View className="w-12 h-12 rounded-full bg-red-500/10 items-center justify-center mb-3">
-            <AlertCircle size={24} color="#DC2626" />
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-error/20">
+          <View className="w-12 h-12 rounded-full bg-craftopia-error/10 items-center justify-center mb-3">
+            <AlertCircle size={24} color="#D66B4E" />
           </View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
             Failed to Load Challenges
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary text-center mb-3 px-4">
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3 px-4 font-nunito">
             {error}
           </Text>
           {onRetry && (
@@ -173,7 +173,7 @@ export const ChallengeList = ({
               onPress={onRetry}
               activeOpacity={0.7}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text className="text-sm font-semibold text-white font-nunito">
                 Try Again
               </Text>
             </TouchableOpacity>
@@ -192,27 +192,27 @@ export const ChallengeList = ({
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
-              <Trophy size={18} color="#D4A96A" />
+              <Trophy size={18} color="#E6B655" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-craftopia-textPrimary">
+              <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
                 Your Challenges
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary">
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
                 Track your quest progress
               </Text>
             </View>
           </View>
         </View>
         
-        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light/50">
-          <View className="w-12 h-12 rounded-full bg-craftopia-light/50 items-center justify-center mb-3">
-            <Trophy size={24} color="#5D6B5D" />
+        <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light">
+          <View className="w-12 h-12 rounded-full bg-craftopia-light items-center justify-center mb-3">
+            <Trophy size={24} color="#5F6F64" />
           </View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1">
+          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
             No Challenges Yet
           </Text>
-          <Text className="text-xs text-craftopia-textSecondary text-center mb-3">
+          <Text className="text-xs text-craftopia-textSecondary text-center mb-3 font-nunito">
             Join a quest to start your journey!
           </Text>
         </View>
@@ -236,7 +236,7 @@ export const ChallengeList = ({
           <View className={`flex-row items-center px-2 py-1 rounded-lg ${statusConfig.bgColor}`}>
             <StatusIcon size={14} color={statusConfig.color} />
             <Text 
-              className="text-xs font-medium uppercase tracking-wide ml-1"
+              className="text-xs font-medium uppercase tracking-wide ml-1 font-nunito"
               style={{ color: statusConfig.color }}
             >
               {statusConfig.label}
@@ -245,7 +245,7 @@ export const ChallengeList = ({
 
           {challenge.points && challenge.points > 0 && (
             <View className="px-2 py-1 rounded-lg bg-craftopia-primary/10">
-              <Text className="text-xs font-bold text-craftopia-primary">
+              <Text className="text-xs font-bold text-craftopia-primary font-poppinsBold">
                 +{challenge.points}
               </Text>
             </View>
@@ -253,31 +253,31 @@ export const ChallengeList = ({
         </View>
 
         {/* Challenge Info */}
-        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1">
+        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
           {challenge.title}
         </Text>
-        <Text className="text-xs text-craftopia-textSecondary mb-2" numberOfLines={2}>
+        <Text className="text-xs text-craftopia-textSecondary mb-2 font-nunito" numberOfLines={2}>
           {challenge.description || 'Continue working on this challenge'}
         </Text>
 
         {/* Footer */}
-        <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light/30">
+        <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light">
           {challenge.completedAt && (
-            <Text className="text-xs text-craftopia-textSecondary">
+            <Text className="text-xs text-craftopia-textSecondary font-nunito">
               📅 {new Date(challenge.completedAt).toLocaleDateString()}
             </Text>
           )}
           {!challenge.completedAt && challenge.status === 'in_progress' && (
-            <Text className="text-xs text-craftopia-textSecondary">
+            <Text className="text-xs text-craftopia-textSecondary font-nunito">
               ⏱️ Keep going!
             </Text>
           )}
 
           <View className="flex-row items-center">
-            <Text className="text-xs font-semibold text-craftopia-primary mr-1">
+            <Text className="text-xs font-semibold text-craftopia-primary mr-1 font-nunito">
               View Details
             </Text>
-            <ChevronRight size={14} color="#374A36" />
+            <ChevronRight size={14} color="#3B6E4D" />
           </View>
         </View>
       </TouchableOpacity>
@@ -296,8 +296,8 @@ export const ChallengeList = ({
           <RefreshControl
             refreshing={refreshing || false}
             onRefresh={onRefresh}
-            tintColor="#374A36"
-            colors={['#374A36']}
+            tintColor="#3B6E4D"
+            colors={['#3B6E4D']}
           />
         ) : undefined
       }
@@ -307,13 +307,13 @@ export const ChallengeList = ({
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <View className="w-8 h-8 rounded-xl bg-craftopia-accent/10 items-center justify-center mr-2">
-              <Trophy size={18} color="#D4A96A" />
+              <Trophy size={18} color="#E6B655" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-craftopia-textPrimary">
+              <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
                 Your Challenges
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary">
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
                 {challenges.length} challenge{challenges.length !== 1 ? 's' : ''}
               </Text>
             </View>
@@ -330,10 +330,10 @@ export const ChallengeList = ({
         {/* Stats Card */}
         <View className="bg-craftopia-light rounded-xl p-3 mt-2">
           <View className="flex-row justify-between items-center">
-            <Text className="text-xs font-medium text-craftopia-textPrimary">
+            <Text className="text-xs font-medium text-craftopia-textPrimary font-nunito">
               Total Progress
             </Text>
-            <Text className="text-xs font-semibold text-craftopia-primary">
+            <Text className="text-xs font-semibold text-craftopia-primary font-poppinsBold">
               {challenges.filter(c => c.status === 'completed').length}/{challenges.length} Completed
             </Text>
           </View>

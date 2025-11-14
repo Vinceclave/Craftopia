@@ -19,7 +19,7 @@ export const QuestTabs = ({ activeTab, onChangeTab }: QuestTabsProps) => {
   ];
 
   return (
-    <View className="px-4 py-3 bg-craftopia-light border-b border-craftopia-light/50">
+    <View className="px-4 py-3 bg-craftopia-background border-b border-craftopia-light">
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
@@ -36,16 +36,16 @@ export const QuestTabs = ({ activeTab, onChangeTab }: QuestTabsProps) => {
               className={`flex-row items-center px-4 py-2 rounded-full border ${
                 isActive
                   ? 'bg-craftopia-primary border-craftopia-primary'
-                  : 'bg-craftopia-surface border-craftopia-light/50'
+                  : 'bg-craftopia-surface border-craftopia-light'
               }`}
               activeOpacity={0.7}
             >
               <Icon 
                 size={16} 
-                color={isActive ? '#FFFFFF' : '#5D6B5D'} 
+                color={isActive ? '#FFFFFF' : '#5F6F64'} 
               />
               <Text
-                className={`text-sm font-semibold ml-1.5 ${
+                className={`text-sm font-semibold ml-1.5 font-nunito ${
                   isActive ? 'text-white' : 'text-craftopia-textSecondary'
                 }`}
               >

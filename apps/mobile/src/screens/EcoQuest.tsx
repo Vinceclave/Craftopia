@@ -8,7 +8,7 @@ import { QuestBanner } from '~/components/quest/QuestBanner';
 import { QuestTabs } from '~/components/quest/QuestTabs';
 import { QuestList } from '~/components/quest/QuestList';
 import { useChallenges } from '~/hooks/queries/useChallenges';
-import { useUserWasteStats } from '~/hooks/queries/useUserChallenges'; // NEW
+import { useUserWasteStats } from '~/hooks/queries/useUserChallenges';
 import { EcoQuestStackParamList } from '~/navigations/types';
 import { useUserStats } from '~/hooks/useUserStats';
 
@@ -27,7 +27,7 @@ export const EcoQuestScreen = () => {
 
   console.log(userStats)
 
-  // NEW: Waste stats query
+  // Waste stats query
   const {
     data: wasteStats,
     isLoading: wasteLoading,
@@ -52,19 +52,18 @@ export const EcoQuestScreen = () => {
   };
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
       <QuestHeader navigation={navigation} />
 
       {/* Banner with waste stats */}
       <QuestBanner 
         data={userStats ? {
           ...userStats,
-          total_waste_kg: wasteStats?.total_waste_kg || 0 // NEW
+          total_waste_kg: wasteStats?.total_waste_kg || 0
         } : null} 
         loading={statsLoading || wasteLoading} 
       />
-      {/* <Achievements /> */}
-
+      
       <QuestTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 
       <QuestList

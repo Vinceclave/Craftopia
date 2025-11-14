@@ -9,21 +9,21 @@ interface UserChallengesHeaderProps {
 
 export const UserChallengesHeader = ({ navigation }: UserChallengesHeaderProps) => {
   return (
-    <View className="px-4 pt-4 pb-4 bg-craftopia-surface border-b border-craftopia-light/30">
+    <View className="px-4 pt-4 pb-4 bg-craftopia-surface border-b border-craftopia-light">
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1 flex-row items-center">
           <TouchableOpacity 
             onPress={() => navigation.goBack()}
             className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center mr-3"
           >
-            <ArrowLeft size={18} color="#374A36" />
+            <ArrowLeft size={18} color="#3B6E4D" />
           </TouchableOpacity>
           
           <View className="flex-1">
-            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-0.5">
-              My Progress 🏆
+            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-0.5 font-nunito">
+              My Progress
             </Text>
-            <Text className="text-xl font-bold text-craftopia-textPrimary">
+            <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
               Quest Activity
             </Text>
           </View>
@@ -31,16 +31,16 @@ export const UserChallengesHeader = ({ navigation }: UserChallengesHeaderProps) 
       </View>
 
       {/* Info Card - Same style as Home */}
-      <View className="bg-gradient-to-r from-craftopia-accent/10 to-craftopia-primary/5 rounded-xl px-3 py-3 border border-craftopia-accent/20">
+      <View className="bg-craftopia-light rounded-xl px-3 py-3 border border-craftopia-accent/20">
         <View className="flex-row items-center">
           <View className="w-8 h-8 rounded-full bg-craftopia-accent/20 items-center justify-center mr-2">
-            <Trophy size={16} color="#D4A96A" />
+            <Trophy size={16} color="#E6B655" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-0.5">
+            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-0.5 font-poppinsBold">
               Track your challenge journey
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary">
+            <Text className="text-xs text-craftopia-textSecondary font-nunito">
               View all your active and completed quests
             </Text>
           </View>

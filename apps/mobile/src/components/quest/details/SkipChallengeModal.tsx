@@ -90,14 +90,14 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
               {/* Header */}
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center flex-1">
-                  <View className="w-10 h-10 bg-yellow-100 rounded-full items-center justify-center mr-3">
-                    <AlertTriangle size={20} color="#f59e0b" />
+                  <View className="w-10 h-10 bg-craftopia-warning/20 rounded-full items-center justify-center mr-3">
+                    <AlertTriangle size={20} color="#E3A84F" />
                   </View>
                   <View>
-                    <Text className="text-lg font-bold text-craftopia-textPrimary">
+                    <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
                       Skip Challenge
                     </Text>
-                    <Text className="text-xs text-craftopia-textSecondary">
+                    <Text className="text-xs text-craftopia-textSecondary font-nunito">
                       No penalty, try another anytime
                     </Text>
                   </View>
@@ -109,19 +109,19 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                   disabled={loading}
                   activeOpacity={0.7}
                 >
-                  <X size={18} color="#5D6B5D" />
+                  <X size={18} color="#5F6F64" />
                 </TouchableOpacity>
               </View>
 
               {/* Info Banner */}
-              <View className="bg-craftopia-light/70 p-3 rounded-xl mb-4">
-                <Text className="text-sm text-craftopia-textSecondary leading-relaxed">
+              <View className="bg-craftopia-light p-3 rounded-xl mb-4">
+                <Text className="text-sm text-craftopia-textSecondary leading-relaxed font-nunito">
                   You can skip this challenge and explore others. Your points stay safe! 🌱
                 </Text>
               </View>
 
               {/* Reason Selection */}
-              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3">
+              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-3 font-poppinsBold">
                 Why are you skipping? (Optional)
               </Text>
 
@@ -142,7 +142,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                           : 'bg-craftopia-surface border-craftopia-light'
                       }`}
                       style={{
-                        shadowColor: isSelected ? '#374A36' : 'transparent',
+                        shadowColor: isSelected ? '#3B6E4D' : 'transparent',
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: isSelected ? 0.1 : 0,
                         shadowRadius: 2,
@@ -154,12 +154,12 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                       }`}>
                         <IconComponent 
                           size={16} 
-                          color={isSelected ? '#374A36' : '#5D6B5D'} 
+                          color={isSelected ? '#3B6E4D' : '#5F6F64'} 
                         />
                       </View>
                       
                       <Text
-                        className={`flex-1 text-sm font-medium ${
+                        className={`flex-1 text-sm font-medium font-nunito ${
                           isSelected
                             ? 'text-craftopia-primary'
                             : 'text-craftopia-textSecondary'
@@ -169,7 +169,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                       </Text>
                       
                       {isSelected && (
-                        <CheckCircle size={18} color="#374A36" />
+                        <CheckCircle size={18} color="#3B6E4D" />
                       )}
                     </TouchableOpacity>
                   );
@@ -186,7 +186,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                       : 'bg-craftopia-surface border-craftopia-light'
                   }`}
                   style={{
-                    shadowColor: selectedReason === 'other' ? '#374A36' : 'transparent',
+                    shadowColor: selectedReason === 'other' ? '#3B6E4D' : 'transparent',
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: selectedReason === 'other' ? 0.1 : 0,
                     shadowRadius: 2,
@@ -204,7 +204,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                   </View>
                   
                   <Text
-                    className={`flex-1 text-sm font-medium ${
+                    className={`flex-1 text-sm font-medium font-nunito ${
                       selectedReason === 'other'
                         ? 'text-craftopia-primary'
                         : 'text-craftopia-textSecondary'
@@ -214,7 +214,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                   </Text>
                   
                   {selectedReason === 'other' && (
-                    <CheckCircle size={18} color="#374A36" />
+                    <CheckCircle size={18} color="#3B6E4D" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -222,7 +222,7 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
               {/* Custom Reason Input */}
               {selectedReason === 'other' && (
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2">
+                  <Text className="text-sm font-semibold text-craftopia-textPrimary mb-2 font-poppinsBold">
                     Tell us more (optional)
                   </Text>
                   <View className="bg-craftopia-light border border-craftopia-light rounded-xl overflow-hidden">
@@ -234,12 +234,12 @@ export const SkipChallengeModal: React.FC<SkipChallengeModalProps> = ({
                       multiline
                       numberOfLines={4}
                       maxLength={200}
-                      className="p-3 text-craftopia-textPrimary text-sm"
+                      className="p-3 text-craftopia-textPrimary text-sm font-nunito"
                       style={{ textAlignVertical: 'top', minHeight: 100 }}
                       editable={!loading}
                     />
                   </View>
-                  <Text className="text-xs text-craftopia-textSecondary mt-1.5 text-right">
+                  <Text className="text-xs text-craftopia-textSecondary mt-1.5 text-right font-nunito">
                     {customReason.length}/200
                   </Text>
                 </View>
