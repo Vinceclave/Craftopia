@@ -1,4 +1,4 @@
-// QuestDetail.tsx - UPLOAD ONLY ON SUBMIT
+// QuestDetail.tsx - FIXED: Allow re-upload when rejected
 import { Award, Users, Leaf, CheckCircle, Clock, Upload, AlertCircle, PlayCircle, Target } from 'lucide-react-native'
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
@@ -62,8 +62,8 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
   progressDescription,
 }) => {
   const { success, error } = useSafeAlert()
-  const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
-  const [imageUri, setImageUri] = useState<string | null>(null)  // ✅ Local URI instead of URL
+  const { uploadToFolder } = useLocalUpload()
+  const [imageUri, setImageUri] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
 
   const { 
@@ -75,11 +75,24 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
 
   const submitVerificationMutation = useSubmitChallengeVerification()
 
+  // ✅ FIXED: Clear old image when rejected, only set for completed/pending
   React.useEffect(() => {
-    if (challengeData?.proof_url && !imageUri) {
+    if (!challengeData) return
+
+    // Clear image URI when status becomes rejected to force new upload
+    if (challengeData.status === 'rejected') {
+      console.log('🔄 Challenge rejected - clearing old image to force new upload')
+      setImageUri(null)
+      return
+    }
+
+    // Only set existing proof_url for completed or pending challenges
+    if (challengeData.proof_url && !imageUri && 
+        (challengeData.status === 'completed' || challengeData.status === 'pending_verification')) {
+      console.log('📸 Loading existing proof image:', challengeData.proof_url)
       setImageUri(challengeData.proof_url)
     }
-  }, [challengeData?.proof_url, imageUri])
+  }, [challengeData?.proof_url, challengeData?.status])
 
   const handleVerify = async () => {
     if (!imageUri) {
@@ -193,6 +206,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
     }
   }
 
+  // ✅ FIXED: Allow re-upload when rejected
   const isProgressDisabled = () => {
     if (!challengeData) {
       return !imageUri
@@ -203,6 +217,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
       isUploading || 
       !imageUri ||
       ['pending_verification', 'completed'].includes(challengeData.status)
+      // ✅ Removed 'rejected' - rejected challenges can be resubmitted
     )
   }
 
@@ -331,7 +346,7 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 Your Progress
               </Text>
               <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                Upload proof to complete
+                {challengeData?.status === 'rejected' ? 'Upload a new photo to resubmit' : 'Upload proof to complete'}
               </Text>
             </View>
           </View>
@@ -350,19 +365,39 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
             </View>
           ) : (
             <>
+              {/* ✅ Rejection Message - Show BEFORE upload to make it clear */}
+              {challengeData?.status === 'rejected' && (
+                <View className="mb-3 px-3 py-2.5 bg-craftopia-error/5 rounded-lg border border-craftopia-error/20">
+                  <View className="flex-row items-center mb-1">
+                    <AlertCircle size={14} color="#D66B4E" />
+                    <Text className="text-xs text-craftopia-error font-semibold ml-1.5 font-nunito">
+                      Submission Rejected
+                    </Text>
+                  </View>
+                  <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                    Your previous submission was rejected. Please upload a clearer image and try again.
+                  </Text>
+                </View>
+              )}
+
               {/* Image Upload */}
               <View className="mb-3">
                 <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
-                  Proof of Completion
+                  Proof of Completion {challengeData?.status === 'rejected' && '(Required)'}
                 </Text>
                 <Text className="text-xs text-craftopia-textSecondary mb-2 font-nunito">
-                  Upload a photo showing your completion
+                  {challengeData?.status === 'rejected' 
+                    ? '📸 Upload a new, clearer photo' 
+                    : 'Upload a photo showing your completion'}
                 </Text>
                 <ImageUploadPicker
                   label=""
-                  description="Tap to upload image"
+                  description={challengeData?.status === 'rejected' ? 'Tap to upload new image' : 'Tap to upload image'}
                   value={imageUri || undefined}
-                  onChange={(uri) => setImageUri(uri || null)}
+                  onChange={(uri) => {
+                    console.log('📸 Image selected:', uri)
+                    setImageUri(uri || null)
+                  }}
                   disabled={challengeData?.status === 'pending_verification'}
                 />
               </View>
@@ -405,21 +440,6 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
                 size="md"
                 className="rounded-full"
               />
-
-              {/* Rejection Message */}
-              {challengeData?.status === 'rejected' && (
-                <View className="mt-3 px-3 py-2.5 bg-craftopia-error/5 rounded-lg border border-craftopia-error/20">
-                  <View className="flex-row items-center mb-1">
-                    <AlertCircle size={14} color="#D66B4E" />
-                    <Text className="text-xs text-craftopia-error font-semibold ml-1.5 font-nunito">
-                      Verification Required
-                    </Text>
-                  </View>
-                  <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                    Your previous submission was rejected. Please upload a clearer image.
-                  </Text>
-                </View>
-              )}
             </>
           )}
         </View>

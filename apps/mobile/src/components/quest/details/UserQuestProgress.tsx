@@ -1,4 +1,4 @@
-// apps/mobile/src/components/quest/details/UserQuestProgress.tsx - FIXED VERSION WITH RE-UPLOAD
+// apps/mobile/src/components/quest/details/UserQuestProgress.tsx - FIXED: Allow re-upload when rejected
 import React, { useState } from 'react'
 import { Text, View, ActivityIndicator } from 'react-native'
 import { CheckCircle, Clock, Upload, Leaf, AlertCircle } from 'lucide-react-native'
@@ -22,8 +22,8 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
   wasteKg = 0,
 }) => {
   const { success, error } = useAlert()
-  const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
-  const [imageUri, setImageUri] = useState<string | null>(null)  // ✅ Store local URI
+  const { uploadToFolder } = useLocalUpload()
+  const [imageUri, setImageUri] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
 
   const { 
@@ -35,12 +35,24 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
 
   const submitVerificationMutation = useSubmitChallengeVerification()
 
-  // Set initial image URI when data loads
+  // ✅ FIXED: Clear old image when rejected, only set for completed/pending
   React.useEffect(() => {
-    if (challengeData?.proof_url && !imageUri) {
+    if (!challengeData) return
+
+    // Clear image URI when status becomes rejected to force new upload
+    if (challengeData.status === 'rejected') {
+      console.log('🔄 Challenge rejected - clearing old image to force new upload')
+      setImageUri(null)
+      return
+    }
+
+    // Only set existing proof_url for completed or pending challenges
+    if (challengeData.proof_url && !imageUri && 
+        (challengeData.status === 'completed' || challengeData.status === 'pending_verification')) {
+      console.log('📸 Loading existing proof image:', challengeData.proof_url)
       setImageUri(challengeData.proof_url)
     }
-  }, [challengeData?.proof_url, imageUri])
+  }, [challengeData?.proof_url, challengeData?.status])
 
   const handleVerify = async () => {
     if (!imageUri) {
@@ -143,6 +155,7 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
     }
   }
 
+  // ✅ FIXED: Allow re-upload when rejected
   const isDisabled = () => {
     if (!challengeData) {
       return !imageUri
@@ -152,7 +165,8 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
       submitVerificationMutation.isPending || 
       isUploading || 
       !imageUri ||
-      ['pending_verification', 'completed'].includes(challengeData.status)  // ✅ Removed 'rejected' from disabled states
+      ['pending_verification', 'completed'].includes(challengeData.status)
+      // ✅ Removed 'rejected' - rejected challenges can be resubmitted
     )
   }
 
@@ -197,16 +211,31 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
         </View>
       ) : (
         <>
+          {/* ✅ Rejection Message - Show BEFORE upload to make it clear */}
+          {challengeData?.status === 'rejected' && (
+            <View className="mb-3 px-3 py-2.5 bg-craftopia-error/5 rounded-lg border border-craftopia-error/20">
+              <View className="flex-row items-center mb-1">
+                <AlertCircle size={14} color="#D66B4E" />
+                <Text className="text-xs text-craftopia-error font-semibold ml-1.5 font-nunito">
+                  Submission Rejected
+                </Text>
+              </View>
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                Your previous submission was rejected. Please upload a clearer image and try again.
+              </Text>
+            </View>
+          )}
+
           {/* Image Upload */}
           <View className="mb-2">
             <Text className="text-xs text-craftopia-textSecondary mb-2 font-nunito">
               {challengeData?.status === 'rejected' 
-                ? 'Upload a clearer photo to resubmit'
+                ? '📸 Upload a new, clearer photo to resubmit'
                 : 'Upload a photo showing your completion'}
             </Text>
             <ImageUploadPicker
               label="Proof Image"
-              description="Upload from camera or gallery"
+              description={challengeData?.status === 'rejected' ? 'Tap to upload new image' : 'Upload from camera or gallery'}
               value={imageUri || undefined}
               onChange={(uri) => {
                 console.log('📸 Image changed:', uri)
@@ -282,21 +311,6 @@ export const UserQuestProgress: React.FC<UserQuestProgressProps> = ({
                   </Text>
                 </View>
               )}
-            </View>
-          )}
-
-          {/* Rejection Notice */}
-          {challengeData?.status === 'rejected' && (
-            <View className="mt-2 p-2 bg-craftopia-error/5 rounded border border-craftopia-error/20">
-              <View className="flex-row items-center mb-1">
-                <AlertCircle size={14} color="#D66B4E" />
-                <Text className="text-xs text-craftopia-error font-medium ml-1 font-nunito">
-                  Verification Failed
-                </Text>
-              </View>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                Your previous submission was rejected. Please upload a clearer proof image and resubmit.
-              </Text>
             </View>
           )}
         </>
