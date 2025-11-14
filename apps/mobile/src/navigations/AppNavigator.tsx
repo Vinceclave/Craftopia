@@ -1,27 +1,58 @@
-// apps/mobile/src/navigations/AppNavigator.tsx
-import React from 'react';
-import { View, ActivityIndicator, Text } from 'react-native';
+// apps/mobile/src/navigation/AppNavigator.tsx
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import { LoadingScreen } from '~/components/common/LoadingScreen';
+import { OnboardingScreen } from '~/screens/Onboarding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
-  console.log('AppNavigator state:', { isAuthenticated, isLoading, hasUser: !!user });
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
+        if (!hasSeenOnboarding) setShowOnboarding(true);
+      } catch (err) {
+        console.log('Error reading onboarding status:', err);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+    checkOnboarding();
+  }, []);
 
-  // Show loading spinner while checking authentication status or loading user data
-  if (isLoading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-craftopia-light">
-        <ActivityIndicator size="large" color="#004E98" />
-        <Text className="text-craftopia-textSecondary mt-2 text-sm">
-          {isAuthenticated ? 'Loading your profile...' : 'Checking authentication...'}
-        </Text>
-      </View>
-    );
+  const handleFinishOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+      setShowOnboarding(false);
+    } catch (err) {
+      console.log('Error saving onboarding status:', err);
+    }
+  };
+
+  if (checkingOnboarding || isLoading) {
+    return <LoadingScreen message="Loading..." />;
   }
 
-  // Navigate based on authentication status
-  return isAuthenticated ? <MainNavigator /> : <AuthNavigator />;
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {showOnboarding ? (
+        <Stack.Screen name="Onboarding">
+          {(props) => <OnboardingScreen {...props} onFinish={handleFinishOnboarding} />}
+        </Stack.Screen>
+      ) : isAuthenticated ? (
+        <Stack.Screen name="Main" component={MainNavigator} />
+      ) : (
+        <Stack.Screen name="Auth" component={AuthNavigator} />
+      )}
+    </Stack.Navigator>
+  );
 };
