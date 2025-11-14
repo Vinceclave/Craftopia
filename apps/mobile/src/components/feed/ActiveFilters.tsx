@@ -30,22 +30,22 @@ export const ActiveFilters: React.FC<ActiveFiltersProps> = ({
   if (!hasFilters) return null;
 
   return (
-    <View className="bg-white border-b border-craftopa-light/10 px-5 py-2">
+    <View className="bg-craftopia-surface border-b border-craftopia-light px-4 py-2">
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center flex-1 flex-wrap gap-1.5">
           {/* Results Count */}
           <View className="flex-row items-center">
-            <Filter size={12} color="#5A7160" />
-            <Text className="text-craftopa-textSecondary text-xs font-poppinsBold ml-1 tracking-tight">
+            <Filter size={12} color="#3B6E4D" />
+            <Text className="text-craftopia-textSecondary text-xs font-poppinsBold ml-1">
               {postsCount}
             </Text>
           </View>
 
           {/* Filter Chips */}
           {searchQuery && (
-            <View className="bg-white rounded-md px-2 py-1 flex-row items-center border border-craftopa-light/10 shadow-sm">
-              <Search size={10} color="#5A7160" />
-              <Text className="text-craftopa-textPrimary text-xs font-poppinsBold ml-1 tracking-tight">
+            <View className="bg-craftopia-surface rounded-md px-2 py-1 flex-row items-center border border-craftopia-light">
+              <Search size={10} color="#3B6E4D" />
+              <Text className="text-craftopia-textPrimary text-xs font-poppinsBold ml-1">
                 {searchQuery}
               </Text>
               <TouchableOpacity 
@@ -53,14 +53,14 @@ export const ActiveFilters: React.FC<ActiveFiltersProps> = ({
                 className="ml-1 active:opacity-70"
                 activeOpacity={0.7}
               >
-                <X size={10} color="#5A7160" />
+                <X size={10} color="#3B6E4D" />
               </TouchableOpacity>
             </View>
           )}
           
           {selectedCategory !== 'all' && (
-            <View className="bg-craftopa-primary/5 rounded-md px-2 py-1 flex-row items-center border border-craftopa-primary/20">
-              <Text className="text-craftopa-primary text-xs font-poppinsBold tracking-tight">
+            <View className="bg-craftopia-primary/5 rounded-md px-2 py-1 flex-row items-center border border-craftopia-primary/20">
+              <Text className="text-craftopia-primary text-xs font-poppinsBold">
                 {categories.find(c => c.id === selectedCategory)?.label}
               </Text>
               <TouchableOpacity 
@@ -68,14 +68,14 @@ export const ActiveFilters: React.FC<ActiveFiltersProps> = ({
                 className="ml-1 active:opacity-70"
                 activeOpacity={0.7}
               >
-                <X size={10} color="#5A7160" />
+                <X size={10} color="#3B6E4D" />
               </TouchableOpacity>
             </View>
           )}
           
           {selectedTag && (
-            <View className="bg-craftopa-accent/5 rounded-md px-2 py-1 flex-row items-center border border-craftopa-accent/20">
-              <Text className="text-craftopa-accent text-xs font-poppinsBold tracking-tight">
+            <View className="bg-craftopia-warning/5 rounded-md px-2 py-1 flex-row items-center border border-craftopia-warning/20">
+              <Text className="text-craftopia-warning text-xs font-poppinsBold">
                 #{selectedTag}
               </Text>
               <TouchableOpacity 
@@ -83,7 +83,7 @@ export const ActiveFilters: React.FC<ActiveFiltersProps> = ({
                 className="ml-1 active:opacity-70"
                 activeOpacity={0.7}
               >
-                <X size={10} color="#D4A96A" />
+                <X size={10} color="#E3A84F" />
               </TouchableOpacity>
             </View>
           )}
@@ -95,7 +95,7 @@ export const ActiveFilters: React.FC<ActiveFiltersProps> = ({
           className="ml-2 active:opacity-70"
           activeOpacity={0.7}
         >
-          <Text className="text-craftopa-primary text-xs font-poppinsBold tracking-tight">
+          <Text className="text-craftopia-primary text-xs font-poppinsBold">
             Clear All
           </Text>
         </TouchableOpacity>

@@ -18,14 +18,14 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
 
   if (isLoading) {
     return (
-      <View className="bg-white px-5 py-4 border-b border-craftopa-light/10">
-        <View className="flex-row items-center mb-3">
-          <TrendingUp size={18} color="#5A7160" />
-          <Text className="text-base font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">Trending Tags</Text>
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+        <View className="flex-row items-center mb-2">
+          <TrendingUp size={16} color="#3B6E4D" />
+          <Text className="text-base font-poppinsBold text-craftopia-textPrimary ml-2">Trending Tags</Text>
         </View>
-        <View className="flex-row items-center py-3">
-          <ActivityIndicator size="small" color="#5A7160" />
-          <Text className="text-sm text-craftopa-textSecondary ml-2 font-nunito tracking-wide">Loading trending tags...</Text>
+        <View className="flex-row items-center py-2">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-sm text-craftopia-textSecondary ml-2 font-nunito">Loading trending tags...</Text>
         </View>
       </View>
     );
@@ -33,35 +33,35 @@ export const TrendingTagsSection: React.FC<TrendingTagsSectionProps> = ({ visibl
 
   if (error) {
     return (
-      <View className="bg-white px-5 py-4 border-b border-craftopa-light/10">
-        <Text className="text-sm text-red-500 font-nunito tracking-wide">Failed to load trending tags</Text>
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+        <Text className="text-sm text-craftopia-error font-nunito">Failed to load trending tags</Text>
       </View>
     );
   }
 
   if (!trendingTags || trendingTags.length === 0) {
     return (
-      <View className="bg-white px-5 py-4 border-b border-craftopa-light/10">
-        <View className="flex-row items-center mb-3">
-          <TrendingUp size={18} color="#9CA3AF" />
-          <Text className="text-base font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">Trending Tags</Text>
+      <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+        <View className="flex-row items-center mb-2">
+          <TrendingUp size={16} color="#5F6F64" />
+          <Text className="text-base font-poppinsBold text-craftopia-textPrimary ml-2">Trending Tags</Text>
         </View>
-        <Text className="text-sm text-craftopa-textSecondary font-nunito tracking-wide">No trending tags yet</Text>
+        <Text className="text-sm text-craftopia-textSecondary font-nunito">No trending tags yet</Text>
       </View>
     );
   }
 
   return (
-    <View className="bg-white px-5 py-4 border-b border-craftopa-light/10">
-      <View className="flex-row items-center mb-3">
-        <TrendingUp size={18} color="#5A7160" />
-        <Text className="text-base font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">Trending Tags</Text>
+    <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
+      <View className="flex-row items-center mb-2">
+        <TrendingUp size={16} color="#3B6E4D" />
+        <Text className="text-base font-poppinsBold text-craftopia-textPrimary ml-2">Trending Tags</Text>
       </View>
       
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingRight: 16 }}
+        contentContainerStyle={{ paddingRight: 12 }}
       >
         {trendingTags.map((item: any, index: any) => {
           const tagValue = item?.tag || item?.name || item?.tagName || 'unknown';

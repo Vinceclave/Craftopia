@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/feed/CreatePost.tsx - FIXED: Using props only
+// apps/mobile/src/screens/feed/CreatePost.tsx - CRAFTOPIA REFINED
 import React, { useRef, useState } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, Modal } from 'react-native'
 import { Input } from '~/components/common/TextInputField'
@@ -137,43 +137,43 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
   const isFormValid = formData.title.trim() && formData.content.trim() && formData.category && !uploading
 
   const CharacterCounter = ({ current, max, warningThreshold = 0.9 }: { current: number; max: number; warningThreshold?: number }) => (
-    <Text className={`text-xs font-nunito tracking-wide ${current > max * warningThreshold ? 'text-orange-500' : 'text-craftopa-textSecondary'}`}>
+    <Text className={`text-xs font-nunito ${current > max * warningThreshold ? 'text-craftopia-warning' : 'text-craftopia-textSecondary'}`}>
       {current}/{max}
     </Text>
   )
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['left', 'right']}>
+    <SafeAreaView className="flex-1 bg-craftopia-surface" edges={['left', 'right']}>
       {/* Header */}
-      <View className="px-5 py-4 border-b border-craftopa-light/10">
+      <View className="px-4 py-3 border-b border-craftopia-light">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <TouchableOpacity 
               onPress={() => navigation.goBack()}
-              className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/5 active:opacity-70 border border-craftopa-light/10 mr-3"
+              className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70 mr-2"
               activeOpacity={0.7}
             >
-              <ArrowLeft size={18} color="#5A7160" />
+              <ArrowLeft size={16} color="#3B6E4D" />
             </TouchableOpacity>
             <View>
-              <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+              <Text className="text-sm font-nunito text-craftopia-textSecondary mb-0.5">
                 Create Post
               </Text>
-              <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">Share Your Story</Text>
+              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">Share Your Story</Text>
             </View>
           </View>
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isFormValid || loading}
-            className={`px-5 py-2.5 rounded-xl flex-row items-center active:opacity-70 border ${
+            className={`px-4 py-2 rounded-lg flex-row items-center active:opacity-70 border ${
               isFormValid && !loading 
-                ? 'bg-craftopa-primary border-craftopa-primary/20' 
-                : 'bg-craftopa-light/10 border-craftopa-light/20'
+                ? 'bg-craftopia-primary border-craftopia-primary' 
+                : 'bg-craftopia-light border-craftopia-light'
             }`}
             activeOpacity={0.7}
           >
-            <Text className={`font-poppinsBold text-sm tracking-tight ${
-              isFormValid && !loading ? 'text-white' : 'text-craftopa-textSecondary'
+            <Text className={`font-poppinsBold text-sm ${
+              isFormValid && !loading ? 'text-white' : 'text-craftopia-textSecondary'
             }`}>
               {loading ? 'Sharing...' : 'Share'}
             </Text>
@@ -181,12 +181,12 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-        <View className="p-5 space-y-6">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+        <View className="p-4 space-y-4">
           {/* Title Input */}
           <View>
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">Title</Text>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">Title</Text>
               <CharacterCounter current={formData.title.length} max={255} />
             </View>
             <Input
@@ -196,14 +196,14 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
               ref={refs.title}
               nextInputRef={refs.content}
               error={errors.title}
-              className="bg-white border-craftopa-light/10 rounded-2xl px-4 py-3 text-base font-nunito tracking-wide"
+              className="bg-craftopia-surface border-craftopia-light rounded-xl px-3 py-2.5 text-sm font-nunito"
             />
           </View>
 
           {/* Content Input */}
           <View>
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-sm font-poppinsBold text-craftopa-textPrimary tracking-tight">Content</Text>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">Content</Text>
               <CharacterCounter current={formData.content.length} max={1000} />
             </View>
             <Input
@@ -216,15 +216,15 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
               numberOfLines={6}
               textAlignVertical="top"
               error={errors.content}
-              className="bg-white border-craftopa-light/10 rounded-2xl px-4 py-3 text-base font-nunito tracking-wide min-h-[120px]"
+              className="bg-craftopia-surface border-craftopia-light rounded-xl px-3 py-2.5 text-sm font-nunito min-h-[120px]"
             />
           </View>
 
           {/* Image Upload Section */}
           <View>
-            <View className="flex-row items-center mb-3">
-              <ImageIcon size={18} color="#5A7160" />
-              <Text className="text-sm font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">Image</Text>
+            <View className="flex-row items-center mb-2">
+              <ImageIcon size={16} color="#3B6E4D" />
+              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary ml-1.5">Image</Text>
             </View>
             <ImageUploadPicker
               description="Take a photo or choose from gallery"
@@ -239,26 +239,26 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
 
           {/* Tags Input */}
           <View>
-            <View className="flex-row items-center mb-3">
-              <Hash size={18} color="#5A7160" />
-              <Text className="text-sm font-poppinsBold text-craftopa-textPrimary ml-2 tracking-tight">Tags</Text>
+            <View className="flex-row items-center mb-2">
+              <Hash size={16} color="#3B6E4D" />
+              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary ml-1.5">Tags</Text>
             </View>
             <Input
               placeholder="craft, recycling, DIY..."
               value={getTagsAsString()}
               onChangeText={value => handleChange('tags', value)}
               ref={refs.tags}
-              className="bg-white border-craftopa-light/10 rounded-2xl px-4 py-3 text-base font-nunito tracking-wide"
+              className="bg-craftopia-surface border-craftopia-light rounded-xl px-3 py-2.5 text-sm font-nunito"
             />
             
             {/* Tag Preview */}
             {formData.tags.length > 0 && (
-              <View className="flex-row flex-wrap gap-2 mt-3">
+              <View className="flex-row flex-wrap gap-1.5 mt-2">
                 {formData.tags.map((tag, index) => (
-                  <View key={index} className="bg-craftopa-primary/5 px-3 py-2 rounded-full flex-row items-center border border-craftopa-primary/10">
-                    <Text className="text-craftopa-primary text-sm font-poppinsBold tracking-tight">#{tag}</Text>
+                  <View key={index} className="bg-craftopia-primary/5 px-2.5 py-1 rounded-full flex-row items-center border border-craftopia-primary/20">
+                    <Text className="text-craftopia-primary text-xs font-poppinsBold">#{tag}</Text>
                     <TouchableOpacity 
-                      className="ml-2 active:opacity-70"
+                      className="ml-1 active:opacity-70"
                       onPress={() => {
                         const newTags = formData.tags.filter((_, i) => i !== index)
                         const newTagsInput = newTags.join(', ')
@@ -267,7 +267,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text className="text-craftopa-primary text-sm font-poppinsBold">×</Text>
+                      <Text className="text-craftopia-primary text-xs font-poppinsBold">×</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -277,25 +277,25 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
 
           {/* Category Picker */}
           <View>
-            <Text className="text-sm font-poppinsBold text-craftopa-textPrimary mb-3 tracking-tight">Category</Text>
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-2">Category</Text>
             <TouchableOpacity
               onPress={() => setShowCategoryPicker(true)}
-              className={`flex-row items-center justify-between p-4 border rounded-2xl active:opacity-70 ${
-                errors.category ? 'border-red-300 bg-red-50' : 'border-craftopa-light/10 bg-white'
+              className={`flex-row items-center justify-between p-3 border rounded-lg active:opacity-70 ${
+                errors.category ? 'border-craftopia-error bg-craftopia-error/10' : 'border-craftopia-light bg-craftopia-surface'
               }`}
               activeOpacity={0.7}
             >
               <View className="flex-row items-center">
-                <Text className="text-xl mr-3">{getSelectedCategory().icon}</Text>
+                <Text className="text-xl mr-2">{getSelectedCategory().icon}</Text>
                 <View>
-                  <Text className="font-poppinsBold text-craftopa-textPrimary text-base tracking-tight">{getSelectedCategory().label}</Text>
-                  <Text className="text-sm text-craftopa-textSecondary mt-0.5 font-nunito tracking-wide">{getSelectedCategory().description}</Text>
+                  <Text className="font-poppinsBold text-craftopia-textPrimary text-sm">{getSelectedCategory().label}</Text>
+                  <Text className="text-xs text-craftopia-textSecondary mt-0.5 font-nunito">{getSelectedCategory().description}</Text>
                 </View>
               </View>
-              <ChevronDown size={20} color="#5A7160" />
+              <ChevronDown size={18} color="#3B6E4D" />
             </TouchableOpacity>
             {errors.category && (
-              <Text className="text-red-500 text-sm mt-2 font-nunito tracking-wide">{errors.category}</Text>
+              <Text className="text-craftopia-error text-xs mt-1 font-nunito">{errors.category}</Text>
             )}
           </View>
         </View>
@@ -309,59 +309,59 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
         onRequestClose={() => setShowCategoryPicker(false)}
       >
         <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-5 max-h-[80%] shadow-xl">
+          <View className="bg-craftopia-surface rounded-t-xl p-4 max-h-[80%]">
             {/* Header */}
-            <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center justify-between mb-3">
               <View>
-                <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
+                <Text className="text-sm font-nunito text-craftopia-textSecondary mb-0.5">
                   Select Category
                 </Text>
-                <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">Choose a Category</Text>
+                <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">Choose a Category</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setShowCategoryPicker(false)}
-                className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/5 active:opacity-70 border border-craftopa-light/10"
+                className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70"
                 activeOpacity={0.7}
               >
-                <Text className="text-craftopa-textSecondary font-poppinsBold">×</Text>
+                <Text className="text-craftopia-textSecondary font-poppinsBold">×</Text>
               </TouchableOpacity>
             </View>
 
             {/* Categories List */}
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View className="space-y-2">
+              <View className="space-y-1.5">
                 {CATEGORIES.map((category) => (
                   <TouchableOpacity
                     key={category.id}
-                    className={`flex-row items-center justify-between p-4 rounded-2xl border active:opacity-70 ${
+                    className={`flex-row items-center justify-between p-3 rounded-lg border active:opacity-70 ${
                       formData.category === category.id 
-                        ? 'bg-craftopa-primary border-craftopa-primary/20' 
-                        : 'bg-white border-craftopa-light/10'
+                        ? 'bg-craftopia-primary border-craftopia-primary' 
+                        : 'bg-craftopia-surface border-craftopia-light'
                     }`}
                     onPress={() => handleCategorySelect(category.id)}
                     activeOpacity={0.7}
                   >
                     <View className="flex-row items-center flex-1">
-                      <Text className={`text-xl mr-3 ${
-                        formData.category === category.id ? 'text-white' : 'text-craftopa-textPrimary'
+                      <Text className={`text-xl mr-2 ${
+                        formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
                       }`}>
                         {category.icon}
                       </Text>
                       <View className="flex-1">
-                        <Text className={`font-poppinsBold text-base tracking-tight ${
-                          formData.category === category.id ? 'text-white' : 'text-craftopa-textPrimary'
+                        <Text className={`font-poppinsBold text-sm ${
+                          formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
                         }`}>
                           {category.label}
                         </Text>
-                        <Text className={`text-sm mt-0.5 font-nunito tracking-wide ${
-                          formData.category === category.id ? 'text-white/80' : 'text-craftopa-textSecondary'
+                        <Text className={`text-xs mt-0.5 font-nunito ${
+                          formData.category === category.id ? 'text-white/80' : 'text-craftopia-textSecondary'
                         }`}>
                           {category.description}
                         </Text>
                       </View>
                     </View>
                     {formData.category === category.id && (
-                      <Check size={20} color="#FFFFFF" />
+                      <Check size={18} color="#FFFFFF" />
                     )}
                   </TouchableOpacity>
                 ))}

@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/comment/CommentModal.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/comment/CommentModal.tsx - CRAFTOPIA REFINED
 import React, { useRef } from 'react';
 import { 
   Modal, View, Text, ScrollView, ActivityIndicator, 
@@ -43,31 +43,31 @@ export const CommentModal: React.FC<CommentModalProps> = ({
       presentationStyle="pageSheet" 
       onRequestClose={onClose}
     >
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-white">
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-surface">
         <KeyboardAvoidingView 
           className="flex-1" 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         >
           {/* Header */}
-          <View className="px-5 py-4 border-b border-craftopa-light/10">
+          <View className="px-4 py-3 border-b border-craftopia-light">
             <View className="flex-row items-center justify-between">
               <View className="flex-1">
                 <View className="flex-row items-center">
-                  <MessageCircle size={20} color="#5A7160" />
-                  <Text className="font-poppinsBold text-craftopa-textPrimary text-xl ml-2 tracking-tight">
+                  <MessageCircle size={18} color="#3B6E4D" />
+                  <Text className="font-poppinsBold text-craftopia-textPrimary text-lg ml-2">
                     Comments
                   </Text>
                 </View>
-                <Text className="text-craftopa-textSecondary text-sm mt-1 font-nunito tracking-wide" numberOfLines={1}>
+                <Text className="text-craftopia-textSecondary text-sm mt-0.5 font-nunito" numberOfLines={1}>
                   {postTitle}
                 </Text>
               </View>
               <TouchableOpacity 
                 onPress={onClose} 
-                className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/10 active:opacity-70 border border-craftopa-light/10"
+                className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70"
                 activeOpacity={0.7}
               >
-                <X size={18} color="#5A7160" />
+                <X size={16} color="#3B6E4D" />
               </TouchableOpacity>
             </View>
           </View>
@@ -75,31 +75,31 @@ export const CommentModal: React.FC<CommentModalProps> = ({
           {/* Comments List */}
           <ScrollView
             ref={scrollRef}
-            className="flex-1 px-5"
+            className="flex-1 px-4"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {loading ? (
-              <View className="flex-1 justify-center items-center py-20">
-                <ActivityIndicator size="large" color="#5A7160" />
-                <Text className="text-craftopa-textSecondary mt-3 font-nunito tracking-wide">
+              <View className="flex-1 justify-center items-center py-16">
+                <ActivityIndicator size="large" color="#3B6E4D" />
+                <Text className="text-craftopia-textSecondary mt-2 font-nunito">
                   Loading comments...
                 </Text>
               </View>
             ) : comments.length === 0 ? (
-              <View className="flex-1 justify-center items-center py-20">
-                <MessageCircle size={48} color="#E5E7EB" />
-                <Text className="text-craftopa-textSecondary text-lg mt-3 text-center font-nunito tracking-wide">
+              <View className="flex-1 justify-center items-center py-16">
+                <MessageCircle size={40} color="#F5F7F2" />
+                <Text className="text-craftopia-textSecondary text-base mt-2 text-center font-nunito">
                   No comments yet
                 </Text>
-                <Text className="text-craftopa-textSecondary text-sm mt-1 text-center font-nunito tracking-wide">
+                <Text className="text-craftopia-textSecondary text-sm mt-0.5 text-center font-nunito">
                   Be the first to comment!
                 </Text>
               </View>
             ) : (
-              <View className="py-4">
-                <View className="mb-4">
-                  <Text className="text-craftopa-textPrimary font-poppinsBold text-base tracking-tight">
+              <View className="py-3">
+                <View className="mb-3">
+                  <Text className="text-craftopia-textPrimary font-poppinsBold text-sm">
                     {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
                   </Text>
                 </View>

@@ -20,12 +20,12 @@ export const TrendingTagItem: React.FC<TrendingTagProps> = (props) => {
       activeOpacity={0.7}
       className="mr-3"
     >
-      <View className="bg-white border border-craftopa-light/10 rounded-2xl px-4 py-3 min-w-[100px] shadow-sm">
+      <View className="bg-craftopia-surface border border-craftopia-light rounded-xl px-3 py-2.5 min-w-[90px]">
         {/* Tag Name */}
         <View className="flex-row items-center mb-1">
-          <Text className="text-xl mr-1">#</Text>
+          <Text className="text-lg mr-1 text-craftopia-primary">#</Text>
           <Text 
-            className="text-craftopa-primary font-poppinsBold text-sm flex-1 tracking-tight" 
+            className="text-craftopia-primary font-poppinsBold text-sm flex-1" 
             numberOfLines={1}
           >
             {tag}
@@ -33,13 +33,13 @@ export const TrendingTagItem: React.FC<TrendingTagProps> = (props) => {
         </View>
         
         {/* Post Count */}
-        <Text className="text-craftopa-textSecondary text-xs font-nunito tracking-wide">
+        <Text className="text-craftopia-textSecondary text-xs font-nunito">
           {count} {count === 1 ? 'post' : 'posts'}
         </Text>
         
         {/* Growth Indicator */}
         {growth && growth > 0 && (
-          <Text className="text-green-600 text-xs font-poppinsBold mt-1 tracking-tight">
+          <Text className="text-craftopia-success text-xs font-poppinsBold mt-0.5">
             ↑ {growth}%
           </Text>
         )}

@@ -21,9 +21,9 @@ export const FeedListEmpty: React.FC<FeedListEmptyProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center py-8">
-        <ActivityIndicator size="small" color="#5A7160" />
-        <Text className="text-craftopa-textSecondary text-xs mt-2 font-nunito tracking-wide">
+      <View className="flex-1 justify-center items-center py-6">
+        <ActivityIndicator size="small" color="#3B6E4D" />
+        <Text className="text-craftopia-textSecondary text-xs mt-2 font-nunito">
           Loading posts...
         </Text>
       </View>
@@ -32,37 +32,37 @@ export const FeedListEmpty: React.FC<FeedListEmptyProps> = ({
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center py-8 px-5">
-        <Text className="text-craftopa-textPrimary text-base font-poppinsBold text-center mb-1 tracking-tight">
+      <View className="flex-1 justify-center items-center py-6 px-4">
+        <Text className="text-craftopia-textPrimary text-base font-poppinsBold text-center mb-1">
           Oops! Something went wrong
         </Text>
-        <Text className="text-craftopa-textSecondary text-xs text-center mb-3 font-nunito tracking-wide">
+        <Text className="text-craftopia-textSecondary text-xs text-center mb-3 font-nunito">
           {error.message}
         </Text>
         <TouchableOpacity 
           onPress={onRefresh} 
-          className="bg-craftopa-primary px-4 py-2 rounded-lg active:opacity-70"
+          className="bg-craftopia-primary px-4 py-2 rounded-lg active:opacity-70"
           activeOpacity={0.7}
         >
-          <Text className="text-white text-xs font-poppinsBold tracking-tight">Try Again</Text>
+          <Text className="text-white text-xs font-poppinsBold">Try Again</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 justify-center items-center py-8 px-5">
-      <View className="w-12 h-12 bg-craftopa-light/5 rounded-xl items-center justify-center mb-3 border border-craftopa-light/10">
+    <View className="flex-1 justify-center items-center py-6 px-4">
+      <View className="w-12 h-12 bg-craftopia-light rounded-lg items-center justify-center mb-3 border border-craftopia-light">
         {hasActiveFilters ? (
-          <Filter size={20} color="#5A7160" />
+          <Filter size={20} color="#3B6E4D" />
         ) : (
-          <FileText size={20} color="#5A7160" />
+          <FileText size={20} color="#3B6E4D" />
         )}
       </View>
-      <Text className="text-craftopa-textPrimary text-base font-poppinsBold mb-1 text-center tracking-tight">
+      <Text className="text-craftopia-textPrimary text-base font-poppinsBold mb-1 text-center">
         {hasActiveFilters ? 'No matching posts' : 'No posts yet'}
       </Text>
-      <Text className="text-craftopa-textSecondary text-xs text-center mb-4 font-nunito tracking-wide">
+      <Text className="text-craftopia-textSecondary text-xs text-center mb-3 font-nunito">
         {hasActiveFilters 
           ? 'Try adjusting your filters'
           : 'Be the first to share!'
@@ -70,18 +70,18 @@ export const FeedListEmpty: React.FC<FeedListEmptyProps> = ({
       </Text>
       <TouchableOpacity 
         onPress={hasActiveFilters ? onClearFilters : onCreatePost} 
-        className="bg-craftopa-primary px-4 py-2 rounded-lg flex-row items-center active:opacity-70"
+        className="bg-craftopia-primary px-4 py-2 rounded-lg flex-row items-center active:opacity-70"
         activeOpacity={0.7}
       >
         {hasActiveFilters ? (
           <>
-            <Filter size={14} color="white" />
-            <Text className="text-white text-xs font-poppinsBold ml-1.5 tracking-tight">Clear Filters</Text>
+            <Filter size={14} color="#FFFFFF" />
+            <Text className="text-white text-xs font-poppinsBold ml-1.5">Clear Filters</Text>
           </>
         ) : (
           <>
-            <Plus size={14} color="white" />
-            <Text className="text-white text-xs font-poppinsBold ml-1.5 tracking-tight">Create Post</Text>
+            <Plus size={14} color="#FFFFFF" />
+            <Text className="text-white text-xs font-poppinsBold ml-1.5">Create Post</Text>
           </>
         )}
       </TouchableOpacity>

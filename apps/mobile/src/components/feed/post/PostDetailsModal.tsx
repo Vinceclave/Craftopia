@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/PostDetailsModal.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/PostDetailsModal.tsx - FACEBOOK STYLE
 import React, { useState } from 'react';
 import {
   Modal,
@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X, Heart, MessageCircle, Share2, Clock, Edit, User, AlertCircle, Sparkles } from 'lucide-react-native';
@@ -16,6 +17,8 @@ import { usePost, useComments, useAddComment } from '~/hooks/queries/usePosts';
 import { formatTimeAgo } from '~/utils/time';
 import { CommentItem } from './comment/CommentItem';
 import { CommentInput } from './comment/CommentInput';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PostDetailsModalProps {
   visible: boolean;
@@ -74,8 +77,7 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
     setImageError(false);
   };
 
-  const handleImageError = (error: any) => {
-    console.error('📷 [PostDetailsModal] Image load error:', error);
+  const handleImageError = () => {
     setImageLoading(false);
     setImageError(true);
   };
@@ -89,48 +91,43 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-white">
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-surface">
         {/* Header */}
-        <View className="px-5 py-4 border-b border-craftopa-light/10">
+        <View className="px-4 py-3 border-b border-craftopia-light">
           <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-sm font-nunito text-craftopa-textSecondary tracking-wide mb-0.5">
-                Post Details
-              </Text>
-              <Text className="text-xl font-poppinsBold text-craftopa-textPrimary tracking-tight">
-                Community Post
-              </Text>
-            </View>
+            <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
+              Post
+            </Text>
             <TouchableOpacity 
               onPress={onClose}
-              className="w-9 h-9 items-center justify-center rounded-xl bg-craftopa-light/10 active:opacity-70 border border-craftopa-light/10"
+              className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70"
               activeOpacity={0.7}
             >
-              <X size={18} color="#5A7160" />
+              <X size={16} color="#3B6E4D" />
             </TouchableOpacity>
           </View>
         </View>
 
         {postLoading ? (
           <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="large" color="#5A7160" />
-            <Text className="text-craftopa-textSecondary mt-3 font-nunito tracking-wide">Loading post...</Text>
+            <ActivityIndicator size="large" color="#3B6E4D" />
+            <Text className="text-craftopia-textSecondary mt-2 font-nunito">Loading post...</Text>
           </View>
         ) : postError || !post ? (
-          <View className="flex-1 justify-center items-center px-6">
+          <View className="flex-1 justify-center items-center px-4">
             <View className="items-center">
-              <Text className="text-craftopa-textPrimary text-xl font-poppinsBold mb-2 tracking-tight">
+              <Text className="text-craftopia-textPrimary text-lg font-poppinsBold mb-1">
                 Post Not Found
               </Text>
-              <Text className="text-craftopa-textSecondary text-center mb-6 font-nunito tracking-wide">
+              <Text className="text-craftopia-textSecondary text-center mb-4 font-nunito">
                 This post may have been deleted or doesn't exist.
               </Text>
               <TouchableOpacity
                 onPress={onClose}
-                className="bg-craftopa-primary px-8 py-3 rounded-xl active:opacity-70"
+                className="bg-craftopia-primary px-6 py-2.5 rounded-lg active:opacity-70"
                 activeOpacity={0.7}
               >
-                <Text className="text-white font-poppinsBold text-base tracking-tight">Close</Text>
+                <Text className="text-white font-poppinsBold text-sm">Close</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -143,194 +140,213 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
-                  colors={['#5A7160']}
-                  tintColor="#5A7160"
+                  colors={['#3B6E4D']}
+                  tintColor="#3B6E4D"
                 />
               }
             >
-              {/* Post Content */}
-              <View className="p-5 space-y-5">
-                {/* Author */}
+              {/* Author Header */}
+              <View className="p-4 border-b border-craftopia-light">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
-                    <View className="w-12 h-12 bg-craftopa-light/5 rounded-xl items-center justify-center border border-craftopa-light/10">
-                      <User size={20} color="#5A7160" />
+                    <View className="w-10 h-10 bg-craftopia-light rounded-lg items-center justify-center border border-craftopia-light">
+                      <User size={18} color="#3B6E4D" />
                     </View>
-                    <View className="ml-3">
-                      <Text className="font-poppinsBold text-craftopa-textPrimary text-base tracking-tight">
+                    <View className="ml-2">
+                      <Text className="font-poppinsBold text-craftopia-textPrimary text-sm">
                         {post.user?.username || 'Unknown User'}
                       </Text>
-                      <View className="flex-row items-center mt-1">
-                        <Clock size={14} color="#9CA3AF" />
-                        <Text className="text-craftopa-textSecondary text-sm ml-1 font-nunito tracking-wide">
+                      <View className="flex-row items-center mt-0.5">
+                        <Clock size={12} color="#5F6F64" />
+                        <Text className="text-craftopia-textSecondary text-xs ml-1 font-nunito">
                           {formatTimeAgo(post.created_at)}
                         </Text>
                         {post.updated_at !== post.created_at && (
                           <>
-                            <Text className="text-craftopa-textSecondary mx-1">•</Text>
-                            <Edit size={14} color="#9CA3AF" />
-                            <Text className="text-craftopa-textSecondary text-sm ml-1 font-nunito tracking-wide">Edited</Text>
+                            <Text className="text-craftopia-textSecondary mx-1">•</Text>
+                            <Edit size={12} color="#5F6F64" />
+                            <Text className="text-craftopia-textSecondary text-xs ml-1 font-nunito">Edited</Text>
                           </>
                         )}
                       </View>
                     </View>
                   </View>
                   {post.featured && (
-                    <View className="bg-craftopa-accent/10 px-3 py-1.5 rounded-lg border border-craftopa-accent/20">
+                    <View className="bg-craftopia-warning/10 px-2 py-1 rounded-md border border-craftopia-warning/20">
                       <View className="flex-row items-center gap-1">
-                        <Sparkles size={12} color="#D4A96A" />
-                        <Text className="text-craftopa-accent text-xs font-poppinsBold tracking-tight">
+                        <Sparkles size={12} color="#E3A84F" />
+                        <Text className="text-craftopia-warning text-xs font-poppinsBold">
                           Featured
                         </Text>
                       </View>
                     </View>
                   )}
                 </View>
+              </View>
 
-                {/* Title */}
-                <Text className="text-2xl font-poppinsBold text-craftopa-textPrimary leading-8 tracking-tight">
+              {/* Content */}
+              <View className="p-4 border-b border-craftopia-light">
+                <Text className="text-lg font-poppinsBold text-craftopia-textPrimary mb-2">
                   {post.title}
                 </Text>
-
-                {/* Content */}
-                <Text className="text-craftopa-textSecondary text-base leading-6 font-nunito tracking-wide">
+                <Text className="text-craftopia-textSecondary text-sm leading-5 font-nunito">
                   {post.content}
                 </Text>
+              </View>
 
-                {/* Image */}
-                {post.image_url && post.image_url.trim() && (
-                  <View className="w-full rounded-2xl overflow-hidden bg-craftopa-light/5 border border-craftopa-light/10">
-                    {imageLoading && (
-                      <View className="absolute inset-0 items-center justify-center z-10">
-                        <ActivityIndicator size="large" color="#5A7160" />
-                        <Text className="text-craftopa-textSecondary text-sm mt-2 font-nunito tracking-wide">Loading image...</Text>
-                      </View>
-                    )}
-                    
-                    {imageError ? (
-                      <View className="w-full h-64 items-center justify-center bg-craftopa-light/5">
-                        <AlertCircle size={48} color="#EF4444" />
-                        <Text className="text-craftopa-textSecondary text-sm mt-3 font-nunito tracking-wide">Failed to load image</Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setImageError(false);
-                            setImageLoading(true);
-                          }}
-                          className="mt-3 bg-craftopa-primary px-4 py-2 rounded-lg active:opacity-70"
-                          activeOpacity={0.7}
-                        >
-                          <Text className="text-white text-sm font-poppinsBold tracking-tight">Retry</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
+              {/* Facebook-style Large Image */}
+              {post.image_url && post.image_url.trim() && (
+                <View className="border-b border-craftopia-light">
+                  {imageLoading && (
+                    <View className="w-full h-80 items-center justify-center bg-craftopia-light">
+                      <ActivityIndicator size="large" color="#3B6E4D" />
+                      <Text className="text-craftopia-textSecondary text-sm mt-2 font-nunito">Loading image...</Text>
+                    </View>
+                  )}
+                  
+                  {imageError ? (
+                    <View className="w-full h-64 items-center justify-center bg-craftopia-light">
+                      <AlertCircle size={32} color="#D66B4E" />
+                      <Text className="text-craftopia-textSecondary text-sm mt-2 font-nunito">Failed to load image</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setImageError(false);
+                          setImageLoading(true);
+                        }}
+                        className="mt-2 bg-craftopia-primary px-3 py-1.5 rounded-md active:opacity-70"
+                        activeOpacity={0.7}
+                      >
+                        <Text className="text-white text-xs font-poppinsBold">Retry</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View className="relative">
                       <Image
                         source={{ 
                           uri: post.image_url,
                           cache: 'force-cache',
                         }}
                         style={{ 
-                          width: '100%', 
-                          height: 400,
-                          backgroundColor: '#F8FAF7',
+                          width: SCREEN_WIDTH,
+                          height: SCREEN_WIDTH, // Square aspect ratio like Facebook
+                          backgroundColor: '#F5F7F2',
                         }}
                         resizeMode="cover"
                         onLoad={handleImageLoad}
                         onError={handleImageError}
                         onLoadStart={() => setImageLoading(true)}
                       />
-                    )}
-                  </View>
-                )}
+                    </View>
+                  )}
+                </View>
+              )}
 
-                {/* Tags */}
-                {post.tags && post.tags.length > 0 && (
-                  <View className="flex-row flex-wrap gap-2">
+              {/* Tags */}
+              {post.tags && post.tags.length > 0 && (
+                <View className="p-4 border-b border-craftopia-light">
+                  <View className="flex-row flex-wrap gap-1.5">
                     {post.tags.map((tag, idx) => (
                       <View
                         key={`${tag}-${idx}`}
-                        className="bg-craftopa-light/5 rounded-full px-3 py-2 border border-craftopa-light/10"
+                        className="bg-craftopia-light rounded-full px-2.5 py-1 border border-craftopia-light"
                       >
-                        <Text className="text-craftopa-textPrimary text-sm font-poppinsBold tracking-tight">#{tag}</Text>
+                        <Text className="text-craftopia-textPrimary text-xs font-poppinsBold">#{tag}</Text>
                       </View>
                     ))}
                   </View>
-                )}
+                </View>
+              )}
 
-                {/* Actions */}
-                <View className="flex-row items-center justify-between pt-4 border-t border-craftopa-light/10">
-                  <View className="flex-row items-center gap-6">
-                    {/* Like */}
-                    <TouchableOpacity
-                      className="flex-row items-center gap-2 active:opacity-70"
-                      onPress={onToggleReaction}
-                      activeOpacity={0.7}
-                    >
-                      <Heart
-                        size={24}
-                        color={post.isLiked ? '#EF4444' : '#5A7160'}
-                        fill={post.isLiked ? '#EF4444' : 'transparent'}
-                        strokeWidth={post.isLiked ? 2.5 : 2}
-                      />
-                      <Text className={`font-poppinsBold text-base tracking-tight ${
-                        post.isLiked ? 'text-red-500' : 'text-craftopa-textSecondary'
-                      }`}>
-                        {post.likeCount}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Comments */}
-                    <View className="flex-row items-center gap-2">
-                      <MessageCircle size={24} color="#5A7160" strokeWidth={2} />
-                      <Text className="font-poppinsBold text-craftopa-textSecondary text-base tracking-tight">
-                        {post.commentCount}
-                      </Text>
+              {/* Actions Bar - Facebook Style */}
+              <View className="p-3 border-b border-craftopia-light">
+                <View className="flex-row items-center justify-between">
+                  {/* Like Count */}
+                  <View className="flex-row items-center">
+                    <View className="w-5 h-5 bg-craftopia-primary rounded-full items-center justify-center">
+                      <Heart size={12} color="#FFFFFF" fill="#FFFFFF" />
                     </View>
+                    <Text className="text-craftopia-textSecondary text-xs ml-1 font-nunito">
+                      {post.likeCount}
+                    </Text>
                   </View>
 
-                  {/* Share */}
+                  {/* Comment Count */}
+                  <View className="flex-row items-center">
+                    <Text className="text-craftopia-textSecondary text-xs font-nunito">
+                      {post.commentCount} comments
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View className="flex-row items-center justify-between mt-2">
+                  <TouchableOpacity
+                    className="flex-1 flex-row items-center justify-center py-2 rounded-md active:opacity-70"
+                    onPress={onToggleReaction}
+                    activeOpacity={0.7}
+                  >
+                    <Heart
+                      size={18}
+                      color={post.isLiked ? '#D66B4E' : '#5F6F64'}
+                      fill={post.isLiked ? '#D66B4E' : 'transparent'}
+                    />
+                    <Text className={`ml-1.5 text-sm font-poppinsBold ${
+                      post.isLiked ? 'text-craftopia-error' : 'text-craftopia-textSecondary'
+                    }`}>
+                      Like
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    className="flex-1 flex-row items-center justify-center py-2 rounded-md active:opacity-70"
+                    activeOpacity={0.7}
+                  >
+                    <MessageCircle size={18} color="#5F6F64" />
+                    <Text className="ml-1.5 text-sm font-poppinsBold text-craftopia-textSecondary">
+                      Comment
+                    </Text>
+                  </TouchableOpacity>
+
                   {onShare && (
                     <TouchableOpacity
-                      className="flex-row items-center gap-2 active:opacity-70"
+                      className="flex-1 flex-row items-center justify-center py-2 rounded-md active:opacity-70"
                       onPress={onShare}
                       activeOpacity={0.7}
                     >
-                      <Share2 size={20} color="#5A7160" strokeWidth={2} />
-                      <Text className="text-craftopa-textSecondary font-poppinsBold text-base tracking-tight">Share</Text>
+                      <Share2 size={18} color="#5F6F64" />
+                      <Text className="ml-1.5 text-sm font-poppinsBold text-craftopia-textSecondary">
+                        Share
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
               {/* Comments Section */}
-              <View className="bg-craftopa-light/5 mt-4 p-5">
-                <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-lg font-poppinsBold text-craftopa-textPrimary tracking-tight">
-                    Comments
-                  </Text>
-                  <Text className="text-craftopa-textSecondary text-sm font-nunito tracking-wide">
-                    {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-                  </Text>
-                </View>
+              <View className="p-4">
+                <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-3">
+                  Comments
+                </Text>
 
                 {commentsLoading ? (
-                  <View className="py-8 items-center">
-                    <ActivityIndicator size="small" color="#5A7160" />
-                    <Text className="text-craftopa-textSecondary text-sm mt-2 font-nunito tracking-wide">
+                  <View className="py-6 items-center">
+                    <ActivityIndicator size="small" color="#3B6E4D" />
+                    <Text className="text-craftopia-textSecondary text-sm mt-1 font-nunito">
                       Loading comments...
                     </Text>
                   </View>
                 ) : comments.length === 0 ? (
-                  <View className="py-12 items-center">
-                    <MessageCircle size={40} color="#E5E7EB" />
-                    <Text className="text-craftopa-textSecondary text-center mt-3 text-base font-nunito tracking-wide">
+                  <View className="py-8 items-center">
+                    <MessageCircle size={32} color="#F5F7F2" />
+                    <Text className="text-craftopia-textSecondary text-center mt-2 text-sm font-nunito">
                       No comments yet
                     </Text>
-                    <Text className="text-craftopa-textSecondary text-center mt-1 text-sm font-nunito tracking-wide">
+                    <Text className="text-craftopia-textSecondary text-center mt-0.5 text-xs font-nunito">
                       Be the first to comment!
                     </Text>
                   </View>
                 ) : (
-                  <View className="space-y-4">
+                  <View className="space-y-3">
                     {comments.map((comment) => (
                       <CommentItem key={comment.comment_id} comment={comment} />
                     ))}
@@ -340,7 +356,7 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
             </ScrollView>
 
             {/* Comment Input */}
-            <View className="bg-white border-t border-craftopa-light/10">
+            <View className="bg-craftopia-surface border-t border-craftopia-light">
               <CommentInput
                 onSend={handleAddComment}
                 submitting={addCommentMutation.isPending}
@@ -351,4 +367,4 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
       </SafeAreaView>
     </Modal>
   );
-};
+};  

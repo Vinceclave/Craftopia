@@ -60,9 +60,9 @@ export const FeedListHeader: React.FC<FeedListHeaderProps> = ({
 
       {/* Real-time indicator */}
       {isRefetching && !isLoading && (
-        <View className="bg-craftopa-primary/5 px-5 py-2 flex-row items-center justify-center border-b border-craftopa-light/10">
-          <ActivityIndicator size="small" color="#5A7160" />
-          <Text className="text-craftopa-primary text-xs font-poppinsBold ml-1.5 tracking-tight">
+        <View className="bg-craftopia-primary/5 px-4 py-1.5 flex-row items-center justify-center border-b border-craftopia-light">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-craftopia-primary text-xs font-poppinsBold ml-1.5">
             Updating feed...
           </Text>
         </View>

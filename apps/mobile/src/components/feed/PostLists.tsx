@@ -35,9 +35,9 @@ export const PostList: React.FC<PostListProps> = ({
   const renderFooter = () => {
     if (loadingMore) {
       return (
-        <View className="py-6 items-center">
-          <ActivityIndicator size="small" color="#5A7160" />
-          <Text className="text-craftopa-textSecondary text-sm mt-2 font-nunito tracking-wide">
+        <View className="py-4 items-center">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-craftopia-textSecondary text-sm mt-2 font-nunito">
             Loading more posts...
           </Text>
         </View>
@@ -46,8 +46,8 @@ export const PostList: React.FC<PostListProps> = ({
 
     if (!hasMore && posts.length > 0) {
       return (
-        <View className="py-8 items-center">
-          <Text className="text-craftopa-textSecondary text-sm font-nunito tracking-wide">
+        <View className="py-6 items-center">
+          <Text className="text-craftopia-textSecondary text-sm font-nunito">
             🎉 You've reached the end!
           </Text>
         </View>
@@ -60,9 +60,9 @@ export const PostList: React.FC<PostListProps> = ({
   const renderEmpty = () => {
     if (loading) {
       return (
-        <View className="flex-1 justify-center items-center py-12">
-          <ActivityIndicator size="small" color="#5A7160" />
-          <Text className="text-craftopa-textSecondary text-sm mt-3 font-nunito tracking-wide">
+        <View className="flex-1 justify-center items-center py-8">
+          <ActivityIndicator size="small" color="#3B6E4D" />
+          <Text className="text-craftopia-textSecondary text-sm mt-2 font-nunito">
             Loading posts...
           </Text>
         </View>
@@ -71,35 +71,35 @@ export const PostList: React.FC<PostListProps> = ({
 
     if (error) {
       return (
-        <View className="flex-1 justify-center items-center py-12 px-5">
-          <Text className="text-craftopa-textPrimary text-lg font-poppinsBold text-center mb-2 tracking-tight">
+        <View className="flex-1 justify-center items-center py-8 px-4">
+          <Text className="text-craftopia-textPrimary text-base font-poppinsBold text-center mb-1">
             Something went wrong
           </Text>
-          <Text className="text-craftopa-textSecondary text-sm text-center mb-4 font-nunito tracking-wide">
+          <Text className="text-craftopia-textSecondary text-sm text-center mb-3 font-nunito">
             {error}
           </Text>
           <TouchableOpacity 
             onPress={onRefresh} 
-            className="bg-craftopa-primary px-6 py-3 rounded-xl active:opacity-70"
+            className="bg-craftopia-primary px-5 py-2.5 rounded-lg active:opacity-70"
             activeOpacity={0.7}
           >
-            <Text className="text-white text-sm font-poppinsBold tracking-tight">Try Again</Text>
+            <Text className="text-white text-sm font-poppinsBold">Try Again</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <View className="flex-1 justify-center items-center py-12 px-5">
-        <Text className="text-craftopa-textSecondary text-center text-sm mb-4 font-nunito tracking-wide">
+      <View className="flex-1 justify-center items-center py-8 px-4">
+        <Text className="text-craftopia-textSecondary text-center text-sm mb-3 font-nunito">
           No posts found
         </Text>
         <TouchableOpacity 
           onPress={onRefresh} 
-          className="bg-craftopa-primary px-6 py-3 rounded-xl active:opacity-70"
+          className="bg-craftopia-primary px-5 py-2.5 rounded-lg active:opacity-70"
           activeOpacity={0.7}
         >
-          <Text className="text-white text-sm font-poppinsBold tracking-tight">Refresh</Text>
+          <Text className="text-white text-sm font-poppinsBold">Refresh</Text>
         </TouchableOpacity>
       </View>
     );
@@ -118,7 +118,7 @@ export const PostList: React.FC<PostListProps> = ({
       onEndReachedThreshold={0.3}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ 
-        paddingBottom: 20,
+        paddingBottom: 16,
         flexGrow: 1 
       }}
     />

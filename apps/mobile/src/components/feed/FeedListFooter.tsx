@@ -15,9 +15,9 @@ export const FeedListFooter: React.FC<FeedListFooterProps> = ({
 }) => {
   if (isFetchingNextPage) {
     return (
-      <View className="py-4 items-center">
-        <ActivityIndicator size="small" color="#5A7160" />
-        <Text className="text-craftopa-textSecondary text-xs mt-1 font-nunito tracking-wide">
+      <View className="py-3 items-center">
+        <ActivityIndicator size="small" color="#3B6E4D" />
+        <Text className="text-craftopia-textSecondary text-xs mt-1 font-nunito">
           Loading more...
         </Text>
       </View>
@@ -26,10 +26,10 @@ export const FeedListFooter: React.FC<FeedListFooterProps> = ({
 
   if (!hasNextPage && postsCount > 0) {
     return (
-      <View className="py-4 items-center">
+      <View className="py-3 items-center">
         <View className="flex-row items-center gap-1.5">
-          <Sparkles size={12} color="#D4A96A" />
-          <Text className="text-craftopa-textSecondary text-xs font-nunito tracking-wide">
+          <Sparkles size={12} color="#E3A84F" />
+          <Text className="text-craftopia-textSecondary text-xs font-nunito">
             You've reached the end!
           </Text>
         </View>

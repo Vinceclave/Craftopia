@@ -1,5 +1,5 @@
-// apps/mobile/src/components/common/ActionSheet.tsx
-import React from 'react';
+// Enhanced ActionSheet with additional features
+import React, { useRef, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -7,53 +7,100 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { X, AlertCircle } from 'lucide-react-native';
+import { X, AlertCircle, Check } from 'lucide-react-native';
 
-export interface ActionSheetOption {
-  text: string;
-  onPress: () => void;
-  style?: 'default' | 'cancel' | 'destructive';
-  icon?: React.ReactNode;
+// ... existing interfaces ...
+
+interface EnhancedActionSheetProps extends ActionSheetProps {
+  maxHeight?: number;
+  showSelectedIndicator?: boolean;
+  selectedValue?: string;
+  showIcons?: boolean;
+  cancelText?: string;
 }
 
-interface ActionSheetProps {
-  visible: boolean;
-  title?: string;
-  message?: string;
-  options: ActionSheetOption[];
-  onClose: () => void;
-}
-
-export const ActionSheet: React.FC<ActionSheetProps> = ({
+export const ActionSheet: React.FC<EnhancedActionSheetProps> = ({
   visible,
   title,
   message,
   options,
   onClose,
+  maxHeight = 400,
+  showSelectedIndicator = false,
+  selectedValue,
+  showIcons = true,
+  cancelText = 'Cancel',
 }) => {
+  const slideAnim = useRef(new Animated.Value(300)).current;
+  const { height: screenHeight } = Dimensions.get('window');
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 300,
+      }).start();
+    } else {
+      Animated.spring(slideAnim, {
+        toValue: 300,
+        useNativeDriver: true,
+        damping: 20,
+      }).start();
+    }
+  }, [visible]);
+
   const handleOptionPress = (option: ActionSheetOption) => {
-    onClose();
-    setTimeout(() => {
-      option.onPress();
-    }, 100);
+    Animated.timing(slideAnim, {
+      toValue: 300,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      onClose();
+      setTimeout(() => {
+        option.onPress();
+      }, 100);
+    });
   };
+
+  const handleClose = () => {
+    Animated.timing(slideAnim, {
+      toValue: 300,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(onClose);
+  };
+
+  // Separate cancel option from other options
+  const cancelOption = options.find(opt => opt.style === 'cancel');
+  const otherOptions = options.filter(opt => opt.style !== 'cancel');
 
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="fade"
+      onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <View 
+        className="flex-1 justify-end" 
+        style={{ 
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          paddingTop: Platform.OS === 'ios' ? 44 : 0,
+        }}
+      >
         <TouchableOpacity
           className="flex-1"
           activeOpacity={1}
-          onPress={onClose}
+          onPress={handleClose}
         />
         
-        <View 
+        <Animated.View 
           className="bg-white rounded-t-3xl overflow-hidden"
           style={{ 
             borderTopLeftRadius: 24,
@@ -63,6 +110,8 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
             shadowOpacity: 0.1,
             shadowRadius: 12,
             elevation: 8,
+            transform: [{ translateY: slideAnim }],
+            maxHeight: screenHeight * 0.8,
           }}
         >
           {/* Handle Bar */}
@@ -97,53 +146,79 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({
 
           {/* Options */}
           <ScrollView 
-            style={{ maxHeight: 400 }}
+            style={{ maxHeight }}
             showsVerticalScrollIndicator={false}
+            bounces={otherOptions.length > 5}
           >
             <View className="py-2">
-              {options.map((option, index) => (
+              {otherOptions.map((option, index) => (
                 <TouchableOpacity
                   key={index}
                   onPress={() => handleOptionPress(option)}
-                  className="px-6 py-4 flex-row items-center justify-center"
+                  className="px-6 py-4 flex-row items-center justify-between"
                   style={{ 
                     borderBottomColor: '#F3F4F6',
-                    borderBottomWidth: index < options.length - 1 ? 1 : 0,
+                    borderBottomWidth: index < otherOptions.length - 1 ? 1 : 0,
                   }}
                   activeOpacity={0.7}
                 >
-                  {option.icon && (
-                    <View className="mr-3">
-                      {option.icon}
-                    </View>
+                  <View className="flex-row items-center flex-1">
+                    {showIcons && option.icon && (
+                      <View className="mr-3">
+                        {option.icon}
+                      </View>
+                    )}
+                    <Text
+                      className="text-base font-semibold flex-1"
+                      style={{
+                        fontSize: 16,
+                        color: option.style === 'destructive' 
+                          ? '#DC2626' 
+                          : option.style === 'cancel'
+                          ? '#6B7280'
+                          : '#374A36',
+                      }}
+                    >
+                      {option.text}
+                    </Text>
+                  </View>
+                  
+                  {showSelectedIndicator && selectedValue === option.text && (
+                    <Check size={20} color="#374A36" />
                   )}
-                  <Text
-                    className="text-base font-semibold"
-                    style={{
-                      fontSize: 16,
-                      color: option.style === 'destructive' 
-                        ? '#DC2626' 
-                        : option.style === 'cancel'
-                        ? '#6B7280'
-                        : '#374A36',
-                    }}
-                  >
-                    {option.text}
-                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
+          {/* Cancel Button */}
+          {cancelOption && (
+            <View className="px-6 py-2 border-t" style={{ borderTopColor: '#F3F4F6' }}>
+              <TouchableOpacity
+                onPress={() => handleOptionPress(cancelOption)}
+                className="py-4 rounded-xl items-center"
+                style={{ backgroundColor: '#F3F4F6' }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: '#6B7280' }}
+                >
+                  {cancelOption.text || cancelText}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Safe area bottom padding */}
           <View style={{ height: Platform.OS === 'ios' ? 34 : 16 }} />
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
 };
 
-// Hook for easier usage
+// Enhanced hook with promise-based API
 export const useActionSheet = () => {
   const [visible, setVisible] = React.useState(false);
   const [config, setConfig] = React.useState<{
@@ -163,6 +238,32 @@ export const useActionSheet = () => {
     setVisible(true);
   };
 
+  // Promise-based show function that returns the selected option
+  const showAsync = (
+    title: string | undefined,
+    message: string | undefined,
+    options: ActionSheetOption[]
+  ): Promise<ActionSheetOption | null> => {
+    return new Promise((resolve) => {
+      const enhancedOptions = options.map(option => ({
+        ...option,
+        onPress: () => {
+          resolve(option);
+        },
+      }));
+
+      // Add cancel option that resolves with null
+      enhancedOptions.push({
+        text: 'Cancel',
+        style: 'cancel',
+        onPress: () => resolve(null),
+      });
+
+      setConfig({ title, message, options: enhancedOptions });
+      setVisible(true);
+    });
+  };
+
   const hide = () => {
     setVisible(false);
   };
@@ -171,6 +272,7 @@ export const useActionSheet = () => {
     visible,
     config,
     show,
+    showAsync,
     hide,
   };
 };

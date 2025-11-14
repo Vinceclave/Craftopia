@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/PostActions.tsx - CRAFTOPIA REDESIGN
+// apps/mobile/src/components/feed/post/PostActions.tsx - CRAFTOPIA REFINED
 import React, { memo, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Heart, MessageCircle, Share2 } from 'lucide-react-native';
@@ -41,26 +41,25 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
   };
 
   return (
-    <View className="flex-row items-center justify-between px-1 py-4">
+    <View className="flex-row items-center justify-between px-1 py-3">
       {/* Left Section - Like & Comment */}
-      <View className="flex-row items-center gap-5">
+      <View className="flex-row items-center gap-4">
         {/* Like Button */}
         <TouchableOpacity 
-          className="flex-row items-center gap-2 active:opacity-70"
+          className="flex-row items-center gap-1.5 active:opacity-70"
           onPress={handleLikePress}
           activeOpacity={0.7}
           disabled={!onToggleReaction}
         >
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
             <Heart 
-              size={20} 
-              color={isLiked ? '#EF4444' : '#5A7160'} 
-              fill={isLiked ? '#EF4444' : 'transparent'} 
-              strokeWidth={isLiked ? 2.5 : 2}
+              size={18} 
+              color={isLiked ? '#D66B4E' : '#3B6E4D'} 
+              fill={isLiked ? '#D66B4E' : 'transparent'} 
             />
           </Animated.View>
-          <Text className={`text-sm font-poppinsBold tracking-tight ${
-            isLiked ? 'text-red-500' : 'text-craftopa-textSecondary'
+          <Text className={`text-sm font-poppinsBold ${
+            isLiked ? 'text-craftopia-error' : 'text-craftopia-textSecondary'
           }`}>
             {likeCount}
           </Text>
@@ -68,17 +67,16 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
         
         {/* Comment Button */}
         <TouchableOpacity 
-          className="flex-row items-center gap-2 active:opacity-70"
+          className="flex-row items-center gap-1.5 active:opacity-70"
           onPress={onOpenComments}
           activeOpacity={0.7}
           disabled={!onOpenComments}
         >
           <MessageCircle 
-            size={20} 
-            color="#5A7160" 
-            strokeWidth={2}
+            size={18} 
+            color="#3B6E4D" 
           />
-          <Text className="text-sm font-poppinsBold text-craftopa-textSecondary tracking-tight">
+          <Text className="text-sm font-poppinsBold text-craftopia-textSecondary">
             {commentCount}
           </Text>
         </TouchableOpacity>
@@ -87,16 +85,15 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
       {/* Right Section - Share */}
       {onShare && (
         <TouchableOpacity 
-          className="flex-row items-center gap-2 active:opacity-70"
+          className="flex-row items-center gap-1.5 active:opacity-70"
           onPress={onShare}
           activeOpacity={0.7}
         >
           <Share2 
-            size={18} 
-            color="#5A7160" 
-            strokeWidth={2}
+            size={16} 
+            color="#3B6E4D" 
           />
-          <Text className="text-sm font-poppinsBold text-craftopa-textSecondary tracking-tight">
+          <Text className="text-sm font-poppinsBold text-craftopia-textSecondary">
             Share
           </Text>
         </TouchableOpacity>

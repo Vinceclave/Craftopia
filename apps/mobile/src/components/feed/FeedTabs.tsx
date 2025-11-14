@@ -1,4 +1,3 @@
-// apps/mobile/src/components/feed/FeedTabs.tsx - COMPLETE FINAL VERSION
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LayoutGrid, TrendingUp, Flame, Star } from 'lucide-react-native';
@@ -9,7 +8,7 @@ type FeedType = 'all' | 'trending' | 'popular' | 'featured';
 interface TabItem {
   key: FeedType;
   label: string;
-  icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
+  icon: React.ComponentType<{ size: number; color: string }>;
 }
 
 interface FeedTabsProps {
@@ -50,8 +49,7 @@ export const FeedTabs: React.FC<FeedTabsProps> = React.memo(({ activeTab, onTabC
             <View style={styles.tabContent}>
               <IconComponent 
                 size={14} 
-                color={isActive ? '#FFFFFF' : '#6B7280'} 
-                strokeWidth={isActive ? 2.5 : 2}
+                color={isActive ? '#FFFFFF' : '#5F6F64'} 
               />
               <Text 
                 style={[
@@ -75,25 +73,20 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: '#F5F7F2',
     borderRadius: 8,
     padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(90, 113, 96, 0.1)',
+    borderColor: '#F5F7F2',
   },
   tab: {
     flex: 1,
     marginHorizontal: 2,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   tabActive: {
-    backgroundColor: '#5A7160',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: '#3B6E4D',
   },
   tabInactive: {
     backgroundColor: 'transparent',
@@ -105,15 +98,14 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'Poppins-Bold',
     marginLeft: 4,
-    letterSpacing: -0.2,
   },
   tabTextActive: {
     color: '#FFFFFF',
   },
   tabTextInactive: {
-    color: '#6B7280',
+    color: '#5F6F64',
   },
 });
 

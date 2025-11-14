@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/post/PostContainer.tsx - COMPLETE FINAL VERSION
+// apps/mobile/src/components/feed/post/PostContainer.tsx - CRAFTOPIA REFINED
 import React, { useState, useCallback } from 'react';
 import { Share, Platform } from 'react-native';
 

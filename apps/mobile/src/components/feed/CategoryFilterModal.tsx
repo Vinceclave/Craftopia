@@ -1,4 +1,3 @@
-// apps/mobile/src/components/feed/CategoryFilterModal.tsx - NATIVEWIND VERSION
 import React from 'react';
 import {
   View,
@@ -39,7 +38,7 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
 
   // Map category IDs to Lucide icons
   const getCategoryIcon = (categoryId: string, isSelected: boolean) => {
-    const iconColor = isSelected ? '#FFFFFF' : '#5A7160';
+    const iconColor = isSelected ? '#FFFFFF' : '#3B6E4D';
     const iconSize = 20;
 
     const id = categoryId?.toLowerCase() || '';
@@ -82,29 +81,29 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
         
         {/* Modal Content Container */}
         <View 
-          className="bg-white rounded-t-3xl shadow-lg"
+          className="bg-craftopia-surface rounded-t-3xl"
           style={{ height: SCREEN_HEIGHT * 0.7 }}
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
+          <View className="flex-row items-center justify-between px-4 pt-4 pb-3 border-b border-craftopia-light">
             <View className="flex-1">
-              <Text className="text-sm text-gray-500 mb-0.5">Filter By</Text>
-              <Text className="text-xl font-bold text-gray-800">Categories</Text>
+              <Text className="text-sm text-craftopia-textSecondary mb-1">Filter By</Text>
+              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">Categories</Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
-              className="w-9 h-9 items-center justify-center rounded-xl bg-gray-100"
+              className="w-9 h-9 items-center justify-center rounded-lg bg-craftopia-light"
               activeOpacity={0.7}
             >
-              <X size={18} color="#5A7160" />
+              <X size={16} color="#3B6E4D" />
             </TouchableOpacity>
           </View>
 
           {/* Categories List */}
-          <View className="flex-1 px-5">
+          <View className="flex-1 px-4">
             <ScrollView 
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingVertical: 16 }}
+              contentContainerStyle={{ paddingVertical: 12 }}
             >
               {categories && categories.length > 0 ? (
                 categories.map((category, index) => {
@@ -116,11 +115,11 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
                     <TouchableOpacity
                       key={`${category.id}-${index}`}
                       className={`
-                        flex-row items-center justify-between p-4 rounded-2xl mb-2 
-                        border shadow-sm
+                        flex-row items-center justify-between p-3 rounded-xl mb-2 
+                        border
                         ${isSelected 
-                          ? 'bg-[#5A7160] border-[#5A7160]/20' 
-                          : 'bg-white border-gray-100'
+                          ? 'bg-craftopia-primary border-craftopia-primary/20' 
+                          : 'bg-craftopia-surface border-craftopia-light'
                         }
                       `}
                       onPress={() => handleCategoryPress(category.id)}
@@ -128,45 +127,45 @@ export const CategoryFilterModal: React.FC<CategoryFilterModalProps> = ({
                     >
                       <View className="flex-row items-center flex-1">
                         <View className={`
-                          w-10 h-10 rounded-xl items-center justify-center mr-3 
+                          w-9 h-9 rounded-lg items-center justify-center mr-3 
                           border
                           ${isSelected 
                             ? 'bg-white/20 border-white/30' 
-                            : 'bg-gray-50 border-gray-100'
+                            : 'bg-craftopia-light border-craftopia-light'
                           }
                         `}>
                           {getCategoryIcon(category.id, isSelected)}
                         </View>
                         <Text className={`
-                          font-bold text-base
-                          ${isSelected ? 'text-white' : 'text-gray-800'}
+                          font-poppinsBold text-base
+                          ${isSelected ? 'text-white' : 'text-craftopia-textPrimary'}
                         `}>
                           {category.label || category.id}
                         </Text>
                       </View>
                       
                       {isSelected && (
-                        <Check size={20} color="#FFFFFF" />
+                        <Check size={18} color="#FFFFFF" />
                       )}
                     </TouchableOpacity>
                   );
                 })
               ) : (
-                <View className="py-10 items-center justify-center">
-                  <Text className="text-sm text-gray-500">No categories available</Text>
+                <View className="py-8 items-center justify-center">
+                  <Text className="text-sm text-craftopia-textSecondary">No categories available</Text>
                 </View>
               )}
             </ScrollView>
           </View>
 
           {/* Done Button */}
-          <View className="px-5 pt-4 pb-8 border-t border-gray-100">
+          <View className="px-4 pt-3 pb-6 border-t border-craftopia-light">
             <TouchableOpacity
               onPress={onClose}
-              className="bg-[#5A7160] py-4 rounded-2xl items-center shadow-md"
+              className="bg-craftopia-primary py-3 rounded-xl items-center"
               activeOpacity={0.7}
             >
-              <Text className="text-white font-bold text-base">Apply Filter</Text>
+              <Text className="text-white font-poppinsBold text-base">Apply Filter</Text>
             </TouchableOpacity>
           </View>
         </View>
