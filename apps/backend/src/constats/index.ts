@@ -1,4 +1,4 @@
-// apps/backend/src/constants/index.ts - UPDATED WITH ENVIRONMENT-AWARE RATE LIMITS
+// apps/backend/src/constants/index.ts - NEW FILE
 export const VALIDATION_LIMITS = {
   USERNAME: {
     MIN: 3,
@@ -181,72 +181,18 @@ export const AI_CONFIG = {
   }
 };
 
-// =====================================================
-// SMART RATE LIMITING - Environment-aware
-// =====================================================
-const isProduction = process.env.NODE_ENV === 'production';
-const isDevelopment = process.env.NODE_ENV === 'development';
-
+// Rate limiting
 export const RATE_LIMITS = {
-  // General API requests
   GENERAL: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX: isProduction ? 200 : 1000, // More lenient in prod, unlimited in dev
-    MESSAGE: 'Too many requests from this IP, please try again later'
+    MAX: 100
   },
-  
-  // AI endpoints (more expensive, needs limits)
   AI: {
-    WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX: isProduction ? 50 : 200, // 50 in prod, 200 in dev
-    MESSAGE: 'Too many AI requests, please slow down'
-  },
-  
-  // Auth endpoints (critical - prevent brute force)
-  AUTH: {
-    WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX: isProduction ? 10 : 50, // Strict in prod, lenient in dev
-    MESSAGE: 'Too many login attempts, please try again later',
-    // Skip rate limiting for certain IPs in development
-    SKIP_SUCCESSFUL_REQUESTS: !isProduction, // Don't count successful logins in dev
-  },
-  
-  // File uploads
-  UPLOAD: {
     WINDOW_MS: 15 * 60 * 1000,
-    MAX: isProduction ? 20 : 100,
-    MESSAGE: 'Too many file uploads, please slow down'
+    MAX: 20
   },
-  
-  // Post creation (prevent spam)
-  POST_CREATION: {
-    WINDOW_MS: 60 * 60 * 1000, // 1 hour
-    MAX: isProduction ? 20 : 100, // 20 posts per hour in prod
-    MESSAGE: 'Too many posts created, please slow down'
+  AUTH: {
+    WINDOW_MS: 15 * 60 * 1000,
+    MAX: 5
   }
-};
-
-// Rate limit configuration helper
-export const getRateLimitConfig = (type: keyof typeof RATE_LIMITS) => {
-  const config = RATE_LIMITS[type];
-  
-  return {
-    windowMs: config.WINDOW_MS,
-    max: config.MAX,
-    message: {
-      success: false,
-      error: config.MESSAGE,
-      timestamp: new Date().toISOString()
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests: (config as any).SKIP_SUCCESSFUL_REQUESTS || false,
-    // Skip rate limiting in development for localhost
-    skip: isDevelopment 
-      ? (req: any) => {
-          const ip = req.ip || req.connection?.remoteAddress;
-          return ip === '127.0.0.1' || ip === '::1' || ip?.includes('localhost');
-        }
-      : undefined
-  };
 };

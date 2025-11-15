@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config';
 import { AppError } from './error';
-import { logger } from './logger';
 
 const transporter = nodemailer.createTransport({
   host: config.email.host,
@@ -16,29 +15,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify connection on startup with better logging
-const verifyEmailConnection = async () => {
-  try {
-    await transporter.verify();
-    logger.info('✅ SMTP connection verified - Ready to send emails', {
-      host: config.email.host,
-      port: config.email.port,
-      user: config.email.user ? `${config.email.user.substring(0, 3)}***` : 'not configured'
-    });
-    console.log('✅ SMTP ready to send messages');
-  } catch (err: any) {
-    logger.error('❌ SMTP connection failed', err, {
-      host: config.email.host,
-      port: config.email.port,
-      message: err.message
-    });
-    console.error('❌ SMTP connection error:', err.message);
-    console.error('⚠️  Email features will not work until SMTP is properly configured');
-  }
-};
-
-// Call verification
-verifyEmailConnection();
+// Verify connection on startup
+transporter.verify((err, success) => {
+  if (err) console.error('SMTP connection error:', err);
+  else console.log('SMTP ready to send messages');
+});
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
