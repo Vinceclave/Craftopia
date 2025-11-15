@@ -1,4 +1,8 @@
 {
+  "cli": {
+    "version": ">= 16.27.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -8,9 +12,7 @@
       "distribution": "internal"
     },
     "production": {
-      "android": {
-        "gradleCommand": ":app:bundleRelease"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
