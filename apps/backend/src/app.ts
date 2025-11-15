@@ -116,14 +116,15 @@ const aiLimiter = rateLimit(getRateLimitConfig('AI'));
 // Auth rate limiter (strict, but smart)
 const authLimiter = rateLimit({
   ...getRateLimitConfig('AUTH'),
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     // Rate limit by email for failed attempts
     const email = req.body?.email?.toLowerCase();
     if (email && email.trim()) {
       return `email:${email}`;
     }
-    // Fallback to IP
-    return req.ip || 'unknown';
+    // Return undefined to use the default IP key generator
+    // which properly handles IPv6 addresses
+    return undefined;
   },
   handler: (req, res) => {
     const email = req.body?.email;
