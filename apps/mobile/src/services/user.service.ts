@@ -93,13 +93,13 @@ class UserService {
   /**
    * Get points leaderboard
    */
-  async getLeaderboard(page: number = 1, limit: number = 10): Promise<PaginatedResponse<LeaderboardEntry>> {
-    const response = await apiService.request<PaginatedResponse<LeaderboardEntry>>(
-      `${API_ENDPOINTS.USER.LEADERBOARD}?page=${page}&limit=${limit}`,
-      { method: 'GET' }
-    );
-    return response;
-  }
+  // async getLeaderboard(page: number = 1, limit: number = 10): Promise<PaginatedResponse<LeaderboardEntry>> {
+  //   const response = await apiService.request<PaginatedResponse<LeaderboardEntry>>(
+  //     `${API_ENDPOINTS.USER.LEADERBOARD}?page=${page}&limit=${limit}`,
+  //     { method: 'GET' }
+  //   );
+  //   return response;
+  // }
 
   /**
    * Upload profile picture (placeholder for future implementation)
@@ -110,7 +110,7 @@ class UserService {
     return { url: '🧑‍🎨' };
   }
 
-  /**
+  /**git
    * Update specific profile fields
    */
   async updateProfileField(field: keyof UpdateProfileData, value: any): Promise<UserProfile> {

@@ -1,5 +1,5 @@
 // apps/mobile/src/hooks/queries/usePosts.ts - ENHANCED WITH UPDATE & SEARCH
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { postService, SearchPostsParams } from '~/services/post.service';
 import { useAuth } from '~/context/AuthContext';
 import { useRef } from 'react';
@@ -519,7 +519,10 @@ export const useDeletePost = () => {
 /**
  * Get comments for a post
  */
-export const useComments = (postId: number) => {
+export const useComments = (
+  postId: number,
+  options?: Omit<UseQueryOptions<Comment[], Error>, 'queryKey' | 'queryFn'>
+) => {
   return useQuery({
     queryKey: postKeys.comments(postId),
     queryFn: async (): Promise<Comment[]> => {
@@ -533,6 +536,7 @@ export const useComments = (postId: number) => {
     },
     enabled: !!postId,
     staleTime: 1 * 60 * 1000,
+    ...options,
   });
 };
 

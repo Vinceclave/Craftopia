@@ -76,17 +76,22 @@ export const PostContainer: React.FC<PostContainerProps> = ({
                     Number(currentUserId) === Number(user_id);
 
   // Get comments with error handling for deleted posts
-  const { data: comments = [], isLoading: loadingComments } = useComments(postId, {
+  // Get comments with error handling for deleted posts
+  const { data: comments = [], isLoading: loadingComments, error: commentsError } = useComments(postId, {
     enabled: !isDeleted,
     retry: false,
-    onError: (error: any) => {
-      if (error?.message?.includes('Post not found') || error?.message?.includes('not found')) {
+  });
+
+  // Handle comment fetch errors (e.g., deleted posts)
+  React.useEffect(() => {
+    if (commentsError) {
+      const errorMessage = (commentsError as any)?.message || '';
+      if (errorMessage.includes('Post not found') || errorMessage.includes('not found')) {
         console.log('Post was deleted, ignoring fetch error');
         setIsDeleted(true);
       }
     }
-  });
-
+  }, [commentsError]);
   const handlePostPress = () => {
     if (isDeleted) return;
     setShowDetailsModal(true);

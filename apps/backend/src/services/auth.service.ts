@@ -1,4 +1,4 @@
-// apps/backend/src/services/auth.service.ts - FIXED VERSION WITH PROPER EMAIL HANDLING
+// apps/backend/src/services/auth.service.ts - FIXED VERSION WITH DEEP LINK SUPPORT
 import crypto from 'crypto';
 import * as userService from './user.service';
 import { hashPassword, comparePassword } from '../utils/hash';
@@ -274,7 +274,13 @@ class AuthService {
     }
 
     if (user.is_email_verified) {
-      throw new ValidationError('Email is already verified');
+      // Return user info even if already verified (don't throw error)
+      return {
+        user_id: user.user_id,
+        username: user.username,
+        email: user.email,
+        is_email_verified: true
+      };
     }
 
     return userService.markUserAsVerified(payload.userId);
@@ -303,12 +309,29 @@ class AuthService {
     return { message: 'Verification email sent successfully' };
   }
 
-  // ✅ FIXED: Helper - Send verification email
+  // ✅ NEW: Helper - Get deep link URL for mobile app
+  private getDeepLinkUrl(path: string, token: string): string {
+    // For mobile app, use custom scheme
+    // For web, use frontend URL
+    const isMobileEnvironment = process.env.USE_MOBILE_DEEP_LINKS === 'true';
+    
+    if (isMobileEnvironment) {
+      // Mobile deep link format: craftopia://auth/verify-email?token=xyz
+      return `craftopia://auth/${path}?token=${encodeURIComponent(token)}`;
+    } else {
+      // Web redirect format
+      const frontendUrl = config.frontend.url;
+      return `${frontendUrl}/${path}?token=${encodeURIComponent(token)}`;
+    }
+  }
+
+  // ✅ IMPROVED: Helper - Send verification email with smart deep linking
   private async sendVerificationEmail(user: { user_id: number; email: string }) {
     const token = generateEmailToken(user.user_id);
     
-    // ✅ Use backend URL for the verification endpoint
-    const backendUrl = process.env.BACKEND_URL || `http://localhost:${config.port}`;
+    // ✅ Use backend URL for the verification endpoint (handles both mobile and web)
+    const backendUrl = process.env.BACKEND_URL;
+    console.log('Backend URL for email links:', backendUrl);
     const verificationUrl = `${backendUrl}/api/v1/auth/verify-email?token=${token}`;
     const userName = user.email.split('@')[0];
 
@@ -340,6 +363,11 @@ class AuthService {
             This link expires in <strong>24 hours</strong>. If you didn't create a Craftopia account, you can safely ignore this email.
           </p>
           
+          <p style="font-size: 11px; color: #9CA3AF; margin-top: 16px;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${verificationUrl}" style="color: #004E98; word-break: break-all;">${verificationUrl}</a>
+          </p>
+          
           <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">
             <p style="font-size: 12px; color: #9CA3AF; text-align: center;">
               © ${new Date().getFullYear()} Craftopia. All rights reserved.
@@ -353,10 +381,10 @@ class AuthService {
     return sendEmail(user.email, 'Verify Your Craftopia Account', html);
   }
 
-  // ✅ FIXED: Helper - Send password reset email (with deep link support)
+  // ✅ IMPROVED: Helper - Send password reset email with smart deep linking
   private async sendPasswordResetEmail(user: { user_id: number; email: string }, token: string) {
-    // ✅ Use backend URL for mobile deep linking
-    const backendUrl = process.env.BACKEND_URL || `http://localhost:${config.port}`;
+    // ✅ Use backend URL for mobile deep linking redirect
+    const backendUrl = process.env.BACKEND_URL;
     const resetUrl = `${backendUrl}/api/v1/auth/reset-password-redirect?token=${token}`;
     const userName = user.email.split('@')[0];
 
@@ -390,9 +418,9 @@ class AuthService {
             </p>
           </div>
           
-          <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${resetUrl}" style="color: #6D28D9; word-break: break-all;">${resetUrl}</a>
+          <p style="font-size: 11px; color: #9CA3AF; margin-top: 24px;">
+            If the button doesn't work, copy and paste this link:<br>
+            <a href="${resetUrl}" style="color: #6D28D9; word-break: break-all; font-size: 10px;">${resetUrl}</a>
           </p>
           
           <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">

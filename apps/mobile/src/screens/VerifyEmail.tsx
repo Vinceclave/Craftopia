@@ -1,12 +1,12 @@
 import { MailOpen } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Text, View, ScrollView, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, ScrollView, Linking, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '~/navigations/AuthNavigator';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Button from '~/components/common/Button';
-import { useResendVerification } from '~/hooks/useAuth';
+import { useVerifyEmail, useResendVerification } from '~/hooks/useAuth';
 import { useAlert } from '~/hooks/useAlert';
 
 type VerifyEmailScreenProp = NativeStackNavigationProp<AuthStackParamList, 'VerifyEmail'>;
@@ -18,8 +18,56 @@ export const VerifyEmailScreen = () => {
   const { success, error } = useAlert();
 
   const [email, setEmail] = useState(route.params?.email || '');
+  const [isVerifying, setIsVerifying] = useState(false);
 
+  const verifyEmailMutation = useVerifyEmail();
   const resendVerificationMutation = useResendVerification();
+
+  // Auto-verify if token is present (from deep link)
+  useEffect(() => {
+    const token = route.params?.token;
+    const autoVerify = route.params?.autoVerify;
+
+    if (token && autoVerify && !isVerifying) {
+      handleAutoVerify(token);
+    }
+  }, [route.params?.token, route.params?.autoVerify]);
+
+  const handleAutoVerify = async (token: string) => {
+    setIsVerifying(true);
+    try {
+      console.log('🔄 [VerifyEmail] Auto-verifying with token from deep link...');
+      
+      await verifyEmailMutation.mutateAsync(token);
+      
+      success(
+        'Email Verified! 🎉',
+        'Your email has been successfully verified. You can now sign in to your account.',
+        () => {
+          navigation.navigate('Login');
+        }
+      );
+    } catch (err: any) {
+      console.error('❌ [VerifyEmail] Auto-verification failed:', err);
+      
+      if (err.message?.toLowerCase().includes('already verified')) {
+        success(
+          'Already Verified',
+          'Your email was already verified. You can sign in now.',
+          () => {
+            navigation.navigate('Login');
+          }
+        );
+      } else {
+        error(
+          'Verification Failed',
+          err.message || 'Failed to verify email. The link may have expired.'
+        );
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleResendVerification = async () => {
     if (!email?.trim()) {
@@ -32,10 +80,10 @@ export const VerifyEmailScreen = () => {
       
       success(
         'Verification Email Sent! 📧',
-        'A new verification email has been sent to your inbox. Please check your email and click the verification link to complete your registration.',
+        'A new verification email has been sent to your inbox. Please check your email and click the verification link.',
       );
     } catch (err: any) {
-      console.error('Resend verification failed:', err);
+      console.error('❌ [VerifyEmail] Resend failed:', err);
       error(
         'Failed to Send Email', 
         err.message || 'Could not send verification email. Please try again later.'
@@ -44,9 +92,25 @@ export const VerifyEmailScreen = () => {
   };
 
   const handleOpenEmail = () => {
-    // Open default email app
     Linking.openURL('mailto:');
   };
+
+  // Show loading state during auto-verification
+  if (isVerifying) {
+    return (
+      <SafeAreaView className="flex-1 bg-craftopia-background">
+        <View className="flex-1 justify-center items-center px-6">
+          <ActivityIndicator size="large" color="#3B6E4D" />
+          <Text className="text-craftopia-textPrimary text-lg font-poppinsBold mt-4">
+            Verifying your email...
+          </Text>
+          <Text className="text-craftopia-textSecondary text-sm font-nunito mt-2 text-center">
+            Please wait while we verify your email address
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-craftopia-background">
@@ -73,10 +137,12 @@ export const VerifyEmailScreen = () => {
               Check Your Email
             </Text>
             
-            <Text className="text-craftopia-textSecondary text-base leading-relaxed mb-4 font-nunito">
-              We sent a verification email to:{'\n'}
-              <Text className="font-semibold text-craftopia-primary">{email}</Text>
-            </Text>
+            {email && (
+              <Text className="text-craftopia-textSecondary text-base leading-relaxed mb-4 font-nunito">
+                We sent a verification email to:{'\n'}
+                <Text className="font-semibold text-craftopia-primary">{email}</Text>
+              </Text>
+            )}
 
             <Text className="text-craftopia-textSecondary text-sm leading-relaxed mb-4 font-nunito">
               Please check your inbox and click the verification link in the email to activate your account.
@@ -94,7 +160,7 @@ export const VerifyEmailScreen = () => {
               title="Resend Verification Email"
               onPress={handleResendVerification}
               loading={resendVerificationMutation.isPending}
-              disabled={resendVerificationMutation.isPending}
+              disabled={resendVerificationMutation.isPending || !email}
               variant="primary"
             />
           </View>
@@ -117,7 +183,7 @@ export const VerifyEmailScreen = () => {
               title="Back to Login"
               onPress={() => navigation.navigate('Login')}
               variant="outline"
-              disabled={resendVerificationMutation.isPending}
+              disabled={resendVerificationMutation.isPending || isVerifying}
             />
           </View>
         </View>

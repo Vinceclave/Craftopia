@@ -7,6 +7,7 @@ import { LoadingScreen } from '~/components/common/LoadingScreen';
 import { OnboardingScreen } from '~/screens/Onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useDeepLink } from '~/hooks/useDeepLink'; // ✅ Import deep link hook
 
 const Stack = createNativeStackNavigator();
 
@@ -14,6 +15,9 @@ export const AppNavigator = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
+
+  // ✅ Initialize deep link handler
+  useDeepLink();
 
   useEffect(() => {
     const checkOnboarding = async () => {

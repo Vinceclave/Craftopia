@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/auth/ResetPassword.tsx - NEW SCREEN
+// apps/mobile/src/screens/auth/ResetPassword.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,13 +27,16 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Get token from route params or query
+  // Get token from route params (from deep link)
   useEffect(() => {
     const tokenFromRoute = route.params?.token;
     if (tokenFromRoute) {
+      console.log('🔑 [ResetPassword] Token received from deep link');
       setToken(tokenFromRoute);
+    } else {
+      console.warn('⚠️ [ResetPassword] No token provided');
     }
-  }, [route.params]);
+  }, [route.params?.token]);
 
   // Validate password
   const validatePassword = (value: string): boolean => {
@@ -75,7 +78,6 @@ const ResetPassword = () => {
     if (passwordError) {
       validatePassword(value);
     }
-    // Re-validate confirm password if it's already filled
     if (confirmPassword) {
       validateConfirmPassword(confirmPassword);
     }
@@ -91,7 +93,6 @@ const ResetPassword = () => {
 
   // Handle password reset
   const handleResetPassword = async () => {
-    // Validate all fields
     const isPasswordValid = validatePassword(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
 
@@ -100,18 +101,17 @@ const ResetPassword = () => {
     }
 
     if (!token) {
-      showError('Invalid Token', 'Reset token is missing or invalid');
+      showError('Invalid Token', 'Reset token is missing or invalid. Please request a new password reset link.');
       return;
     }
 
     setIsLoading(true);
     try {
       await authService.resetPassword(token, password);
-      console.log('✅ Password reset successful');
+      console.log('✅ [ResetPassword] Password reset successful');
       
       setIsSuccess(true);
       
-      // Show success message
       success(
         'Password Reset Successful! 🎉',
         'Your password has been changed successfully. You can now log in with your new password.',
@@ -120,24 +120,21 @@ const ResetPassword = () => {
         }
       );
     } catch (err: any) {
-      console.error('❌ Password reset failed:', err);
+      console.error('❌ [ResetPassword] Failed:', err);
       showError(
         'Reset Failed',
-        err.message || 'Failed to reset password. The link may have expired.'
+        err.message || 'Failed to reset password. The link may have expired. Please request a new one.'
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // If success, show success screen
+  // Success screen
   if (isSuccess) {
     return (
       <SafeAreaView className="flex-1 bg-craftopia-background">
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          className="px-6"
-        >
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-6">
           <View className="flex-1 justify-center items-center py-8">
             <View className="w-24 h-24 rounded-full bg-green-100 items-center justify-center mb-6">
               <CheckCircle size={48} color="#10B981" strokeWidth={2} />
@@ -162,7 +159,7 @@ const ResetPassword = () => {
     );
   }
 
-  // Show reset password form
+  // Reset form
   return (
     <SafeAreaView className="flex-1 bg-craftopia-background">
       <ScrollView
@@ -184,6 +181,18 @@ const ResetPassword = () => {
             </Text>
           </View>
 
+          {/* Token warning if missing */}
+          {!token && (
+            <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <Text className="text-red-800 text-sm font-semibold mb-1 font-poppinsBold">
+                Invalid Reset Link
+              </Text>
+              <Text className="text-red-600 text-xs font-nunito">
+                This reset link is invalid or has expired. Please request a new password reset link.
+              </Text>
+            </View>
+          )}
+
           {/* Form */}
           <View className="space-y-4">
             <Input
@@ -194,6 +203,7 @@ const ResetPassword = () => {
               secureTextEntry
               error={passwordError}
               leftIcon={<Lock size={20} color="#6B7280" />}
+              editable={!!token}
             />
 
             <Input
@@ -204,6 +214,7 @@ const ResetPassword = () => {
               secureTextEntry
               error={confirmPasswordError}
               leftIcon={<Lock size={20} color="#6B7280" />}
+              editable={!!token}
             />
 
             {/* Password Requirements */}
@@ -223,14 +234,20 @@ const ResetPassword = () => {
               title="Reset Password"
               onPress={handleResetPassword}
               loading={isLoading}
-              disabled={isLoading || !password || !confirmPassword}
+              disabled={isLoading || !password || !confirmPassword || !token}
               className="mt-2"
             />
 
             {/* Cancel */}
             <Button
-              title="Cancel"
-              onPress={() => navigation.navigate('Login')}
+              title={!token ? "Request New Reset Link" : "Cancel"}
+              onPress={() => {
+                if (!token) {
+                  navigation.navigate('ForgotPassword');
+                } else {
+                  navigation.navigate('Login');
+                }
+              }}
               variant="ghost"
               disabled={isLoading}
             />

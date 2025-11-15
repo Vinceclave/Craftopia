@@ -10,18 +10,29 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  VerifyEmail: { email?: string }; // <-- This is required
-  ResetPassword: undefined;
+  VerifyEmail: { 
+    email?: string;
+    token?: string;
+    autoVerify?: boolean;
+  };
+  ResetPassword: { 
+    token?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-export const AuthNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-    <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-    <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-    <Stack.Screen name="ResetPassword" component={ResetPassword} />
-  </Stack.Navigator>
-);
+export const AuthNavigator = () => {
+  return (
+    <Stack.Navigator 
+      screenOptions={{ headerShown: false }}
+      initialRouteName="Login"
+    >
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+      <Stack.Screen name="ResetPassword" component={ResetPassword} />
+    </Stack.Navigator>
+  );
+};

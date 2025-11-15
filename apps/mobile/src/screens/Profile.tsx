@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { ProfileHeader } from '~/components/profile/ProfileHeader'
 import { ProfileCard } from '~/components/profile/ProfileCard'
-import { QuickAction, QuickActions } from '~/components/profile/QuickActions'
+import { QuickActions } from '~/components/profile/QuickActions'
 import { useAuth } from '~/context/AuthContext'
 
 export const ProfileScreen = () => {
@@ -60,22 +60,22 @@ export const ProfileScreen = () => {
     return 'Novice Crafter';
   }
 
-  // Compact quick actions
-  const quickActions: QuickAction[] = [
-      { 
-        label: 'Crafts',
-        icon: Folder,
-        color: 'primary',
-        onPress: () => navigation.navigate("MyCrafts"),
-        badge: 3
-      },
-      { 
-        label: 'Activity',
-        icon: Zap,
-        color: 'accent',
-        onPress: () => navigation.navigate("ActivityLog")
-      },
-    ];
+  // // Compact quick actions
+  // const quickActions: QuickAction[] = [
+  //     { 
+  //       label: 'Crafts',
+  //       icon: Folder,
+  //       color: 'primary',
+  //       onPress: () => navigation.navigate("MyCrafts"),
+  //       badge: 3
+  //     },
+  //     { 
+  //       label: 'Activity',
+  //       icon: Zap,
+  //       color: 'accent',
+  //       onPress: () => navigation.navigate("ActivityLog")
+  //     },
+  //   ];
 
 
 
@@ -146,7 +146,7 @@ export const ProfileScreen = () => {
           onSettingsPress={handleSettingsPress}
         />
         
-        <QuickActions actions={quickActions} />
+        {/* <QuickActions actions={quickActions} /> */}
         
        
       </ScrollView>

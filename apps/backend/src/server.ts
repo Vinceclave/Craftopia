@@ -14,6 +14,7 @@ const wsServer = initializeWebSocket(httpServer);
 
 // Start server
 httpServer.listen(PORT, () => {
+  console.log(process.env.BACKEND_URL);
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 API available at: http://localhost:${PORT}/api/v1`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/v1/health`);
