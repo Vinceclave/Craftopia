@@ -41,11 +41,6 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:8081',
-      'http://127.0.0.1:8081',
-      'http://192.168.1.10:8081',
       config.frontend.url
     ];
     
