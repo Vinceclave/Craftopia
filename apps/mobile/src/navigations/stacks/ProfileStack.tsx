@@ -7,7 +7,6 @@ import { SettingsScreen } from "~/screens/profile/Settings";
 import { EditProfileScreen } from "~/screens/profile/EditProfile";
 
 // Add these imports if you already created the screens
-import { ChangePasswordScreen } from "~/screens/profile/ChangePassword";
 import { HelpCenterScreen } from "~/screens/profile/HelpCenter";
 import { ContactUsScreen } from "~/screens/profile/ContactUs";
 import { AboutUsScreen } from "~/screens/profile/AboutUs";
@@ -15,6 +14,7 @@ import { PrivacyPolicyScreen } from "~/screens/profile/PrivacyPolicy";
 import { TermsOfServiceScreen } from "~/screens/profile/TermsOfService";
 
 import { ProfileStackParamList } from "../types";
+import ChangePasswordScreen from "~/screens/profile/ChangePassword";
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 

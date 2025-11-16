@@ -1,9 +1,9 @@
-// apps/mobile/src/services/auth.service.ts - COMPLETE FIXED VERSION
+// apps/mobile/src/services/auth.service.ts - COMPLETE FIXED VERSION WITH CHANGE PASSWORD
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS, AuthResponse, LoginRequest, RegisterRequest, User, UserProfile } from '~/config/api';
 import { apiService } from './base.service';
 
-// ✅ NEW: Helper to normalize user object (backend uses user_id, frontend uses id)
+// ✅ Helper to normalize user object (backend uses user_id, frontend uses id)
 const normalizeUser = (rawUser: any): User => {
   if (!rawUser) return rawUser;
   
@@ -46,7 +46,7 @@ const normalizeUser = (rawUser: any): User => {
 };
 
 class AuthService {
-  // ✅ FIXED: Login with user normalization
+  // ✅ Login with user normalization
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
       console.log('🔑 [AuthService] Attempting login for:', credentials.email);
@@ -90,7 +90,7 @@ class AuthService {
     }
   }
 
-  // ✅ FIXED: Register
+  // ✅ Register
   async register(userData: RegisterRequest): Promise<{ message: string }> {
     try {
       console.log('📝 [AuthService] Attempting registration for:', userData.email);
@@ -132,7 +132,7 @@ class AuthService {
     console.log('✅ [AuthService] Logged out successfully');
   }
 
-  // ✅ FIXED: Get current user with normalization
+  // ✅ Get current user with normalization
   async getCurrentUser(): Promise<User> {
     try {
       console.log('👤 [AuthService] Fetching current user...');
@@ -165,7 +165,7 @@ class AuthService {
     }
   }
 
-  // ✅ FIXED: Update profile with normalization
+  // ✅ Update profile with normalization
   async updateProfile(data: Partial<UserProfile>): Promise<User> {
     console.log('✏️ [AuthService] Updating profile...');
     
@@ -238,7 +238,23 @@ class AuthService {
     }
   }
 
-  // Password reset
+  // ✅ NEW: Change password (for logged-in users)
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    console.log('🔑 [AuthService] Changing password...');
+    
+    const response = await apiService.request<{ message: string }>(
+      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+      {
+        method: 'POST',
+        data: { currentPassword, newPassword },
+      }
+    );
+    
+    console.log('✅ [AuthService] Password changed successfully');
+    return { message: response.message || 'Password changed successfully' };
+  }
+
+  // Forgot password (for password reset flow)
   async forgotPassword(email: string): Promise<{ message: string }> {
     console.log('🔑 [AuthService] Requesting password reset...');
     
@@ -253,6 +269,7 @@ class AuthService {
     return { message: response.message || 'Reset email sent' };
   }
 
+  // Reset password (using token from email)
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
     console.log('🔑 [AuthService] Resetting password...');
     

@@ -74,7 +74,7 @@ export const getWebSocketConfig = async (): Promise<WebSocketConfig> => {
   const token = await AsyncStorage.getItem('access_token');
 
   return {
-    url: API_BASE_URL,
+    url: API_BASE_URL!,
     options: {
       transports: ['websocket', 'polling'],
       reconnection: true,

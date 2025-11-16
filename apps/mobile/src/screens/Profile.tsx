@@ -1,31 +1,31 @@
-// ProfileScreen.tsx - Updated with compact layout
-import React from 'react'
+// ProfileScreen.tsx - Updated with QuickActions as content switcher
+import React, { useState } from 'react'
 import { ScrollView, View, ActivityIndicator, Text } from 'react-native'
-import { User, Trophy, Zap, Sparkles, BookOpen, Folder } from 'lucide-react-native'
+import { Trophy, Zap, Folder, FileText } from 'lucide-react-native'
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { ProfileStackParamList } from "../navigations/types"
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import { ProfileHeader } from '~/components/profile/ProfileHeader'
 import { ProfileCard } from '~/components/profile/ProfileCard'
-import { QuickActions } from '~/components/profile/QuickActions'
+import { QuickActions, QuickAction } from '~/components/profile/QuickActions'
+import { ProfileActivity } from '~/components/profile/ProfileActivity'
+import { ProfilePosts } from '~/components/profile/ProfilePosts'
 import { useAuth } from '~/context/AuthContext'
+
+type ContentType = 'mypost' | 'crafts' | 'activity'
 
 export const ProfileScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, "Profile">>();
   const { user, isLoading } = useAuth();
+  const [activeContent, setActiveContent] = useState<ContentType>('mypost');
 
   if (isLoading || !user) {
     return (
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
-        <ProfileHeader
-          onSharePress={() => console.log('Share pressed')}
-          onSettingsPress={() => navigation.navigate("Settings")}
-        />
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#374A36" />
-          <Text className="text-craftopia-textSecondary mt-2">
+          <ActivityIndicator size="large" color="#3B6E4D" />
+          <Text className="text-craftopia-textSecondary mt-2 font-nunito">
             Loading profile...
           </Text>
         </View>
@@ -51,33 +51,12 @@ export const ProfileScreen = () => {
     location: user.profile?.location,
   };
 
-  console.log(userProfile)
-
   function getTitleByPoints(points: number): string {
     if (points >= 1000) return 'Master Crafter';
     if (points >= 500) return 'Expert Artisan';
     if (points >= 200) return 'Skilled Maker';
     return 'Novice Crafter';
   }
-
-  // // Compact quick actions
-  // const quickActions: QuickAction[] = [
-  //     { 
-  //       label: 'Crafts',
-  //       icon: Folder,
-  //       color: 'primary',
-  //       onPress: () => navigation.navigate("MyCrafts"),
-  //       badge: 3
-  //     },
-  //     { 
-  //       label: 'Activity',
-  //       icon: Zap,
-  //       color: 'accent',
-  //       onPress: () => navigation.navigate("ActivityLog")
-  //     },
-  //   ];
-
-
 
   const stats = [
     {
@@ -97,44 +76,77 @@ export const ProfileScreen = () => {
     },
   ];
 
-  const handleSharePress = () => console.log('Share pressed');
   const handleSettingsPress = () => navigation.navigate("Settings");
   const handleEditPress = () => navigation.navigate("EditProfile");
 
-  // Compact Stats Section
-  const StatsSection = () => (
-    <View className="mx-5 mb-6">
-      <View className="flex-row items-center mb-4">
-        <View className="w-6 h-6 rounded-full bg-craftopia-success/10 items-center justify-center mr-2">
-          <Trophy size={14} className="text-craftopia-success" />
-        </View>
-        <Text className="text-lg font-semibold text-craftopia-textPrimary">
-          Stats
-        </Text>
-      </View>
+  // Quick Actions that switch content
+  const quickActions: QuickAction[] = [
+    { 
+      label: 'My Posts',
+      icon: FileText,
+      color: activeContent === 'mypost' ? 'primary' : undefined,
+      onPress: () => setActiveContent('mypost'),
+    },
+    { 
+      label: 'Crafts',
+      icon: Folder,
+      color: activeContent === 'crafts' ? 'primary' : undefined,
+      onPress: () => setActiveContent('crafts'),
+      badge: 12
+    },
+    { 
+      label: 'Activity',
+      icon: Zap,
+      color: activeContent === 'activity' ? 'accent' : undefined,
+      onPress: () => setActiveContent('activity')
+    },
+  ];
 
-      <View className="flex-row justify-between">
-        {stats.map((stat, index) => (
-          <View key={index} className="items-center flex-1 mx-1">
-            <View className="bg-craftopia-surface rounded-xl p-3 items-center border border-craftopia-light/50 w-full">
-              <Text className="text-lg font-bold text-craftopia-textPrimary mb-1">
-                {stat.value}
-              </Text>
-              <Text className="text-xs text-craftopia-textPrimary font-medium text-center mb-1">
-                {stat.label}
-              </Text>
-              <Text className="text-xs text-craftopia-textSecondary text-center">
-                {stat.change}
-              </Text>
-            </View>
-          </View>
-        ))}
+  // My Posts Section
+  const MyPostsSection = () => (
+    <View className="mt-3 mb-6">
+      <ProfilePosts />
+    </View>
+  );
+
+  // Crafts Content
+  const CraftsContent = () => (
+    <View className="mx-5 mt-3 mb-6">
+      <Text className="text-base font-semibold text-craftopia-textPrimary mb-4 font-poppinsBold">
+        My Crafts
+      </Text>
+      <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light">
+        <Folder size={48} color="#5F6F64" />
+        <Text className="text-craftopia-textSecondary text-center mt-3 font-nunito">
+          Your crafts will appear here
+        </Text>
       </View>
     </View>
   );
 
+  // Activity Content
+  const ActivityContent = () => (
+    <View className="mt-3 mb-6">
+      <ProfileActivity />
+    </View>
+  );
+
+  // Render content based on active selection
+  const renderContent = () => {
+    switch (activeContent) {
+      case 'mypost':
+        return <MyPostsSection />;
+      case 'crafts':
+        return <CraftsContent />;
+      case 'activity':
+        return <ActivityContent />;
+      default:
+        return <MyPostsSection />;
+    }
+  };
+
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-light">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -146,9 +158,9 @@ export const ProfileScreen = () => {
           onSettingsPress={handleSettingsPress}
         />
         
-        {/* <QuickActions actions={quickActions} /> */}
+        <QuickActions actions={quickActions} />
         
-       
+        {renderContent()}
       </ScrollView>
     </SafeAreaView>
   );

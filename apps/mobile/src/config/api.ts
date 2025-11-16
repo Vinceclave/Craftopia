@@ -1,7 +1,19 @@
-// apps/mobile/src/config/api.ts - COMPLETE FIXED VERSION
-export const API_BASE_URL = __DEV__ 
-  ? 'https://craftopia-yvky.onrender.com' // Replace with YOUR computer's IP address
-  : 'https://your-production-api.com';
+import Constants from "expo-constants";
+
+interface ExtraConfig {
+  devUrl?: string;
+  prodUrl?: string;
+}
+
+const expoConfig = (Constants.expoConfig ?? {}) as {
+  extra?: ExtraConfig;
+};
+
+const extra = expoConfig.extra ?? {};
+
+export const API_BASE_URL = __DEV__ ? extra.devUrl : extra.prodUrl;
+
+console.log('API_BASE_URL:', API_BASE_URL);
 
 export const API_ENDPOINTS = {
   AUTH: {
@@ -13,6 +25,7 @@ export const API_ENDPOINTS = {
     RESEND_VERIFICATION: '/api/v1/auth/resend-verification',
     FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
     RESET_PASSWORD: '/api/v1/auth/reset-password',
+    CHANGE_PASSWORD: '/api/v1/auth/change-password', // ✅ Added
   },
   USER: {
     PROFILE: '/api/v1/users/profile',
