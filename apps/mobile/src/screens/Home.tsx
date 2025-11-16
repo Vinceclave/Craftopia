@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, Platform, View, RefreshControl, Text } from 'react-native';
 import { SafeAreaView as RNSafeAreaView } from 'react-native-safe-area-context';
 import { HomeHeader } from '~/components/home/HomeHeader';
@@ -8,7 +8,6 @@ import { HomeActivity } from '~/components/home/HomeActivity';
 import { useChallenges } from '~/hooks/queries/useChallenges';
 import { useNavigation } from '@react-navigation/native';
 import { useWebSocket } from '~/context/WebSocketContext';
-import { WebSocketEvent } from '~/config/websocket';
 import { WifiOff } from 'lucide-react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '~/navigations/MainNavigator';
@@ -19,7 +18,9 @@ export const HomeScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { data: challenges = [], isLoading, refetch } = useChallenges('daily');
   const [refreshing, setRefreshing] = useState(false);
-  const { isConnected, on, off } = useWebSocket();
+  const { isConnected } = useWebSocket();
+
+  console.log('🏠 [HomeScreen] Rendered, WebSocket connected:', isConnected);
 
   // Pull-to-refresh handler
   const handleRefresh = useCallback(async () => {
@@ -33,25 +34,8 @@ export const HomeScreen = () => {
     }
   }, [refetch]);
 
-  // WebSocket listeners
-  useEffect(() => {
-    if (!isConnected) return;
-
-    const handleRefetch = () => refetch();
-
-    on(WebSocketEvent.CHALLENGE_CREATED, handleRefetch);
-    on(WebSocketEvent.CHALLENGE_UPDATED, handleRefetch);
-    on(WebSocketEvent.CHALLENGE_JOINED, handleRefetch);
-    on(WebSocketEvent.CHALLENGE_VERIFIED, handleRefetch);
-
-    // Cleanup
-    return () => {
-      off(WebSocketEvent.CHALLENGE_CREATED, handleRefetch);
-      off(WebSocketEvent.CHALLENGE_UPDATED, handleRefetch);
-      off(WebSocketEvent.CHALLENGE_JOINED, handleRefetch);
-      off(WebSocketEvent.CHALLENGE_VERIFIED, handleRefetch);
-    };
-  }, [isConnected, on, off, refetch]);
+  // ✅ REMOVED: WebSocket listeners - now handled globally in WebSocketContext
+  // The context will automatically invalidate queries when needed
 
   const handleSeeAllQuests = useCallback(() => {
     navigation.navigate('MainTabs', {
@@ -80,7 +64,7 @@ export const HomeScreen = () => {
       {/* Header */}
       <HomeHeader />
 
-      {/* Connection Banner */}
+      {/* Connection Banner - Only shows when disconnected */}
       {!isConnected && (
         <View className="mx-4 mt-2 p-3 rounded-xl bg-craftopia-surface border border-craftopia-light flex-row items-center">
           <View className="w-6 h-6 rounded-lg bg-craftopia-error/10 items-center justify-center mr-3 border border-craftopia-error/20">

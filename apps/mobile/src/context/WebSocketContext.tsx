@@ -1,4 +1,4 @@
-// apps/mobile/src/context/WebSocketContext.tsx - WITH CHALLENGE & WASTE REAL-TIME UPDATES
+// apps/mobile/src/context/WebSocketContext.tsx - FIXED: PERSISTENT CONNECTION
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { wsManager, WebSocketEvent } from '~/config/websocket';
 import { useAuth } from './AuthContext';
@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { postKeys } from '~/hooks/queries/usePosts';
 import { challengeKeys } from '~/hooks/queries/useChallenges';
 import { userChallengeKeys } from '~/hooks/queries/useUserChallenges';
-import { Alert } from 'react-native';
+import { Alert, AppState, AppStateStatus } from 'react-native';
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -22,11 +22,92 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const listenersRegistered = useRef(false);
+  const appState = useRef(AppState.currentState);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Connect when user is authenticated
+  // ✅ Monitor connection status from wsManager
+  useEffect(() => {
+    const handleConnectionChange = (status: boolean) => {
+      console.log('🔄 [WebSocketContext] Connection status changed:', status);
+      setIsConnected(status);
+      
+      // If disconnected unexpectedly while authenticated, try to reconnect
+      if (!status && isAuthenticated && user && appState.current === 'active') {
+        console.log('⚠️ [WebSocketContext] Unexpected disconnection, scheduling reconnect...');
+        
+        // Clear any existing timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        // Try to reconnect after 2 seconds
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log('🔄 [WebSocketContext] Attempting automatic reconnection...');
+          wsManager.connect().catch((error) => {
+            console.error('❌ [WebSocketContext] Auto-reconnection failed:', error);
+          });
+        }, 2000);
+      }
+    };
+
+    wsManager.onConnectionStatusChange(handleConnectionChange);
+
+    return () => {
+      wsManager.offConnectionStatusChange(handleConnectionChange);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [isAuthenticated, user]);
+
+  // ✅ Handle app state changes (background/foreground)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      console.log('📱 [WebSocketContext] App state changed:', {
+        from: appState.current,
+        to: nextAppState,
+        isAuthenticated,
+        hasUser: !!user,
+        isConnected: wsManager.isSocketConnected(),
+      });
+
+      // If app comes to foreground and user is authenticated, ensure connection
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active' &&
+        isAuthenticated &&
+        user
+      ) {
+        console.log('🔄 [WebSocketContext] App came to foreground, checking connection...');
+        
+        // Check if socket is connected, if not, reconnect
+        setTimeout(() => {
+          if (!wsManager.isSocketConnected()) {
+            console.log('🔌 [WebSocketContext] Reconnecting WebSocket after app resumed...');
+            wsManager.connect().catch((error) => {
+              console.error('❌ [WebSocketContext] Reconnection failed:', error);
+            });
+          } else {
+            console.log('✅ [WebSocketContext] WebSocket already connected');
+            // Ping to ensure connection is alive
+            wsManager.ping();
+          }
+        }, 500); // Small delay to ensure app is fully active
+      }
+
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isAuthenticated, user]);
+
+  // ✅ Connect when user is authenticated, disconnect only on logout
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('🔌 Initializing WebSocket connection...');
+      console.log('🔌 [WebSocketContext] User authenticated, initializing WebSocket connection...');
+      console.log('👤 User:', { id: user.id, username: user.username });
       
       wsManager.connect()
         .then(() => {
@@ -36,14 +117,39 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .catch((error) => {
           console.error('❌ WebSocket connection failed:', error);
           setIsConnected(false);
+          
+          // Retry connection after 3 seconds if initial connection fails
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 [WebSocketContext] Retrying initial connection...');
+            wsManager.connect().catch((err) => {
+              console.error('❌ [WebSocketContext] Retry failed:', err);
+            });
+          }, 3000);
         });
 
+      // ✅ Don't disconnect on unmount, connection persists across navigation
+      // Only cleanup listeners
       return () => {
-        console.log('🔌 Disconnecting WebSocket...');
-        wsManager.disconnect();
-        setIsConnected(false);
-        listenersRegistered.current = false;
+        console.log('⚠️ [WebSocketContext] Provider cleanup (connection stays alive)');
+        // Clear reconnect timeout if exists
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
       };
+    } else if (!isAuthenticated) {
+      // ✅ Only disconnect when user logs out
+      console.log('🔌 [WebSocketContext] User logged out, disconnecting WebSocket...');
+      
+      // Clear any pending reconnection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      wsManager.disconnect();
+      setIsConnected(false);
+      listenersRegistered.current = false;
     }
   }, [isAuthenticated, user]);
 
@@ -329,7 +435,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.log('🎉 [WS USER] Challenge verified:', {
         userChallengeId: data.userChallengeId,
         points_awarded: data.points_awarded,
-        waste_kg_saved: data.waste_kg_saved // NEW
+        waste_kg_saved: data.waste_kg_saved
       });
       
       if (data.userId === user.id) {
@@ -338,7 +444,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           queryKey: userChallengeKeys.lists()
         });
         
-        // Invalidate waste stats - NEW
+        // Invalidate waste stats
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.wasteStats(user.id)
         });
@@ -355,7 +461,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const handlePointsAwarded = (data: any) => {
       console.log('⭐ [WS USER] Points awarded:', {
         amount: data.amount,
-        waste_kg_saved: data.waste_kg_saved, // NEW
+        waste_kg_saved: data.waste_kg_saved,
         reason: data.reason
       });
       
@@ -365,7 +471,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           queryKey: ['userStats', user.id]
         });
         
-        // Invalidate waste stats - NEW
+        // Invalidate waste stats
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.wasteStats(user.id)
         });
@@ -391,25 +497,30 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setIsConnected(true);
     };
 
-    const handleDisconnect = () => {
-      console.log('❌ [WS] Disconnected from server');
+    const handleDisconnect = (reason: string) => {
+      console.log('❌ [WS] Disconnected from server, reason:', reason);
       setIsConnected(false);
+      
+      // Don't show alert if app is in background
+      if (appState.current === 'active') {
+        console.log('⚠️ [WS] Disconnected while app active, will attempt reconnect');
+      }
     };
 
     const handleReconnect = () => {
-      console.log('🔄 [WS] Reconnecting...');
+      console.log('🔄 [WS] Reconnected!');
       // Refetch all data on reconnect
       queryClient.invalidateQueries({ 
         queryKey: ['posts'],
-        refetchType: 'all'
+        refetchType: 'active'
       });
       queryClient.invalidateQueries({ 
         queryKey: challengeKeys.all,
-        refetchType: 'all'
+        refetchType: 'active'
       });
       queryClient.invalidateQueries({ 
         queryKey: userChallengeKeys.all,
-        refetchType: 'all'
+        refetchType: 'active'
       });
     };
 
@@ -425,7 +536,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     wsManager.on('post:deleted', handlePostDeleted);
     wsManager.on('post:updated', handlePostUpdated);
     
-    // Challenge events - NEW
+    // Challenge events
     wsManager.on('challenge:created', handleChallengeCreated);
     wsManager.on('challenge:joined', handleChallengeJoined);
     wsManager.on('challenge:verified', handleChallengeVerified);
