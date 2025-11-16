@@ -22,7 +22,7 @@ export const config = {
   
   jwt: {
     secret: process.env.JWT_SECRET!,
-    accessTokenExpiry: process.env.JWT_EXPIRES_IN || '15m',
+    accessTokenExpiry: process.env.JWT_EXPIRES_IN || '1h',
     emailTokenExpiry: '24h',
   },
   

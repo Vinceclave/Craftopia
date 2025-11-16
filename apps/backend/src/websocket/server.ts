@@ -27,7 +27,10 @@ export class WebSocketServer {
       },
       transports: ['websocket', 'polling'],
       pingTimeout: 60000,
-      pingInterval: 25000
+      pingInterval: 25000,
+      connectTimeout: 45000, // Allow 45 seconds for connection
+      maxHttpBufferSize: 1e6, // 1MB buffer
+      allowEIO3: true, // Backward compatibility
     });
 
     this.setupMiddleware();

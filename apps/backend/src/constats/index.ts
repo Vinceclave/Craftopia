@@ -185,14 +185,19 @@ export const AI_CONFIG = {
 export const RATE_LIMITS = {
   GENERAL: {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-    MAX: 100
+    MAX: 500 // ✅ Increased - ~33 requests per minute
   },
   AI: {
     WINDOW_MS: 15 * 60 * 1000,
-    MAX: 20
+    MAX: 100 // ✅ Increased - ~6-7 AI requests per minute
   },
   AUTH: {
     WINDOW_MS: 15 * 60 * 1000,
-    MAX: 5
+    MAX: 10 // ✅ Slightly increased for failed login attempts
+  },
+  // ✅ ADD: WebSocket connection rate limit
+  WEBSOCKET: {
+    WINDOW_MS: 1 * 60 * 1000, // 1 minute
+    MAX: 10 // Max 10 connection attempts per minute
   }
 };

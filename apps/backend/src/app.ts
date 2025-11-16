@@ -103,7 +103,7 @@ if (process.env.NODE_ENV === 'development') {
 // General rate limiter
 const generalLimiter = rateLimit({
   windowMs: RATE_LIMITS.GENERAL.WINDOW_MS,
-  max: RATE_LIMITS.GENERAL.MAX,
+  max: RATE_LIMITS.GENERAL.MAX, // Now 500
   message: {
     success: false,
     error: 'Too many requests, please try again later',
@@ -111,6 +111,12 @@ const generalLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // ✅ ADD: Skip static files and health checks
+  skip: (req) => {
+    return req.path.startsWith('/uploads') || 
+           req.path === '/health' ||
+           req.path === '/api/v1/health';
+  },
   handler: (req, res) => {
     logger.logSecurityEvent(
       'Rate Limit Exceeded',
@@ -120,7 +126,8 @@ const generalLimiter = rateLimit({
     res.status(429).json({
       success: false,
       error: 'Too many requests, please try again later',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      retryAfter: 900 // 15 minutes in seconds
     });
   }
 });
@@ -128,7 +135,7 @@ const generalLimiter = rateLimit({
 // AI endpoints rate limiter
 const aiLimiter = rateLimit({
   windowMs: RATE_LIMITS.AI.WINDOW_MS,
-  max: RATE_LIMITS.AI.MAX,
+  max: RATE_LIMITS.AI.MAX, // Now 100
   message: {
     success: false,
     error: 'Too many AI requests, please try again later',
@@ -136,21 +143,31 @@ const aiLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res) => {
+    logger.logSecurityEvent(
+      'AI Rate Limit Exceeded',
+      'medium',
+      { ip: req.ip, userId: (req as any).user?.userId }
+    );
+    res.status(429).json({
+      success: false,
+      error: 'Too many AI requests, please slow down',
+      timestamp: new Date().toISOString(),
+      retryAfter: 900
+    });
+  }
 });
 
 // FIXED: Auth rate limiter using ipKeyGenerator for proper IPv6 support
 const authLimiter = rateLimit({
   windowMs: RATE_LIMITS.AUTH.WINDOW_MS,
   max: RATE_LIMITS.AUTH.MAX,
-  keyGenerator: (req, res) => {
-    // Use email (or username) if provided
+  keyGenerator: (req) => {
     const email = req.body?.email?.toLowerCase();
     if (email && email.trim()) {
       return `email:${email}`;
     }
-    // Use the official ipKeyGenerator helper for proper IPv4/IPv6 handling
-    // Note: ipKeyGenerator only takes the request object
-    return ipKeyGenerator(req.ip || '');
+    return req.ip || req.socket.remoteAddress || 'unknown';
   },
   handler: (req, res) => {
     logger.logSecurityEvent(
@@ -158,18 +175,21 @@ const authLimiter = rateLimit({
       'high',
       { 
         email: req.body?.email,
+        ip: req.ip,
         url: req.url 
       }
     );
     res.status(429).json({
       success: false,
-      error: 'Too many authentication attempts, please try again later.',
+      error: 'Too many authentication attempts. Please try again in 15 minutes.',
       timestamp: new Date().toISOString(),
+      retryAfter: 900
     });
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
+
 
 // Apply rate limiters
 app.use('/api/v1', generalLimiter);

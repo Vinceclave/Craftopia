@@ -5,6 +5,58 @@ import { systemPrompt } from "../prompt/chatbot.prompt";
 import prisma from "../../config/prisma";
 
 /**
+ * Clean markdown formatting from AI response to make it look more natural
+ */
+const cleanMarkdownFormatting = (text: string): string => {
+  let cleaned = text;
+  
+  // Remove bold (**text** or __text__)
+  cleaned = cleaned.replace(/\*\*(.+?)\*\*/g, '$1');
+  cleaned = cleaned.replace(/__(.+?)__/g, '$1');
+  
+  // Remove italic (*text* or _text_)
+  cleaned = cleaned.replace(/\*(.+?)\*/g, '$1');
+  cleaned = cleaned.replace(/_(.+?)_/g, '$1');
+  
+  // Remove strikethrough (~~text~~)
+  cleaned = cleaned.replace(/~~(.+?)~~/g, '$1');
+  
+  // Remove headers (# text, ## text, etc.)
+  cleaned = cleaned.replace(/^#{1,6}\s+(.+)$/gm, '$1');
+  
+  // Remove code blocks (```text```)
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, (match) => {
+    return match.replace(/```\w*\n?/g, '').replace(/```/g, '');
+  });
+  
+  // Remove inline code (`text`)
+  cleaned = cleaned.replace(/`(.+?)`/g, '$1');
+  
+  // Remove links but keep text ([text](url))
+  cleaned = cleaned.replace(/\[(.+?)\]\(.+?\)/g, '$1');
+  
+  // Remove horizontal rules (---, ***, ___)
+  cleaned = cleaned.replace(/^[-*_]{3,}$/gm, '');
+  
+  // Remove blockquotes (> text)
+  cleaned = cleaned.replace(/^>\s+(.+)$/gm, '$1');
+  
+  // Clean up bullet points - keep them but remove markdown symbols
+  cleaned = cleaned.replace(/^[\*\-\+]\s+/gm, '• ');
+  
+  // Clean up numbered lists - keep numbers
+  cleaned = cleaned.replace(/^\d+\.\s+/gm, (match) => match);
+  
+  // Clean up multiple newlines (max 2 consecutive)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  // Trim whitespace
+  cleaned = cleaned.trim();
+  
+  return cleaned;
+};
+
+/**
  * Generate AI response with conversation history context
  */
 export const chatAiResponse = async (
@@ -45,8 +97,11 @@ export const chatAiResponse = async (
       throw new Error("Empty AI response");
     }
 
-    console.log("✅ AI response generated");
-    return aiResponse;
+    // Clean markdown formatting from the response
+    const cleanedResponse = cleanMarkdownFormatting(aiResponse);
+
+    console.log("✅ AI response generated and cleaned");
+    return cleanedResponse;
     
   } catch (err: any) {
     console.error("❌ AI chat error:", err);
