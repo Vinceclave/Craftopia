@@ -5,13 +5,9 @@ import { io, Socket } from 'socket.io-client';
 const isDevelopment = import.meta.env.DEV;
 console.log(isDevelopment)
 
-// For development: connect to local backend
-// For production: use your actual backend WebSocket server URL
-const WS_URL = isDevelopment
-  ? 'http://localhost:3001'
-  : (import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || 'https://your-backend-server.com');
-
-console.log('🔌 WebSocket connecting to:', WS_URL);
+const WS_URL = import.meta.env.VITE_API_BASE_URL;
+                      
+console.log("🔌 WebSocket connecting to:", WS_URL);
 
 export enum WebSocketEvent {
   // Challenge Events

@@ -14,9 +14,11 @@ export type FeedStackParamList = {
 
 export type CraftStackParamList = {
   Craft: undefined;
-  CraftDetails: { craftId: string };
-  CraftEditor: { craftId?: string };
-  CameraCraft: undefined; // 👈 Add this line
+   CraftDetails: { 
+    craftTitle: string;
+    materials: string[];
+    steps: string[];
+  };
 };
 
 export type EcoQuestStackParamList = {
@@ -49,7 +51,6 @@ export type RootTabParamList = {
   ProfileStack: NavigatorScreenParams<ProfileStackParamList>;
   ChatBotStack: NavigatorScreenParams<ChatBotStackParamList>; // Add this line
 };
-
 
 export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<RootTabParamList>;
