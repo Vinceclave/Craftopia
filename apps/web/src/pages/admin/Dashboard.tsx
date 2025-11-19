@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Dashboard.tsx - WITH WEBSOCKET
-import React, { useCallback } from 'react';
+// apps/web/src/pages/admin/Dashboard.tsx - REVISED WITH REAL DATA
+import { useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -7,32 +7,45 @@ import { Button } from '@/components/ui/button';
 import {
   Users, FileText, Trophy, TrendingUp, Loader2, ChevronRight,
   BarChart3, Recycle, Package, Leaf, Calendar, MoreHorizontal, Heart, Wifi, Bell,
+  AlertCircle, CheckCircle, Clock, MessageSquare, Star
 } from 'lucide-react';
-import { useDashboardStats } from '@/hooks/useDashboard';
+import { 
+  useDashboardStats, 
+  useActivityLogs, 
+  useTopUsers, 
+  useRecentActivity 
+} from '@/hooks/useDashboard';
 import { useWebSocket, useWebSocketChallenges, useWebSocketPosts, useWebSocketAdminAlerts } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
 import { DashboardStats } from '@/lib/api';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, Legend
 } from 'recharts';
 
 // ===============================
 // Reusable Components
 // ===============================
 
-// StatCard
+// StatCard with real data
 const StatCard: React.FC<{
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: number | undefined;
   trend?: number;
-}> = ({ icon: Icon, label, value, trend }) => (
+  subtitle?: string;
+}> = ({ icon: Icon, label, value, trend, subtitle }) => (
   <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
     <CardContent className="p-6">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-gray-600 font-nunito font-medium">{label}</p>
-          <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{value?.toLocaleString() || '0'}</p>
+          <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">
+            {value !== undefined ? value.toLocaleString() : '-'}
+          </p>
+          {subtitle && (
+            <p className="text-xs text-gray-500 font-nunito">{subtitle}</p>
+          )}
           {trend !== undefined && (
             <div
               className={`flex items-center text-sm font-poppins ${
@@ -42,7 +55,7 @@ const StatCard: React.FC<{
               <TrendingUp
                 className={`w-4 h-4 mr-1 ${trend < 0 ? 'rotate-180' : ''}`}
               />
-              {Math.abs(trend)}%
+              {Math.abs(trend)}% vs last period
             </div>
           )}
         </div>
@@ -54,31 +67,7 @@ const StatCard: React.FC<{
   </Card>
 );
 
-// MetricCard
-const MetricCard: React.FC<{
-  title: string;
-  icon: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-}> = ({ title, icon: Icon, children }) => (
-  <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-    <CardHeader className="pb-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
-            <Icon className="w-4 h-4 text-white" />
-          </div>
-          <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">{title}</CardTitle>
-        </div>
-        <Button variant="ghost" size="icon" className="w-8 h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10">
-          <MoreHorizontal className="w-4 h-4 text-[#2B4A2F]" />
-        </Button>
-      </div>
-    </CardHeader>
-    <CardContent>{children}</CardContent>
-  </Card>
-);
-
-// MetricRow
+// MetricRow with real data
 const MetricRow: React.FC<{
   label: string;
   value: number | undefined;
@@ -99,144 +88,271 @@ const MetricRow: React.FC<{
           {Math.abs(trend)}%
         </div>
       )}
-      <span className="font-semibold text-[#2B4A2F] font-poppins">{value?.toLocaleString()}</span>
+      <span className="font-semibold text-[#2B4A2F] font-poppins">
+        {value !== undefined ? value.toLocaleString() : '-'}
+      </span>
     </div>
   </div>
 );
 
-// QuickAction
-const QuickAction: React.FC<{
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-  onClick?: () => void;
-}> = ({ icon: Icon, title, description, onClick }) => (
-  <Button
-    className="flex items-center gap-4 p-4 h-auto justify-start hover:bg-[#6CAC73]/10 w-full border border-[#6CAC73]/20 bg-white/60 backdrop-blur-sm"
-    onClick={onClick}
-  >
-    <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-sm">
-      <Icon className="w-5 h-5 text-white" />
-    </div>
-    <div className="text-left flex-1">
-      <p className="font-medium text-sm text-[#2B4A2F] font-poppins">{title}</p>
-      <p className="text-gray-600 text-xs font-nunito">{description}</p>
-    </div>
-    <ChevronRight className="w-4 h-4 text-[#6CAC73]" />
-  </Button>
-);
+// Activity Timeline Component
+const ActivityTimeline: React.FC<{ activities: any[] }> = ({ activities }) => {
+  if (!activities || activities.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500 font-nunito">
+        No recent activity to display
+      </div>
+    );
+  }
 
-// RecyclablesGraph (Recharts)
-const RecyclablesGraph: React.FC = () => {
-  const data = [
-    { category: 'Plastic', amount: 1250 },
-    { category: 'Paper', amount: 890 },
-    { category: 'Glass', amount: 450 },
-    { category: 'Metal', amount: 320 },
-  ];
+  return (
+    <div className="space-y-3">
+      {activities.slice(0, 5).map((activity: any, index: number) => (
+        <div
+          key={index}
+          className="flex items-start gap-3 p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10"
+        >
+          <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center flex-shrink-0">
+            {activity.type === 'post' && <FileText className="w-4 h-4 text-white" />}
+            {activity.type === 'challenge' && <Trophy className="w-4 h-4 text-white" />}
+            {activity.type === 'user' && <Users className="w-4 h-4 text-white" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">
+              {activity.title || activity.challenge?.title || 'Activity'}
+            </p>
+            <p className="text-xs text-gray-500 font-nunito">
+              {activity.user?.username || 'User'} • {new Date(activity.created_at).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Activity Chart Component
+const ActivityChart: React.FC<{ data: any[] }> = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-gray-500 font-nunito">
+        No activity data available
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-64 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" className="opacity-20" stroke="#6CAC73" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 12, fill: '#2B4A2F' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 12, fill: '#2B4A2F' }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip
+            cursor={{ fill: 'transparent' }}
+            contentStyle={{
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid #6CAC73',
+              borderRadius: '8px',
+              backdropFilter: 'blur(8px)'
+            }}
+          />
+          <Legend />
+          <Line type="monotone" dataKey="users" stroke="#6CAC73" strokeWidth={2} name="Users" />
+          <Line type="monotone" dataKey="posts" stroke="#2B4A2F" strokeWidth={2} name="Posts" />
+          <Line type="monotone" dataKey="challenges" stroke="#8884d8" strokeWidth={2} name="Challenges" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+
+// Top Performers Component with real data
+const TopPerformers: React.FC<{ users: any[] }> = ({ users }) => {
+  if (!users || users.length === 0) {
+    return (
+      <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+              <Trophy className="w-4 h-4 text-white" />
+            </div>
+            <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Top Performers</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500 font-nunito">
+            No user data available
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-      <CardHeader className="pb-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
-              <Recycle className="w-4 h-4 text-white" />
-            </div>
-            <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Recyclables</CardTitle>
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+            <Trophy className="w-4 h-4 text-white" />
           </div>
-          <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-            +15%
-          </Badge>
+          <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Top Performers</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-20" stroke="#6CAC73" />
-              <XAxis
-                dataKey="category"
-                tick={{ fontSize: 12, fill: '#2B4A2F' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: '#2B4A2F' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip 
-                cursor={{ fill: 'transparent' }}
-                contentStyle={{ 
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                  border: '1px solid #6CAC73',
-                  borderRadius: '8px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              />
-              <Bar dataKey="amount" fill="#6CAC73" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[#6CAC73]/10 text-center">
-          <div>
-            <p className="text-xl font-bold text-[#2B4A2F] font-poppins">3,185</p>
-            <p className="text-xs text-gray-600 font-nunito">Total kg</p>
+      <CardContent className="flex flex-col gap-3">
+        {users.slice(0, 5).map((userData: any, index: number) => (
+          <div
+            key={userData.user_id}
+            className="flex items-center justify-between p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center text-sm font-medium text-white font-poppins">
+                {index + 1}
+              </div>
+              <div>
+                <span className="text-sm font-medium text-[#2B4A2F] font-poppins">
+                  {userData.user?.username || 'Unknown'}
+                </span>
+                <p className="text-xs text-gray-500 font-nunito">
+                  {userData.counts?.completedChallenges || 0} challenges
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+              {userData.points || 0} pts
+            </Badge>
           </div>
-          <div>
-            <p className="text-xl font-bold text-[#6CAC73] font-poppins">+425</p>
-            <p className="text-xs text-gray-600 font-nunito">This month</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-[#2B4A2F] font-poppins">1.2t</p>
-            <p className="text-xs text-gray-600 font-nunito">CO₂ saved</p>
-          </div>
-        </div>
+        ))}
       </CardContent>
     </Card>
   );
 };
 
-// TopPerformers
-const TopPerformers: React.FC = () => (
-  <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-    <CardHeader className="pb-4 flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
-          <Trophy className="w-4 h-4 text-white" />
-        </div>
-        <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Top Performers</CardTitle>
-      </div>
-    </CardHeader>
-    <CardContent className="flex flex-col gap-3">
-      {['Eco Warrior', 'Green Thumb', 'Planet Saver'].map((name, index) => (
-        <div
-          key={name}
-          className="flex items-center justify-between p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center text-sm font-medium text-white font-poppins">
-              {index + 1}
-            </div>
-            <span className="text-sm font-medium text-[#2B4A2F] font-poppins">{name}</span>
+// Recent Activity Component
+const RecentActivityCard: React.FC<{ activity: any }> = ({ activity }) => {
+  if (!activity) {
+    return (
+      <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500 font-nunito">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+            Loading activity...
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { recentPosts = [], recentChallenges = [], recentReports = [] } = activity;
+  const hasActivity = recentPosts.length > 0 || recentChallenges.length > 0 || recentReports.length > 0;
+
+  return (
+    <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Recent Activity</CardTitle>
           <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-            1,250 pts
+            <Wifi className="w-3 h-3 mr-1 animate-pulse" />
+            Live
           </Badge>
         </div>
-      ))}
-    </CardContent>
-  </Card>
-);
+      </CardHeader>
+      <CardContent>
+        {!hasActivity ? (
+          <div className="text-center py-8 text-gray-500 font-nunito">
+            No recent activity
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recentPosts.slice(0, 3).map((post: any) => (
+              <div
+                key={`post-${post.post_id}`}
+                className="flex items-start gap-3 p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">
+                    {post.title}
+                  </p>
+                  <p className="text-xs text-gray-500 font-nunito">
+                    Posted by {post.user?.username} • {new Date(post.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {recentChallenges.slice(0, 3).map((challenge: any) => (
+              <div
+                key={`challenge-${challenge.user_challenge_id}`}
+                className="flex items-start gap-3 p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Trophy className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">
+                    {challenge.challenge?.title || 'Challenge'}
+                  </p>
+                  <p className="text-xs text-gray-500 font-nunito">
+                    {challenge.user?.username} • {challenge.status}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {recentReports.slice(0, 2).map((report: any) => (
+              <div
+                key={`report-${report.report_id}`}
+                className="flex items-start gap-3 p-3 bg-gradient-to-br from-orange-50 to-white rounded-lg border border-orange-200/40"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">
+                    Report #{report.report_id}
+                  </p>
+                  <p className="text-xs text-gray-500 font-nunito">
+                    {report.status} • {new Date(report.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 // ===============================
-// MAIN DASHBOARD WITH WEBSOCKET
+// MAIN DASHBOARD WITH REAL DATA
 // ===============================
 export default function AdminDashboard() {
-  const { data, isLoading, error, refetch } = useDashboardStats();
-  const stats: DashboardStats | undefined = data?.data;
+  const { data: statsData, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useDashboardStats();
+  const { data: activityData, isLoading: activityLoading } = useActivityLogs(7);
+  const { data: topUsersData, isLoading: topUsersLoading } = useTopUsers(10);
+  const { data: recentActivityData, isLoading: recentActivityLoading } = useRecentActivity(20);
+  
+  const stats: DashboardStats | undefined = statsData?.data;
+  const activityLogs = activityData?.data || [];
+  const topUsers = topUsersData?.data || [];
+  const recentActivity = recentActivityData?.data;
+  
   const { isConnected } = useWebSocket();
   const { info, warning, success } = useToast();
 
@@ -244,26 +360,26 @@ export default function AdminDashboard() {
   useWebSocketChallenges({
     onCreated: useCallback(() => {
       info('New challenge created!');
-      refetch();
-    }, [info, refetch]),
+      refetchStats();
+    }, [info, refetchStats]),
 
     onCompleted: useCallback(() => {
       success('A user completed a challenge!');
-      refetch();
-    }, [success, refetch]),
+      refetchStats();
+    }, [success, refetchStats]),
 
     onVerified: useCallback((data: { points_awarded?: number } | unknown) => {
       const d = data as { points_awarded?: number };
       success(`Challenge verified! ${d.points_awarded ?? 0} points awarded`);
-      refetch();
-    }, [success, refetch]),
+      refetchStats();
+    }, [success, refetchStats]),
   });
 
   useWebSocketPosts({
     onCreated: useCallback(() => {
       info('New post created on the platform');
-      refetch();
-    }, [info, refetch]),
+      refetchStats();
+    }, [info, refetchStats]),
   });
 
   useWebSocketAdminAlerts(
@@ -271,12 +387,14 @@ export default function AdminDashboard() {
       const d = data as { type?: string; message?: string };
       if (d.type === 'challenge_pending') {
         warning('New challenge pending verification');
-        refetch();
+        refetchStats();
       } else {
         info(d.message || 'Admin alert received');
       }
-    }, [warning, info, refetch])
+    }, [warning, info, refetchStats])
   );
+
+  const isLoading = statsLoading || activityLoading || topUsersLoading || recentActivityLoading;
 
   if (isLoading) {
     return (
@@ -289,7 +407,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (error) {
+  if (statsError) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[#FFF9F0] to-white">
         <Card className="max-w-md border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
@@ -300,11 +418,11 @@ export default function AdminDashboard() {
             <div className="flex flex-col gap-2">
               <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Unable to Load</CardTitle>
               <p className="text-gray-600 text-sm font-nunito">
-                {(error as Error).message || 'Please try again.'}
+                {(statsError as Error).message || 'Please try again.'}
               </p>
             </div>
             <Button 
-              onClick={() => refetch()}
+              onClick={() => refetchStats()}
               className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
             >
               Retry
@@ -355,158 +473,252 @@ export default function AdminDashboard() {
               <Bell className="w-3 h-3 mr-1" />
               Real-time
             </Badge>
-            <Button className="gap-2 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]">
+            <Button 
+              onClick={() => refetchStats()}
+              className="gap-2 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+            >
               <Calendar className="w-4 h-4" />
-              Last 7 days
+              Refresh
             </Button>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard icon={Users} label="Total Users" value={stats?.users?.total} trend={12} />
-          <StatCard icon={FileText} label="Content Posts" value={stats?.content?.totalPosts} trend={8} />
-          <StatCard icon={Trophy} label="Active Challenges" value={stats?.challenges?.active} trend={15} />
-          <StatCard icon={Recycle} label="Recycled Items" value={3185} trend={15} />
+          <StatCard 
+            icon={Users} 
+            label="Total Users" 
+            value={stats?.users?.total} 
+            subtitle={`${stats?.users?.active || 0} active`}
+          />
+          <StatCard 
+            icon={FileText} 
+            label="Content Posts" 
+            value={stats?.content?.totalPosts}
+            subtitle={`${stats?.content?.postsToday || 0} today`}
+          />
+          <StatCard 
+            icon={Trophy} 
+            label="Active Challenges" 
+            value={stats?.challenges?.active}
+            subtitle={`${stats?.challenges?.pendingVerification || 0} pending`}
+          />
+          <StatCard 
+            icon={Heart} 
+            label="Total Engagement" 
+            value={stats?.engagement?.totalLikes}
+            subtitle={`${stats?.content?.totalComments || 0} comments`}
+          />
         </div>
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left */}
+          {/* Left - Charts and Analytics */}
           <div className="lg:col-span-2 flex flex-col gap-8">
-            <Tabs defaultValue="overview" className="flex flex-col gap-6">
-              <TabsList className="grid grid-cols-3 w-full max-w-md bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20">
+            {/* Activity Chart */}
+            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+                      <BarChart3 className="w-4 h-4 text-white" />
+                    </div>
+                    <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                      Activity Trends (Last 7 Days)
+                    </CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ActivityChart data={activityLogs} />
+              </CardContent>
+            </Card>
+
+            {/* Detailed Stats Tabs */}
+            <Tabs defaultValue="users" className="flex flex-col gap-6">
+              <TabsList className="grid w-full grid-cols-3 bg-white/80 border border-[#6CAC73]/20">
                 <TabsTrigger 
-                  value="overview" 
-                  className="font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+                  value="users" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
-                  Overview
+                  Users
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="recycling" 
-                  className="font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+                  value="content" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
-                  Recycling
+                  Content
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="engagement" 
-                  className="font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+                  value="challenges" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
-                  Engagement
+                  Challenges
                 </TabsTrigger>
               </TabsList>
 
-              {/* Overview */}
-              <TabsContent value="overview" className="flex flex-col gap-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <MetricCard title="User Analytics" icon={Users}>
-                    <div className="flex flex-col gap-1">
-                      <MetricRow label="Active Users" value={stats?.users?.active} trend={8} />
-                      <MetricRow label="New This Week" value={stats?.users?.newThisWeek} trend={12} />
-                      <MetricRow label="Verified Users" value={stats?.users?.verified} trend={5} />
+              {/* Users Tab */}
+              <TabsContent value="users">
+                <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+                        <Users className="w-4 h-4 text-white" />
+                      </div>
+                      <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                        User Analytics
+                      </CardTitle>
                     </div>
-                  </MetricCard>
-
-                  <MetricCard title="Content Metrics" icon={FileText}>
+                  </CardHeader>
+                  <CardContent>
                     <div className="flex flex-col gap-1">
-                      <MetricRow label="Posts Today" value={stats?.content?.postsToday} trend={18} />
-                      <MetricRow label="Total Comments" value={stats?.content?.totalComments} trend={22} />
-                      <MetricRow label="Total Crafts" value={stats?.content?.totalCrafts} trend={6} />
+                      <MetricRow label="Total Users" value={stats?.users?.total} />
+                      <MetricRow label="Active Users" value={stats?.users?.active} />
+                      <MetricRow label="New This Week" value={stats?.users?.newThisWeek} />
+                      <MetricRow label="New Today" value={stats?.users?.newToday} />
+                      <MetricRow label="Verified Users" value={stats?.users?.verified} />
                     </div>
-                  </MetricCard>
-                </div>
-                <RecyclablesGraph />
+                  </CardContent>
+                </Card>
               </TabsContent>
 
-              {/* Recycling */}
-              <TabsContent value="recycling" className="flex flex-col gap-6">
-                <RecyclablesGraph />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <MetricCard title="Recycling Progress" icon={Package}>
-                    <div className="flex flex-col gap-1">
-                      <MetricRow label="Monthly Target" value={4000} trend={15} />
-                      <MetricRow label="Recycling Rate" value={79} trend={8} />
-                      <MetricRow label="Active Participants" value={1240} trend={12} />
+              {/* Content Tab */}
+              <TabsContent value="content">
+                <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+                        <FileText className="w-4 h-4 text-white" />
+                      </div>
+                      <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                        Content Metrics
+                      </CardTitle>
                     </div>
-                  </MetricCard>
-                  <MetricCard title="Environmental Impact" icon={Leaf}>
+                  </CardHeader>
+                  <CardContent>
                     <div className="flex flex-col gap-1">
-                      <MetricRow label="Trees Saved" value={42} trend={15} />
-                      <MetricRow label="CO₂ Reduction (tons)" value={12} trend={10} />
-                      <MetricRow label="Energy Saved (MWh)" value={3.2} trend={8} />
+                      <MetricRow label="Total Posts" value={stats?.content?.totalPosts} />
+                      <MetricRow label="Posts Today" value={stats?.content?.postsToday} />
+                      <MetricRow label="Total Comments" value={stats?.content?.totalComments} />
+                      <MetricRow label="Total Crafts" value={stats?.content?.totalCrafts} />
+                      <MetricRow label="Total Likes" value={stats?.engagement?.totalLikes} />
                     </div>
-                  </MetricCard>
-                </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
-              {/* Engagement */}
-              <TabsContent value="engagement" className="flex flex-col gap-6">
-                <MetricCard title="Engagement Overview" icon={Heart}>
-                  <div className="flex flex-col gap-1">
-                    <MetricRow label="Total Likes" value={stats?.engagement?.totalLikes} trend={22} />
-                    <MetricRow label="Total Comments" value={stats?.content?.totalComments} trend={18} />
-                    <MetricRow label="Avg Posts/User" value={stats?.engagement?.avgPostsPerUser} trend={15} />
-                    <MetricRow label="Avg Challenges/User" value={stats?.engagement?.avgChallengesPerUser} trend={10} />
-                  </div>
-                </MetricCard>
+              {/* Challenges Tab */}
+              <TabsContent value="challenges">
+                <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+                        <Trophy className="w-4 h-4 text-white" />
+                      </div>
+                      <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                        Challenge Statistics
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col gap-1">
+                      <MetricRow label="Total Challenges" value={stats?.challenges?.total} />
+                      <MetricRow label="Active Challenges" value={stats?.challenges?.active} />
+                      <MetricRow label="Completed" value={stats?.challenges?.completed} />
+                      <MetricRow label="Pending Verification" value={stats?.challenges?.pendingVerification} />
+                      <MetricRow label="Avg per User" value={stats?.engagement?.avgChallengesPerUser} />
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </div>
 
-          {/* Right */}
+          {/* Right - Sidebar */}
           <div className="flex flex-col gap-8">
+            {/* Top Performers */}
+            <TopPerformers users={topUsers} />
+
+            {/* Recent Activity */}
+            <RecentActivityCard activity={recentActivity} />
+
+            {/* Reports Summary */}
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Quick Actions</CardTitle>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4 text-white" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                    Reports Status
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                <QuickAction icon={Users} title="Manage Users" description="User management and permissions" />
-                <QuickAction icon={Recycle} title="Recycling Stats" description="View detailed recycling analytics" />
-                <QuickAction icon={FileText} title="Content Review" description="Moderate posts and comments" />
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-orange-600" />
+                      <span className="text-sm font-medium text-[#2B4A2F] font-poppins">Pending</span>
+                    </div>
+                    <Badge className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700 border-0 font-poppins">
+                      {stats?.reports?.pending || 0}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-[#2B4A2F] font-poppins">In Review</span>
+                    </div>
+                    <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
+                      {stats?.reports?.in_review || 0}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-[#6CAC73]" />
+                      <span className="text-sm font-medium text-[#2B4A2F] font-poppins">Resolved</span>
+                    </div>
+                    <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+                      {stats?.reports?.resolved || 0}
+                    </Badge>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <TopPerformers />
-
+            {/* Engagement Stats */}
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardContent className="p-6 flex flex-col gap-4">
+              <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
-                    <Leaf className="w-4 h-4 text-white" />
+                    <Heart className="w-4 h-4 text-white" />
                   </div>
-                  <h3 className="font-semibold text-[#2B4A2F] font-poppins">Environmental Impact</h3>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-xl font-bold text-[#2B4A2F] font-poppins">42</p>
-                    <p className="text-xs text-gray-600 font-nunito">Trees</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-[#2B4A2F] font-poppins">18k</p>
-                    <p className="text-xs text-gray-600 font-nunito">Water (L)</p>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-[#2B4A2F] font-poppins">3.2</p>
-                    <p className="text-xs text-gray-600 font-nunito">Energy (MWh)</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Real-time Activity Feed */}
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Live Activity</CardTitle>
-                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-                    <Wifi className="w-3 h-3 mr-1 animate-pulse" />
-                    Live
-                  </Badge>
+                  <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+                    Engagement
+                  </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="text-sm text-gray-600 font-nunito text-center py-4">
-                  Real-time updates will appear here
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="text-center p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <p className="text-xs text-gray-500 mb-1 font-nunito">Avg Posts per User</p>
+                    <p className="text-2xl font-bold text-[#2B4A2F] font-poppins">
+                      {stats?.engagement?.avgPostsPerUser?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <p className="text-xs text-gray-500 mb-1 font-nunito">Avg Challenges per User</p>
+                    <p className="text-2xl font-bold text-[#2B4A2F] font-poppins">
+                      {stats?.engagement?.avgChallengesPerUser?.toFixed(2) || '0.00'}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+                    <p className="text-xs text-gray-500 mb-1 font-nunito">Active Sessions</p>
+                    <p className="text-2xl font-bold text-[#2B4A2F] font-poppins">
+                      {(stats?.engagement as any)?.sessions || 0}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
