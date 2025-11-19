@@ -17,7 +17,7 @@
     "prisma:seed": "ts-node src/config/prisma.ts",
 
     "postinstall": "prisma generate",
-    "copy:prisma": "mkdir -p dist/generated && cp -r src/generated/prisma dist/generated/"
+    "copy:prisma": "xcopy src\\generated\\prisma dist\\generated\\prisma /E /I /Y"
   },
   "keywords": [
     "craftopia",
