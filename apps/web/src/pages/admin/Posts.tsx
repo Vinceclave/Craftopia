@@ -1,10 +1,27 @@
-// apps/web/src/pages/admin/Posts.tsx - Enhanced with Reports Integration and Post View Modal
+// apps/web/src/pages/admin/Posts.tsx - FULLY SYNCED DESIGN
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter 
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -12,7 +29,7 @@ import {
   FileText, Trash2, Star, Loader2, RefreshCw,
   MessageCircle, AlertCircle, CheckSquare, Image as ImageIcon,
   Calendar, MoreHorizontal, Wifi, Eye, X, User, ThumbsUp,
-  Clock, CheckCircle, Flag
+  Clock, CheckCircle, Flag, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useReports } from '@/hooks/useReports';
@@ -57,9 +74,17 @@ export default function AdminPosts() {
 
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<string>('posts');
+  
+  // Dialog states
   const [viewPostModal, setViewPostModal] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [deletePostDialog, setDeletePostDialog] = useState(false);
+  const [deleteCommentDialog, setDeleteCommentDialog] = useState(false);
+  const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
   const [resolveReportModal, setResolveReportModal] = useState(false);
+  
+  // Selected items
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
   const [selectedReport, setSelectedReport] = useState<ExtendedReport | null>(null);
   const [moderatorNotes, setModeratorNotes] = useState('');
 
@@ -86,7 +111,7 @@ export default function AdminPosts() {
     onCreated: useCallback((data: any) => {
       success(data.message || 'New report filed');
       refetchReports();
-      refetch(); // Refresh posts to update report counts
+      refetch();
     }, [success, refetchReports, refetch]),
     
     onUpdated: useCallback((data: any) => {
@@ -108,22 +133,36 @@ export default function AdminPosts() {
   const reportedPosts = posts.filter(p => p._count && p._count.reports > 0).length;
 
   // Handlers
-  const handleDeletePost = async (postId: number) => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
+  const handleOpenDeletePost = (post: Post) => {
+    setSelectedPost(post);
+    setDeletePostDialog(true);
+  };
+
+  const handleConfirmDeletePost = async () => {
+    if (!selectedPost) return;
     try {
-      await deletePost({ postId, reason: 'Deleted by admin via moderation' });
+      await deletePost({ postId: selectedPost.post_id, reason: 'Deleted by admin via moderation' });
       success('Post deleted successfully!');
+      setDeletePostDialog(false);
+      setSelectedPost(null);
       setViewPostModal(false);
     } catch (err: any) {
       showError(err.message || 'Error deleting post');
     }
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+  const handleOpenDeleteComment = (comment: Comment) => {
+    setSelectedComment(comment);
+    setDeleteCommentDialog(true);
+  };
+
+  const handleConfirmDeleteComment = async () => {
+    if (!selectedComment) return;
     try {
-      await deleteComment({ commentId, reason: 'Deleted by admin via moderation' });
+      await deleteComment({ commentId: selectedComment.comment_id, reason: 'Deleted by admin via moderation' });
       success('Comment deleted successfully!');
+      setDeleteCommentDialog(false);
+      setSelectedComment(null);
     } catch (err: any) {
       showError(err.message || 'Error deleting comment');
     }
@@ -138,13 +177,20 @@ export default function AdminPosts() {
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedPosts.length === 0) return showError('Select posts to delete');
-    if (!window.confirm(`Delete ${selectedPosts.length} selected posts?`)) return;
+  const handleOpenBulkDelete = () => {
+    if (selectedPosts.length === 0) {
+      showError('Select posts to delete');
+      return;
+    }
+    setBulkDeleteDialog(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
     try {
       await bulkDeletePosts({ postIds: selectedPosts, reason: 'Bulk deletion by admin' });
       success('Posts deleted!');
       setSelectedPosts([]);
+      setBulkDeleteDialog(false);
     } catch (err: any) {
       showError(err.message || 'Error deleting posts');
     }
@@ -167,6 +213,12 @@ export default function AdminPosts() {
     setViewPostModal(true);
   };
 
+  const handleOpenResolveReport = (report: ExtendedReport) => {
+    setSelectedReport(report);
+    setModeratorNotes('');
+    setResolveReportModal(true);
+  };
+
   const handleResolveReport = async () => {
     if (!selectedReport) return;
     try {
@@ -185,12 +237,6 @@ export default function AdminPosts() {
     }
   };
 
-  const openResolveDialog = (report: ExtendedReport) => {
-    setSelectedReport(report);
-    setModeratorNotes('');
-    setResolveReportModal(true);
-  };
-
   const handleUpdateReportStatus = async (reportId: number, status: string) => {
     try {
       await updateReportStatus({ reportId, status });
@@ -204,8 +250,8 @@ export default function AdminPosts() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
-        <div className="text-center flex flex-col gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto" />
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto mb-4" />
           <p className="text-[#2B4A2F] font-poppins">Loading content...</p>
         </div>
       </div>
@@ -214,7 +260,7 @@ export default function AdminPosts() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 lg:p-8 relative">
+      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
         <div className="absolute inset-0 pointer-events-none">
           {[...Array(3)].map((_, i) => (
             <div
@@ -231,17 +277,22 @@ export default function AdminPosts() {
         </div>
         
         <div className="max-w-7xl mx-auto relative z-10">
-          <Alert className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
-            <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
-            <AlertDescription className="flex items-center justify-between gap-4">
-              <span className="text-[#2B4A2F] font-nunito">Error loading content: {(error as Error).message}</span>
-              <Button 
-                size="sm" 
-                onClick={() => refetch()} 
-                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" /> Retry
-              </Button>
+          <Alert className="border-rose-200 bg-rose-50/80 backdrop-blur-sm">
+            <AlertCircle className="h-5 w-5 text-rose-600" />
+            <AlertDescription>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-semibold text-rose-900 font-poppins mb-1">Error loading content</p>
+                  <p className="text-rose-700 text-sm font-nunito">{(error as Error).message}</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => refetch()} 
+                  className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" /> Retry
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         </div>
@@ -250,7 +301,7 @@ export default function AdminPosts() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 lg:p-8 flex flex-col gap-8 relative">
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
       {/* Background Floating Elements */}
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(4)].map((_, i) => (
@@ -267,42 +318,41 @@ export default function AdminPosts() {
         ))}
       </div>
 
-      <div className="w-full max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
-
+      <div className="w-full max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins">
-                Content Moderation
-              </h1>
-              {isConnected && (
-                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
-                  <Wifi className="w-3 h-3 mr-1" />
-                  Live
-                </Badge>
-              )}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
+              <FileText className="w-6 h-6 text-white" />
             </div>
-            <p className="text-gray-600 text-sm font-nunito">Manage and moderate platform content in real-time</p>
+            <div>
+              <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-2">
+                Content Moderation
+                {isConnected && (
+                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
+                    <Wifi className="w-3 h-3 mr-1" />
+                    Live
+                  </Badge>
+                )}
+              </h1>
+              <p className="text-gray-600 text-sm font-nunito">Manage and moderate platform content in real-time</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
             {selectedPosts.length > 0 && (
               <Button
                 size="sm"
-                onClick={handleBulkDelete}
+                onClick={handleOpenBulkDelete}
                 disabled={isBulkDeleting}
-                className="flex items-center gap-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+                className="bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
               >
                 {isBulkDeleting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
-                Delete {selectedPosts.length}
+                <span className="ml-2">Delete {selectedPosts.length}</span>
               </Button>
             )}
             <Button 
@@ -313,11 +363,12 @@ export default function AdminPosts() {
               }} 
               className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
             </Button>
             <Button 
               size="sm" 
-              className="w-9 h-9 p-0 border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+              className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
             >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
@@ -325,7 +376,7 @@ export default function AdminPosts() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           {[
             { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-[#2B4A2F]' },
             { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-[#2B4A2F]' },
@@ -338,10 +389,10 @@ export default function AdminPosts() {
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
                     <p className="text-sm text-gray-600 font-nunito">{stat.label}</p>
-                    <p className={`text-2xl font-bold font-poppins ${stat.color}`}>{stat.value}</p>
+                    <p className={`text-3xl font-bold font-poppins ${stat.color}`}>{stat.value}</p>
                   </div>
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl flex items-center justify-center border border-[#6CAC73]/10 shadow-sm">
-                    <stat.icon className="w-5 h-5 text-[#6CAC73]" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl flex items-center justify-center border border-[#6CAC73]/10 shadow-sm">
+                    <stat.icon className="w-6 h-6 text-[#6CAC73]" />
                   </div>
                 </div>
               </CardContent>
@@ -352,7 +403,7 @@ export default function AdminPosts() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2">
+            <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2 w-full lg:w-auto">
               <TabsTrigger 
                 value="posts" 
                 className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
@@ -388,7 +439,7 @@ export default function AdminPosts() {
           {/* Posts Tab */}
           <TabsContent value="posts">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="p-6 pb-4 flex flex-col gap-1">
+              <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Posts</CardTitle>
                 <CardDescription className="text-gray-600 font-nunito">Manage all platform posts with real-time updates</CardDescription>
               </CardHeader>
@@ -397,139 +448,171 @@ export default function AdminPosts() {
                   <div className="text-center py-12 flex flex-col items-center gap-2">
                     <FileText className="w-12 h-12 text-gray-300" />
                     <p className="text-gray-500 font-medium font-poppins">No posts found</p>
-                    <p className="text-gray-400 text-sm font-nunito">Posts will appear here once created</p>
+                    <p className="text-sm text-gray-400 font-nunito">Posts will appear here once created</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3">
-                    {posts.map((post: Post) => (
-                      <div
-                        key={post.post_id}
-                        className={`p-4 rounded-xl border transition-all duration-200 bg-white/60 backdrop-blur-sm ${
-                          selectedPosts.includes(post.post_id)
-                            ? 'border-blue-300 bg-blue-50/70 shadow-md'
-                            : 'border-[#6CAC73]/20 hover:bg-white/80 hover:shadow-md'
-                        }`}
-                      >
-                        <div className="flex gap-4">
-                          {/* Checkbox */}
-                          <div className="flex items-start pt-1">
-                            <input
-                              type="checkbox"
-                              checked={selectedPosts.includes(post.post_id)}
-                              onChange={() => togglePostSelection(post.post_id)}
-                              className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
-                            />
-                          </div>
-
-                          {/* Thumbnail */}
-                          {post.image_url && (
-                            <div className="w-20 h-20 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
-                              <img 
-                                src={post.image_url} 
-                                alt={post.title}
-                                className="w-full h-full object-cover"
+                  <>
+                    <div className="flex flex-col gap-3">
+                      {posts.map((post: Post) => (
+                        <div
+                          key={post.post_id}
+                          className={`p-4 rounded-xl border transition-all duration-200 bg-white/60 backdrop-blur-sm ${
+                            selectedPosts.includes(post.post_id)
+                              ? 'border-blue-300 bg-blue-50/70 shadow-md'
+                              : 'border-[#6CAC73]/20 hover:bg-white/80 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex gap-4">
+                            {/* Checkbox */}
+                            <div className="flex items-start pt-1">
+                              <input
+                                type="checkbox"
+                                checked={selectedPosts.includes(post.post_id)}
+                                onChange={() => togglePostSelection(post.post_id)}
+                                className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
                               />
                             </div>
-                          )}
 
-                          {/* Post Content */}
-                          <div className="flex-1 flex flex-col gap-3">
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins text-sm">{post.title}</h3>
-                                {post.featured && (
-                                  <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins">
-                                    <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> Featured
-                                  </Badge>
-                                )}
-                                {post._count && post._count.reports > 0 && (
-                                  <Badge className="bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 border-0 font-poppins animate-pulse">
-                                    <AlertCircle className="w-3 h-3 mr-1" /> {post._count.reports} Reports
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 font-nunito line-clamp-2">{post.content}</p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                {post.category}
-                              </Badge>
-                              <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                <ThumbsUp className="w-3 h-3 mr-1" />
-                                {post._count?.likes || 0} likes
-                              </Badge>
-                              <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                <MessageCircle className="w-3 h-3 mr-1" />
-                                {post._count?.comments || 0} comments
-                              </Badge>
-                              {post.image_url && (
-                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                  <ImageIcon className="w-3 h-3 mr-1" /> Has image
-                                </Badge>
-                              )}
-                            </div>
-
-                            {post.tags?.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {post.tags.slice(0, 5).map((tag, i) => (
-                                  <Badge key={i} className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                    #{tag}
-                                  </Badge>
-                                ))}
-                                {post.tags.length > 5 && (
-                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                    +{post.tags.length - 5} more
-                                  </Badge>
-                                )}
+                            {/* Thumbnail */}
+                            {post.image_url && (
+                              <div className="w-20 h-20 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
+                                <img 
+                                  src={post.image_url} 
+                                  alt={post.title}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
                             )}
 
-                            <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {post.user.username}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(post.created_at).toLocaleDateString()}
-                              </span>
+                            {/* Post Content */}
+                            <div className="flex-1 flex flex-col gap-3">
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="font-semibold text-[#2B4A2F] font-poppins text-sm">{post.title}</h3>
+                                  {post.featured && (
+                                    <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins">
+                                      <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> Featured
+                                    </Badge>
+                                  )}
+                                  {post._count && post._count.reports > 0 && (
+                                    <Badge className="bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 border-0 font-poppins animate-pulse">
+                                      <AlertCircle className="w-3 h-3 mr-1" /> {post._count.reports} Reports
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600 font-nunito line-clamp-2">{post.content}</p>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                                  {post.category}
+                                </Badge>
+                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                                  <ThumbsUp className="w-3 h-3 mr-1" />
+                                  {post._count?.likes || 0} likes
+                                </Badge>
+                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                                  <MessageCircle className="w-3 h-3 mr-1" />
+                                  {post._count?.comments || 0} comments
+                                </Badge>
+                                {post.image_url && (
+                                  <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                                    <ImageIcon className="w-3 h-3 mr-1" /> Has image
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {post.tags?.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {post.tags.slice(0, 5).map((tag, i) => (
+                                    <Badge key={i} className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                      #{tag}
+                                    </Badge>
+                                  ))}
+                                  {post.tags.length > 5 && (
+                                    <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                      +{post.tags.length - 5} more
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
+                                <span className="flex items-center gap-1">
+                                  <User className="w-3 h-3" />
+                                  {post.user.username}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(post.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-col gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => handleViewPost(post)}
+                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                                title="View Post Details"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleFeaturePost(post.post_id)}
+                                disabled={isFeaturing}
+                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                                title="Toggle Featured"
+                              >
+                                <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenDeletePost(post)}
+                                disabled={isDeleting}
+                                className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+                                title="Delete Post"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
+                        </div>
+                      ))}
+                    </div>
 
-                          {/* Actions */}
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              size="sm"
-                              onClick={() => handleViewPost(post)}
-                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                              title="View Post Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleFeaturePost(post.post_id)}
-                              disabled={isFeaturing}
-                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                              title="Toggle Featured"
-                            >
-                              <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleDeletePost(post.post_id)}
-                              disabled={isDeleting}
-                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-rose-50 text-rose-600 hover:text-rose-700"
-                              title="Delete Post"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                    {/* Synced Pagination */}
+                    {meta && meta.totalPages > 1 && (
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
+                        <p className="text-sm text-gray-600 font-nunito">
+                          Showing {((page - 1) * meta.itemsPerPage) + 1} to {Math.min(page * meta.itemsPerPage, meta.totalItems)} of {meta.totalItems}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => setPage(page - 1)}
+                            disabled={page === 1}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
+                            Page {page} of {meta.totalPages}
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => setPage(page + 1)}
+                            disabled={page === meta.totalPages}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -538,7 +621,7 @@ export default function AdminPosts() {
           {/* Comments Tab */}
           <TabsContent value="comments">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="p-6 pb-4 flex flex-col gap-1">
+              <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Comments</CardTitle>
                 <CardDescription className="text-gray-600 font-nunito">Manage platform comments</CardDescription>
               </CardHeader>
@@ -547,7 +630,7 @@ export default function AdminPosts() {
                   <div className="text-center py-12 flex flex-col items-center gap-2">
                     <MessageCircle className="w-12 h-12 text-gray-300" />
                     <p className="text-gray-500 font-medium font-poppins">No comments found</p>
-                    <p className="text-gray-400 text-sm font-nunito">Comments will appear here</p>
+                    <p className="text-sm text-gray-400 font-nunito">Comments will appear here</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -575,9 +658,9 @@ export default function AdminPosts() {
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => handleDeleteComment(comment.comment_id)}
+                          onClick={() => handleOpenDeleteComment(comment)}
                           disabled={isDeleting}
-                          className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-rose-50 text-rose-600 hover:text-rose-700 flex-shrink-0"
+                          className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600 flex-shrink-0"
                           title="Delete Comment"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -631,7 +714,7 @@ export default function AdminPosts() {
                   <div className="text-center py-12 flex flex-col items-center gap-2">
                     <Flag className="w-12 h-12 text-gray-300" />
                     <p className="text-gray-500 font-medium font-poppins">No reports found</p>
-                    <p className="text-gray-400 text-sm font-nunito">
+                    <p className="text-sm text-gray-400 font-nunito">
                       {reportParams.status ? 'Try changing the filter' : 'No reports have been filed yet'}
                     </p>
                   </div>
@@ -760,7 +843,7 @@ export default function AdminPosts() {
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => openResolveDialog(report)}
+                              onClick={() => handleOpenResolveReport(report)}
                               disabled={isUpdatingReport || report.status === 'resolved'}
                               className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
                             >
@@ -781,40 +864,9 @@ export default function AdminPosts() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Pagination */}
-        {meta && meta.totalPages > 1 && activeTab === 'posts' && (
-          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                <p className="text-sm text-gray-600 font-nunito">
-                  Page {meta.page} of {meta.totalPages} ({meta.totalItems} items)
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                    disabled={page === 1}
-                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setPage(prev => Math.min(meta.totalPages, prev + 1))}
-                    disabled={page === meta.totalPages}
-                    className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
-      {/* View Post Modal */}
+      {/* View Post Dialog */}
       <Dialog open={viewPostModal} onOpenChange={setViewPostModal}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
           <DialogHeader>
@@ -918,7 +970,7 @@ export default function AdminPosts() {
                   {selectedPost.featured ? 'Unfeature' : 'Feature'} Post
                 </Button>
                 <Button
-                  onClick={() => handleDeletePost(selectedPost.post_id)}
+                  onClick={() => handleOpenDeletePost(selectedPost)}
                   disabled={isDeleting}
                   className="flex-1 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
                 >
@@ -935,7 +987,164 @@ export default function AdminPosts() {
         </DialogContent>
       </Dialog>
 
-      {/* Resolve Report Modal */}
+      {/* Delete Post AlertDialog */}
+      <AlertDialog open={deletePostDialog} onOpenChange={setDeletePostDialog}>
+        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-rose-600 font-poppins">
+              <Trash2 className="w-5 h-5 inline mr-2" />
+              Delete Post?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-nunito">
+              This action cannot be undone. This will permanently delete the post and all its comments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {selectedPost && (
+            <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
+              <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
+              <AlertDescription className="font-nunito">
+                <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
+                <p className="font-bold text-[#2B4A2F]">"{selectedPost.title}"</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeletePostDialog(false);
+                setSelectedPost(null);
+              }}
+              className="border-[#6CAC73]/20"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeletePost}
+              disabled={isDeleting}
+              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Post
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Comment AlertDialog */}
+      <AlertDialog open={deleteCommentDialog} onOpenChange={setDeleteCommentDialog}>
+        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-rose-600 font-poppins">
+              <Trash2 className="w-5 h-5 inline mr-2" />
+              Delete Comment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-nunito">
+              This action cannot be undone. This will permanently delete the comment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {selectedComment && (
+            <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
+              <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
+              <AlertDescription className="font-nunito">
+                <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete this comment:</p>
+                <p className="text-[#2B4A2F] italic">"{selectedComment.content}"</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteCommentDialog(false);
+                setSelectedComment(null);
+              }}
+              className="border-[#6CAC73]/20"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteComment}
+              disabled={isDeleting}
+              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Comment
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete AlertDialog */}
+      <AlertDialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
+        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-rose-600 font-poppins">
+              <Trash2 className="w-5 h-5 inline mr-2" />
+              Delete {selectedPosts.length} Posts?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-nunito">
+              This action cannot be undone. This will permanently delete all selected posts and their comments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <Alert className="bg-gradient-to-br from-rose-50 to-white border-rose-200">
+            <AlertCircle className="h-4 w-4 text-rose-600" />
+            <AlertDescription className="font-nunito">
+              <p className="font-medium mb-2 text-rose-900">You are about to delete:</p>
+              <p className="font-bold text-rose-900">{selectedPosts.length} posts and all their associated content</p>
+            </AlertDescription>
+          </Alert>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setBulkDeleteDialog(false)}
+              className="border-[#6CAC73]/20"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete {selectedPosts.length} Posts
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resolve Report Dialog */}
       <Dialog open={resolveReportModal} onOpenChange={setResolveReportModal}>
         <DialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
           <DialogHeader>
@@ -963,18 +1172,19 @@ export default function AdminPosts() {
               />
             </div>
           </div>
-          <div className="flex gap-2">
+          <DialogFooter className="gap-2">
             <Button 
               onClick={() => setResolveReportModal(false)}
               disabled={isUpdatingReport}
-              className="flex-1 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+              className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
             >
+              <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
             <Button 
               onClick={handleResolveReport}
               disabled={isUpdatingReport}
-              className="flex-1 bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
             >
               {isUpdatingReport ? (
                 <>
@@ -988,7 +1198,7 @@ export default function AdminPosts() {
                 </>
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

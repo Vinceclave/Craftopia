@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/Challenges.tsx - IMPROVED VERSION
+// apps/web/src/pages/admin/Challenges.tsx - FULLY SYNCED DESIGN
 import { useState, useCallback, useMemo } from 'react';
 import {
   Card,
@@ -61,6 +61,8 @@ import {
   TrendingUp,
   Save,
   X,
+  Wifi,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
@@ -139,6 +141,8 @@ export default function AdminChallenges() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [toggleDialogOpen, setToggleDialogOpen] = useState(false);
+  const [aiConfirmDialogOpen, setAiConfirmDialogOpen] = useState(false);
   
   // Selected items
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
@@ -163,7 +167,6 @@ export default function AdminChallenges() {
 
   // AI Generation state
   const [aiCategory, setAiCategory] = useState<string>('daily');
-  const [showAiConfirm, setShowAiConfirm] = useState(false);
 
   // Toast notifications
   const notify = (
@@ -239,7 +242,6 @@ export default function AdminChallenges() {
   };
 
   const handleOpenEdit = (challenge: any) => {
-    // Only allow editing non-AI challenges
     if (challenge.source === 'ai') {
       notify(
         'Cannot Edit AI Challenge',
@@ -262,11 +264,20 @@ export default function AdminChallenges() {
     setEditDialogOpen(true);
   };
 
+  const handleOpenDelete = (challenge: any) => {
+    setSelectedChallenge(challenge);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleOpenToggle = (challenge: any) => {
+    setSelectedChallenge(challenge);
+    setToggleDialogOpen(true);
+  };
+
   // CRUD operations
   const handleCreateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -292,7 +303,6 @@ export default function AdminChallenges() {
     
     if (!selectedChallenge) return;
 
-    // Validate
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -321,7 +331,7 @@ export default function AdminChallenges() {
     }
   };
 
-  const handleDeleteChallenge = async () => {
+  const handleConfirmDelete = async () => {
     if (!selectedChallenge) return;
 
     try {
@@ -341,18 +351,22 @@ export default function AdminChallenges() {
     }
   };
 
-  const handleToggleStatus = async (challenge: any) => {
+  const handleConfirmToggle = async () => {
+    if (!selectedChallenge) return;
+
     try {
       setIsToggling(true);
-      const response = await challengesAPI.toggleStatus(challenge.challenge_id);
+      const response = await challengesAPI.toggleStatus(selectedChallenge.challenge_id);
 
       if (response.success) {
-        const newStatus = !challenge.is_active;
+        const newStatus = !selectedChallenge.is_active;
         notify(
           'Status Updated',
           `Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`,
           'success'
         );
+        setToggleDialogOpen(false);
+        setSelectedChallenge(null);
         refetch();
       }
     } catch (err: any) {
@@ -367,7 +381,7 @@ export default function AdminChallenges() {
     try {
       await generateAIChallenge(aiCategory);
       notify('Success', `AI challenge for ${aiCategory} category generated!`, 'success');
-      setShowAiConfirm(false);
+      setAiConfirmDialogOpen(false);
     } catch (err: any) {
       notify('Error', err?.message || 'Failed to generate AI challenge', 'error');
     }
@@ -407,11 +421,6 @@ export default function AdminChallenges() {
     setSelectedVerification(verification);
     setVerificationNotes('');
     setVerifyDialogOpen(true);
-  };
-
-  const openDeleteDialog = (challenge: any) => {
-    setSelectedChallenge(challenge);
-    setDeleteDialogOpen(true);
   };
 
   // Data normalization
@@ -470,24 +479,35 @@ export default function AdminChallenges() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6">
-        <div className="max-w-7xl mx-auto">
-          <Alert className="border-red-200 bg-red-50/80 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <AlertDescription className="ml-2">
+      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
+              style={{
+                left: `${20 + i * 25}%`,
+                top: `${15 + (i % 2) * 30}%`,
+                animationDelay: `${i * 1.5}s`,
+                animationDuration: '4s'
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
+          <Alert className="border-rose-200 bg-rose-50/80 backdrop-blur-sm">
+            <AlertCircle className="h-5 w-5 text-rose-600" />
+            <AlertDescription>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-red-900 font-semibold font-poppins mb-1">
-                    Failed to Load Challenges
-                  </p>
-                  <p className="text-red-700 font-nunito text-sm">
-                    {error?.message || 'An unexpected error occurred'}
-                  </p>
+                  <p className="font-semibold text-rose-900 font-poppins mb-1">Failed to Load Challenges</p>
+                  <p className="text-rose-700 font-nunito text-sm">{error?.message || 'An unexpected error occurred'}</p>
                 </div>
                 <Button
                   size="sm"
                   onClick={refetch}
-                  className="bg-red-600 hover:bg-red-700 text-white border-0"
+                  className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
@@ -529,8 +549,8 @@ export default function AdminChallenges() {
               <div>
                 <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-3">
                   Challenges Management
-                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins">
-                    <Zap className="w-3 h-3 mr-1 animate-pulse" />
+                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
+                    <Wifi className="w-3 h-3 mr-1" />
                     Live
                   </Badge>
                 </h1>
@@ -571,9 +591,9 @@ export default function AdminChallenges() {
             { label: 'Admin Created', value: stats.adminCreated, icon: Users, color: 'text-blue-600' },
             { label: 'AI Generated', value: stats.aiGenerated, icon: Sparkles, color: 'text-purple-600' },
             { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-orange-600' },
-          ].map((stat) => (
+          ].map((stat, i) => (
             <Card
-              key={stat.label}
+              key={i}
               className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow"
             >
               <CardContent className="pt-6">
@@ -613,7 +633,7 @@ export default function AdminChallenges() {
                 </SelectContent>
               </Select>
               <Button
-                onClick={() => setShowAiConfirm(true)}
+                onClick={() => setAiConfirmDialogOpen(true)}
                 disabled={isGenerating}
                 className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg"
               >
@@ -740,33 +760,27 @@ export default function AdminChallenges() {
                               <p className="text-sm text-gray-600 font-nunito mb-3 line-clamp-2">
                                 {challenge.description}
                               </p>
-                              <div className="flex gap-2 flex-wrap">
-                                <Badge className="capitalize bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-poppins">
+                              <div className="flex flex-wrap gap-2">
+                                <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
                                   <TrendingUp className="w-3 h-3 mr-1" />
                                   {challenge.category}
                                 </Badge>
-                                <Badge className="capitalize bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                <Badge className="capitalize text-xs border-0 bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
                                   {challenge.material_type}
                                 </Badge>
-                                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+                                <Badge className="text-xs bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
                                   <Trophy className="w-3 h-3 mr-1" />
                                   {challenge.points_reward} pts
                                 </Badge>
                                 {(challenge.waste_kg ?? 0) > 0 && (
-                                  <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
                                     ♻️ {challenge.waste_kg} kg
                                   </Badge>
                                 )}
                                 {challenge._count?.participants > 0 && (
-                                  <Badge className="bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
                                     <Users className="w-3 h-3 mr-1" />
                                     {challenge._count.participants}
-                                  </Badge>
-                                )}
-                                {challenge.expires_at && (
-                                  <Badge className="bg-white/80 border border-orange-300 text-orange-700 font-nunito">
-                                    <Calendar className="w-3 h-3 mr-1" />
-                                    {new Date(challenge.expires_at).toLocaleDateString()}
                                   </Badge>
                                 )}
                               </div>
@@ -785,12 +799,12 @@ export default function AdminChallenges() {
                             <div className="flex gap-2 shrink-0">
                               <Button
                                 size="sm"
-                                onClick={() => handleToggleStatus(challenge)}
+                                onClick={() => handleOpenToggle(challenge)}
                                 disabled={isToggling}
                                 className={`h-9 w-9 p-0 transition-all ${
                                   challenge.is_active
-                                    ? 'bg-white/80 hover:bg-orange-50 text-orange-600 border-orange-200'
-                                    : 'bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73] border-[#6CAC73]/20'
+                                    ? 'border-orange-200 bg-white/80 hover:bg-orange-50 text-orange-600'
+                                    : 'border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]'
                                 }`}
                                 title={challenge.is_active ? 'Deactivate' : 'Activate'}
                               >
@@ -806,7 +820,7 @@ export default function AdminChallenges() {
                                 size="sm"
                                 onClick={() => handleOpenEdit(challenge)}
                                 disabled={challenge.source === 'ai' || isUpdating}
-                                className="h-9 w-9 p-0 border-blue-200 bg-white/80 hover:bg-blue-50 text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
                                   challenge.source === 'ai'
                                     ? 'Cannot edit AI-generated challenges'
@@ -817,7 +831,7 @@ export default function AdminChallenges() {
                               </Button>
                               <Button
                                 size="sm"
-                                onClick={() => openDeleteDialog(challenge)}
+                                onClick={() => handleOpenDelete(challenge)}
                                 disabled={isDeleting}
                                 className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
                                 title="Delete challenge"
@@ -830,7 +844,7 @@ export default function AdminChallenges() {
                       ))}
                     </div>
 
-                    {/* Pagination */}
+                    {/* Synced Pagination */}
                     {totalChallengesPages > 1 && (
                       <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
                         <p className="text-sm text-gray-600 font-nunito">
@@ -869,7 +883,7 @@ export default function AdminChallenges() {
             </Card>
           </TabsContent>
 
-          {/* Pending Verifications Tab - KEEPING SAME AS BEFORE */}
+          {/* Pending Verifications Tab */}
           <TabsContent value="pending">
             <Card className="border border-orange-300/40 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
@@ -941,7 +955,7 @@ export default function AdminChallenges() {
                             <Button
                               size="sm"
                               onClick={() => openVerifyDialog(verification)}
-                              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white"
+                              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90"
                             >
                               <Eye className="w-4 h-4 mr-2" />
                               Review
@@ -951,23 +965,31 @@ export default function AdminChallenges() {
                       ))}
                     </div>
 
+                    {/* Synced Pagination for Pending */}
                     {totalPendingPages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-orange-300/40">
                         <p className="text-sm text-gray-600 font-nunito">
-                          Page {pendingPage} of {totalPendingPages}
+                          Showing {(pendingPage - 1) * itemsPerPage + 1} to{' '}
+                          {Math.min(pendingPage * itemsPerPage, pendingList.length)} of{' '}
+                          {pendingList.length}
                         </p>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
                             onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
                             disabled={pendingPage === 1}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                           >
                             <ChevronLeft className="w-4 h-4" />
                           </Button>
+                          <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
+                            Page {pendingPage} of {totalPendingPages}
+                          </span>
                           <Button
                             size="sm"
                             onClick={() => setPendingPage((p) => Math.min(totalPendingPages, p + 1))}
                             disabled={pendingPage === totalPendingPages}
+                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                           >
                             <ChevronRight className="w-4 h-4" />
                           </Button>
@@ -1169,7 +1191,7 @@ export default function AdminChallenges() {
                     resetForm();
                   }}
                   disabled={isCreating || isUpdating}
-                  className="border-[#6CAC73]/20 bg-white/80 hover:bg-gray-50 text-[#2B4A2F]"
+                  className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
                 >
                   <X className="w-4 h-4 mr-2" />
                   Cancel
@@ -1177,7 +1199,7 @@ export default function AdminChallenges() {
                 <Button
                   type="submit"
                   disabled={isCreating || isUpdating}
-                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white"
+                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
                 >
                   {isCreating || isUpdating ? (
                     <>
@@ -1196,18 +1218,29 @@ export default function AdminChallenges() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Confirmation */}
+        {/* Delete Confirmation AlertDialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-[#2B4A2F] font-poppins">
+              <AlertDialogTitle className="text-rose-600 font-poppins">
+                <Trash2 className="w-5 h-5 inline mr-2" />
                 Delete Challenge?
               </AlertDialogTitle>
               <AlertDialogDescription className="font-nunito">
-                Are you sure you want to delete "<strong>{selectedChallenge?.title}</strong>"? This
-                action cannot be undone and will affect all participants.
+                This action cannot be undone and will affect all participants.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            
+            {selectedChallenge && (
+              <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
+                <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
+                <AlertDescription className="font-nunito">
+                  <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
+                  <p className="font-bold text-[#2B4A2F]">"{selectedChallenge.title}"</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <AlertDialogFooter>
               <AlertDialogCancel
                 onClick={() => {
@@ -1219,9 +1252,9 @@ export default function AdminChallenges() {
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteChallenge}
+                onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+                className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
               >
                 {isDeleting ? (
                   <>
@@ -1239,12 +1272,90 @@ export default function AdminChallenges() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* AI Generation Confirmation */}
-        <AlertDialog open={showAiConfirm} onOpenChange={setShowAiConfirm}>
+        {/* Toggle Status AlertDialog */}
+        <AlertDialog open={toggleDialogOpen} onOpenChange={setToggleDialogOpen}>
+          <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle className={`font-poppins ${
+                selectedChallenge?.is_active ? 'text-orange-600' : 'text-[#6CAC73]'
+              }`}>
+                {selectedChallenge?.is_active ? (
+                  <>
+                    <ToggleRight className="w-5 h-5 inline mr-2" />
+                    Deactivate Challenge?
+                  </>
+                ) : (
+                  <>
+                    <ToggleLeft className="w-5 h-5 inline mr-2" />
+                    Activate Challenge?
+                  </>
+                )}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-nunito">
+                {selectedChallenge?.is_active
+                  ? 'This will hide the challenge from users and prevent new participations.'
+                  : 'This will make the challenge visible to users and allow participations.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            
+            {selectedChallenge && (
+              <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
+                <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
+                <AlertDescription className="font-nunito">
+                  <p className="font-medium mb-2 text-[#2B4A2F]">
+                    {selectedChallenge.is_active ? 'Deactivating:' : 'Activating:'}
+                  </p>
+                  <p className="font-bold text-[#2B4A2F]">"{selectedChallenge.title}"</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setToggleDialogOpen(false);
+                  setSelectedChallenge(null);
+                }}
+                className="border-[#6CAC73]/20"
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmToggle}
+                disabled={isToggling}
+                className={`border-0 ${
+                  selectedChallenge?.is_active
+                    ? 'bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
+                    : 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90'
+                } text-white`}
+              >
+                {isToggling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : selectedChallenge?.is_active ? (
+                  <>
+                    <ToggleRight className="w-4 h-4 mr-2" />
+                    Deactivate
+                  </>
+                ) : (
+                  <>
+                    <ToggleLeft className="w-4 h-4 mr-2" />
+                    Activate
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* AI Generation Confirmation AlertDialog */}
+        <AlertDialog open={aiConfirmDialogOpen} onOpenChange={setAiConfirmDialogOpen}>
           <AlertDialogContent className="border-purple-200 bg-white/95 backdrop-blur-sm">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-[#2B4A2F] font-poppins flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
+              <AlertDialogTitle className="text-purple-600 font-poppins flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
                 Generate AI Challenge?
               </AlertDialogTitle>
               <AlertDialogDescription className="font-nunito">
@@ -1252,14 +1363,31 @@ export default function AdminChallenges() {
                 challenge will be automatically activated and available to users.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            
+            <Alert className="bg-gradient-to-br from-purple-50 to-white border-purple-200">
+              <Sparkles className="h-4 w-4 text-purple-600" />
+              <AlertDescription className="font-nunito">
+                <p className="font-medium text-purple-900 mb-2">AI will generate:</p>
+                <ul className="list-disc list-inside text-sm text-purple-800 space-y-1">
+                  <li>Creative challenge title</li>
+                  <li>Detailed description</li>
+                  <li>Appropriate points reward</li>
+                  <li>Relevant material type</li>
+                </ul>
+              </AlertDescription>
+            </Alert>
+
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setShowAiConfirm(false)}>
+              <AlertDialogCancel
+                onClick={() => setAiConfirmDialogOpen(false)}
+                className="border-[#6CAC73]/20"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleGenerateAI}
                 disabled={isGenerating}
-                className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+                className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0"
               >
                 {isGenerating ? (
                   <>
@@ -1277,7 +1405,7 @@ export default function AdminChallenges() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Verification Dialog - KEEPING SAME AS BEFORE */}
+        {/* Verification Dialog */}
         <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
             <DialogHeader>
@@ -1304,7 +1432,7 @@ export default function AdminChallenges() {
                     {selectedVerification.challenge?.description || 'No description'}
                   </p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]">
+                    <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0">
                       {selectedVerification.challenge?.points_reward || 0} points
                     </Badge>
                     {selectedVerification.challenge?.waste_kg > 0 && (
@@ -1349,7 +1477,7 @@ export default function AdminChallenges() {
                 {selectedVerification.proof_url && (
                   <div className="p-4 bg-gray-50/80 rounded-lg border border-gray-200/40">
                     <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
-                      <Eye className="w-5 h-5" />
+                      <ImageIcon className="w-5 h-5" />
                       Proof of Completion
                     </h4>
                     <a
@@ -1396,14 +1524,15 @@ export default function AdminChallenges() {
                   setVerificationNotes('');
                 }}
                 disabled={isVerifying}
-                className="border-[#6CAC73]/20 bg-white/80 text-[#2B4A2F]"
+                className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
                 onClick={() => handleManualVerify(false)}
                 disabled={isVerifying}
-                className="bg-gradient-to-br from-red-500 to-red-600 text-white"
+                className="bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white border-0"
               >
                 {isVerifying ? (
                   <>
@@ -1420,7 +1549,7 @@ export default function AdminChallenges() {
               <Button
                 onClick={() => handleManualVerify(true)}
                 disabled={isVerifying}
-                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white"
+                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
               >
                 {isVerifying ? (
                   <>
