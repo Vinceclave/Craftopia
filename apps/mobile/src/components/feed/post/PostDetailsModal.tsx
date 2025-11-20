@@ -1,4 +1,4 @@
-// apps/mobile/src/components/feed/PostDetailsModal.tsx - FACEBOOK STYLE
+// apps/mobile/src/components/feed/post/PostDetailsModal.tsx - WITH PROFILE PHOTOS
 import React, { useState } from 'react';
 import {
   Modal,
@@ -53,6 +53,7 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [authorImageError, setAuthorImageError] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -83,6 +84,10 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
   };
 
   if (!visible) return null;
+
+  // Get author profile picture
+  const authorProfilePicture = post?.user?.profile_picture_url;
+  const isAuthorEmoji = authorProfilePicture && authorProfilePicture.length <= 2 && !authorProfilePicture.startsWith('http');
 
   return (
     <Modal
@@ -145,13 +150,27 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                 />
               }
             >
-              {/* Author Header */}
+              {/* Author Header with Profile Photo */}
               <View className="p-4 border-b border-craftopia-light">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
-                    <View className="w-10 h-10 bg-craftopia-light rounded-lg items-center justify-center border border-craftopia-light">
-                      <User size={18} color="#3B6E4D" />
+                    {/* Author Profile Picture */}
+                    <View className="w-10 h-10 bg-craftopia-light rounded-lg items-center justify-center border border-craftopia-light overflow-hidden">
+                      {isAuthorEmoji || !authorProfilePicture || authorImageError ? (
+                        <Text className="text-base">{isAuthorEmoji ? authorProfilePicture : '🧑‍🎨'}</Text>
+                      ) : (
+                        <Image
+                          source={{ uri: authorProfilePicture }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                          onError={(e) => {
+                            console.error('Author image error:', e.nativeEvent.error);
+                            setAuthorImageError(true);
+                          }}
+                        />
+                      )}
                     </View>
+                    
                     <View className="ml-2">
                       <Text className="font-poppinsBold text-craftopia-textPrimary text-sm">
                         {post.user?.username || 'Unknown User'}
@@ -171,6 +190,7 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                       </View>
                     </View>
                   </View>
+                  
                   {post.featured && (
                     <View className="bg-craftopia-warning/10 px-2 py-1 rounded-md border border-craftopia-warning/20">
                       <View className="flex-row items-center gap-1">
@@ -228,7 +248,7 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                         }}
                         style={{ 
                           width: SCREEN_WIDTH,
-                          height: SCREEN_WIDTH, // Square aspect ratio like Facebook
+                          height: SCREEN_WIDTH,
                           backgroundColor: '#F5F7F2',
                         }}
                         resizeMode="cover"
@@ -257,10 +277,9 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                 </View>
               )}
 
-              {/* Actions Bar - Facebook Style */}
+              {/* Actions Bar */}
               <View className="p-3 border-b border-craftopia-light">
                 <View className="flex-row items-center justify-between">
-                  {/* Like Count */}
                   <View className="flex-row items-center">
                     <View className="w-5 h-5 bg-craftopia-primary rounded-full items-center justify-center">
                       <Heart size={12} color="#FFFFFF" fill="#FFFFFF" />
@@ -270,7 +289,6 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                     </Text>
                   </View>
 
-                  {/* Comment Count */}
                   <View className="flex-row items-center">
                     <Text className="text-craftopia-textSecondary text-xs font-nunito">
                       {post.commentCount} comments
@@ -278,7 +296,6 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                   </View>
                 </View>
 
-                {/* Action Buttons */}
                 <View className="flex-row items-center justify-between mt-2">
                   <TouchableOpacity
                     className="flex-1 flex-row items-center justify-center py-2 rounded-md active:opacity-70"
@@ -367,4 +384,4 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
       </SafeAreaView>
     </Modal>
   );
-};  
+};

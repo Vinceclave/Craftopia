@@ -1,4 +1,4 @@
-// apps/mobile/src/services/post.service.ts - ENHANCED WITH UPDATE
+// apps/mobile/src/services/post.service.ts - ENSURE PROFILE PHOTOS IN RESPONSES
 import { apiService } from './base.service';
 import { API_ENDPOINTS, ApiResponse, PaginatedResponse } from '~/config/api';
 
@@ -20,6 +20,7 @@ export interface Post {
   user: {
     user_id: number;
     username: string;
+    profile_picture_url?: string; // ✅ Added for profile photos
   };
 }
 
@@ -31,6 +32,7 @@ export interface Comment {
   user: {
     user_id: number;
     username: string;
+    profile_picture_url?: string; // ✅ Added for profile photos
   };
 }
 
@@ -74,68 +76,87 @@ export interface SearchPostsParams {
 
 class PostService {
   /**
-   * Validate and normalize post data
+   * Normalize post data and ensure user has profile_picture_url
    */
   private normalizePost(post: any): Post {
-  console.log('🔍 Normalizing post:', {
-    post_id: post.post_id,
-    commentCount: post.commentCount,
-    comment_count: post.comment_count,
-    likeCount: post.likeCount,
-    like_count: post.like_count,
-    rawPost: post
-  });
+    console.log('🔍 Normalizing post:', {
+      post_id: post.post_id,
+      has_user: !!post.user,
+      has_profile_picture: !!post.user?.profile_picture_url,
+    });
 
-  let user = post.user;
-  
-  if (!user) {
-    console.warn('⚠️ Post missing user object, creating from user_id');
-    user = {
+    let user = post.user;
+    
+    if (!user) {
+      console.warn('⚠️ Post missing user object, creating from user_id');
+      user = {
+        user_id: post.user_id,
+        username: `User ${post.user_id}`,
+        profile_picture_url: undefined,
+      };
+    }
+    
+    if (user && (!user.username || user.username === '')) {
+      console.warn('⚠️ User missing username, using fallback');
+      user.username = `User ${user.user_id || post.user_id}`;
+    }
+
+    // ✅ Ensure profile_picture_url is included
+    if (user && !user.profile_picture_url) {
+      user.profile_picture_url = undefined; // Explicitly set to undefined for fallback
+    }
+
+    const commentCount = post.commentCount ?? post.comment_count ?? 0;
+    const likeCount = post.likeCount ?? post.like_count ?? 0;
+    const isLiked = post.isLiked ?? post.is_liked ?? false;
+
+    const normalized = {
+      post_id: post.post_id,
       user_id: post.user_id,
-      username: `User ${post.user_id}`
+      title: post.title || '',
+      content: post.content || '',
+      image_url: post.image_url,
+      category: post.category || 'Other',
+      tags: Array.isArray(post.tags) ? post.tags : [],
+      featured: post.featured || false,
+      commentCount,
+      likeCount,
+      isLiked,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      deleted_at: post.deleted_at,
+      user: {
+        user_id: user.user_id || post.user_id,
+        username: user.username,
+        profile_picture_url: user.profile_picture_url, // ✅ Include profile photo
+      }
+    };
+
+    console.log('✅ Normalized post with profile photo:', {
+      post_id: normalized.post_id,
+      username: normalized.user.username,
+      has_profile_picture: !!normalized.user.profile_picture_url,
+    });
+
+    return normalized;
+  }
+
+  /**
+   * Normalize comment data and ensure user has profile_picture_url
+   */
+  private normalizeComment(comment: any): Comment {
+    return {
+      comment_id: comment.comment_id,
+      user_id: comment.user_id,
+      content: comment.content,
+      created_at: comment.created_at,
+      user: {
+        user_id: comment.user?.user_id || comment.user_id,
+        username: comment.user?.username || `User ${comment.user_id}`,
+        profile_picture_url: comment.user?.profile_picture_url, // ✅ Include profile photo
+      }
     };
   }
-  
-  if (user && (!user.username || user.username === '')) {
-    console.warn('⚠️ User missing username, using fallback');
-    user.username = `User ${user.user_id || post.user_id}`;
-  }
-
-  // ✅ HANDLE BOTH SNAKE_CASE AND CAMELCASE
-  const commentCount = post.commentCount ?? post.comment_count ?? 0;
-  const likeCount = post.likeCount ?? post.like_count ?? 0;
-  const isLiked = post.isLiked ?? post.is_liked ?? false;
-
-  const normalized = {
-    post_id: post.post_id,
-    user_id: post.user_id,
-    title: post.title || '',
-    content: post.content || '',
-    image_url: post.image_url,
-    category: post.category || 'Other',
-    tags: Array.isArray(post.tags) ? post.tags : [],
-    featured: post.featured || false,
-    commentCount, // ✅ Use normalized value
-    likeCount,    // ✅ Use normalized value
-    isLiked,      // ✅ Use normalized value
-    created_at: post.created_at,
-    updated_at: post.updated_at,
-    deleted_at: post.deleted_at,
-    user: {
-      user_id: user.user_id || post.user_id,
-      username: user.username
-    }
-  };
-
-  console.log('✅ Normalized post counts:', {
-    post_id: normalized.post_id,
-    commentCount: normalized.commentCount,
-    likeCount: normalized.likeCount,
-    isLiked: normalized.isLiked
-  });
-
-  return normalized;
-}
 
   /**
    * Get posts with feed type and pagination
@@ -311,41 +332,20 @@ class PostService {
   }
 
   /**
-   * Get user's reaction status for a post
-   */
-  async getReactionStatus(postId: string): Promise<ApiResponse<{ isLiked: boolean; postId: number; userId: number }>> {
-    try {
-      return await apiService.get<ApiResponse<{ isLiked: boolean; postId: number; userId: number }>>(
-        `${API_ENDPOINTS.POSTS.BY_ID(postId)}/reaction/status`
-      );
-    } catch (error) {
-      console.error(`Failed to fetch reaction status for post ${postId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get reaction count for a post
-   */
-  async getReactionCount(postId: string): Promise<ApiResponse<{ total: number }>> {
-    try {
-      return await apiService.get<ApiResponse<{ total: number }>>(
-        API_ENDPOINTS.POSTS.REACTION_COUNT(postId)
-      );
-    } catch (error) {
-      console.error(`Failed to fetch reaction count for post ${postId}:`, error);
-      throw error;
-    }
-  }
-
-  /**
    * Get comments for a post
    */
   async getComments(postId: string): Promise<ApiResponse<Comment[]>> {
     try {
-      return await apiService.get<ApiResponse<Comment[]>>(
+      const response = await apiService.get<ApiResponse<Comment[]>>(
         API_ENDPOINTS.POSTS.COMMENTS(postId)
       );
+
+      // ✅ Normalize comments to include profile pictures
+      if (response.data && Array.isArray(response.data)) {
+        response.data = response.data.map((comment) => this.normalizeComment(comment));
+      }
+
+      return response;
     } catch (error) {
       console.error(`Failed to fetch comments for post ${postId}:`, error);
       throw error;
@@ -361,6 +361,12 @@ class PostService {
         API_ENDPOINTS.POSTS.ADD_COMMENT,
         data
       );
+
+      // ✅ Normalize comment to include profile picture
+      if (response.data) {
+        response.data = this.normalizeComment(response.data);
+      }
+
       console.log('✅ Comment added successfully');
       return response;
     } catch (error) {

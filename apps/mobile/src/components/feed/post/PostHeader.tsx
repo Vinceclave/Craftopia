@@ -1,12 +1,12 @@
-// apps/mobile/src/components/feed/post/PostHeader.tsx - CRAFTOPIA REFINED
-import React, { memo } from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
-import { MoreHorizontal, Sparkles } from 'lucide-react-native';
-import type { User } from './type';
+// apps/mobile/src/components/feed/post/PostHeader.tsx - WITH REAL PROFILE PHOTOS
+import React, { memo, useState } from 'react';
+import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { MoreHorizontal, Sparkles, User } from 'lucide-react-native';
+import type { User as UserType } from './type';
 import { formatTimeAgo } from '~/utils/time';
 
 interface PostHeaderProps {
-  user?: User | null;
+  user?: UserType | null;
   featured?: boolean;
   created_at?: string | null;
   onOptionsPress?: () => void;
@@ -18,16 +18,43 @@ export const PostHeader: React.FC<PostHeaderProps> = memo(({
   created_at,
   onOptionsPress
 }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  
   const username = user?.username || 'Unknown User';
   const userId = user?.user_id || 0;
+  const profilePicture = user?.profile_picture_url;
+  
+  // Check if it's an emoji (1-2 characters, not a URL)
+  const isEmoji = profilePicture && profilePicture.length <= 2 && !profilePicture.startsWith('http');
 
   return (
     <View className="flex-row items-center justify-between mb-3">
       <View className="flex-row items-center flex-1">
-        <Image
-          source={{ uri: `https://i.pravatar.cc/32?u=${userId}` }}
-          className="w-8 h-8 rounded-lg border border-craftopia-light"
-        />
+        {/* Profile Picture */}
+        <View className="w-8 h-8 rounded-lg border border-craftopia-light overflow-hidden bg-craftopia-light items-center justify-center">
+          {isEmoji || !profilePicture || imageError ? (
+            <Text className="text-base">{isEmoji ? profilePicture : '🧑‍🎨'}</Text>
+          ) : (
+            <>
+              {imageLoading && (
+                <ActivityIndicator size="small" color="#3B6E4D" />
+              )}
+              <Image
+                source={{ uri: profilePicture }}
+                className="w-full h-full"
+                resizeMode="cover"
+                onLoad={() => setImageLoading(false)}
+                onError={(e) => {
+                  console.error('PostHeader image error:', e.nativeEvent.error);
+                  setImageLoading(false);
+                  setImageError(true);
+                }}
+              />
+            </>
+          )}
+        </View>
+        
         <View className="flex-1 ml-2">
           <Text className="font-poppinsBold text-craftopia-textPrimary text-sm">
             {username}

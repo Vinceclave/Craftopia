@@ -2,6 +2,8 @@
 export interface User {
   user_id: number;
   username: string;
+    profile_picture_url?: string; // ✅ Added for profile photos
+
 }
 
 export interface Comment {
@@ -32,6 +34,8 @@ export interface PostProps {
   user?: {
     user_id: number;
     username: string;
+        profile_picture_url?: string; // ✅ Added for profile photos
+
   };
   onToggleReaction?: () => void;
   onOpenComments?: () => void;
