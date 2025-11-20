@@ -10,7 +10,6 @@ import AdminLogin from './pages/admin/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
 import AdminPosts from './pages/admin/Posts';
-import AdminReports from './pages/admin/Reports';
 import AdminChallenges from './pages/admin/Challenges';
 import { Landing } from './pages/Landing';
 import AdminAnnouncements from './pages/admin/Announcement';
@@ -44,7 +43,6 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="posts" element={<AdminPosts />} />
-              <Route path="reports" element={<AdminReports />} />
               <Route path="challenges" element={<AdminChallenges />} />
               <Route path="/admin/announcements" element={<AdminAnnouncements />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />

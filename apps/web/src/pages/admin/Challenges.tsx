@@ -23,7 +23,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -884,14 +883,6 @@ export default function AdminChallenges() {
                       User submissions awaiting admin review
                     </CardDescription>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={refetchPending}
-                    className="border-orange-300/40 bg-white/80 hover:bg-orange-50 text-orange-600"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>

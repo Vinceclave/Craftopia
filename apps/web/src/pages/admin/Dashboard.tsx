@@ -5,9 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Users, FileText, Trophy, TrendingUp, Loader2, ChevronRight,
-  BarChart3, Recycle, Package, Leaf, Calendar, MoreHorizontal, Heart, Wifi, Bell,
-  AlertCircle, CheckCircle, Clock, MessageSquare, Star
+  Users, FileText, Trophy, TrendingUp, Loader2,
+  BarChart3, Calendar, Heart, Wifi, Bell,
+  AlertCircle, CheckCircle, Clock,
 } from 'lucide-react';
 import { 
   useDashboardStats, 
@@ -19,7 +19,7 @@ import { useWebSocket, useWebSocketChallenges, useWebSocketPosts, useWebSocketAd
 import { useToast } from '@/hooks/useToast';
 import { DashboardStats } from '@/lib/api';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend
 } from 'recharts';
 
@@ -94,42 +94,6 @@ const MetricRow: React.FC<{
     </div>
   </div>
 );
-
-// Activity Timeline Component
-const ActivityTimeline: React.FC<{ activities: any[] }> = ({ activities }) => {
-  if (!activities || activities.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500 font-nunito">
-        No recent activity to display
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {activities.slice(0, 5).map((activity: any, index: number) => (
-        <div
-          key={index}
-          className="flex items-start gap-3 p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10"
-        >
-          <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center flex-shrink-0">
-            {activity.type === 'post' && <FileText className="w-4 h-4 text-white" />}
-            {activity.type === 'challenge' && <Trophy className="w-4 h-4 text-white" />}
-            {activity.type === 'user' && <Users className="w-4 h-4 text-white" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[#2B4A2F] font-poppins truncate">
-              {activity.title || activity.challenge?.title || 'Activity'}
-            </p>
-            <p className="text-xs text-gray-500 font-nunito">
-              {activity.user?.username || 'User'} • {new Date(activity.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 // Activity Chart Component
 const ActivityChart: React.FC<{ data: any[] }> = ({ data }) => {

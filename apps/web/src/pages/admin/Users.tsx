@@ -1,10 +1,11 @@
-// apps/web/src/pages/admin/Users.tsx - COMPLETE VERSION
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
+import { Toaster } from '@/components/ui/toaster';
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from '@/components/ui/select';
@@ -24,6 +25,33 @@ import {
 import { useUsers } from '@/hooks/useUsers';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
+const UserSkeleton = () => (
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl gap-4 bg-white/60 backdrop-blur-sm border-[#6CAC73]/20">
+    <div className="flex items-center gap-4 min-w-0 flex-1">
+      <Skeleton className="w-12 h-12 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-48" />
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+    </div>
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-6 w-16" />
+      <Skeleton className="h-6 w-16" />
+      <div className="flex gap-2">
+        <Skeleton className="h-9 w-9" />
+        <Skeleton className="h-9 w-9" />
+        <Skeleton className="h-9 w-9" />
+        <Skeleton className="h-9 w-9" />
+      </div>
+    </div>
+  </div>
+);
+
 export default function AdminUsers() {
   const { 
     users, meta, isLoading, error, params, setParams, 
@@ -31,79 +59,132 @@ export default function AdminUsers() {
     isToggling, isUpdating, isDeleting
   } = useUsers();
 
+  const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Ban/Unban confirmation modal
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [userToBan, setUserToBan] = useState<any>(null);
+  
+  // Role change confirmation modal
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [userToChangeRole, setUserToChangeRole] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (!isLoading && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [isLoading, isInitialLoad]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setParams({ ...params, search: e.target.value, page: 1 });
   };
 
-  // ✅ Ban/Unban user (toggle is_active)
-  const handleToggleStatus = async (user: any) => {
-    const action = user.is_active ? 'ban' : 'unban';
-    if (!window.confirm(`Are you sure you want to ${action} ${user.username}?`)) return;
+  const handleOpenBanDialog = (user: any) => {
+    setUserToBan(user);
+    setBanDialogOpen(true);
+  };
+
+  const handleConfirmToggleStatus = async () => {
+    if (!userToBan) return;
+    
+    const action = userToBan.is_active ? 'banned' : 'unbanned';
     
     try {
-      await toggleStatus(user.user_id);
-      alert(`User ${action}ned successfully!`);
-      refetch();
+      await toggleStatus(userToBan.user_id);
+      toast({
+        title: "Success",
+        description: `${userToBan.username} has been ${action} successfully.`,
+        variant: "default",
+      });
+      setBanDialogOpen(false);
+      setUserToBan(null);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${action.replace('ned', '')} user.`,
+        variant: "destructive",
+      });
     }
   };
 
-  // ✅ Change user role
-  const handleRoleChange = async (user: any) => {
-    const newRole = user.role === 'admin' ? 'user' : 'admin';
-    if (!window.confirm(`Change ${user.username}'s role to ${newRole}?`)) return;
+  const handleOpenRoleDialog = (user: any) => {
+    setUserToChangeRole(user);
+    setRoleDialogOpen(true);
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!userToChangeRole) return;
+    
+    const newRole = userToChangeRole.role === 'admin' ? 'user' : 'admin';
     
     try {
-      await updateRole({ userId: user.user_id, role: newRole });
-      alert(`Role updated to ${newRole} successfully!`);
-      refetch();
+      await updateRole({ userId: userToChangeRole.user_id, role: newRole });
+      toast({
+        title: "Success",
+        description: `${userToChangeRole.username}'s role has been changed to ${newRole}.`,
+        variant: "default",
+      });
+      setRoleDialogOpen(false);
+      setUserToChangeRole(null);
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user role.",
+        variant: "destructive",
+      });
     }
   };
 
-  // ✅ Open delete dialog
   const handleOpenDeleteDialog = (user: any) => {
     setUserToDelete(user);
     setDeleteConfirmation('');
     setDeleteDialogOpen(true);
   };
 
-  // ✅ Confirm delete
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
     
     if (deleteConfirmation !== 'DELETE') {
-      alert('Please type "DELETE" to confirm');
+      toast({
+        title: "Confirmation Required",
+        description: 'Please type "DELETE" to confirm this action.',
+        variant: "destructive",
+      });
       return;
     }
     
     try {
       await deleteUser(userToDelete.user_id);
-      alert('User permanently deleted successfully!');
+      toast({
+        title: "User Deleted",
+        description: `${userToDelete.username} has been permanently deleted.`,
+        variant: "default",
+      });
       setDeleteDialogOpen(false);
       setUserToDelete(null);
       setDeleteConfirmation('');
-      refetch();
     } catch (error: any) {
-      alert('Error: ' + error.message);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user.",
+        variant: "destructive",
+      });
     }
   };
 
-  // ✅ View user details
   const handleViewDetails = (user: any) => {
     setSelectedUser(user);
     setDetailsOpen(true);
   };
 
-  if (isLoading) {
+  // Show full page loading only on initial load
+  if (isLoading && isInitialLoad) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white p-4">
         <div className="text-center">
@@ -114,37 +195,11 @@ export default function AdminUsers() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          <Alert className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 text-[#6CAC73]" />
-            <AlertDescription>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-[#2B4A2F] font-poppins mb-1">Error loading users</p>
-                  <p className="text-gray-600 text-sm font-nunito">{(error as Error).message}</p>
-                </div>
-                <Button 
-                  onClick={() => refetch()} 
-                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
-    );
-  }
-
   const metaSafe = (meta && 'page' in meta)
-  ? meta as { total: number; page: number; lastPage: number; limit: number }
-  : { total: 0, page: 1, lastPage: 1, limit: 10 };
-  const totalUsers = metaSafe.total || users.length;
+    ? meta as { total: number; page: number; lastPage: number; limit: number }
+    : { total: users.length, page: 1, lastPage: 1, limit: users.length };
+  
+  const totalUsers = metaSafe.total;
   const activeUsers = users.filter(u => u.is_active).length;
   const bannedUsers = users.filter(u => !u.is_active).length;
   const adminCount = users.filter(u => u.role === 'admin').length;
@@ -181,13 +236,41 @@ export default function AdminUsers() {
             </div>
           </div>
           <Button 
-            onClick={() => {refetch()}} 
-            className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg"
+            onClick={() => refetch()} 
+            disabled={isLoading}
+            className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
             Refresh
           </Button>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm mb-6">
+            <AlertCircle className="h-5 w-5 text-rose-500" />
+            <AlertDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-[#2B4A2F] font-poppins mb-1">Error loading users</p>
+                  <p className="text-gray-600 text-sm font-nunito">{(error as Error).message}</p>
+                </div>
+                <Button 
+                  onClick={() => refetch()} 
+                  size="sm"
+                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
@@ -195,7 +278,11 @@ export default function AdminUsers() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-1 font-nunito">Total Users</p>
-                <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{totalUsers || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-16 mx-auto" />
+                ) : (
+                  <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{totalUsers}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -204,7 +291,11 @@ export default function AdminUsers() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-1 font-nunito">Active</p>
-                <p className="text-3xl font-bold text-[#6CAC73] font-poppins">{activeUsers || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-16 mx-auto" />
+                ) : (
+                  <p className="text-3xl font-bold text-[#6CAC73] font-poppins">{activeUsers}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -213,7 +304,11 @@ export default function AdminUsers() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-1 font-nunito">Banned</p>
-                <p className="text-3xl font-bold text-rose-500 font-poppins">{bannedUsers || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-16 mx-auto" />
+                ) : (
+                  <p className="text-3xl font-bold text-rose-500 font-poppins">{bannedUsers}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -222,7 +317,11 @@ export default function AdminUsers() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-1 font-nunito">Admins</p>
-                <p className="text-3xl font-bold text-purple-500 font-poppins">{adminCount || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-16 mx-auto" />
+                ) : (
+                  <p className="text-3xl font-bold text-purple-500 font-poppins">{adminCount}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -231,7 +330,11 @@ export default function AdminUsers() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <p className="text-sm text-gray-500 mb-1 font-nunito">Verified</p>
-                <p className="text-3xl font-bold text-blue-500 font-poppins">{verifiedCount || 0}</p>
+                {isLoading ? (
+                  <Skeleton className="h-9 w-16 mx-auto" />
+                ) : (
+                  <p className="text-3xl font-bold text-blue-500 font-poppins">{verifiedCount}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -252,6 +355,7 @@ export default function AdminUsers() {
                   placeholder="Search users..."
                   value={params.search}
                   onChange={handleSearch}
+                  disabled={isLoading}
                   className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50"
                 />
               </div>
@@ -260,6 +364,7 @@ export default function AdminUsers() {
               <Select 
                 value={params.role || "all"} 
                 onValueChange={(role) => setParams({ ...params, role: role === "all" ? "" : role, page: 1 })}
+                disabled={isLoading}
               >
                 <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
                   <SelectValue placeholder="All Roles" />
@@ -275,6 +380,7 @@ export default function AdminUsers() {
               <Select 
                 value={params.isActive || "all"} 
                 onValueChange={(isActive) => setParams({ ...params, isActive: isActive === "all" ? "" : isActive, page: 1 })}
+                disabled={isLoading}
               >
                 <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
                   <SelectValue placeholder="All Status" />
@@ -290,6 +396,7 @@ export default function AdminUsers() {
               <Select 
                 value={params.isVerified || "all"} 
                 onValueChange={(isVerified) => setParams({ ...params, isVerified: isVerified === "all" ? "" : isVerified, page: 1 })}
+                disabled={isLoading}
               >
                 <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
                   <SelectValue placeholder="Verification Status" />
@@ -311,13 +418,23 @@ export default function AdminUsers() {
               <div>
                 <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Users</CardTitle>
                 <CardDescription className="font-nunito">
-                  Showing {users.length} of {totalUsers} users
+                  {isLoading ? (
+                    <Skeleton className="h-4 w-32 mt-1" />
+                  ) : (
+                    `Showing ${users.length} of ${totalUsers} users`
+                  )}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {users.length === 0 ? (
+            {isLoading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <UserSkeleton key={i} />
+                ))}
+              </div>
+            ) : users.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 font-medium mb-2 font-poppins">No users found</p>
@@ -437,7 +554,7 @@ export default function AdminUsers() {
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          onClick={() => handleToggleStatus(user)} 
+                          onClick={() => handleOpenBanDialog(user)} 
                           disabled={isToggling}
                           className={`border-[#6CAC73]/20 h-9 w-9 p-0 ${
                             !user.is_active 
@@ -457,7 +574,7 @@ export default function AdminUsers() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handleRoleChange(user)}
+                          onClick={() => handleOpenRoleDialog(user)}
                           disabled={isUpdating}
                           className="border-[#6CAC73]/20 text-purple-600 hover:bg-purple-50 h-9 w-9 p-0"
                           title={user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
@@ -484,7 +601,7 @@ export default function AdminUsers() {
             )}
 
             {/* Pagination */}
-            {metaSafe.lastPage > 1 && (
+            {!isLoading && metaSafe.lastPage > 1 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-[#6CAC73]/20">
                 <div className="text-sm text-gray-500 font-nunito">
                   Page {metaSafe.page} of {metaSafe.lastPage} • Total: {metaSafe.total} users
@@ -493,7 +610,7 @@ export default function AdminUsers() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={metaSafe.page === 1}
+                    disabled={metaSafe.page === 1 || isLoading}
                     onClick={() => setParams({ ...params, page: metaSafe.page - 1 })}
                     className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                   >
@@ -502,7 +619,7 @@ export default function AdminUsers() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={metaSafe.page >= metaSafe.lastPage}
+                    disabled={metaSafe.page >= metaSafe.lastPage || isLoading}
                     onClick={() => setParams({ ...params, page: metaSafe.page + 1 })}
                     className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                   >
@@ -534,7 +651,7 @@ export default function AdminUsers() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-1 font-nunito">Email</p>
-                    <p className="font-medium text-[#2B4A2F] font-poppins">{selectedUser.email}</p>
+                    <p className="font-medium text-[#2B4A2F] font-poppins break-all">{selectedUser.email}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500 mb-1 font-nunito">Role</p>
@@ -560,27 +677,29 @@ export default function AdminUsers() {
                 </div>
 
                 {/* Stats */}
-                <div>
-                  <h3 className="font-semibold mb-3 text-[#2B4A2F] font-poppins">Activity Statistics</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
-                      <p className="text-sm text-gray-500 mb-1 font-nunito">Posts</p>
-                      <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count?.posts || 0}</p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
-                      <p className="text-sm text-gray-500 mb-1 font-nunito">Comments</p>
-                      <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count?.comments || 0}</p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
-                      <p className="text-sm text-gray-500 mb-1 font-nunito">Challenges</p>
-                      <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count?.userChallenges || 0}</p>
-                    </div>
-                    <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
-                      <p className="text-sm text-gray-500 mb-1 font-nunito">Points</p>
-                      <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser.profile?.points || 0}</p>
+                {selectedUser._count && (
+                  <div>
+                    <h3 className="font-semibold mb-3 text-[#2B4A2F] font-poppins">Activity Statistics</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
+                        <p className="text-sm text-gray-500 mb-1 font-nunito">Posts</p>
+                        <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count.posts || 0}</p>
+                      </div>
+                      <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
+                        <p className="text-sm text-gray-500 mb-1 font-nunito">Comments</p>
+                        <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count.comments || 0}</p>
+                      </div>
+                      <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
+                        <p className="text-sm text-gray-500 mb-1 font-nunito">Challenges</p>
+                        <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser._count.userChallenges || 0}</p>
+                      </div>
+                      <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
+                        <p className="text-sm text-gray-500 mb-1 font-nunito">Points</p>
+                        <p className="text-xl font-bold text-[#2B4A2F] font-poppins">{selectedUser.profile?.points || 0}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Account Info */}
                 <div>
@@ -588,7 +707,7 @@ export default function AdminUsers() {
                   <div className="space-y-2 text-sm font-nunito">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Email Verified:</span>
-                      <span className={selectedUser.is_email_verified ? 'text-[#6CAC73]' : 'text-rose-500'}>
+                      <span className={selectedUser.is_email_verified ? 'text-[#6CAC73] font-medium' : 'text-rose-500'}>
                         {selectedUser.is_email_verified ? 'Yes' : 'No'}
                       </span>
                     </div>
@@ -600,6 +719,200 @@ export default function AdminUsers() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Ban/Unban Confirmation Dialog */}
+        <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+          <DialogContent className="border-[#6CAC73]/20 bg-white/90 backdrop-blur-sm">
+            <DialogHeader>
+              <DialogTitle className={`font-poppins ${userToBan?.is_active ? 'text-orange-600' : 'text-[#6CAC73]'}`}>
+                {userToBan?.is_active ? (
+                  <>
+                    <Ban className="w-5 h-5 inline mr-2" />
+                    Ban User
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-5 h-5 inline mr-2" />
+                    Unban User
+                  </>
+                )}
+              </DialogTitle>
+              <DialogDescription className="font-nunito">
+                {userToBan?.is_active 
+                  ? 'This will prevent the user from accessing their account.'
+                  : 'This will restore the user\'s access to their account.'
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            {userToBan && (
+              <div className="space-y-4">
+                <Alert className={`backdrop-blur-sm ${
+                  userToBan.is_active 
+                    ? 'bg-orange-50/80 border-orange-200' 
+                    : 'bg-[#6CAC73]/10 border-[#6CAC73]/20'
+                }`}>
+                  <AlertCircle className={`h-4 w-4 ${userToBan.is_active ? 'text-orange-600' : 'text-[#6CAC73]'}`} />
+                  <AlertDescription className="font-nunito">
+                    <p className="font-medium mb-2">
+                      {userToBan.is_active ? 'You are about to ban:' : 'You are about to unban:'}
+                    </p>
+                    <p className="font-bold text-[#2B4A2F]">{userToBan.username} ({userToBan.email})</p>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="bg-gradient-to-br from-[#FFF9F0] to-white p-4 rounded-xl border border-[#6CAC73]/10 space-y-2 text-sm font-nunito">
+                  <p className="font-medium text-[#2B4A2F]">
+                    {userToBan.is_active ? 'This will:' : 'This will restore:'}
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-600">
+                    {userToBan.is_active ? (
+                      <>
+                        <li>Prevent the user from logging in</li>
+                        <li>Hide their content from public view</li>
+                        <li>Disable all account activities</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Allow the user to log in again</li>
+                        <li>Make their content visible again</li>
+                        <li>Enable all account activities</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBanDialogOpen(false);
+                  setUserToBan(null);
+                }}
+                disabled={isToggling}
+                className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmToggleStatus}
+                disabled={isToggling}
+                className={`border-0 ${
+                  userToBan?.is_active 
+                    ? 'bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800' 
+                    : 'bg-gradient-to-r from-[#6CAC73] to-[#2B4A2F] hover:from-[#6CAC73]/90 hover:to-[#2B4A2F]/90'
+                }`}
+              >
+                {isToggling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : userToBan?.is_active ? (
+                  <>
+                    <Ban className="w-4 h-4 mr-2" />
+                    Ban User
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-4 h-4 mr-2" />
+                    Unban User
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Role Change Confirmation Dialog */}
+        <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+          <DialogContent className="border-[#6CAC73]/20 bg-white/90 backdrop-blur-sm">
+            <DialogHeader>
+              <DialogTitle className="text-purple-600 font-poppins">
+                <UserCog className="w-5 h-5 inline mr-2" />
+                Change User Role
+              </DialogTitle>
+              <DialogDescription className="font-nunito">
+                This will change the user's permissions and access level.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {userToChangeRole && (
+              <div className="space-y-4">
+                <Alert className="bg-purple-50/80 border-purple-200 backdrop-blur-sm">
+                  <AlertCircle className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="font-nunito">
+                    <p className="font-medium mb-2">You are about to change:</p>
+                    <p className="font-bold text-[#2B4A2F]">{userToChangeRole.username} ({userToChangeRole.email})</p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Badge className="bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700 border-0">
+                        Current: {userToChangeRole.role}
+                      </Badge>
+                      <span className="text-gray-400">→</span>
+                      <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0">
+                        New: {userToChangeRole.role === 'admin' ? 'user' : 'admin'}
+                      </Badge>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="bg-gradient-to-br from-[#FFF9F0] to-white p-4 rounded-xl border border-[#6CAC73]/10 space-y-2 text-sm font-nunito">
+                  <p className="font-medium text-[#2B4A2F]">
+                    {userToChangeRole.role === 'admin' ? 'Demoting to User will:' : 'Promoting to Admin will:'}
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-gray-600">
+                    {userToChangeRole.role === 'admin' ? (
+                      <>
+                        <li>Remove admin dashboard access</li>
+                        <li>Remove user management permissions</li>
+                        <li>Remove content moderation abilities</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Grant admin dashboard access</li>
+                        <li>Grant user management permissions</li>
+                        <li>Grant content moderation abilities</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRoleDialogOpen(false);
+                  setUserToChangeRole(null);
+                }}
+                disabled={isUpdating}
+                className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmRoleChange}
+                disabled={isUpdating}
+                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-0"
+              >
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <UserCog className="w-4 h-4 mr-2" />
+                    Change Role
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -683,6 +996,9 @@ export default function AdminUsers() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Toast Notifications */}
+      <Toaster />
     </div>
   );
 }
