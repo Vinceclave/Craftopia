@@ -132,17 +132,55 @@ export interface Challenge {
   title: string;
   description: string;
   points_reward: number;
+  waste_kg: number;
   material_type: string;
   category: 'daily' | 'weekly' | 'monthly';
   is_active: boolean;
   source: 'admin' | 'ai';
-  created_by_admin?: string;
+  created_by_admin_id?: number;
+  created_by_admin?: {
+    user_id: number;
+    username: string;
+  };
   created_at: string;
+  updated_at: string;
   expires_at?: string;
+  start_at: string;
   _count?: {
     participants: number;
   };
-  waste_kg?: number;
+}
+
+export interface UserChallenge {
+  user_challenge_id: number;
+  user_id: number;
+  challenge_id: number;
+  status: 'in_progress' | 'pending_verification' | 'completed' | 'rejected';
+  proof_url?: string;
+  completed_at?: string;
+  verified_at?: string;
+  verified_by_admin_id?: number;
+  verification_type?: 'manual' | 'ai';
+  ai_confidence_score?: number;
+  points_awarded: number;
+  waste_kg_saved: number;
+  admin_notes?: string;
+  created_at: string;
+  user: {
+    user_id: number;
+    username: string;
+    email: string;
+    profile?: {
+      profile_picture_url?: string;
+      points: number;
+      full_name?: string;
+    };
+  };
+  challenge: Challenge;
+  verified_by?: {
+    user_id: number;
+    username: string;
+  };
 }
 
 export interface DashboardStats {
@@ -227,13 +265,12 @@ const refreshAccessToken = async (): Promise<string> => {
     localStorage.setItem('adminRefreshToken', newRefreshToken);
 
     return accessToken;
-  } catch (error) {
-    console.error('❌ Token refresh failed:', error);
+  } catch {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRefreshToken');
     localStorage.removeItem('adminUser');
     window.location.href = '/admin/login';
-    throw error;
+    throw new Error('Token refresh failed');
   }
 };
 
@@ -263,14 +300,9 @@ api.interceptors.response.use(
   (response) => {
     return response.data;
   },
+
   async (error: AxiosError<ApiResponse>) => {
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-
-    console.error('❌ Response Error:', {
-      url: originalRequest?.url,
-      status: error.response?.status,
-      message: error.response?.data?.error || error.message,
-    });
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (
@@ -305,10 +337,10 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch {
         isRefreshing = false;
         refreshSubscribers = [];
-        return Promise.reject(refreshError);
+        return Promise.reject(new Error('Token refresh failed'));
       }
     }
 
@@ -325,26 +357,24 @@ api.interceptors.response.use(
 // ===== AUTH API =====
 export const authAPI = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-  try {
-    const response = await api.post('/auth/login', { email, password });
-    const res = response.data;
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      const res = response.data;
 
-    // Handle both styles of API responses
-    const data = res.data || res;
-    if (!data.accessToken || !data.refreshToken || !data.user) {
-      throw new Error(res.error || 'Login failed');
+      const data = res.data || res;
+
+      if (!data.accessToken || !data.refreshToken || !data.user) {
+        throw new Error(res.error || 'Login failed');
+      }
+
+      localStorage.setItem('adminToken', data.accessToken);
+      localStorage.setItem('adminRefreshToken', data.refreshToken);
+      localStorage.setItem('adminUser', JSON.stringify(data.user));
+      return data;
+    } catch (error: any) {
+      throw error;
     }
-
-    // ✅ Save tokens
-    localStorage.setItem('adminToken', data.accessToken);
-    localStorage.setItem('adminRefreshToken', data.refreshToken);
-    localStorage.setItem('adminUser', JSON.stringify(data.user));
-    return data;
-  } catch (error: any) {
-    console.error('❌ Login error:', error);
-    throw error;
-  }
-},
+  },
 
   logout: async () => {
     try {
@@ -352,8 +382,6 @@ export const authAPI = {
       if (refreshToken) {
         await api.post('/auth/logout', { refreshToken });
       }
-    } catch (error) {
-      console.warn('⚠️ Backend logout failed:', error);
     } finally {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminRefreshToken');
@@ -386,8 +414,7 @@ export const authAPI = {
     try {
       const user = localStorage.getItem('adminUser');
       return user ? JSON.parse(user) : null;
-    } catch (error) {
-      console.error('❌ Error getting current user:', error);
+    } catch {
       return null;
     }
   },
@@ -396,7 +423,6 @@ export const authAPI = {
     return !!localStorage.getItem('adminToken');
   },
 };
-
 
 // ===== DASHBOARD API =====
 export const dashboardAPI = {
@@ -413,19 +439,24 @@ export const dashboardAPI = {
 export const userAPI = {
   getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<User>>> =>
     api.get('/admin/management/users', { params }),
-  getById: (userId: number): Promise<ApiResponse<User>> => api.get(`/admin/management/users/${userId}`),
+  getById: (userId: number): Promise<ApiResponse<User>> =>
+    api.get(`/admin/management/users/${userId}`),
   getStats: (userId: number): Promise<ApiResponse<any>> =>
     api.get(`/admin/management/users/${userId}/stats`),
   toggleStatus: (userId: number): Promise<ApiResponse<User>> =>
     api.patch(`/admin/management/users/${userId}/status`),
   updateRole: (userId: number, role: string): Promise<ApiResponse<User>> =>
     api.patch(`/admin/management/users/${userId}/role`, { role }),
-  delete: (userId: number): Promise<ApiResponse<any>> => api.delete(`/admin/management/users/${userId}`),
+  delete: (userId: number): Promise<ApiResponse<any>> =>
+    api.delete(`/admin/management/users/${userId}`),
 };
 
 // ===== MODERATION API =====
 export const moderationAPI = {
-  getContentForReview: (page = 1, limit = 20): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> =>
+  getContentForReview: (
+    page = 1,
+    limit = 20
+  ): Promise<ApiResponse<{ posts: Post[]; comments: Comment[]; meta: any }>> =>
     api.get('/admin/moderation/content/review', { params: { page, limit } }),
 
   deletePost: (postId: number, reason?: string): Promise<ApiResponse<any>> =>
@@ -448,7 +479,8 @@ export const moderationAPI = {
 export const reportsAPI = {
   getAll: (params: Record<string, any>): Promise<ApiResponse<PaginatedResponse<Report>>> =>
     api.get('/reports', { params }),
-  getById: (reportId: number): Promise<ApiResponse<Report>> => api.get(`/reports/${reportId}`),
+  getById: (reportId: number): Promise<ApiResponse<Report>> =>
+    api.get(`/reports/${reportId}`),
   updateStatus: (reportId: number, status: string, notes?: string): Promise<ApiResponse<Report>> =>
     api.patch(`/reports/${reportId}/status`, { status, moderator_notes: notes }),
   getStats: (): Promise<ApiResponse<any>> => api.get('/reports/stats'),
@@ -456,37 +488,77 @@ export const reportsAPI = {
 
 // ===== CHALLENGES API =====
 export const challengesAPI = {
-  getAll: (category?: string): Promise<ApiResponse<PaginatedResponse<Challenge>>> =>
+  getAll: (category?: string): Promise<ApiResponse<Challenge[]>> =>
     api.get('/challenges', { params: category ? { category } : {} }),
-  create: (data: any): Promise<ApiResponse<Challenge>> => api.post('/challenges', data),
-  generateAI: (category: string): Promise<ApiResponse<Challenge>> =>
+
+  getById: (challengeId: number): Promise<ApiResponse<Challenge>> =>
+    api.get(`/challenges/${challengeId}`),
+
+  create: (data: {
+    title: string;
+    description: string;
+    points_reward: number;
+    waste_kg?: number;
+    material_type: string;
+    category: 'daily' | 'weekly' | 'monthly';
+  }): Promise<ApiResponse<Challenge>> => api.post('/challenges', data),
+
+  update: (
+    challengeId: number,
+    data: Partial<{
+      title: string;
+      description: string;
+      points_reward: number;
+      waste_kg: number;
+      material_type: string;
+      category: string;
+    }>
+  ): Promise<ApiResponse<Challenge>> => api.put(`/challenges/${challengeId}`, data),
+
+  delete: (challengeId: number): Promise<ApiResponse<any>> =>
+    api.delete(`/challenges/${challengeId}`),
+
+  toggleStatus: (challengeId: number): Promise<ApiResponse<Challenge>> =>
+    api.patch(`/challenges/${challengeId}/toggle-status`),
+
+  generateAI: (category: 'daily' | 'weekly' | 'monthly'): Promise<ApiResponse<Challenge>> =>
     api.post('/challenges/generate', { category }),
-  getPendingVerifications: (page = 1, limit = 20): Promise<ApiResponse<PaginatedResponse<any>>> =>
+
+  getPendingVerifications: (
+    page = 1,
+    limit = 20
+  ): Promise<ApiResponse<PaginatedResponse<UserChallenge>>> =>
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
 
-   manualVerify: (userChallengeId: number, approved: boolean, notes?: string): Promise<ApiResponse<any>> =>
+  manualVerify: (
+    userChallengeId: number,
+    approved: boolean,
+    notes?: string
+  ): Promise<ApiResponse<UserChallenge>> =>
     api.post(`/user-challenges/${userChallengeId}/manual-verify`, { approved, notes }),
-
 };
 
-// ===== ANNOUCEMENTS API =====
+// ===== ANNOUNCEMENTS API =====
 export const announcementsAPI = {
-  getAll: (page = 1, limit = 10, includeExpired = false): Promise<ApiResponse<PaginatedResponse<Announcement>>> =>
+  getAll: (
+    page = 1,
+    limit = 10,
+    includeExpired = false
+  ): Promise<ApiResponse<PaginatedResponse<Announcement>>> =>
     api.get('/announcements', { params: { page, limit, includeExpired } }),
-  
+
   getById: (announcementId: number): Promise<ApiResponse<Announcement>> =>
     api.get(`/announcements/${announcementId}`),
-  
+
   getActive: (limit = 5): Promise<ApiResponse<Announcement[]>> =>
     api.get('/announcements/active', { params: { limit } }),
-  
+
   create: (data: {
     title: string;
     content: string;
     expires_at?: Date;
-  }): Promise<ApiResponse<Announcement>> =>
-    api.post('/announcements', data),
-  
+  }): Promise<ApiResponse<Announcement>> => api.post('/announcements', data),
+
   update: (
     announcementId: number,
     data: Partial<{
@@ -497,10 +569,10 @@ export const announcementsAPI = {
     }>
   ): Promise<ApiResponse<Announcement>> =>
     api.put(`/announcements/${announcementId}`, data),
-  
+
   delete: (announcementId: number): Promise<ApiResponse<any>> =>
     api.delete(`/announcements/${announcementId}`),
-  
+
   toggleStatus: (announcementId: number): Promise<ApiResponse<Announcement>> =>
     api.patch(`/announcements/${announcementId}/toggle-status`),
 };
@@ -508,7 +580,10 @@ export const announcementsAPI = {
 // ===== HEALTH CHECK =====
 export const healthCheck = async (): Promise<boolean> => {
   try {
-    const response = await axios.get(`${API_BASE_URL.replace('/api/v1', '')}/api/v1/health`, { timeout: 5000 });
+    const response = await axios.get(
+      `${API_BASE_URL.replace('/api/v1', '')}/api/v1/health`,
+      { timeout: 5000 }
+    );
     return response.data?.success === true;
   } catch {
     return false;

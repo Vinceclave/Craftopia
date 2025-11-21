@@ -46,7 +46,6 @@ import {
   Sparkles,
   Clock,
   Users,
-  Zap,
   AlertCircle,
   CheckCircle,
   XCircle,
@@ -57,7 +56,6 @@ import {
   Trash2,
   ToggleLeft,
   ToggleRight,
-  Calendar,
   TrendingUp,
   Save,
   X,
@@ -69,6 +67,8 @@ import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { challengesAPI } from '@/lib/api';
+
+type ChallengeCategory = 'daily' | 'weekly' | 'monthly';
 
 // Helper function to get full image URL
 const getImageUrl = (path: string) => {
@@ -166,7 +166,7 @@ export default function AdminChallenges() {
   const [isToggling, setIsToggling] = useState(false);
 
   // AI Generation state
-  const [aiCategory, setAiCategory] = useState<string>('daily');
+const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
   // Toast notifications
   const notify = (
@@ -179,6 +179,10 @@ export default function AdminChallenges() {
     else if (type === 'warning') warning(`${title}: ${message}`);
     else info(`${title}: ${message}`);
   };
+
+  const handleAiCategoryChange = (value: string) => {
+  setAiCategory(value as ChallengeCategory);
+};
 
   // WebSocket handlers
   const handleChallengeCreated = useCallback(
@@ -425,15 +429,25 @@ export default function AdminChallenges() {
 
   // Data normalization
   const challengeList = useMemo(() => {
-    return Array.isArray(challenges) ? challenges : (challenges?.data ?? []);
+    // Handle different possible response structures
+    if (Array.isArray(challenges)) {
+      return challenges;
+    } else if (challenges && typeof challenges === 'object' && 'data' in challenges) {
+      return (challenges as any).data ?? [];
+    }
+    return [];
   }, [challenges]);
 
-  const pendingList = useMemo(() => {
-    return Array.isArray(pendingVerifications)
-      ? pendingVerifications
-      : (pendingVerifications?.data ?? []);
-  }, [pendingVerifications]);
 
+  const pendingList = useMemo(() => {
+    // Handle different possible response structures
+    if (Array.isArray(pendingVerifications)) {
+      return pendingVerifications;
+    } else if (pendingVerifications && typeof pendingVerifications === 'object' && 'data' in pendingVerifications) {
+      return (pendingVerifications as any).data ?? [];
+    }
+    return [];
+  }, [pendingVerifications]);
   // Statistics
   const stats = useMemo(() => {
     return {
@@ -622,7 +636,7 @@ export default function AdminChallenges() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap items-center gap-3">
-              <Select value={aiCategory} onValueChange={setAiCategory}>
+            <Select value={aiCategory} onValueChange={handleAiCategoryChange}>  
                 <SelectTrigger className="w-48 border-purple-200">
                   <SelectValue />
                 </SelectTrigger>

@@ -24,7 +24,6 @@ export const useAuth = () => {
           setAuth(user, token);
         } 
       } catch (err) {
-        console.error('❌ Error initializing auth:', err);
         // Clear corrupted data
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminRefreshToken');
@@ -72,7 +71,6 @@ export const useAuth = () => {
       navigate('/admin/dashboard');
       
     } catch (err: any) {
-      console.error('❌ Login error:', err);
       
       // Clear storage on error
       localStorage.removeItem('adminToken');
@@ -103,7 +101,6 @@ export const useAuth = () => {
       navigate('/admin/login');
       
     } catch (err) {
-      console.error('❌ Logout error:', err);
       // Even if backend logout fails, clear local state
       storeLogout();
       navigate('/admin/login');
@@ -137,7 +134,6 @@ export const useAuth = () => {
       
       return true;
     } catch (err) {
-      console.error('❌ Token refresh failed:', err);
       
       // Clear auth and redirect to login
       storeLogout();

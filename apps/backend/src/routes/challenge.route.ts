@@ -28,6 +28,12 @@ router.put(
   challengeController.updateChallenge
 );
 
+router.patch(
+  '/:challengeId/toggle-status',
+  requireAdmin,
+  challengeController.toggleChallengeStatus
+);
+
 router.delete(
   '/:challengeId',
   requireAdmin,

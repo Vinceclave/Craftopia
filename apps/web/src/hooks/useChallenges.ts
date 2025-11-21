@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useChallenges.ts - IMPROVED VERSION
+// apps/web/src/hooks/useChallenges.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { challengesAPI } from '../lib/api';
 import { useState, useCallback, useMemo } from 'react';
@@ -16,11 +16,11 @@ export const useChallenges = () => {
     page: 1,
     limit: 10,
   });
-  
+
   const queryClient = useQueryClient();
   const { error: errorToast } = useToast();
 
-  // Fetch challenges with proper error handling
+  // Fetch challenges
   const {
     data,
     isLoading,
@@ -32,24 +32,17 @@ export const useChallenges = () => {
     queryFn: async () => {
       try {
         const response = await challengesAPI.getAll(filters.category);
-        
-        // Normalize response structure
-        if (!response || typeof response !== 'object') {
-          throw new Error('Invalid response from server');
-        }
-
         return {
           data: response?.data ?? [],
           success: response?.success ?? true,
         };
       } catch (err) {
-        console.error('Failed to fetch challenges:', err);
         throw err;
       }
     },
     retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    staleTime: 30_000,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
+    staleTime: 30000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
@@ -69,47 +62,40 @@ export const useChallenges = () => {
           data: response?.data ?? [],
           success: response?.success ?? true,
         };
-      } catch (err) {
-        console.error('Failed to fetch pending verifications:', err);
+      } catch {
         return { data: [], success: false };
       }
     },
     retry: 1,
-    staleTime: 30_000,
+    staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
-  // Create challenge mutation with optimistic updates
+  // Create
   const createMutation = useMutation({
     mutationFn: async (challengeData: any) => {
       const response = await challengesAPI.create(challengeData);
       return response?.data;
     },
     onMutate: async () => {
-      // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      
-      // Snapshot previous value
       const previousChallenges = queryClient.getQueryData(['challenges', filters.category]);
-      
       return { previousChallenges };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
-    onError: (err: any, _variables, context) => {
-      // Rollback on error
-      if (context?.previousChallenges) {
-        queryClient.setQueryData(['challenges', filters.category], context.previousChallenges);
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.previousChallenges) {
+        queryClient.setQueryData(['challenges', filters.category], ctx.previousChallenges);
       }
       errorToast(err?.message || 'Failed to create challenge');
     },
   });
 
-  // Generate AI challenge mutation
+  // AI Generate
   const generateAIMutation = useMutation({
-    mutationFn: async (category: string) => {
-      console.log('🤖 Generating AI challenge, category:', category);
+    mutationFn: async (category: 'daily' | 'weekly' | 'monthly') => {
       const response = await challengesAPI.generateAI(category);
       return response?.data;
     },
@@ -121,15 +107,15 @@ export const useChallenges = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
-    onError: (err: any, _variables, context) => {
-      if (context?.previousChallenges) {
-        queryClient.setQueryData(['challenges', filters.category], context.previousChallenges);
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.previousChallenges) {
+        queryClient.setQueryData(['challenges', filters.category], ctx.previousChallenges);
       }
       errorToast(err?.message || 'Failed to generate AI challenge');
     },
   });
 
-  // Update challenge mutation
+  // Update
   const updateMutation = useMutation({
     mutationFn: async ({ challengeId, data: updateData }: { challengeId: number; data: any }) => {
       const response = await challengesAPI.update(challengeId, updateData);
@@ -137,10 +123,9 @@ export const useChallenges = () => {
     },
     onMutate: async ({ challengeId, data: updateData }) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      
+
       const previousData = queryClient.getQueryData(['challenges', filters.category]);
-      
-      // Optimistically update
+
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
         queryClient.setQueryData(['challenges', filters.category], {
           ...previousData,
@@ -151,21 +136,21 @@ export const useChallenges = () => {
           ),
         });
       }
-      
+
       return { previousData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
-    onError: (err: any, _variables, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], context.previousData);
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.previousData) {
+        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to update challenge');
     },
   });
 
-  // Delete challenge mutation
+  // Delete
   const deleteMutation = useMutation({
     mutationFn: async (challengeId: number) => {
       await challengesAPI.delete(challengeId);
@@ -173,10 +158,9 @@ export const useChallenges = () => {
     },
     onMutate: async (challengeId) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      
+
       const previousData = queryClient.getQueryData(['challenges', filters.category]);
-      
-      // Optimistically remove
+
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
         queryClient.setQueryData(['challenges', filters.category], {
           ...previousData,
@@ -185,21 +169,21 @@ export const useChallenges = () => {
           ),
         });
       }
-      
+
       return { previousData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
-    onError: (err: any, _challengeId, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], context.previousData);
+    onError: (err: any, _id, ctx) => {
+      if (ctx?.previousData) {
+        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to delete challenge');
     },
   });
 
-  // Toggle status mutation
+  // Toggle
   const toggleStatusMutation = useMutation({
     mutationFn: async (challengeId: number) => {
       const response = await challengesAPI.toggleStatus(challengeId);
@@ -207,10 +191,9 @@ export const useChallenges = () => {
     },
     onMutate: async (challengeId) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      
+
       const previousData = queryClient.getQueryData(['challenges', filters.category]);
-      
-      // Optimistically toggle
+
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
         queryClient.setQueryData(['challenges', filters.category], {
           ...previousData,
@@ -221,21 +204,21 @@ export const useChallenges = () => {
           ),
         });
       }
-      
+
       return { previousData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
     },
-    onError: (err: any, _challengeId, context) => {
-      if (context?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], context.previousData);
+    onError: (err: any, _id, ctx) => {
+      if (ctx?.previousData) {
+        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to toggle status');
     },
   });
 
-  // Filter management
+  // Filter handlers
   const setCategory = useCallback((category: string) => {
     setFilters(prev => ({ ...prev, category, page: 1 }));
   }, []);
@@ -256,68 +239,64 @@ export const useChallenges = () => {
     });
   }, []);
 
-  // Computed values
+  // Computed
   const challenges = useMemo(() => data?.data || [], [data?.data]);
   const pendingVerifications = useMemo(() => pendingData?.data || [], [pendingData?.data]);
 
   const stats = useMemo(() => {
-    const challengeList = Array.isArray(challenges) ? challenges : [];
+    const list = Array.isArray(challenges) ? challenges : [];
     const pendingList = Array.isArray(pendingVerifications) ? pendingVerifications : [];
 
     return {
-      total: challengeList.length,
-      active: challengeList.filter((c: any) => c.is_active).length,
-      aiGenerated: challengeList.filter((c: any) => c.source === 'ai').length,
-      adminCreated: challengeList.filter((c: any) => c.source === 'admin').length,
+      total: list.length,
+      active: list.filter((c: any) => c.is_active).length,
+      aiGenerated: list.filter((c: any) => c.source === 'ai').length,
+      adminCreated: list.filter((c: any) => c.source === 'admin').length,
       pending: pendingList.length,
     };
   }, [challenges, pendingVerifications]);
 
   return {
-    // Data
     challenges,
     pendingVerifications,
     stats,
     isLoading: isLoading || isPendingLoading,
     isFetching,
     error,
-    
-    // Filters
+
     category: filters.category,
     page: filters.page,
     limit: filters.limit,
-    
-    // Filter actions
+
     setCategory,
     setPage,
     setLimit,
     resetFilters,
-    
-    // Data actions
+
     refetch: () => {
       refetch();
       refetchPending();
     },
     refetchPending,
-    
-    // Mutations
+
     createChallenge: createMutation.mutateAsync,
     updateChallenge: updateMutation.mutateAsync,
     deleteChallenge: deleteMutation.mutateAsync,
     generateAIChallenge: generateAIMutation.mutateAsync,
     toggleStatus: toggleStatusMutation.mutateAsync,
-    
-    // Loading states
+
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isGenerating: generateAIMutation.isPending,
     isToggling: toggleStatusMutation.isPending,
-    isAnyMutating: createMutation.isPending || 
-                   updateMutation.isPending || 
-                   deleteMutation.isPending || 
-                   generateAIMutation.isPending ||
-                   toggleStatusMutation.isPending,
+    isAnyMutating:
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending ||
+      generateAIMutation.isPending ||
+      toggleStatusMutation.isPending,
+
     isPendingLoading,
   };
 };

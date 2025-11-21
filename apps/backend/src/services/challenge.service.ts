@@ -472,6 +472,38 @@ class ChallengeService extends BaseService {
     };
   }
 
+  async getChallengeStats() {
+  const [total, active, aiGenerated, adminCreated] = await Promise.all([
+    prisma.ecoChallenge.count({
+      where: { deleted_at: null }
+    }),
+    prisma.ecoChallenge.count({
+      where: { is_active: true, deleted_at: null }
+    }),
+    prisma.ecoChallenge.count({
+      where: { source: ChallengeSource.ai, deleted_at: null }
+    }),
+    prisma.ecoChallenge.count({
+      where: { source: ChallengeSource.admin, deleted_at: null }
+    })
+  ]);
+
+  const pending = await prisma.userChallenge.count({
+    where: {
+      status: ChallengeStatus.pending_verification,
+      deleted_at: null
+    }
+  });
+
+  return {
+    total,
+    active,
+    aiGenerated,
+    adminCreated,
+    pending
+  };
+}
+
   /**
    * Get personalized challenge recommendations based on user history
    */
@@ -595,6 +627,7 @@ export const challengeService = new ChallengeService();
 // Export individual functions for backward compatibility
 export const createChallenge = challengeService.createChallenge.bind(challengeService);
 export const generateAndSaveChallenge = challengeService.generateAndSaveChallenge.bind(challengeService);
+export const getChallengeStats = challengeService.getChallengeStats.bind(challengeService);
 export const getAllChallenges = challengeService.getAllChallenges.bind(challengeService);
 export const getChallengeById = challengeService.getChallengeById.bind(challengeService);
 export const updateChallenge = challengeService.updateChallenge.bind(challengeService);

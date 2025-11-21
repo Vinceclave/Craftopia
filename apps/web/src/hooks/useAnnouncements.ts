@@ -33,8 +33,6 @@ export const useAnnouncements = () => {
     queryFn: async () => {
       const response: any = await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
       
-      console.log('📡 Raw API Response:', response);
-      
       // Backend returns: { success: true, data: [...], meta: {...} }
       // NOT nested as { success: true, data: { data: [...], meta: {...} } }
       return {
@@ -54,7 +52,6 @@ export const useAnnouncements = () => {
     queryKey: ['active-announcements'],
     queryFn: async () => {
       const response: any = await announcementsAPI.getActive(5);
-      console.log('📡 Active Announcements Response:', response);
       // Backend returns: { success: true, data: [...] }
       return response?.data ?? [];
     },
@@ -179,14 +176,6 @@ export const useAnnouncements = () => {
   const setLimit = useCallback((limit: number) => {
     setParams(prev => ({ ...prev, limit, page: 1 }));
   }, []);
-
-  console.log('🎯 Hook State:', {
-    announcements: data?.data,
-    meta: data?.meta,
-    activeAnnouncements: activeData,
-    isLoading,
-    error
-  });
 
   return {
     // Data

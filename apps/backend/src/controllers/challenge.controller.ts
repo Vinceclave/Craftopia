@@ -100,6 +100,20 @@ export const verifyChallenge = asyncHandler(async (req: AuthRequest, res: Respon
   sendSuccess(res, updated, 'Challenge verification completed');
 });
 
+
+export const toggleChallengeStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const challengeId = Number(req.params.challengeId);
+  
+  const challenge = await challengeService.toggleActiveStatus(challengeId);
+  sendSuccess(res, challenge, `Challenge ${challenge.is_active ? 'activated' : 'deactivated'} successfully`);
+});
+
+export const getChallengeStats = asyncHandler(async (req: Request, res: Response) => {
+  const stats = await challengeService.getChallengeStats();
+  sendSuccess(res, stats, 'Challenge statistics retrieved successfully');
+});
+
+
 export const getUserChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
   const userId = Number(req.params.userId) || req.user!.userId;
   const status = req.query.status as any;
