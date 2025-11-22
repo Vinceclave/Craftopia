@@ -1,4 +1,4 @@
-// apps/backend/src/services/report.service.ts - REFACTORED VERSION
+// apps/backend/src/services/report.service.ts - FIXED VERSION
 import prisma from "../config/prisma";
 import { ReportStatus } from "../generated/prisma";
 import { BaseService } from "./base.service";
@@ -105,7 +105,8 @@ class ReportService extends BaseService {
           },
           reported_post: {
             select: { 
-              post_id: true, 
+              post_id: true,
+              title: true,
               content: true, 
               user: { select: { user_id: true, username: true } }
             }
@@ -135,7 +136,7 @@ class ReportService extends BaseService {
     });
   }
 
-  // Get reports with filtering
+  // ✅ FIXED: Get reports with filtering and proper includes
   async getReports(page = 1, limit = 20, status?: ReportStatus) {
     if (status) {
       this.validateEnum(status, ReportStatus, 'status');
@@ -152,7 +153,54 @@ class ReportService extends BaseService {
       page,
       limit,
       where,
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
+      include: {
+        reporter: {
+          select: { 
+            user_id: true, 
+            username: true,
+            email: true 
+          }
+        },
+        reported_post: {
+          select: { 
+            post_id: true, 
+            title: true,
+            content: true, 
+            image_url: true,
+            user: { 
+              select: { 
+                user_id: true, 
+                username: true 
+              } 
+            }
+          }
+        },
+        reported_comment: {
+          select: { 
+            comment_id: true, 
+            content: true,
+            user: { 
+              select: { 
+                user_id: true, 
+                username: true 
+              } 
+            },
+            post: { 
+              select: { 
+                post_id: true, 
+                title: true 
+              } 
+            }
+          }
+        },
+        resolver: {
+          select: { 
+            user_id: true, 
+            username: true 
+          }
+        }
+      }
     });
   }
 
@@ -170,7 +218,8 @@ class ReportService extends BaseService {
         },
         reported_post: {
           select: { 
-            post_id: true, 
+            post_id: true,
+            title: true, 
             content: true, 
             image_url: true,
             created_at: true,
@@ -183,7 +232,7 @@ class ReportService extends BaseService {
             content: true, 
             created_at: true,
             user: { select: { user_id: true, username: true } },
-            post: { select: { post_id: true, content: true } }
+            post: { select: { post_id: true, title: true, content: true } }
           }
         },
         resolver: {
@@ -241,7 +290,8 @@ class ReportService extends BaseService {
         },
         reported_post: {
           select: { 
-            post_id: true, 
+            post_id: true,
+            title: true, 
             content: true, 
             user: { select: { user_id: true, username: true } }
           }
@@ -282,7 +332,28 @@ class ReportService extends BaseService {
       page,
       limit,
       where: { reporter_id: userId },
-      orderBy: { created_at: 'desc' }
+      orderBy: { created_at: 'desc' },
+      include: {
+        reported_post: {
+          select: { 
+            post_id: true,
+            title: true, 
+            content: true 
+          }
+        },
+        reported_comment: {
+          select: { 
+            comment_id: true, 
+            content: true 
+          }
+        },
+        resolver: {
+          select: { 
+            user_id: true, 
+            username: true 
+          }
+        }
+      }
     });
   }
 

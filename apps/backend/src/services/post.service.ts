@@ -22,6 +22,7 @@ interface PostWithAuthor {
   user: {
     user_id: number;
     username: string;
+    profile_picture_url?: string | null;
   };
   comment_count: number;
   like_count: number;
@@ -38,6 +39,7 @@ interface CommentWithAuthor {
   user: {
     user_id: number;
     username: string;
+    profile_picture_url?: string | null;
   };
 }
 
@@ -74,13 +76,6 @@ interface SearchPostsParams {
 // ============================================
 
 function transformPostToResponse(post: any, userId?: number): PostWithAuthor {
-  console.log('🔍 Transforming post:', {
-    post_id: post.post_id,
-    comment_count: post._count?.comments,
-    like_count: post._count?.likes,
-    likes_array: post.likes
-  });
-
   return {
     post_id: post.post_id,
     title: post.title,
@@ -95,9 +90,10 @@ function transformPostToResponse(post: any, userId?: number): PostWithAuthor {
     user: {
       user_id: post.user.user_id,
       username: post.user.username,
+      profile_picture_url: post.user.profile?.profile_picture_url || null,
     },
-    comment_count: post._count?.comments || 0, // ✅ Use correct field
-    like_count: post._count?.likes || 0, // ✅ Use correct field
+    comment_count: post._count?.comments || 0,
+    like_count: post._count?.likes || 0,
     is_liked: userId ? (post.likes as any[]).length > 0 : false,
   };
 }
@@ -181,6 +177,11 @@ export class PostService {
           select: {
             user_id: true,
             username: true,
+            profile: {
+              select: {
+                profile_picture_url: true,
+              }
+            },
           },
         },
         _count: {
@@ -306,6 +307,11 @@ export class PostService {
           select: {
             user_id: true,
             username: true,
+            profile: {
+              select: {
+                profile_picture_url: true,
+              }
+            },
           },
         },
         _count: {
@@ -359,6 +365,11 @@ export class PostService {
           select: {
             user_id: true,
             username: true,
+            profile: {
+              select: {
+                profile_picture_url: true,
+              }
+            },
           },
         },
         _count: {
@@ -416,6 +427,11 @@ export class PostService {
           select: {
             user_id: true,
             username: true,
+             profile: {
+              select: {
+                profile_picture_url: true,
+              }
+            },
           },
         },
       },
@@ -430,6 +446,7 @@ export class PostService {
       user: {
         user_id: comment.user.user_id,
         username: comment.user.username,
+        profile_picture_url: comment.user.profile?.profile_picture_url || null,
       },
     };
   }
@@ -443,6 +460,11 @@ export class PostService {
           select: {
             user_id: true,
             username: true,
+            profile: {
+              select: {
+                profile_picture_url: true,
+              }
+            }
           },
         },
       },
