@@ -25,6 +25,8 @@ export type EcoQuestStackParamList = {
   EcoQuest: undefined;
   UserChallenges: undefined;
   QuestDetails: { questId: number };
+  Rewards: undefined; 
+  RedemptionHistory: undefined; 
 };
 
 export type ProfileStackParamList = {

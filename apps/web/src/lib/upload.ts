@@ -22,8 +22,7 @@ export const uploadImageToS3 = async (file: File): Promise<string> => {
     // Handle different response structures
     const imageUrl = 
       response?.data?.data?.imageUrl || 
-      response?.data?.imageUrl || 
-      response?.imageUrl;
+      response?.data?.imageUrl
 
     if (!imageUrl) {
       throw new Error('No image URL in response');

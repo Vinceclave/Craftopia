@@ -1,7 +1,7 @@
-// apps/web/src/hooks/useSponsors.ts - FIXED VERSION
+// apps/web/src/hooks/useSponsors.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sponsorsAPI, rewardsAPI, redemptionsAPI } from '../lib/api';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useToast } from './useToast';
 
 // ==========================================
@@ -32,7 +32,7 @@ export const useSponsors = () => {
         
         // Handle different response structures
         const sponsors = response?.data?.data || response?.data || [];
-        const meta = response?.data?.meta || response?.meta || { 
+        const meta = response?.data?.meta || { 
           total: Array.isArray(sponsors) ? sponsors.length : 0, 
           page: 1, 
           limit: 10, 
@@ -190,7 +190,7 @@ export const useRewards = (filters?: {
       try {
         const response = await rewardsAPI.getAll(page, limit, filters);
         const rewards = response?.data?.data || response?.data || [];
-        const meta = response?.data?.meta || response?.meta || { 
+        const meta = response?.data?.meta || { 
           total: Array.isArray(rewards) ? rewards.length : 0, 
           page: 1, 
           limit: 20, 
@@ -282,11 +282,12 @@ export const useRewards = (filters?: {
       const response = await rewardsAPI.redeem(rewardId);
       return response?.data;
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.invalidateQueries({ queryKey: ['redemptions'] });
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      successToast(`Reward redeemed! ${result.remaining_points} points remaining`);
+      const remainingPoints = result?.remaining_points ?? 'Unknown';
+      successToast(`Reward redeemed! ${remainingPoints} points remaining`);
     },
     onError: (err: any) => {
       errorToast(err?.message || 'Failed to redeem reward');
@@ -347,7 +348,7 @@ export const useRedemptions = (filters?: {
       try {
         const response = await redemptionsAPI.getAll(page, limit, filters);
         const redemptions = response?.data?.data || response?.data || [];
-        const meta = response?.data?.meta || response?.meta || { 
+        const meta = response?.data?.meta || { 
           total: Array.isArray(redemptions) ? redemptions.length : 0, 
           page: 1, 
           limit: 20, 
@@ -391,12 +392,14 @@ export const useRedemptions = (filters?: {
       const response = await redemptionsAPI.cancel(redemptionId, refundPoints);
       return response?.data;
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ['redemptions'] });
       queryClient.refetchQueries({ queryKey: ['redemptions'] });
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      if (result.refunded) {
-        successToast(`Redemption cancelled. ${result.refund_amount} points refunded.`);
+      
+      if (result?.refunded) {
+        const refundAmount = result?.refund_amount ?? 0;
+        successToast(`Redemption cancelled. ${refundAmount} points refunded.`);
       } else {
         successToast('Redemption cancelled.');
       }

@@ -840,7 +840,7 @@ export default function AdminSponsors() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {rewards.map((reward) => (
+                      {rewards.map((reward: any) => (
                         <div
                           key={reward.reward_id}
                           className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
