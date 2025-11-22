@@ -656,17 +656,18 @@ export const sponsorsAPI = {
     limit = 10,
     activeOnly = false
   ): Promise<ApiResponse<PaginatedResponse<Sponsor>>> =>
-    api.get('/sponsors', { params: { page, limit, activeOnly } }),
+    api.get('/sponsors/sponsors', { params: { page, limit, activeOnly } }),
 
   getById: (sponsorId: number): Promise<ApiResponse<Sponsor>> =>
-    api.get(`/sponsors/${sponsorId}`),
+    api.get(`/sponsors/sponsors/${sponsorId}`),
 
   create: (data: {
     name: string;
     logo_url?: string;
     description?: string;
     contact_email?: string;
-  }): Promise<ApiResponse<Sponsor>> => api.post('/sponsors', data),
+  }): Promise<ApiResponse<Sponsor>> => 
+    api.post('/sponsors/sponsors', data),
 
   update: (
     sponsorId: number,
@@ -677,16 +678,17 @@ export const sponsorsAPI = {
       contact_email: string;
       is_active: boolean;
     }>
-  ): Promise<ApiResponse<Sponsor>> => api.put(`/sponsors/${sponsorId}`, data),
+  ): Promise<ApiResponse<Sponsor>> => 
+    api.put(`/sponsors/sponsors/${sponsorId}`, data),
 
   delete: (sponsorId: number): Promise<ApiResponse<any>> =>
-    api.delete(`/sponsors/${sponsorId}`),
+    api.delete(`/sponsors/sponsors/${sponsorId}`),
 
   toggleStatus: (sponsorId: number): Promise<ApiResponse<Sponsor>> =>
-    api.patch(`/sponsors/${sponsorId}/toggle-status`),
+    api.patch(`/sponsors/sponsors/${sponsorId}/toggle-status`),
 };
 
-// ===== REWARDS API =====
+// ===== REWARDS API ===== ✅ FIXED PATHS
 export const rewardsAPI = {
   getAll: (
     page = 1,
@@ -697,10 +699,10 @@ export const rewardsAPI = {
       availableOnly?: boolean;
     }
   ): Promise<ApiResponse<PaginatedResponse<SponsorReward>>> =>
-    api.get('/rewards', { params: { page, limit, ...filters } }),
+    api.get('/sponsors/rewards', { params: { page, limit, ...filters } }),
 
   getById: (rewardId: number): Promise<ApiResponse<SponsorReward>> =>
-    api.get(`/rewards/${rewardId}`),
+    api.get(`/sponsors/rewards/${rewardId}`),
 
   create: (data: {
     sponsor_id: number;
@@ -710,7 +712,8 @@ export const rewardsAPI = {
     quantity?: number;
     display_on_leaderboard?: boolean;
     expires_at?: Date;
-  }): Promise<ApiResponse<SponsorReward>> => api.post('/rewards', data),
+  }): Promise<ApiResponse<SponsorReward>> => 
+    api.post('/sponsors/rewards', data),
 
   update: (
     rewardId: number,
@@ -723,22 +726,23 @@ export const rewardsAPI = {
       display_on_leaderboard: boolean;
       expires_at: Date | null;
     }>
-  ): Promise<ApiResponse<SponsorReward>> => api.put(`/rewards/${rewardId}`, data),
+  ): Promise<ApiResponse<SponsorReward>> => 
+    api.put(`/sponsors/rewards/${rewardId}`, data),
 
   delete: (rewardId: number): Promise<ApiResponse<any>> =>
-    api.delete(`/rewards/${rewardId}`),
+    api.delete(`/sponsors/rewards/${rewardId}`),
 
   toggleStatus: (rewardId: number): Promise<ApiResponse<SponsorReward>> =>
-    api.patch(`/rewards/${rewardId}/toggle-status`),
+    api.patch(`/sponsors/rewards/${rewardId}/toggle-status`),
 
   redeem: (reward_id: number): Promise<ApiResponse<{ 
     redemption: UserRedemption; 
     points_spent: number; 
     remaining_points: number; 
-  }>> => api.post('/redemptions', { reward_id }),
+  }>> => api.post('/sponsors/redemptions', { reward_id }),
 };
 
-// ===== REDEMPTIONS API =====
+// ===== REDEMPTIONS API ===== ✅ FIXED PATHS
 export const redemptionsAPI = {
   getAll: (
     page = 1,
@@ -748,10 +752,10 @@ export const redemptionsAPI = {
       status?: 'pending' | 'fulfilled' | 'cancelled';
     }
   ): Promise<ApiResponse<PaginatedResponse<UserRedemption>>> =>
-    api.get('/redemptions', { params: { page, limit, ...filters } }),
+    api.get('/sponsors/redemptions', { params: { page, limit, ...filters } }),
 
   fulfill: (redemptionId: number): Promise<ApiResponse<UserRedemption>> =>
-    api.patch(`/redemptions/${redemptionId}/fulfill`),
+    api.patch(`/sponsors/redemptions/${redemptionId}/fulfill`),
 
   cancel: (
     redemptionId: number,
@@ -762,11 +766,11 @@ export const redemptionsAPI = {
     refund_amount: number; 
     new_points: number; 
   }>> =>
-    api.patch(`/redemptions/${redemptionId}/cancel`, { refundPoints }),
+    api.patch(`/sponsors/redemptions/${redemptionId}/cancel`, { refundPoints }),
 
-  getStats: (): Promise<ApiResponse<SponsorStats>> => api.get('/sponsors/stats'),
+  getStats: (): Promise<ApiResponse<SponsorStats>> => 
+    api.get('/sponsors/stats'),
 };
-
 
 // ===== HEALTH CHECK =====
 export const healthCheck = async (): Promise<boolean> => {

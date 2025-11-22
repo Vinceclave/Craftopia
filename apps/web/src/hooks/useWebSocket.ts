@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useWebSocket.ts
+// apps/web/src/hooks/useWebSocket.ts - UPDATED WITH SPONSOR SUPPORT
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { websocketService, WebSocketEvent } from '@/lib/websocket';
 import { useAuthStore } from '@/store/authStore';
@@ -171,6 +171,69 @@ export const useWebSocketUsers = (callbacks: {
     }
     if (callbacks.onRoleChanged) {
       unsubscribers.push(subscribe(WebSocketEvent.USER_ROLE_CHANGED, callbacks.onRoleChanged));
+    }
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [subscribe, callbacks]);
+};
+
+// ----------------------------
+// CENTRALIZED SPONSOR HOOKS
+// ----------------------------
+
+export const useWebSocketSponsors = (callbacks: {
+  onSponsorCreated?: (data: any) => void;
+  onSponsorUpdated?: (data: any) => void;
+  onSponsorDeleted?: (data: any) => void;
+  onRewardCreated?: (data: any) => void;
+  onRewardUpdated?: (data: any) => void;
+  onRewardDeleted?: (data: any) => void;
+  onRewardRedeemed?: (data: any) => void;
+  onRedemptionCreated?: (data: any) => void;
+  onRedemptionFulfilled?: (data: any) => void;
+  onRedemptionCancelled?: (data: any) => void;
+}) => {
+  const { subscribe } = useWebSocket();
+
+  useEffect(() => {
+    const unsubscribers: (() => void)[] = [];
+
+    // Sponsor events
+    if (callbacks.onSponsorCreated) {
+      unsubscribers.push(subscribe(WebSocketEvent.SPONSOR_CREATED, callbacks.onSponsorCreated));
+    }
+    if (callbacks.onSponsorUpdated) {
+      unsubscribers.push(subscribe(WebSocketEvent.SPONSOR_UPDATED, callbacks.onSponsorUpdated));
+    }
+    if (callbacks.onSponsorDeleted) {
+      unsubscribers.push(subscribe(WebSocketEvent.SPONSOR_DELETED, callbacks.onSponsorDeleted));
+    }
+
+    // Reward events
+    if (callbacks.onRewardCreated) {
+      unsubscribers.push(subscribe(WebSocketEvent.REWARD_CREATED, callbacks.onRewardCreated));
+    }
+    if (callbacks.onRewardUpdated) {
+      unsubscribers.push(subscribe(WebSocketEvent.REWARD_UPDATED, callbacks.onRewardUpdated));
+    }
+    if (callbacks.onRewardDeleted) {
+      unsubscribers.push(subscribe(WebSocketEvent.REWARD_DELETED, callbacks.onRewardDeleted));
+    }
+    if (callbacks.onRewardRedeemed) {
+      unsubscribers.push(subscribe(WebSocketEvent.REWARD_REDEEMED, callbacks.onRewardRedeemed));
+    }
+
+    // Redemption events
+    if (callbacks.onRedemptionCreated) {
+      unsubscribers.push(subscribe(WebSocketEvent.REDEMPTION_CREATED, callbacks.onRedemptionCreated));
+    }
+    if (callbacks.onRedemptionFulfilled) {
+      unsubscribers.push(subscribe(WebSocketEvent.REDEMPTION_FULFILLED, callbacks.onRedemptionFulfilled));
+    }
+    if (callbacks.onRedemptionCancelled) {
+      unsubscribers.push(subscribe(WebSocketEvent.REDEMPTION_CANCELLED, callbacks.onRedemptionCancelled));
     }
 
     return () => {

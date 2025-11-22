@@ -1,38 +1,63 @@
-// apps/web/src/lib/websocket.ts - CLEAN VERSION
+// apps/web/src/lib/websocket.ts - UPDATED WITH SPONSOR EVENTS
 import { io, Socket } from 'socket.io-client';
 
 const WS_URL = import.meta.env.VITE_API_BASE_URL;
 
 export enum WebSocketEvent {
+  // Challenge Events
   CHALLENGE_CREATED = 'challenge:created',
   CHALLENGE_UPDATED = 'challenge:updated',
   CHALLENGE_DELETED = 'challenge:deleted',
   CHALLENGE_COMPLETED = 'challenge:completed',
   CHALLENGE_VERIFIED = 'challenge:verified',
+  CHALLENGE_REJECTED = 'challenge:rejected',
 
+  // Points Events
   POINTS_AWARDED = 'points:awarded',
+  POINTS_UPDATED = 'points:updated',
   LEADERBOARD_UPDATED = 'leaderboard:updated',
 
+  // Post Events
   POST_CREATED = 'post:created',
   POST_UPDATED = 'post:updated',
   POST_DELETED = 'post:deleted',
 
+  // Comment Events
   COMMENT_CREATED = 'comment:created',
   COMMENT_DELETED = 'comment:deleted',
 
+  // Report Events
   REPORT_CREATED = 'report:created',
   REPORT_UPDATED = 'report:updated',
 
+  // Announcement Events
   ANNOUNCEMENT_CREATED = 'announcement:created',
   ANNOUNCEMENT_UPDATED = 'announcement:updated',
   ANNOUNCEMENT_DELETED = 'announcement:deleted',
 
+  // Moderation Events
   CONTENT_MODERATED = 'content:moderated',
   USER_BANNED = 'user:banned',
   USER_ROLE_CHANGED = 'user:role_changed',
 
-  ADMIN_ALERT = 'admin:alert',
+  // Sponsor Events
+  SPONSOR_CREATED = 'sponsor:created',
+  SPONSOR_UPDATED = 'sponsor:updated',
+  SPONSOR_DELETED = 'sponsor:deleted',
 
+  // Reward Events
+  REWARD_CREATED = 'reward:created',
+  REWARD_UPDATED = 'reward:updated',
+  REWARD_DELETED = 'reward:deleted',
+  REWARD_REDEEMED = 'reward:redeemed',
+
+  // Redemption Events
+  REDEMPTION_CREATED = 'redemption:created',
+  REDEMPTION_FULFILLED = 'redemption:fulfilled',
+  REDEMPTION_CANCELLED = 'redemption:cancelled',
+
+  // System Events
+  ADMIN_ALERT = 'admin:alert',
   NOTIFICATION = 'notification',
 }
 
