@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useSponsors.ts
+// apps/web/src/hooks/useSponsors.ts - FIXED VERSION
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sponsorsAPI, rewardsAPI, redemptionsAPI } from '../lib/api';
 import { useState, useCallback, useMemo } from 'react';
@@ -16,7 +16,7 @@ export const useSponsors = () => {
   const queryClient = useQueryClient();
   const { error: errorToast, success: successToast } = useToast();
 
-  // Fetch sponsors
+  // Fetch sponsors - FIXED
   const {
     data,
     isLoading,
@@ -28,46 +28,72 @@ export const useSponsors = () => {
     queryFn: async () => {
       try {
         const response = await sponsorsAPI.getAll(page, limit, activeOnly);
+        console.log('📦 Sponsors API Response:', response);
+        
+        // Handle different response structures
+        const sponsors = response?.data?.data || response?.data || [];
+        const meta = response?.data?.meta || response?.meta || { 
+          total: Array.isArray(sponsors) ? sponsors.length : 0, 
+          page: 1, 
+          limit: 10, 
+          lastPage: 1 
+        };
+        
+        console.log('✅ Parsed sponsors:', sponsors);
+        console.log('✅ Parsed meta:', meta);
+        
         return {
-          data: response?.data?.data ?? [],
-          meta: response?.data?.meta ?? { total: 0, page: 1, limit: 10, lastPage: 1 },
+          data: Array.isArray(sponsors) ? sponsors : [],
+          meta,
           success: response?.success ?? true,
         };
       } catch (err) {
+        console.error('❌ Error fetching sponsors:', err);
         throw err;
       }
     },
     retry: 2,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 5000, // Reduced to 5 seconds for immediate updates
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
-  // Create
+  // Create - FIXED
   const createMutation = useMutation({
     mutationFn: async (sponsorData: any) => {
+      console.log('🚀 Creating sponsor:', sponsorData);
       const response = await sponsorsAPI.create(sponsorData);
+      console.log('✅ Create response:', response);
       return response?.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('✅ Sponsor created successfully:', data);
+      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
+      queryClient.refetchQueries({ queryKey: ['sponsors'] });
       successToast('Sponsor created successfully!');
     },
     onError: (err: any) => {
+      console.error('❌ Create error:', err);
       errorToast(err?.message || 'Failed to create sponsor');
     },
   });
 
-  // Update
+  // Update - FIXED
   const updateMutation = useMutation({
     mutationFn: async ({ sponsorId, data: updateData }: { sponsorId: number; data: any }) => {
+      console.log('🔄 Updating sponsor:', sponsorId, updateData);
       const response = await sponsorsAPI.update(sponsorId, updateData);
+      console.log('✅ Update response:', response);
       return response?.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
+      queryClient.refetchQueries({ queryKey: ['sponsors'] });
       successToast('Sponsor updated successfully!');
     },
     onError: (err: any) => {
+      console.error('❌ Update error:', err);
       errorToast(err?.message || 'Failed to update sponsor');
     },
   });
@@ -80,6 +106,7 @@ export const useSponsors = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
+      queryClient.refetchQueries({ queryKey: ['sponsors'] });
       successToast('Sponsor deleted successfully!');
     },
     onError: (err: any) => {
@@ -95,6 +122,7 @@ export const useSponsors = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
+      queryClient.refetchQueries({ queryKey: ['sponsors'] });
       successToast('Sponsor status updated!');
     },
     onError: (err: any) => {
@@ -102,7 +130,12 @@ export const useSponsors = () => {
     },
   });
 
-  const sponsors = useMemo(() => data?.data || [], [data?.data]);
+  const sponsors = useMemo(() => {
+    const result = data?.data || [];
+    console.log('📊 Sponsors memoized:', result);
+    return result;
+  }, [data?.data]);
+  
   const meta = useMemo(() => data?.meta, [data?.meta]);
 
   return {
@@ -144,7 +177,7 @@ export const useRewards = (filters?: {
   const queryClient = useQueryClient();
   const { error: errorToast, success: successToast } = useToast();
 
-  // Fetch rewards
+  // Fetch rewards - FIXED
   const {
     data,
     isLoading,
@@ -156,9 +189,17 @@ export const useRewards = (filters?: {
     queryFn: async () => {
       try {
         const response = await rewardsAPI.getAll(page, limit, filters);
+        const rewards = response?.data?.data || response?.data || [];
+        const meta = response?.data?.meta || response?.meta || { 
+          total: Array.isArray(rewards) ? rewards.length : 0, 
+          page: 1, 
+          limit: 20, 
+          lastPage: 1 
+        };
+        
         return {
-          data: response?.data?.data ?? [],
-          meta: response?.data?.meta ?? { total: 0, page: 1, limit: 20, lastPage: 1 },
+          data: Array.isArray(rewards) ? rewards : [],
+          meta,
           success: response?.success ?? true,
         };
       } catch (err) {
@@ -166,8 +207,9 @@ export const useRewards = (filters?: {
       }
     },
     retry: 2,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Create
@@ -178,6 +220,7 @@ export const useRewards = (filters?: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
+      queryClient.refetchQueries({ queryKey: ['rewards'] });
       successToast('Reward created successfully!');
     },
     onError: (err: any) => {
@@ -193,6 +236,7 @@ export const useRewards = (filters?: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
+      queryClient.refetchQueries({ queryKey: ['rewards'] });
       successToast('Reward updated successfully!');
     },
     onError: (err: any) => {
@@ -208,6 +252,7 @@ export const useRewards = (filters?: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
+      queryClient.refetchQueries({ queryKey: ['rewards'] });
       successToast('Reward deleted successfully!');
     },
     onError: (err: any) => {
@@ -223,6 +268,7 @@ export const useRewards = (filters?: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
+      queryClient.refetchQueries({ queryKey: ['rewards'] });
       successToast('Reward status updated!');
     },
     onError: (err: any) => {
@@ -300,9 +346,17 @@ export const useRedemptions = (filters?: {
     queryFn: async () => {
       try {
         const response = await redemptionsAPI.getAll(page, limit, filters);
+        const redemptions = response?.data?.data || response?.data || [];
+        const meta = response?.data?.meta || response?.meta || { 
+          total: Array.isArray(redemptions) ? redemptions.length : 0, 
+          page: 1, 
+          limit: 20, 
+          lastPage: 1 
+        };
+        
         return {
-          data: response?.data?.data ?? [],
-          meta: response?.data?.meta ?? { total: 0, page: 1, limit: 20, lastPage: 1 },
+          data: Array.isArray(redemptions) ? redemptions : [],
+          meta,
           success: response?.success ?? true,
         };
       } catch (err) {
@@ -310,8 +364,9 @@ export const useRedemptions = (filters?: {
       }
     },
     retry: 2,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Fulfill
@@ -322,6 +377,7 @@ export const useRedemptions = (filters?: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['redemptions'] });
+      queryClient.refetchQueries({ queryKey: ['redemptions'] });
       successToast('Redemption fulfilled successfully!');
     },
     onError: (err: any) => {
@@ -337,6 +393,7 @@ export const useRedemptions = (filters?: {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['redemptions'] });
+      queryClient.refetchQueries({ queryKey: ['redemptions'] });
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       if (result.refunded) {
         successToast(`Redemption cancelled. ${result.refund_amount} points refunded.`);

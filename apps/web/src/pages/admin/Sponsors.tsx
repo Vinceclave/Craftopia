@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Sponsors.tsx - PRODUCTION READY
-import { useState, useCallback, useMemo } from 'react';
+// apps/web/src/pages/admin/Sponsors.tsx - COMPLETE FINAL VERSION
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -58,16 +58,17 @@ import {
   ChevronRight,
   Wifi,
   Building2,
-  DollarSign,
   Calendar,
   Eye,
   CheckCheck,
   Ban,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useSponsors, useRewards, useRedemptions } from '@/hooks/useSponsors';
 import { useWebSocketSponsors } from '@/hooks/useWebSocket';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { uploadImageToS3, validateImageFile, createImagePreview } from '@/lib/upload';
 import type { Sponsor, SponsorReward, UserRedemption } from '@/lib/api';
 
 export default function AdminSponsors() {
@@ -131,7 +132,7 @@ export default function AdminSponsors() {
   } = useRedemptions();
 
   // ==========================================
-  // WEBSOCKET INTEGRATION (CENTRALIZED)
+  // WEBSOCKET INTEGRATION
   // ==========================================
   useWebSocketSponsors({
     onSponsorCreated: useCallback((data: any) => {
@@ -189,6 +190,13 @@ export default function AdminSponsors() {
   const [viewRedemptionOpen, setViewRedemptionOpen] = useState(false);
 
   // ==========================================
+  // STATE - IMAGE UPLOAD
+  // ==========================================
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ==========================================
   // STATE - SELECTED ITEMS
   // ==========================================
   const [selectedSponsor, setSelectedSponsor] = useState<Sponsor | null>(null);
@@ -232,6 +240,51 @@ export default function AdminSponsors() {
   }, [sponsors, rewards, sponsorsMeta, rewardsMeta, redemptionsMeta, redemptionStats]);
 
   // ==========================================
+  // HANDLERS - IMAGE UPLOAD
+  // ==========================================
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      showError(validation.error || 'Invalid file');
+      return;
+    }
+
+    try {
+      setIsUploadingImage(true);
+      
+      // Create preview
+      const preview = await createImagePreview(file);
+      setImagePreview(preview);
+
+      // Upload to S3
+      const imageUrl = await uploadImageToS3(file);
+      
+      // Update form
+      setSponsorForm((prev) => ({ ...prev, logo_url: imageUrl }));
+      
+      success('Image uploaded successfully!');
+    } catch (error: any) {
+      console.error('❌ Image upload error:', error);
+      showError(error?.message || 'Failed to upload image');
+      setImagePreview(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSponsorForm((prev) => ({ ...prev, logo_url: '' }));
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // ==========================================
   // HANDLERS - FORMS
   // ==========================================
   const resetSponsorForm = () => {
@@ -241,6 +294,10 @@ export default function AdminSponsors() {
       description: '',
       contact_email: '',
     });
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const resetRewardForm = () => {
@@ -271,6 +328,7 @@ export default function AdminSponsors() {
       description: sponsor.description || '',
       contact_email: sponsor.contact_email || '',
     });
+    setImagePreview(sponsor.logo_url || null);
     setEditSponsorOpen(true);
   };
 
@@ -567,7 +625,9 @@ export default function AdminSponsors() {
             </TabsTrigger>
           </TabsList>
 
-          {/* SPONSORS TAB */}
+          {/* ==========================================
+              SPONSORS TAB
+              ========================================== */}
           <TabsContent value="sponsors">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
@@ -586,9 +646,16 @@ export default function AdminSponsors() {
                   <div className="text-center py-16">
                     <Building2 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600 font-poppins text-lg mb-2">No sponsors yet</p>
-                    <p className="text-sm text-gray-400 font-nunito">
+                    <p className="text-sm text-gray-400 font-nunito mb-4">
                       Add your first sponsor to get started
                     </p>
+                    <Button
+                      onClick={handleOpenCreateSponsor}
+                      className="bg-gradient-to-br from-purple-600 to-purple-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add First Sponsor
+                    </Button>
                   </div>
                 ) : (
                   <>
@@ -599,34 +666,58 @@ export default function AdminSponsors() {
                           className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
                         >
                           <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins text-lg">
-                                  {sponsor.name}
-                                </h3>
-                                <Badge
-                                  className={`font-poppins border-0 ${
-                                    sponsor.is_active
-                                      ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                      : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                                  }`}
-                                >
-                                  {sponsor.is_active ? 'Active' : 'Inactive'}
-                                </Badge>
+                            <div className="flex gap-4 flex-1">
+                              {/* Logo */}
+                              {sponsor.logo_url ? (
+                                <img
+                                  src={sponsor.logo_url}
+                                  alt={sponsor.name}
+                                  className="w-16 h-16 rounded-lg object-cover border-2 border-[#6CAC73]/20"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback = e.currentTarget.nextElementSibling;
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={sponsor.logo_url ? 'hidden' : ''}>
+                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
+                                  <Building2 className="w-8 h-8 text-purple-600" />
+                                </div>
                               </div>
-                              {sponsor.description && (
-                                <p className="text-sm text-gray-600 font-nunito mb-2">
-                                  {sponsor.description}
-                                </p>
-                              )}
-                              <div className="flex gap-2 text-xs text-gray-500 font-nunito">
-                                {sponsor.contact_email && (
-                                  <span>📧 {sponsor.contact_email}</span>
+                              
+                              {/* Details */}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="font-semibold text-[#2B4A2F] font-poppins text-lg">
+                                    {sponsor.name}
+                                  </h3>
+                                  <Badge
+                                    className={`font-poppins border-0 ${
+                                      sponsor.is_active
+                                        ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                                        : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+                                    }`}
+                                  >
+                                    {sponsor.is_active ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+                                {sponsor.description && (
+                                  <p className="text-sm text-gray-600 font-nunito mb-2">
+                                    {sponsor.description}
+                                  </p>
                                 )}
-                                {sponsor.contact_email && <span>•</span>}
-                                <span>{sponsor._count?.rewards || 0} rewards</span>
+                                <div className="flex gap-2 text-xs text-gray-500 font-nunito">
+                                  {sponsor.contact_email && (
+                                    <span>📧 {sponsor.contact_email}</span>
+                                  )}
+                                  {sponsor.contact_email && <span>•</span>}
+                                  <span>{sponsor._count?.rewards || 0} rewards</span>
+                                </div>
                               </div>
                             </div>
+                            
+                            {/* Actions */}
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
@@ -697,7 +788,9 @@ export default function AdminSponsors() {
             </Card>
           </TabsContent>
 
-          {/* REWARDS TAB */}
+          {/* ==========================================
+              REWARDS TAB
+              ========================================== */}
           <TabsContent value="rewards">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
@@ -729,11 +822,20 @@ export default function AdminSponsors() {
                   <div className="text-center py-16">
                     <Gift className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600 font-poppins text-lg mb-2">No rewards yet</p>
-                    <p className="text-sm text-gray-400 font-nunito">
+                    <p className="text-sm text-gray-400 font-nunito mb-4">
                       {sponsors.length === 0 
                         ? 'Add a sponsor first before creating rewards' 
                         : 'Create your first reward to get started'}
                     </p>
+                    {sponsors.filter(s => s.is_active).length > 0 && (
+                      <Button
+                        onClick={handleOpenCreateReward}
+                        className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add First Reward
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -769,7 +871,7 @@ export default function AdminSponsors() {
                             </p>
                           )}
 
-                          <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <div className="flex items-center gap-1 text-sm font-semibold text-blue-600">
                               <Award className="w-4 h-4" />
                               {reward.points_cost} points
@@ -868,7 +970,9 @@ export default function AdminSponsors() {
             </Card>
           </TabsContent>
 
-          {/* REDEMPTIONS TAB */}
+          {/* ==========================================
+              REDEMPTIONS TAB
+              ========================================== */}
           <TabsContent value="redemptions">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
@@ -922,8 +1026,8 @@ export default function AdminSponsors() {
                               </div>
 
                               <div className="space-y-1 text-sm text-gray-600 font-nunito">
-                                <p>User: {redemption.user?.username || 'Unknown'} ({redemption.user?.email})</p>
-                                <p>Points Cost: {redemption.reward?.points_cost || 0}</p>
+                                <p>User: <span className="font-medium">{redemption.user?.username || 'Unknown'}</span> ({redemption.user?.email})</p>
+                                <p>Points Cost: <span className="font-medium text-blue-600">{redemption.reward?.points_cost || 0}</span></p>
                                 <p>Claimed: {new Date(redemption.claimed_at).toLocaleString()}</p>
                                 {redemption.fulfilled_at && (
                                   <p className="text-[#6CAC73]">
@@ -1006,7 +1110,9 @@ export default function AdminSponsors() {
           </TabsContent>
         </Tabs>
 
-        {/* DIALOGS */}
+        {/* ==========================================
+            DIALOGS
+            ========================================== */}
 
         {/* Create/Edit Sponsor Dialog */}
         <Dialog
@@ -1030,6 +1136,71 @@ export default function AdminSponsors() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label className="text-[#2B4A2F] font-poppins">
+                  Sponsor Logo
+                </Label>
+                <div className="flex items-center gap-4">
+                  {/* Preview */}
+                  <div className="flex-shrink-0">
+                    {imagePreview || sponsorForm.logo_url ? (
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-[#6CAC73]/20">
+                        <img
+                          src={imagePreview || sponsorForm.logo_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          onClick={handleRemoveImage}
+                          disabled={isUploadingImage}
+                          className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 disabled:opacity-50"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center border-2 border-dashed border-purple-300">
+                        <ImageIcon className="w-8 h-8 text-purple-600" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingImage}
+                      className="w-full border-[#6CAC73]/20 bg-white/80 hover:bg-purple-50 text-purple-600"
+                    >
+                      {isUploadingImage ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Uploading to S3...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          {imagePreview || sponsorForm.logo_url ? 'Change Logo' : 'Upload Logo'}
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PNG, JPG, WEBP up to 10MB
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-[#2B4A2F] font-poppins">
                   Sponsor Name <span className="text-red-500">*</span>
@@ -1040,18 +1211,7 @@ export default function AdminSponsors() {
                   onChange={(e) => setSponsorForm({ ...sponsorForm, name: e.target.value })}
                   placeholder="e.g., EcoTech Solutions"
                   className="border-[#6CAC73]/20"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo_url" className="text-[#2B4A2F] font-poppins">
-                  Logo URL
-                </Label>
-                <Input
-                  id="logo_url"
-                  value={sponsorForm.logo_url}
-                  onChange={(e) => setSponsorForm({ ...sponsorForm, logo_url: e.target.value })}
-                  placeholder="https://example.com/logo.png"
-                  className="border-[#6CAC73]/20"
+                  disabled={isUploadingImage}
                 />
               </div>
               <div className="space-y-2">
@@ -1065,6 +1225,7 @@ export default function AdminSponsors() {
                   placeholder="Brief description of the sponsor..."
                   rows={3}
                   className="border-[#6CAC73]/20"
+                  disabled={isUploadingImage}
                 />
               </div>
               <div className="space-y-2">
@@ -1078,6 +1239,7 @@ export default function AdminSponsors() {
                   onChange={(e) => setSponsorForm({ ...sponsorForm, contact_email: e.target.value })}
                   placeholder="contact@sponsor.com"
                   className="border-[#6CAC73]/20"
+                  disabled={isUploadingImage}
                 />
               </div>
             </div>
@@ -1088,7 +1250,7 @@ export default function AdminSponsors() {
                   setEditSponsorOpen(false);
                   resetSponsorForm();
                 }}
-                disabled={isCreatingSponsor || isUpdatingSponsor}
+                disabled={isCreatingSponsor || isUpdatingSponsor || isUploadingImage}
                 className="border-[#6CAC73]/20 bg-white/80"
               >
                 <X className="w-4 h-4 mr-2" />
@@ -1096,7 +1258,7 @@ export default function AdminSponsors() {
               </Button>
               <Button
                 onClick={editSponsorOpen ? handleUpdateSponsor : handleCreateSponsor}
-                disabled={isCreatingSponsor || isUpdatingSponsor}
+                disabled={isCreatingSponsor || isUpdatingSponsor || isUploadingImage}
                 className="bg-gradient-to-br from-purple-600 to-purple-700 text-white"
               >
                 {isCreatingSponsor || isUpdatingSponsor ? (
