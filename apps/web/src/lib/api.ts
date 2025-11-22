@@ -232,6 +232,79 @@ export interface Announcement {
   };
 }
 
+export interface Sponsor {
+  sponsor_id: number;
+  name: string;
+  logo_url?: string;
+  description?: string;
+  contact_email?: string;
+  is_active: boolean;
+  created_by_admin_id?: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  created_by_admin?: {
+    user_id: number;
+    username: string;
+  };
+  _count?: {
+    rewards: number;
+  };
+}
+
+export interface SponsorReward {
+  reward_id: number;
+  sponsor_id: number;
+  title: string;
+  description?: string;
+  points_cost: number;
+  quantity?: number;
+  redeemed_count: number;
+  is_active: boolean;
+  display_on_leaderboard: boolean;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+  deleted_at: string | null;
+  sponsor?: Sponsor;
+  _count?: {
+    claims: number;
+  };
+}
+
+export interface UserRedemption {
+  redemption_id: number;
+  user_id: number;
+  reward_id: number;
+  status: 'pending' | 'fulfilled' | 'cancelled';
+  claimed_at: string;
+  fulfilled_at?: string;
+  deleted_at: string | null;
+  user?: {
+    user_id: number;
+    username: string;
+    email: string;
+  };
+  reward?: SponsorReward;
+}
+
+export interface SponsorStats {
+  sponsors: {
+    total: number;
+    active: number;
+  };
+  rewards: {
+    total: number;
+    active: number;
+  };
+  redemptions: {
+    total: number;
+    pending: number;
+    fulfilled: number;
+    cancelled: number;
+  };
+}
+
 // ===== TOKEN REFRESH LOGIC =====
 let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
@@ -576,6 +649,124 @@ export const announcementsAPI = {
   toggleStatus: (announcementId: number): Promise<ApiResponse<Announcement>> =>
     api.patch(`/announcements/${announcementId}/toggle-status`),
 };
+
+export const sponsorsAPI = {
+  getAll: (
+    page = 1,
+    limit = 10,
+    activeOnly = false
+  ): Promise<ApiResponse<PaginatedResponse<Sponsor>>> =>
+    api.get('/sponsors', { params: { page, limit, activeOnly } }),
+
+  getById: (sponsorId: number): Promise<ApiResponse<Sponsor>> =>
+    api.get(`/sponsors/${sponsorId}`),
+
+  create: (data: {
+    name: string;
+    logo_url?: string;
+    description?: string;
+    contact_email?: string;
+  }): Promise<ApiResponse<Sponsor>> => api.post('/sponsors', data),
+
+  update: (
+    sponsorId: number,
+    data: Partial<{
+      name: string;
+      logo_url: string;
+      description: string;
+      contact_email: string;
+      is_active: boolean;
+    }>
+  ): Promise<ApiResponse<Sponsor>> => api.put(`/sponsors/${sponsorId}`, data),
+
+  delete: (sponsorId: number): Promise<ApiResponse<any>> =>
+    api.delete(`/sponsors/${sponsorId}`),
+
+  toggleStatus: (sponsorId: number): Promise<ApiResponse<Sponsor>> =>
+    api.patch(`/sponsors/${sponsorId}/toggle-status`),
+};
+
+// ===== REWARDS API =====
+export const rewardsAPI = {
+  getAll: (
+    page = 1,
+    limit = 20,
+    filters?: {
+      sponsor_id?: number;
+      activeOnly?: boolean;
+      availableOnly?: boolean;
+    }
+  ): Promise<ApiResponse<PaginatedResponse<SponsorReward>>> =>
+    api.get('/rewards', { params: { page, limit, ...filters } }),
+
+  getById: (rewardId: number): Promise<ApiResponse<SponsorReward>> =>
+    api.get(`/rewards/${rewardId}`),
+
+  create: (data: {
+    sponsor_id: number;
+    title: string;
+    description?: string;
+    points_cost: number;
+    quantity?: number;
+    display_on_leaderboard?: boolean;
+    expires_at?: Date;
+  }): Promise<ApiResponse<SponsorReward>> => api.post('/rewards', data),
+
+  update: (
+    rewardId: number,
+    data: Partial<{
+      title: string;
+      description: string;
+      points_cost: number;
+      quantity: number;
+      is_active: boolean;
+      display_on_leaderboard: boolean;
+      expires_at: Date | null;
+    }>
+  ): Promise<ApiResponse<SponsorReward>> => api.put(`/rewards/${rewardId}`, data),
+
+  delete: (rewardId: number): Promise<ApiResponse<any>> =>
+    api.delete(`/rewards/${rewardId}`),
+
+  toggleStatus: (rewardId: number): Promise<ApiResponse<SponsorReward>> =>
+    api.patch(`/rewards/${rewardId}/toggle-status`),
+
+  redeem: (reward_id: number): Promise<ApiResponse<{ 
+    redemption: UserRedemption; 
+    points_spent: number; 
+    remaining_points: number; 
+  }>> => api.post('/redemptions', { reward_id }),
+};
+
+// ===== REDEMPTIONS API =====
+export const redemptionsAPI = {
+  getAll: (
+    page = 1,
+    limit = 20,
+    filters?: {
+      userId?: number;
+      status?: 'pending' | 'fulfilled' | 'cancelled';
+    }
+  ): Promise<ApiResponse<PaginatedResponse<UserRedemption>>> =>
+    api.get('/redemptions', { params: { page, limit, ...filters } }),
+
+  fulfill: (redemptionId: number): Promise<ApiResponse<UserRedemption>> =>
+    api.patch(`/redemptions/${redemptionId}/fulfill`),
+
+  cancel: (
+    redemptionId: number,
+    refundPoints = true
+  ): Promise<ApiResponse<{ 
+    redemption: UserRedemption; 
+    refunded: boolean; 
+    refund_amount: number; 
+    new_points: number; 
+  }>> =>
+    api.patch(`/redemptions/${redemptionId}/cancel`, { refundPoints }),
+
+  getStats: (): Promise<ApiResponse<SponsorStats>> => api.get('/sponsors/stats'),
+};
+
 
 // ===== HEALTH CHECK =====
 export const healthCheck = async (): Promise<boolean> => {

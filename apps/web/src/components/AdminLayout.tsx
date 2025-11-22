@@ -33,6 +33,7 @@ const AdminLayout = () => {
     { name: 'Users', href: '/admin/users', icon: Users, badge: null },
     { name: 'Content', href: '/admin/posts', icon: FileText, badge: null },
     { name: 'Challenges', href: '/admin/challenges', icon: Trophy, badge: null },
+    { name: 'Sponsors', href: '/admin/sponsors', icon: Trophy, badge: null },
     { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, badge: null },
   ];
 

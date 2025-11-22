@@ -70,6 +70,10 @@ export const POINTS = {
   CHALLENGE: {
     MIN: 1,
     MAX: 1000
+  }, 
+  REWARD: {
+    MIN: 50,
+    MAX: 10000
   }
 };
 
@@ -181,6 +185,8 @@ export const AI_CONFIG = {
   }
 };
 
+
+
 // Rate limiting
 export const RATE_LIMITS = {
   GENERAL: {
@@ -201,3 +207,4 @@ export const RATE_LIMITS = {
     MAX: 10 // Max 10 connection attempts per minute
   }
 };
+

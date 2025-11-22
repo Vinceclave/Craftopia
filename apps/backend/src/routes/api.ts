@@ -13,6 +13,7 @@ import reportRoutes from './report.route';
 import userRoutes from './user.route';
 import adminRoutes from './admin/index'; // NEW: Admin routes
 import chatbotRoutes from './chatbot.route'; 
+import sponsorRoutes from './sponsor.route';
 import prisma from '../config/prisma';
 
 // AI Routes
@@ -40,6 +41,7 @@ router.use('/moderation', moderationRoutes);
 router.use('/announcements', announcementRoutes);
 router.use('/reports', reportRoutes);
 router.use('/chatbot', chatbotRoutes);
+router.use('/sponsors', sponsorRoutes);
 
 // AI Routes
 router.use('/ai/craft', aiCraftRoutes);
