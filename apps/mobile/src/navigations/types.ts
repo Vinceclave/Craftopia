@@ -14,12 +14,25 @@ export type FeedStackParamList = {
 
 export type CraftStackParamList = {
   Craft: undefined;
-   CraftDetails: { 
+  CraftScan: undefined;
+  CraftProcessing: { imageUri: string };
+  CraftResults: { 
+    imageUri: string;
+    detectedItems: Array<{
+      id: string;
+      name: string;
+      category: string;
+      confidence: number;
+      recyclable: boolean;
+    }>;
+  };
+  CraftDetails: { 
     craftTitle: string;
     materials: string[];
     steps: string[];
   };
 };
+
 
 export type EcoQuestStackParamList = {
   EcoQuest: undefined;

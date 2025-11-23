@@ -85,7 +85,9 @@ export default function TabNavigator() {
       };
 
       const currentScreenName = getCurrentScreenName(e.data.state);
-      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges', 'PrivacyPolicy', 'TermsOfService', 'ContactUs', 'AboutUS', 'HelpCenter'];
+      const hideOnScreens = ['EditProfile', 'Create', 'Settings', 'QuestDetails', 'UserChallenges', 
+                             'PrivacyPolicy', 'TermsOfService', 'ContactUs', 'AboutUS', 'HelpCenter',
+                             'CraftScan', 'CraftProcessing', 'CraftResults', 'CraftDetails'];
       setTabBarVisible(!hideOnScreens.includes(currentScreenName));
     });
 
