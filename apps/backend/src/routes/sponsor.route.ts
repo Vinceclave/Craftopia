@@ -115,7 +115,7 @@ router.post(
 // Admin routes
 router.get(
   '/redemptions',
-  requireAdmin,
+  requireAuth,
   sponsorController.getRedemptions
 );
 

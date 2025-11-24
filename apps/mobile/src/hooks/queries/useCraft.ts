@@ -1,9 +1,12 @@
+// apps/mobile/src/hooks/queries/useCraft.ts
+
 import { useMutation } from "@tanstack/react-query";
-import { craftService } from "~/services/craft.service";
+import { craftService, GenerateCraftRequest } from "~/services/craft.service";
 
 export const useGenerateCraft = () =>
   useMutation({
-    mutationFn: (materials: string[]) => craftService.generateCraft(materials),
+    mutationFn: (request: GenerateCraftRequest) => 
+      craftService.generateCraft(request.materials, request.referenceImageBase64),
   });
 
 export const useDetectMaterials = () =>

@@ -21,9 +21,11 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Redemption } from '~/services/reward.service';
 import { useMyRedemptions } from '~/hooks/useRewards';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { EcoQuestStackParamList } from '~/navigations/types';
 
 export const RedemptionHistoryScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'fulfilled' | 'cancelled'>('all');
 

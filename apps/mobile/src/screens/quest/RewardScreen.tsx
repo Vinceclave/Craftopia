@@ -25,9 +25,11 @@ import { useUserStats } from '~/hooks/useUserStats';
 import { Reward } from '~/services/reward.service';
 import { RewardCard } from '~/components/quest/rewards/RewardCard';
 import { useRedeemReward, useRewards } from '~/hooks/useRewards';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { EcoQuestStackParamList } from '~/navigations/types';
 
 export const RewardsScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>()
   const [refreshing, setRefreshing] = useState(false);
 
   // Get user stats for points balance

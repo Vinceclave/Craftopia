@@ -17,8 +17,10 @@ import {
   Lightbulb,
   ChevronRight,
   Clock,
+  ImageIcon,
 } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftResults'>;
 
@@ -28,6 +30,7 @@ interface CraftIdea {
   steps: string[];
   timeNeeded: string;
   quickTip: string;
+  generatedImageUrl?: string; // NEW: AI-generated visualization
 }
 
 export const CraftResultsScreen = () => {
@@ -42,6 +45,7 @@ export const CraftResultsScreen = () => {
       craftTitle: craft.title,
       materials: detectedMaterials,
       steps: craft.steps,
+      generatedImageUrl: craft.generatedImageUrl, // Pass the generated image
     });
   };
 
@@ -101,7 +105,10 @@ export const CraftResultsScreen = () => {
               className="w-full h-48"
               resizeMode="cover"
             />
-            <View className="absolute inset-0 bg-gradient-to-t from-craftopia-textPrimary/50 to-transparent" />
+            <LinearGradient
+              colors={['transparent', 'rgba(31,42,31,0.5)']}
+              className="absolute inset-0"
+            />
             
             {/* Success Badge */}
             <View className="absolute bottom-3 left-3 bg-craftopia-success rounded-full px-3 py-1.5 flex-row items-center">
@@ -215,7 +222,7 @@ export const CraftResultsScreen = () => {
                   Craft Ideas for You
                 </Text>
                 <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                  {craftIdeas.length} AI-generated suggestions
+                  {craftIdeas.length} AI-generated suggestions with visuals
                 </Text>
               </View>
             </View>
@@ -233,15 +240,50 @@ export const CraftResultsScreen = () => {
                   className="bg-craftopia-surface rounded-xl overflow-hidden border border-craftopia-light"
                   activeOpacity={0.7}
                 >
-                  {/* Craft Header with Gradient */}
-                  <View className="bg-gradient-to-r from-craftopia-primary/5 to-craftopia-secondary/5 p-4">
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-lg font-bold text-craftopia-textPrimary flex-1 font-poppinsBold">
-                        {craft.title}
-                      </Text>
-                      <ChevronRight size={20} color="#3B6E4D" />
-                    </View>
+                  {/* NEW: Generated Image Preview */}
+                  {craft.generatedImageUrl && (
+                    <View className="relative">
+                      <Image
+                        source={{ uri: craft.generatedImageUrl }}
+                        className="w-full h-40"
+                        resizeMode="cover"
+                      />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(31,42,31,0.8)']}
+                        className="absolute inset-0"
+                      />
+                      
+                      {/* AI Generated Badge */}
+                      <View className="absolute top-2 right-2 bg-craftopia-accent/90 backdrop-blur-sm rounded-full px-2.5 py-1 flex-row items-center">
+                        <ImageIcon size={12} color="#FFFFFF" />
+                        <Text className="text-xs font-semibold text-white ml-1 font-nunito">
+                          AI Generated
+                        </Text>
+                      </View>
 
+                      {/* Title Overlay */}
+                      <View className="absolute bottom-0 left-0 right-0 p-3">
+                        <Text className="text-lg font-bold text-white font-poppinsBold">
+                          {craft.title}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Craft Header (if no image) */}
+                  {!craft.generatedImageUrl && (
+                    <View className="bg-gradient-to-r from-craftopia-primary/5 to-craftopia-secondary/5 p-4">
+                      <View className="flex-row items-center justify-between mb-2">
+                        <Text className="text-lg font-bold text-craftopia-textPrimary flex-1 font-poppinsBold">
+                          {craft.title}
+                        </Text>
+                        <ChevronRight size={20} color="#3B6E4D" />
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Craft Details */}
+                  <View className="p-4">
                     <Text className="text-sm text-craftopia-textSecondary mb-3 font-nunito leading-5">
                       {craft.description}
                     </Text>
@@ -249,13 +291,13 @@ export const CraftResultsScreen = () => {
                     {/* Meta Info */}
                     <View className="flex-row items-center justify-between">
                       <View className="flex-row items-center gap-2">
-                        <View className="flex-row items-center bg-white/50 px-2.5 py-1.5 rounded-lg">
+                        <View className="flex-row items-center bg-craftopia-light px-2.5 py-1.5 rounded-lg">
                           <Clock size={14} color="#5F6F64" />
                           <Text className="text-xs text-craftopia-textSecondary ml-1 font-nunito">
                             {craft.timeNeeded}
                           </Text>
                         </View>
-                        <View className="flex-row items-center bg-white/50 px-2.5 py-1.5 rounded-lg">
+                        <View className="flex-row items-center bg-craftopia-light px-2.5 py-1.5 rounded-lg">
                           <Text className={`text-xs font-semibold font-nunito ${getDifficultyColor(difficulty)}`}>
                             {difficulty}
                           </Text>

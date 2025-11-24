@@ -35,6 +35,9 @@ export type CraftStackParamList = {
     craftTitle: string;
     materials: string[];
     steps: string[];
+    generatedImageUrl?: string;
+    timeNeeded?: string;
+    quickTip?: string;
   };
 };
 

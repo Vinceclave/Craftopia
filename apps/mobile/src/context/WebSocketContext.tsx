@@ -1,4 +1,4 @@
-// apps/mobile/src/context/WebSocketContext.tsx - FIXED: PERSISTENT CONNECTION
+// apps/mobile/src/context/WebSocketContext.tsx
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { wsManager, WebSocketEvent } from '~/config/websocket';
 import { useAuth } from './AuthContext';
@@ -17,6 +17,11 @@ interface WebSocketContextType {
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
+// Constants
+const RECONNECT_DELAY = 2000;
+const INITIAL_RECONNECT_DELAY = 3000;
+const BACKGROUND_RECONNECT_DELAY = 500;
+
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
@@ -24,29 +29,34 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const listenersRegistered = useRef(false);
   const appState = useRef(AppState.currentState);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionAttemptRef = useRef<number>(0);
 
-  // ✅ Monitor connection status from wsManager
+  // Cleanup timeouts to prevent memory leaks
+  const clearReconnectTimeout = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Monitor connection status
   useEffect(() => {
     const handleConnectionChange = (status: boolean) => {
-      console.log('🔄 [WebSocketContext] Connection status changed:', status);
       setIsConnected(status);
       
-      // If disconnected unexpectedly while authenticated, try to reconnect
-      if (!status && isAuthenticated && user && appState.current === 'active') {
-        console.log('⚠️ [WebSocketContext] Unexpected disconnection, scheduling reconnect...');
+      if (status) {
+        connectionAttemptRef.current = 0;
+      } else if (isAuthenticated && user && appState.current === 'active') {
+        clearReconnectTimeout();
         
-        // Clear any existing timeout
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
+        const delay = Math.min(RECONNECT_DELAY * Math.pow(1.5, connectionAttemptRef.current), 30000);
+        connectionAttemptRef.current++;
         
-        // Try to reconnect after 2 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('🔄 [WebSocketContext] Attempting automatic reconnection...');
-          wsManager.connect().catch((error) => {
-            console.error('❌ [WebSocketContext] Auto-reconnection failed:', error);
+          wsManager.connect().catch(() => {
+            // Error handled by wsManager
           });
-        }, 2000);
+        }, delay);
       }
     };
 
@@ -54,153 +64,101 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     return () => {
       wsManager.offConnectionStatusChange(handleConnectionChange);
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      clearReconnectTimeout();
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, clearReconnectTimeout]);
 
-  // ✅ Handle app state changes (background/foreground)
+  // Handle app state changes
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      console.log('📱 [WebSocketContext] App state changed:', {
-        from: appState.current,
-        to: nextAppState,
-        isAuthenticated,
-        hasUser: !!user,
-        isConnected: wsManager.isSocketConnected(),
-      });
-
-      // If app comes to foreground and user is authenticated, ensure connection
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active' &&
         isAuthenticated &&
         user
       ) {
-        console.log('🔄 [WebSocketContext] App came to foreground, checking connection...');
-        
-        // Check if socket is connected, if not, reconnect
         setTimeout(() => {
           if (!wsManager.isSocketConnected()) {
-            console.log('🔌 [WebSocketContext] Reconnecting WebSocket after app resumed...');
-            wsManager.connect().catch((error) => {
-              console.error('❌ [WebSocketContext] Reconnection failed:', error);
-            });
+            clearReconnectTimeout();
+            reconnectTimeoutRef.current = setTimeout(() => {
+              wsManager.connect().catch(() => {
+                // Error handled by wsManager
+              });
+            }, BACKGROUND_RECONNECT_DELAY);
           } else {
-            console.log('✅ [WebSocketContext] WebSocket already connected');
-            // Ping to ensure connection is alive
             wsManager.ping();
           }
-        }, 500); // Small delay to ensure app is fully active
+        }, BACKGROUND_RECONNECT_DELAY);
       }
 
       appState.current = nextAppState;
-    });
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
 
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, clearReconnectTimeout]);
 
-  // ✅ Connect when user is authenticated, disconnect only on logout
+  // Connect/disconnect based on authentication
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('🔌 [WebSocketContext] User authenticated, initializing WebSocket connection...');
-      console.log('👤 User:', { id: user.id, username: user.username });
+      connectionAttemptRef.current = 0;
       
       wsManager.connect()
         .then(() => {
           setIsConnected(true);
-          console.log('✅ WebSocket connected successfully for user:', user.id);
         })
-        .catch((error) => {
-          console.error('❌ WebSocket connection failed:', error);
+        .catch(() => {
           setIsConnected(false);
           
-          // Retry connection after 3 seconds if initial connection fails
+          clearReconnectTimeout();
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 [WebSocketContext] Retrying initial connection...');
-            wsManager.connect().catch((err) => {
-              console.error('❌ [WebSocketContext] Retry failed:', err);
+            wsManager.connect().catch(() => {
+              // Error handled by wsManager
             });
-          }, 3000);
+          }, INITIAL_RECONNECT_DELAY);
         });
 
-      // ✅ Don't disconnect on unmount, connection persists across navigation
-      // Only cleanup listeners
       return () => {
-        console.log('⚠️ [WebSocketContext] Provider cleanup (connection stays alive)');
-        // Clear reconnect timeout if exists
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
+        clearReconnectTimeout();
       };
     } else if (!isAuthenticated) {
-      // ✅ Only disconnect when user logs out
-      console.log('🔌 [WebSocketContext] User logged out, disconnecting WebSocket...');
-      
-      // Clear any pending reconnection attempts
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      
+      clearReconnectTimeout();
+      connectionAttemptRef.current = 0;
       wsManager.disconnect();
       setIsConnected(false);
       listenersRegistered.current = false;
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, clearReconnectTimeout]);
 
   // Setup event listeners
   useEffect(() => {
     if (!isConnected || !user || listenersRegistered.current) return;
 
-    console.log('📡 Setting up WebSocket event listeners...');
     listenersRegistered.current = true;
 
-    // ========================================
-    // POST EVENTS - BROADCAST (ALL CLIENTS)
-    // ========================================
+    // Post event handlers
     const handlePostCreated = (data: any) => {
-      console.log('📢 [WS BROADCAST] Post created:', {
-        post_id: data.post_id,
-        title: data.title,
-        author: data.author,
-        currentUser: user.username
-      });
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['posts'],
-        refetchType: 'all'
-      });
-      
-      console.log('✅ Post created - all caches invalidated');
+      queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'all' });
     };
 
     const handlePostLiked = (data: any) => {
-      console.log('❤️ [WS BROADCAST] Post liked:', {
-        postId: data.postId,
-        username: data.username,
-        likeCount: data.likeCount,
-        isLiked: data.isLiked
-      });
-      
+      const updatePost = (post: any) => {
+        if (post.post_id !== data.postId) return post;
+        return {
+          ...post,
+          likeCount: data.likeCount,
+          isLiked: data.userId === user?.id ? data.isLiked : post.isLiked
+        };
+      };
+
+      // Update posts list
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
-          const updatePost = (post: any) => {
-            if (post.post_id !== data.postId) return post;
-            
-            return {
-              ...post,
-              likeCount: data.likeCount,
-              isLiked: data.userId === user?.id ? data.isLiked : post.isLiked
-            };
-          };
           
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
@@ -219,7 +177,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return oldData;
         }
       );
-      
+
+      // Update individual post
       queryClient.setQueryData(
         postKeys.detail(data.postId),
         (oldPost: any) => {
@@ -231,35 +190,20 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           };
         }
       );
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['posts'],
-        refetchType: 'none'
-      });
     };
 
     const handlePostCommented = (data: any) => {
-      console.log('💬 [WS BROADCAST] Post commented:', {
-        postId: data.postId,
-        commentId: data.commentId,
-        username: data.username
-      });
-      
+      const updatePost = (post: any) => {
+        if (post.post_id !== data.postId) return post;
+        const newCommentCount = data.commentCount ?? (post.commentCount + 1);
+        return { ...post, commentCount: newCommentCount };
+      };
+
+      // Update posts list
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
-          const updatePost = (post: any) => {
-            if (post.post_id !== data.postId) return post;
-            
-            const newCommentCount = data.commentCount ?? (post.commentCount + 1);
-            
-            return {
-              ...post,
-              commentCount: newCommentCount
-            };
-          };
           
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
@@ -278,7 +222,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return oldData;
         }
       );
-      
+
+      // Update individual post
       queryClient.setQueryData(
         postKeys.detail(data.postId),
         (oldPost: any) => {
@@ -289,66 +234,53 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           };
         }
       );
-      
+
+      // Invalidate comments
       queryClient.invalidateQueries({ 
         queryKey: postKeys.comments(data.postId),
         refetchType: 'active'
       });
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['posts'],
-        refetchType: 'none'
-      });
     };
 
     const handlePostDeleted = (data: any) => {
-      console.log('🗑️ [WS BROADCAST] Post deleted:', {
-        postId: data.postId
-      });
-      
+      // Update posts list
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
           
           if (Array.isArray(oldData)) {
-            const filtered = oldData.filter((post: any) => post.post_id !== data.postId);
-            console.log(`🗑️ Removed post from array (${oldData.length} -> ${filtered.length})`);
-            return filtered;
+            return oldData.filter((post: any) => post.post_id !== data.postId);
           }
           
           if (oldData.pages) {
-            const updated = {
+            return {
               ...oldData,
               pages: oldData.pages.map((page: any) => ({
                 ...page,
                 posts: page.posts?.filter((post: any) => post.post_id !== data.postId) || [],
               })),
             };
-            console.log('🗑️ Removed post from infinite query pages');
-            return updated;
           }
           
           return oldData;
         }
       );
-      
+
+      // Remove individual post
       queryClient.removeQueries({ queryKey: postKeys.detail(data.postId) });
-      
-      queryClient.invalidateQueries({ 
-        queryKey: ['posts'], 
-        refetchType: 'all' 
-      });
-      
-      console.log('✅ Post deleted and removed from all devices');
+
+      // Invalidate posts
+      queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'all' });
     };
 
     const handlePostUpdated = (data: any) => {
-      console.log('📝 [WS BROADCAST] Post updated:', {
-        post_id: data.post_id,
-        title: data.title
-      });
-      
+      const updatePost = (post: any) =>
+        post.post_id === data.post_id
+          ? { ...post, ...data, updated_at: new Date().toISOString() }
+          : post;
+
+      // Update individual post
       queryClient.setQueryData(
         postKeys.detail(data.post_id),
         (oldPost: any) => {
@@ -356,16 +288,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return { ...oldPost, ...data, updated_at: new Date().toISOString() };
         }
       );
-      
+
+      // Update posts list
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
-          const updatePost = (post: any) =>
-            post.post_id === data.post_id
-              ? { ...post, ...data, updated_at: new Date().toISOString() }
-              : post;
           
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
@@ -384,47 +312,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return oldData;
         }
       );
-      
-      console.log('✅ Post updated across all devices');
     };
 
-    // ========================================
-    // CHALLENGE EVENTS - REAL-TIME UPDATES
-    // ========================================
+    // Challenge event handlers
     const handleChallengeCreated = (data: any) => {
-      console.log('🎯 [WS BROADCAST] Challenge created:', {
-        challenge_id: data.challenge_id,
-        title: data.title,
-        waste_kg: data.waste_kg
-      });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.all, refetchType: 'all' });
       
-      // Invalidate all challenge queries
-      queryClient.invalidateQueries({ 
-        queryKey: challengeKeys.all,
-        refetchType: 'all'
-      });
-      
-      // Show notification
       Alert.alert(
-        '🎯 New Challenge!',
+        'New Challenge!',
         `${data.title} - Save ${data.waste_kg}kg of waste!`,
         [{ text: 'OK' }]
       );
     };
 
     const handleChallengeJoined = (data: any) => {
-      console.log('✅ [WS USER] Challenge joined:', {
-        challengeId: data.challenge?.challenge_id,
-        userChallengeId: data.userChallengeId
-      });
-      
       if (data.userId === user.id) {
-        // Invalidate user's challenges
-        queryClient.invalidateQueries({ 
-          queryKey: userChallengeKeys.lists()
-        });
-        
-        // Update progress for this challenge
+        queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.progress(data.challenge?.challenge_id, user.id)
         });
@@ -432,26 +335,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handleChallengeVerified = (data: any) => {
-      console.log('🎉 [WS USER] Challenge verified:', {
-        userChallengeId: data.userChallengeId,
-        points_awarded: data.points_awarded,
-        waste_kg_saved: data.waste_kg_saved
-      });
-      
       if (data.userId === user.id) {
-        // Invalidate user challenges
-        queryClient.invalidateQueries({ 
-          queryKey: userChallengeKeys.lists()
-        });
-        
-        // Invalidate waste stats
+        queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.wasteStats(user.id)
         });
         
-        // Show success notification
         Alert.alert(
-          '🎉 Challenge Completed!',
+          'Challenge Completed!',
           `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
           [{ text: 'Awesome!' }]
         );
@@ -459,19 +350,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handlePointsAwarded = (data: any) => {
-      console.log('⭐ [WS USER] Points awarded:', {
-        amount: data.amount,
-        waste_kg_saved: data.waste_kg_saved,
-        reason: data.reason
-      });
-      
       if (data.userId === user.id) {
-        // Invalidate user stats
-        queryClient.invalidateQueries({ 
-          queryKey: ['userStats', user.id]
-        });
-        
-        // Invalidate waste stats
+        queryClient.invalidateQueries({ queryKey: ['userStats', user.id] });
         queryClient.invalidateQueries({
           queryKey: userChallengeKeys.wasteStats(user.id)
         });
@@ -479,123 +359,88 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handleLeaderboardUpdated = (data: any) => {
-      console.log('🏆 [WS BROADCAST] Leaderboard updated:', {
-        challengeId: data.challengeId
-      });
-      
-      // Invalidate leaderboard queries
-      queryClient.invalidateQueries({ 
-        queryKey: ['leaderboard']
-      });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
     };
 
-    // ========================================
-    // CONNECTION EVENTS
-    // ========================================
-    const handleConnected = (data: any) => {
-      console.log('✅ [WS] Connected to server:', data.userId);
+    // Connection event handlers
+    const handleConnected = () => {
       setIsConnected(true);
+      connectionAttemptRef.current = 0;
     };
 
-    const handleDisconnect = (reason: string) => {
-      console.log('❌ [WS] Disconnected from server, reason:', reason);
+    const handleDisconnect = () => {
       setIsConnected(false);
-      
-      // Don't show alert if app is in background
-      if (appState.current === 'active') {
-        console.log('⚠️ [WS] Disconnected while app active, will attempt reconnect');
-      }
     };
 
     const handleReconnect = () => {
-      console.log('🔄 [WS] Reconnected!');
-      // Refetch all data on reconnect
-      queryClient.invalidateQueries({ 
-        queryKey: ['posts'],
-        refetchType: 'active'
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: challengeKeys.all,
-        refetchType: 'active'
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: userChallengeKeys.all,
-        refetchType: 'active'
-      });
+      queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'active' });
+      queryClient.invalidateQueries({ queryKey: challengeKeys.all, refetchType: 'active' });
+      queryClient.invalidateQueries({ queryKey: userChallengeKeys.all, refetchType: 'active' });
     };
 
-    // ========================================
-    // REGISTER ALL EVENT LISTENERS
-    // ========================================
-    console.log('📡 Registering WebSocket event handlers...');
-    
+    // Register event listeners
+    const registerListener = (event: string, handler: Function) => {
+      wsManager.on(event, handler);
+    };
+
     // Post events
-    wsManager.on('post:created', handlePostCreated);
-    wsManager.on('post:liked', handlePostLiked);
-    wsManager.on('post:commented', handlePostCommented);
-    wsManager.on('post:deleted', handlePostDeleted);
-    wsManager.on('post:updated', handlePostUpdated);
+    registerListener('post:created', handlePostCreated);
+    registerListener('post:liked', handlePostLiked);
+    registerListener('post:commented', handlePostCommented);
+    registerListener('post:deleted', handlePostDeleted);
+    registerListener('post:updated', handlePostUpdated);
     
     // Challenge events
-    wsManager.on('challenge:created', handleChallengeCreated);
-    wsManager.on('challenge:joined', handleChallengeJoined);
-    wsManager.on('challenge:verified', handleChallengeVerified);
-    wsManager.on('points:awarded', handlePointsAwarded);
-    wsManager.on('leaderboard:updated', handleLeaderboardUpdated);
+    registerListener('challenge:created', handleChallengeCreated);
+    registerListener('challenge:joined', handleChallengeJoined);
+    registerListener('challenge:verified', handleChallengeVerified);
+    registerListener('points:awarded', handlePointsAwarded);
+    registerListener('leaderboard:updated', handleLeaderboardUpdated);
     
     // Connection events
-    wsManager.on('connected', handleConnected);
-    wsManager.on('disconnect', handleDisconnect);
-    wsManager.on('reconnect', handleReconnect);
+    registerListener('connected', handleConnected);
+    registerListener('disconnect', handleDisconnect);
+    registerListener('reconnect', handleReconnect);
 
-    console.log('✅ All WebSocket event handlers registered');
-
-    // ========================================
-    // CLEANUP ON UNMOUNT
-    // ========================================
+    // Cleanup
     return () => {
-      console.log('🧹 Cleaning up WebSocket event listeners...');
       listenersRegistered.current = false;
       
+      const unregisterListener = (event: string, handler: Function) => {
+        wsManager.off(event, handler);
+      };
+
       // Post events
-      wsManager.off('post:created', handlePostCreated);
-      wsManager.off('post:liked', handlePostLiked);
-      wsManager.off('post:commented', handlePostCommented);
-      wsManager.off('post:deleted', handlePostDeleted);
-      wsManager.off('post:updated', handlePostUpdated);
+      unregisterListener('post:created', handlePostCreated);
+      unregisterListener('post:liked', handlePostLiked);
+      unregisterListener('post:commented', handlePostCommented);
+      unregisterListener('post:deleted', handlePostDeleted);
+      unregisterListener('post:updated', handlePostUpdated);
       
       // Challenge events
-      wsManager.off('challenge:created', handleChallengeCreated);
-      wsManager.off('challenge:joined', handleChallengeJoined);
-      wsManager.off('challenge:verified', handleChallengeVerified);
-      wsManager.off('points:awarded', handlePointsAwarded);
-      wsManager.off('leaderboard:updated', handleLeaderboardUpdated);
+      unregisterListener('challenge:created', handleChallengeCreated);
+      unregisterListener('challenge:joined', handleChallengeJoined);
+      unregisterListener('challenge:verified', handleChallengeVerified);
+      unregisterListener('points:awarded', handlePointsAwarded);
+      unregisterListener('leaderboard:updated', handleLeaderboardUpdated);
       
       // Connection events
-      wsManager.off('connected', handleConnected);
-      wsManager.off('disconnect', handleDisconnect);
-      wsManager.off('reconnect', handleReconnect);
-      
-      console.log('✅ WebSocket cleanup complete');
+      unregisterListener('connected', handleConnected);
+      unregisterListener('disconnect', handleDisconnect);
+      unregisterListener('reconnect', handleReconnect);
     };
-  }, [isConnected, queryClient, user]);
+  }, [isConnected, user, queryClient]);
 
   const emit = useCallback((event: string, data: any) => {
-    if (!isConnected) {
-      console.warn('⚠️ Cannot emit event, WebSocket not connected:', event);
-      return;
-    }
-    console.log('📤 Emitting event:', event, data);
+    if (!isConnected) return;
     wsManager.emit(event, data);
   }, [isConnected]);
 
   const on = useCallback((event: WebSocketEvent | string, callback: Function) => {
-    console.log('👂 Registering listener for:', event);
     wsManager.on(event, callback);
   }, []);
 
   const off = useCallback((event: WebSocketEvent | string, callback: Function) => {
-    console.log('👂 Removing listener for:', event);
     wsManager.off(event, callback);
   }, []);
 

@@ -1,4 +1,4 @@
-// apps/mobile/src/config/websocket.ts - ENHANCED VERSION
+// apps/mobile/src/config/websocket.ts
 import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL } from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,21 +70,35 @@ export interface WebSocketConfig {
   };
 }
 
+// Configuration constants
+const WS_CONFIG = {
+  MAX_RECONNECT_ATTEMPTS: 10,
+  RECONNECTION_DELAY: 1000,
+  RECONNECTION_DELAY_MAX: 5000,
+  TIMEOUT: 10000,
+  HEARTBEAT_INTERVAL: 30000,
+  AUTH_RETRY_DELAY: 2000,
+};
+
 export const getWebSocketConfig = async (): Promise<WebSocketConfig> => {
   const token = await AsyncStorage.getItem('access_token');
+  
+  if (!token) {
+    throw new Error('No authentication token available');
+  }
 
   return {
     url: API_BASE_URL!,
     options: {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
+      reconnectionAttempts: WS_CONFIG.MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: WS_CONFIG.RECONNECTION_DELAY,
+      reconnectionDelayMax: WS_CONFIG.RECONNECTION_DELAY_MAX,
+      timeout: WS_CONFIG.TIMEOUT,
       autoConnect: false,
       auth: {
-        token: token ?? '',
+        token,
       },
     },
   };
@@ -96,8 +110,9 @@ export class WebSocketManager {
   private listeners: Map<string, Set<Function>> = new Map();
   private isConnected = false;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
   private connectionStatusCallbacks: Set<(status: boolean) => void> = new Set();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private connectionPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -109,22 +124,63 @@ export class WebSocketManager {
   }
 
   async connect(): Promise<void> {
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
     if (this.socket?.connected) {
-      console.log('✅ WebSocket already connected');
       return;
     }
 
+    this.connectionPromise = this.establishConnection();
+    
     try {
-      console.log('🔌 Connecting to WebSocket server...');
+      await this.connectionPromise;
+    } finally {
+      this.connectionPromise = null;
+    }
+  }
+
+  private async establishConnection(): Promise<void> {
+    try {
       const config = await getWebSocketConfig();
 
-      this.socket = io(config.url, config.options);
+      if (this.socket) {
+        this.cleanupSocket();
+      }
 
+      this.socket = io(config.url, config.options);
       this.setupSocketListeners();
       this.socket.connect();
 
+      await new Promise<void>((resolve, reject) => {
+        if (!this.socket) {
+          reject(new Error('Socket initialization failed'));
+          return;
+        }
+
+        const timeout = setTimeout(() => {
+          reject(new Error('Connection timeout'));
+        }, WS_CONFIG.TIMEOUT);
+
+        const connectedHandler = () => {
+          clearTimeout(timeout);
+          this.socket?.off('connect_error', errorHandler);
+          resolve();
+        };
+
+        const errorHandler = (error: Error) => {
+          clearTimeout(timeout);
+          this.socket?.off('connect', connectedHandler);
+          reject(error);
+        };
+
+        this.socket.once('connect', connectedHandler);
+        this.socket.once('connect_error', errorHandler);
+      });
+
     } catch (error) {
-      console.error('❌ Failed to connect WebSocket:', error);
+      this.cleanupSocket();
       throw error;
     }
   }
@@ -132,113 +188,108 @@ export class WebSocketManager {
   private setupSocketListeners(): void {
     if (!this.socket) return;
 
-    // Connection established
     this.socket.on('connect', () => {
-      console.log('✅ WebSocket connected:', this.socket?.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.notifyConnectionStatus(true);
-      
-      // Re-register all listeners
+      this.startHeartbeat();
       this.reregisterListeners();
     });
 
-    // Connection message from server
-    this.socket.on('connected', (data) => {
-      console.log('📡 Server connection confirmed:', data);
-    });
-
-    // Disconnection
     this.socket.on('disconnect', (reason) => {
-      console.log('❌ WebSocket disconnected:', reason);
       this.isConnected = false;
+      this.stopHeartbeat();
       this.notifyConnectionStatus(false);
 
       if (reason === 'io server disconnect') {
-        // Server disconnected us, reconnect manually
-        console.log('🔄 Server disconnected us, attempting reconnect...');
-        setTimeout(() => this.socket?.connect(), 1000);
+        setTimeout(() => {
+          if (!this.isConnected) {
+            this.socket?.connect();
+          }
+        }, WS_CONFIG.AUTH_RETRY_DELAY);
       }
     });
 
-    // Connection error
     this.socket.on('connect_error', (error) => {
-      console.error('❌ Connection error:', error.message);
       this.reconnectAttempts++;
 
-      if (error.message.includes('Authentication')) {
-        console.warn('⚠️ Token invalid or expired');
+      if (error.message.includes('Authentication') || error.message.includes('401')) {
         this.handleAuthError();
-      } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('❌ Max reconnection attempts reached');
-        this.disconnect();
       }
     });
 
-    // Reconnection attempt
-    this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log(`🔄 Reconnection attempt ${attemptNumber}...`);
-    });
-
-    // Reconnection success
-    this.socket.on('reconnect', (attemptNumber) => {
-      console.log(`✅ Reconnected after ${attemptNumber} attempts`);
-      this.reconnectAttempts = 0;
-    });
-
-    // Reconnection failed
     this.socket.on('reconnect_failed', () => {
-      console.error('❌ Reconnection failed after all attempts');
+      // Max reconnection attempts reached
+      this.notifyConnectionStatus(false);
     });
 
-    // Pong response
-    this.socket.on('pong', (data) => {
-      console.log('🏓 Pong received:', data);
-    });
-
-    // Error
     this.socket.on('error', (error) => {
-      console.error('❌ Socket error:', error);
+      // Handle socket errors silently
     });
   }
 
   private async handleAuthError(): Promise<void> {
-    console.log('🔑 Handling authentication error...');
     try {
+      await new Promise(resolve => setTimeout(resolve, WS_CONFIG.AUTH_RETRY_DELAY));
+      
       const newToken = await AsyncStorage.getItem('access_token');
       if (newToken && this.socket) {
         this.socket.auth = { token: newToken };
-        this.socket.connect();
+      } else {
+        this.disconnect();
       }
     } catch (error) {
-      console.error('Failed to refresh auth:', error);
+      this.disconnect();
+    }
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket?.connected) {
+        this.ping();
+      }
+    }, WS_CONFIG.HEARTBEAT_INTERVAL);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   }
 
   private reregisterListeners(): void {
-    console.log('📡 Re-registering event listeners after reconnection...');
     this.listeners.forEach((callbacks, event) => {
       callbacks.forEach((callback) => {
         if (this.socket) {
-          this.socket.off(event); // Remove old listeners
-          this.socket.on(event, (data) => callback(data));
+          this.socket.on(event, (data) => {
+            callback(data);
+          });
         }
       });
     });
-    console.log(`✅ Re-registered ${this.listeners.size} event listeners`);
   }
 
-  disconnect(): void {
+  private cleanupSocket(): void {
+    this.stopHeartbeat();
+    
     if (this.socket) {
-      console.log('🔌 Disconnecting WebSocket...');
       this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
-      this.isConnected = false;
-      this.reconnectAttempts = 0;
-      this.notifyConnectionStatus(false);
-      console.log('✅ WebSocket disconnected');
     }
+    
+    this.isConnected = false;
+    this.notifyConnectionStatus(false);
+  }
+
+  disconnect(): void {
+    this.cleanupSocket();
+    this.listeners.clear();
+    this.connectionStatusCallbacks.clear();
+    this.reconnectAttempts = 0;
   }
 
   on(event: WebSocketEvent | string, callback: Function): void {
@@ -249,7 +300,6 @@ export class WebSocketManager {
 
     if (this.socket) {
       this.socket.on(event, (data) => {
-        console.log(`📥 Event received: ${event}`, data);
         callback(data);
       });
     }
@@ -268,16 +318,14 @@ export class WebSocketManager {
 
   emit(event: string, data: any): void {
     if (this.socket?.connected) {
-      console.log(`📤 Emitting event: ${event}`, data);
       this.socket.emit(event, data);
     } else {
-      console.warn(`⚠️ Cannot emit event "${event}", socket not connected`);
+      throw new Error('WebSocket not connected');
     }
   }
 
   ping(): void {
     if (this.socket?.connected) {
-      console.log('🏓 Sending ping...');
       this.socket.emit('ping');
     }
   }
@@ -295,7 +343,7 @@ export class WebSocketManager {
       try {
         callback(status);
       } catch (error) {
-        console.error('Error in connection status callback:', error);
+        // Silent fail for connection status callbacks
       }
     });
   }
@@ -314,6 +362,10 @@ export class WebSocketManager {
 
   isSocketConnected(): boolean {
     return this.socket?.connected === true;
+  }
+
+  isConnecting(): boolean {
+    return this.connectionPromise !== null;
   }
 }
 

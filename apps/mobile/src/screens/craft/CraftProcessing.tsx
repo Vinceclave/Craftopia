@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Sparkles, CheckCircle, Zap, Scan } from 'lucide-react-native';
+import { Sparkles, CheckCircle, Zap, Scan, ImageIcon } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { File } from 'expo-file-system';
@@ -27,6 +27,7 @@ export const CraftProcessingScreen = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [progressAnim] = useState(new Animated.Value(0));
+  const [imageBase64, setImageBase64] = useState<string>(''); // Store for later use
 
   const detectMaterialsMutation = useDetectMaterials();
   const generateCraftMutation = useGenerateCraft();
@@ -35,7 +36,8 @@ export const CraftProcessingScreen = () => {
     { icon: Scan, label: 'Analyzing image', color: '#3B6E4D' },
     { icon: Zap, label: 'Detecting materials', color: '#E6B655' },
     { icon: Sparkles, label: 'Identifying recyclables', color: '#5C89B5' },
-    { icon: CheckCircle, label: 'Generating ideas', color: '#5BA776' },
+    { icon: ImageIcon, label: 'Generating visualizations', color: '#E6B655' }, // NEW STEP
+    { icon: CheckCircle, label: 'Creating craft ideas', color: '#5BA776' },
   ];
 
   useEffect(() => {
@@ -54,10 +56,10 @@ export const CraftProcessingScreen = () => {
       }),
     ]).start();
 
-    // Progress bar animation
+    // Progress bar animation (adjusted for new step)
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 6000,
+      duration: 8000, // Increased duration for image generation
       useNativeDriver: false,
     }).start();
 
@@ -88,6 +90,7 @@ export const CraftProcessingScreen = () => {
       
       // Add the data URI prefix that the backend expects
       const base64Image = `data:${mimeType};base64,${base64Data}`;
+      setImageBase64(base64Image); // Store for craft generation
 
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
       
@@ -99,22 +102,28 @@ export const CraftProcessingScreen = () => {
       setProcessingStep(2);
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Step 4: Generate craft ideas
+      // Step 4: Generating visualizations & craft ideas
       setProcessingStep(3);
-      const craftResponse = await generateCraftMutation.mutateAsync(detectResponse.data.materials);
+      
+      // NEW: Pass both materials AND the original image to craft generation
+      const craftResponse = await generateCraftMutation.mutateAsync({
+        materials: detectResponse.data.materials,
+        referenceImageBase64: base64Image,
+      });
 
       if (!craftResponse.success || !craftResponse.data?.ideas) {
         throw new Error('Failed to generate craft ideas');
       }
 
-      // Small delay before navigation for smooth UX
+      // Step 5: Finalizing
+      setProcessingStep(4);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Navigate to results with the actual data
+      // Navigate to results with the actual data including generated images
       navigation.replace('CraftResults', {
         imageUri,
         detectedMaterials: detectResponse.data.materials,
-        craftIdeas: craftResponse.data.ideas,
+        craftIdeas: craftResponse.data.ideas, // Now includes generatedImageUrl for each idea
       });
 
     } catch (error) {
@@ -294,7 +303,7 @@ export const CraftProcessingScreen = () => {
                 Vision AI at Work
               </Text>
               <Text className="text-xs font-nunito text-craftopia-textSecondary">
-                Analyzing materials & generating ideas
+                Analyzing materials & generating visuals
               </Text>
             </View>
           </View>
