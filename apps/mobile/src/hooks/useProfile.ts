@@ -2,12 +2,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authService } from '~/services/auth.service';
 import { userService } from '~/services/user.service';
-import { useAuth } from '~/context/AuthContext';
 import { useAlert } from './useAlert';
 
 export const useProfile = () => {
   const queryClient = useQueryClient();
-  const { user: authUser, setUser } = useAuth();
   const { success, error: showError } = useAlert();
 
   // Fetch user profile
@@ -36,17 +34,9 @@ export const useProfile = () => {
       return await userService.updateProfile(updates);
     },
     onSuccess: (data) => {
-      // Update cache
+      // Update cache only
       queryClient.setQueryData(['user-profile'], data);
-      
-      // Update auth context
-      if (setUser) {
-        setUser((prev: any) => ({
-          ...prev,
-          profile: data.profile,
-        }));
-      }
-      
+
       success('Profile Updated', 'Your profile has been updated successfully.');
     },
     onError: (error: any) => {
@@ -62,7 +52,7 @@ export const useProfile = () => {
   };
 
   return {
-    profile: profile || authUser,
+    profile,
     isLoading,
     error,
     refetch,

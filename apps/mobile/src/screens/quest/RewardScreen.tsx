@@ -7,7 +7,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -67,71 +66,9 @@ export const RewardsScreen = () => {
   };
 
   const handleRewardPress = (reward: Reward) => {
-    // Show reward details and redemption option
-    Alert.alert(
-      reward.title,
-      `${reward.description || 'No description available'}\n\nCost: ${reward.points_cost} points\nSponsor: ${reward.sponsor.name}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Redeem', 
-          style: 'default',
-          onPress: () => handleRedeemReward(reward)
-        }
-      ]
-    );
-  };
-
-  const handleRedeemReward = (reward: Reward) => {
-    if (userPoints < reward.points_cost) {
-      Alert.alert(
-        'Insufficient Points',
-        `You need ${reward.points_cost} points to redeem this reward, but you only have ${userPoints} points.`,
-        [{ text: 'OK', style: 'default' }]
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Confirm Redemption',
-      `Are you sure you want to redeem "${reward.title}" for ${reward.points_cost} points?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Redeem', 
-          style: 'destructive',
-          onPress: () => confirmRedeemReward(reward)
-        }
-      ]
-    );
-  };
-
-  const confirmRedeemReward = async (reward: Reward) => {
-    try {
-      await redeemMutation.mutateAsync(reward.reward_id);
-      
-      Alert.alert(
-        'Redemption Successful!',
-        `You have successfully redeemed "${reward.title}". You will be notified when your reward is ready.`,
-        [
-          { 
-            text: 'View History', 
-            onPress: () => navigation.navigate('RedemptionHistory')
-          },
-          { text: 'Continue Browsing', style: 'cancel' }
-        ]
-      );
-
-      // Refresh data
-      refetchRewards();
-      refetchStats();
-    } catch (error: any) {
-      Alert.alert(
-        'Redemption Failed',
-        error?.message || 'Failed to redeem reward. Please try again.',
-        [{ text: 'OK', style: 'default' }]
-      );
-    }
+    // The RewardCard component handles its own modal for claiming
+    // You could add navigation to a detailed reward screen here if needed
+    console.log('Reward pressed:', reward.title);
   };
 
   const getPointsTier = () => {

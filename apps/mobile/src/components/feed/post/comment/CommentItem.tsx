@@ -1,7 +1,6 @@
 // apps/mobile/src/components/feed/post/comment/CommentItem.tsx - WITH REAL PROFILE PHOTOS
 import React, { memo, useState } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
-import { User } from 'lucide-react-native';
 import { formatTimeAgo } from '~/utils/time';
 import { Comment } from '~/hooks/queries/usePosts';
 

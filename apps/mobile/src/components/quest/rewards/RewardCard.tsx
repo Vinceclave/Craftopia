@@ -23,21 +23,23 @@ interface RewardCardProps {
   reward: Reward;
   userPoints: number;
   onPress?: (reward: Reward) => void;
+  isRedeeming?: boolean; 
 }
-
 export const RewardCard: React.FC<RewardCardProps> = ({
   reward,
   userPoints,
   onPress,
+  isRedeeming
 }) => {
   const [claimModalVisible, setClaimModalVisible] = useState(false);
   const redeemMutation = useRedeemReward();
 
-  const canAfford = userPoints >= reward.points_cost;
+    const canAfford = userPoints >= reward.points_cost;
   const isAvailable = reward.is_active && 
     (!reward.quantity || reward.redeemed_count < reward.quantity) &&
     (!reward.expires_at || new Date(reward.expires_at) > new Date());
   
+  const disabled = !canAfford || !isAvailable || isRedeeming;
   const remainingQuantity = reward.quantity 
     ? reward.quantity - reward.redeemed_count 
     : null;
@@ -213,29 +215,29 @@ export const RewardCard: React.FC<RewardCardProps> = ({
 
           {/* Claim Button */}
           <TouchableOpacity
-            onPress={handleClaimPress}
-            disabled={!canAfford || !isAvailable}
-            activeOpacity={0.7}
-            className={`flex-row items-center px-3 py-1.5 rounded-lg ${
-              canAfford && isAvailable
-                ? 'bg-craftopia-primary'
-                : 'bg-craftopia-light'
-            }`}
-          >
-            <Text 
-              className={`text-xs font-semibold mr-1 font-nunito ${
-                canAfford && isAvailable
-                  ? 'text-white'
-                  : 'text-craftopia-textSecondary'
+              onPress={handleClaimPress}
+              disabled={!canAfford || !isAvailable || isRedeeming} // use it directly here
+              activeOpacity={0.7}
+              className={`flex-row items-center px-3 py-1.5 rounded-lg ${
+                canAfford && isAvailable && !isRedeeming
+                  ? 'bg-craftopia-primary'
+                  : 'bg-craftopia-light'
               }`}
             >
-              {canAfford && isAvailable ? 'Claim' : 'View'}
-            </Text>
-            <ChevronRight 
-              size={14} 
-              color={canAfford && isAvailable ? '#FFFFFF' : '#5F6F64'} 
-            />
-          </TouchableOpacity>
+              <Text 
+                className={`text-xs font-semibold mr-1 font-nunito ${
+                  canAfford && isAvailable && !isRedeeming
+                    ? 'text-white'
+                    : 'text-craftopia-textSecondary'
+                }`}
+              >
+                {canAfford && isAvailable && !isRedeeming ? 'Claim' : 'View'}
+              </Text>
+              <ChevronRight 
+                size={14} 
+                color={canAfford && isAvailable && !isRedeeming ? '#FFFFFF' : '#5F6F64'} 
+              />
+            </TouchableOpacity>
         </View>
       </TouchableOpacity>
 
