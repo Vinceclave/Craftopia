@@ -5,6 +5,7 @@ import {
   Image,
   ActivityIndicator,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -12,33 +13,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Sparkles, CheckCircle, Zap, Scan } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
+import { File } from 'expo-file-system';
+import { useDetectMaterials, useGenerateCraft } from '~/hooks/queries/useCraft';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftProcessing'>;
-
-// Mock detected items data (static for now)
-const MOCK_DETECTED_ITEMS = [
-  {
-    id: '1',
-    name: 'Plastic Bottle',
-    category: 'Plastic',
-    confidence: 95,
-    recyclable: true,
-  },
-  {
-    id: '2',
-    name: 'Cardboard Box',
-    category: 'Paper',
-    confidence: 88,
-    recyclable: true,
-  },
-  {
-    id: '3',
-    name: 'Glass Jar',
-    category: 'Glass',
-    confidence: 92,
-    recyclable: true,
-  },
-];
 
 export const CraftProcessingScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
@@ -50,11 +28,14 @@ export const CraftProcessingScreen = () => {
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [progressAnim] = useState(new Animated.Value(0));
 
+  const detectMaterialsMutation = useDetectMaterials();
+  const generateCraftMutation = useGenerateCraft();
+
   const processingSteps = [
-    { icon: Scan, label: 'Analyzing image', color: '#3B6E4D' }, // craftopia-primary
-    { icon: Zap, label: 'Detecting materials', color: '#E6B655' }, // craftopia-accent
-    { icon: Sparkles, label: 'Identifying recyclables', color: '#5C89B5' }, // craftopia-info
-    { icon: CheckCircle, label: 'Generating ideas', color: '#5BA776' }, // craftopia-success
+    { icon: Scan, label: 'Analyzing image', color: '#3B6E4D' },
+    { icon: Zap, label: 'Detecting materials', color: '#E6B655' },
+    { icon: Sparkles, label: 'Identifying recyclables', color: '#5C89B5' },
+    { icon: CheckCircle, label: 'Generating ideas', color: '#5BA776' },
   ];
 
   useEffect(() => {
@@ -80,26 +61,76 @@ export const CraftProcessingScreen = () => {
       useNativeDriver: false,
     }).start();
 
-    // Step progression
-    const stepInterval = setInterval(() => {
-      setProcessingStep((prev) => {
-        if (prev < processingSteps.length - 1) {
-          return prev + 1;
-        } else {
-          clearInterval(stepInterval);
-          setTimeout(() => {
-            navigation.replace('CraftResults', {
-              imageUri,
-              detectedItems: MOCK_DETECTED_ITEMS,
-            });
-          }, 1000);
-          return prev;
-        }
-      });
-    }, 1500);
-
-    return () => clearInterval(stepInterval);
+    // Start processing the image
+    processImage();
   }, []);
+
+  const processImage = async () => {
+    try {
+      // Step 1: Analyzing image (0.5s delay for UX)
+      setProcessingStep(0);
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Step 2: Convert image to base64 and detect materials
+      setProcessingStep(1);
+      
+      // Use the new File API to read the image as base64
+      const file = new File(imageUri);
+      const base64Data = await file.base64();
+      
+      // Determine the MIME type from the file extension or default to jpeg
+      let mimeType = 'image/jpeg';
+      if (imageUri.toLowerCase().endsWith('.png')) {
+        mimeType = 'image/png';
+      } else if (imageUri.toLowerCase().endsWith('.webp')) {
+        mimeType = 'image/webp';
+      }
+      
+      // Add the data URI prefix that the backend expects
+      const base64Image = `data:${mimeType};base64,${base64Data}`;
+
+      const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
+      
+      if (!detectResponse.success || !detectResponse.data?.materials) {
+        throw new Error('Failed to detect materials');
+      }
+
+      // Step 3: Identifying recyclables (brief delay for UX)
+      setProcessingStep(2);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Step 4: Generate craft ideas
+      setProcessingStep(3);
+      const craftResponse = await generateCraftMutation.mutateAsync(detectResponse.data.materials);
+
+      if (!craftResponse.success || !craftResponse.data?.ideas) {
+        throw new Error('Failed to generate craft ideas');
+      }
+
+      // Small delay before navigation for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Navigate to results with the actual data
+      navigation.replace('CraftResults', {
+        imageUri,
+        detectedMaterials: detectResponse.data.materials,
+        craftIdeas: craftResponse.data.ideas,
+      });
+
+    } catch (error) {
+      console.error('Processing error:', error);
+      Alert.alert(
+        'Processing Failed',
+        'Unable to process the image. Please try again.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
+    }
+  };
 
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
@@ -131,7 +162,7 @@ export const CraftProcessingScreen = () => {
               
               {/* Gradient Overlay */}
               <LinearGradient
-                colors={['transparent', 'rgba(31,42,31,0.6)']} // craftopia-textPrimary with opacity
+                colors={['transparent', 'rgba(31,42,31,0.6)']}
                 className="absolute inset-0"
               />
               
@@ -143,7 +174,7 @@ export const CraftProcessingScreen = () => {
                     transform: [{
                       translateY: progressAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0, 256], // 64 * 4 (h-64 in pixels)
+                        outputRange: [0, 256],
                       })
                     }]
                   }}
@@ -193,7 +224,7 @@ export const CraftProcessingScreen = () => {
               className="h-full rounded-full"
             >
               <LinearGradient
-                colors={['#3B6E4D', '#5BA776']} // craftopia-primary to craftopia-success
+                colors={['#3B6E4D', '#5BA776']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 className="h-full"
@@ -221,11 +252,11 @@ export const CraftProcessingScreen = () => {
                     }`}
                   >
                     {isComplete ? (
-                      <CheckCircle size={20} color="#5BA776" /> // craftopia-success
+                      <CheckCircle size={20} color="#5BA776" />
                     ) : isCurrent ? (
                       <ActivityIndicator size="small" color={step.color} />
                     ) : (
-                      <StepIcon size={20} color="#5F6F64" /> // craftopia-textSecondary
+                      <StepIcon size={20} color="#5F6F64" />
                     )}
                   </View>
 
@@ -256,7 +287,7 @@ export const CraftProcessingScreen = () => {
         <View className="bg-gradient-to-r from-craftopia-info/10 to-craftopia-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20 w-full max-w-sm">
           <View className="flex-row items-center">
             <View className="w-10 h-10 rounded-2xl bg-gradient-to-br from-craftopia-info/20 to-craftopia-primary/20 items-center justify-center mr-3">
-              <Zap size={18} color="#5C89B5" /> {/* craftopia-info */}
+              <Zap size={18} color="#5C89B5" />
             </View>
             <View className="flex-1">
               <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">

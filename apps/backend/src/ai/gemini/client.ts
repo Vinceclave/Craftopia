@@ -4,3 +4,8 @@ import { config } from '../../config';
 export const ai = new GoogleGenAI({
   apiKey: config.ai.apiKey,
 });
+
+export const aiImage = new GoogleGenAI({
+  apiKey: config.ai.imageApiKey,
+});
+  

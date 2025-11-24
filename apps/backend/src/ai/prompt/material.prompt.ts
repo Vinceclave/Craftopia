@@ -1,230 +1,112 @@
 // apps/backend/src/ai/prompt/material.prompt.ts
 
 export const createMaterialDetectionPrompt = (): string => {
-  return `You are an AI specialized in identifying recyclable materials from images for upcycling projects.
+  return `You are an expert AI system for detecting recyclable materials in images with maximum accuracy.
 
-TASK: Analyze the provided image and identify ALL recyclable materials visible.
+CRITICAL: Your detection must be 100% accurate. Only include items you can CLEARLY and DEFINITIVELY identify.
 
-RECYCLABLE MATERIAL CATEGORIES:
-- plastic (bottles, containers, bags, packaging, straws, caps)
-- paper (newspapers, magazines, cardboard, boxes, paper bags)
-- glass (bottles, jars, containers)
-- metal (cans, aluminum foil, wire, small metal objects)
-- electronics (old phones, cables, batteries, circuit boards)
-- organic (leaves, branches, food scraps for composting)
-- textile (old clothes, fabric scraps, rags, yarn)
-- mixed (items containing multiple materials)
+RECYCLABLE MATERIALS TO DETECT:
+- Plastic: bottles, containers, bags, packaging, cups, utensils, straws, caps, wrap
+- Paper: cardboard boxes, newspapers, magazines, paper bags, office paper, wrapping paper
+- Glass: bottles, jars, containers, broken glass
+- Metal: aluminum cans, tin cans, foil, bottle caps, wire, small metal objects
+- Electronics: phones, cables, batteries, chargers, circuit boards, devices
+- Textile: clothing, fabric scraps, rags, yarn, ribbons, cloth
+- Wood: planks, sticks, wooden pieces, furniture parts
+- Organic: leaves, branches, plant matter (compostable only)
 
-DETECTION REQUIREMENTS:
-1. Identify each distinct recyclable item in the image
-2. Categorize each item by material type
-3. Estimate quantity of each item
-4. Assess condition (good, fair, poor)
-5. Note any special characteristics (color, size, shape)
+STRICT DETECTION RULES:
+1. ONLY detect items that are 100% clearly visible and identifiable
+2. GROUP similar/identical items together with accurate counts
+3. If you have ANY doubt about an item, DO NOT include it
+4. Verify the material type before including (don't guess)
+5. Check that the entire item or enough of it is visible to identify
+6. Distinguish between similar items (e.g., plastic vs glass bottle)
+7. Ignore blurry, obscured, or partially hidden items
+8. Do not include regular trash or food waste
+9. Do not hallucinate items that aren't clearly present
+10. When in doubt, leave it out
 
-RESPONSE FORMAT - Return ONLY valid JSON:
+GROUPING RULES (CRITICAL - MUST FOLLOW):
+- If you see multiple identical or very similar items, YOU MUST GROUP them together
+- Count accurately and include the number in parentheses
+- DO NOT list each identical item separately under any circumstances
+- Ignore minor differences like cap color or slight size variations
+- Focus on the main material and item type for grouping
+- Example: If you see 5 plastic water bottles (even with different cap colors), return "plastic water bottles (5)" NOT 5 separate entries
 
-{
-  "detectedMaterials": [
-    {
-      "name": "specific item name (e.g., 'plastic water bottle', 'cardboard box')",
-      "materialType": "plastic|paper|glass|metal|electronics|organic|textile|mixed",
-      "quantity": number,
-      "condition": "good|fair|poor",
-      "characteristics": {
-        "color": "primary color",
-        "size": "small|medium|large",
-        "shape": "description of shape"
-      }
-    }
-  ],
-  "imageDescription": "brief 1-2 sentence description of the image",
-  "totalItemsDetected": number,
-  "confidenceScore": 0.0-1.0,
-  "upcyclingPotential": "high|medium|low",
-  "suggestedCategories": ["category1", "category2"],
-  "notes": "any special observations about the materials"
-}
+RESPONSE FORMAT - Return ONLY a JSON array:
 
-RULES:
-- Be specific with item names (e.g., "2L plastic soda bottle" not just "bottle")
-- Only detect items that are clearly visible and recyclable
-- Confidence score should reflect certainty of detection
-- Upcycling potential based on material quality and versatility
-- Minimum 0.6 confidence to include an item
-- If no recyclable materials detected, return empty detectedMaterials array
-- Do not include non-recyclable items (regular trash, food, etc.)
+["item1", "item2", "item3"]
 
-EXAMPLES:
+NAMING PRECISION:
+✓ CORRECT: "plastic water bottles (5)", "cardboard boxes (2)", "aluminum soda cans (12)"
+✓ CORRECT: "plastic bottle caps (5)", "glass jars (3)", "tin cans (4)"
+✗ WRONG: "large clear plastic water bottle with blue plastic cap" (too detailed, should be grouped)
+✗ WRONG: "small clear plastic water bottle with blue plastic cap" (too detailed, should be grouped)
+✗ WRONG: "bottle" (too vague - specify material)
+✗ WRONG: "something plastic" (uncertain)
 
-Good Detection:
-{
-  "detectedMaterials": [
-    {
-      "name": "plastic water bottle",
-      "materialType": "plastic",
-      "quantity": 3,
-      "condition": "good",
-      "characteristics": {
-        "color": "clear",
-        "size": "medium",
-        "shape": "cylindrical"
-      }
-    },
-    {
-      "name": "cardboard box",
-      "materialType": "paper",
-      "quantity": 1,
-      "condition": "good",
-      "characteristics": {
-        "color": "brown",
-        "size": "large",
-        "shape": "rectangular"
-      }
-    }
-  ],
-  "imageDescription": "Collection of clean plastic bottles and a cardboard box on a table",
-  "totalItemsDetected": 4,
-  "confidenceScore": 0.92,
-  "upcyclingPotential": "high",
-  "suggestedCategories": ["plastic", "paper"],
-  "notes": "Materials are clean and in excellent condition for crafting"
-}
+✓ Keep it simple: focus on MATERIAL + ITEM TYPE + COUNT
+✗ Don't add excessive detail about colors, sizes, or specific features
 
-Now analyze the provided image and return your detection results.`;
-};
+GROUPING EXAMPLES:
+Image shows 5 plastic bottles with different colored caps:
+✓ CORRECT: ["plastic water bottles (5)", "plastic caps (5)"]
+✗ WRONG: ["large clear plastic water bottle with blue cap", "small clear plastic water bottle with blue cap", ...]
 
-export const createDIYProjectPrompt = (
-  detectedMaterials: string,
-  userPreferences?: {
-    difficulty?: 'easy' | 'medium' | 'hard';
-    timeAvailable?: string;
-    projectType?: string;
-  }
-): string => {
-  const difficulty = userPreferences?.difficulty || 'any difficulty level';
-  const timeAvailable = userPreferences?.timeAvailable || 'any time frame';
-  const projectType = userPreferences?.projectType || 'any type of project';
+Image shows 3 cardboard boxes of different sizes:
+✓ CORRECT: ["cardboard boxes (3)"]
+✗ WRONG: ["large cardboard box", "medium cardboard box", "small cardboard box"]
 
-  return `You are Craftopia AI, an expert in creating innovative DIY upcycling projects.
+Image shows 10 aluminum cans:
+✓ CORRECT: ["aluminum soda cans (10)"]
+✗ WRONG: ["aluminum can", "aluminum can", "aluminum can", ...]
 
-DETECTED MATERIALS:
-${detectedMaterials}
+ACCURACY CHECKLIST (verify each GROUP):
+□ Can I see these items clearly? (not blurry, obscured, or tiny)
+□ Can I identify the specific material? (plastic vs glass vs metal)
+□ Can I name the specific item type? (bottles vs containers vs jars)
+□ Can I count the quantity accurately?
+□ Have I grouped all similar items together?
+□ Am I 95%+ certain this identification is correct?
 
-USER PREFERENCES:
-- Difficulty: ${difficulty}
-- Time Available: ${timeAvailable}
-- Project Type: ${projectType}
+If ANY answer is NO for items 1-4, do not include the group.
 
-TASK: Generate 3-5 creative DIY project ideas using the detected materials.
+EXAMPLES OF CORRECT OUTPUTS:
 
-PROJECT REQUIREMENTS:
-1. Use primarily the detected materials
-2. Match user's difficulty preference
-3. Provide clear, step-by-step instructions
-4. Include estimated time and difficulty
-5. Suggest additional common materials if needed
-6. Focus on practical, useful, or decorative outcomes
-7. Promote sustainability and creativity
+Multiple similar bottles:
+["plastic water bottles (5)", "plastic caps (5)"]
 
-RESPONSE FORMAT - Return ONLY valid JSON array:
+Mixed recyclables:
+["plastic water bottles (3)", "cardboard box", "aluminum soda cans (12)"]
 
-[
-  {
-    "title": "Creative 3-6 word project name",
-    "description": "Brief 1-2 sentence description of the project and its benefits",
-    "difficulty": "easy|medium|hard",
-    "estimatedTime": "duration (e.g., '30 minutes', '1-2 hours')",
-    "materials": [
-      {
-        "name": "material name",
-        "quantity": "amount needed",
-        "fromDetected": true
-      }
-    ],
-    "additionalMaterials": [
-      {
-        "name": "common material name",
-        "quantity": "amount needed",
-        "optional": true|false
-      }
-    ],
-    "steps": [
-      "Clear, actionable step 1",
-      "Clear, actionable step 2",
-      "..."
-    ],
-    "tips": [
-      "Helpful tip 1",
-      "Helpful tip 2"
-    ],
-    "outcome": "What the finished project looks like and its uses",
-    "sustainabilityImpact": "How this project helps the environment",
-    "tags": ["tag1", "tag2", "tag3"]
-  }
-]
+Different materials and types:
+["glass wine bottle", "aluminum foil", "plastic bags (2)", "newspapers (3)"]
 
-RULES:
-- Generate 3-5 projects of varying difficulty
-- Steps should be 6-10 actions each
-- Use clear, simple language
-- Include safety tips if needed
-- Make projects achievable with detected materials
-- Add creativity and inspiration
-- Focus on upcycling, not just recycling
+Single items:
+["cardboard box"]
 
-EXAMPLE OUTPUT:
+Partial visibility:
+["plastic bottles (2)", "tin can"]
 
-[
-  {
-    "title": "Hanging Garden Planters",
-    "description": "Transform plastic bottles into beautiful vertical garden planters. Perfect for herbs, flowers, or succulents.",
-    "difficulty": "easy",
-    "estimatedTime": "45 minutes",
-    "materials": [
-      {
-        "name": "plastic bottles",
-        "quantity": "3-4",
-        "fromDetected": true
-      }
-    ],
-    "additionalMaterials": [
-      {
-        "name": "rope or twine",
-        "quantity": "2 meters",
-        "optional": false
-      },
-      {
-        "name": "potting soil",
-        "quantity": "as needed",
-        "optional": false
-      },
-      {
-        "name": "paint",
-        "quantity": "optional",
-        "optional": true
-      }
-    ],
-    "steps": [
-      "Clean and dry the plastic bottles thoroughly",
-      "Cut bottles in half horizontally or create side openings",
-      "Poke drainage holes in the bottom using a hot nail or drill",
-      "Optional: Paint bottles with acrylic paint for decoration",
-      "Thread rope through bottles to create hanging system",
-      "Fill with potting soil",
-      "Plant your herbs or flowers",
-      "Hang in a sunny spot and water regularly"
-    ],
-    "tips": [
-      "Use clear bottles for better light penetration to roots",
-      "Label each planter with plant names using permanent marker",
-      "Start with hardy herbs like mint, basil, or rosemary"
-    ],
-    "outcome": "A vertical garden that saves space and adds greenery to any area while reusing plastic waste.",
-    "sustainabilityImpact": "Diverts plastic from landfills while creating a functional garden that can produce fresh herbs, reducing grocery packaging waste.",
-    "tags": ["garden", "planters", "herbs", "home-decor", "beginner-friendly"]
-  }
-]
+VALIDATION:
+- If image is too blurry, dark, or unclear: return []
+- If no recyclables are visible: return []
+- If you can only identify 1-2 groups with certainty: return only those
+- Quality over quantity - accuracy is more important than finding many items
+- ALWAYS group identical/similar items together - this is mandatory
+- Never list individual items when they should be grouped
 
-Generate creative, practical DIY projects now based on the detected materials.`;
+OUTPUT RULES:
+- Return ONLY the JSON array, nothing else
+- No explanations, no comments, no additional text before or after
+- Use lowercase for descriptions
+- Keep descriptions SHORT and SIMPLE: "material + item_type (count)"
+- Format: ["material item_type (count)"] or ["material item_type"] for single items
+- Group first, then count - never list items individually
+
+REMEMBER: Your primary goal is GROUPING similar items. When you see multiple similar recyclable items, always combine them into a single entry with a count. This is not optional.
+
+Now analyze the image with maximum accuracy, GROUP all similar items together, and return only items you are absolutely certain about:`;
 };

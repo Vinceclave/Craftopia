@@ -41,13 +41,11 @@ export const API_ENDPOINTS = {
     COUNT: `${API_BASE_URL}/api/v1/crafts/stats/count`,
   },
   AI: {
-    GENERATE_CRAFT: `${API_BASE_URL}/api/v1/ai/generate`,
     GENERATE_CHALLENGE: `${API_BASE_URL}/api/v1/craft/generate-challenge`,
     ANALYZE_IMAGE: `${API_BASE_URL}/api/v1/image/analyze`,
     CHATBOT: `${API_BASE_URL}/api/v1/ai/chatbot/chat`,
+    GENERATE_CRAFT: `${API_BASE_URL}/api/v1/ai/craft/generate`,
     DETECT_MATERIALS: `${API_BASE_URL}/api/v1/ai/material/detect`,
-    GENERATE_PROJECTS: `${API_BASE_URL}/api/v1/ai/material/generate-projects`,
-    ANALYZE_AND_GENERATE: `${API_BASE_URL}/api/v1/ai/material/analyze`,
     VERIFY_CHALLENGE: `${API_BASE_URL}/api/v1/ai/image/verify-upload`,
   },
   CHALLENGES: {
@@ -90,9 +88,9 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/api/v1/reports`,
     MY_REPORTS: `${API_BASE_URL}/api/v1/reports/my-reports`,
   },
-  UPLOAD: {
-    IMAGE: `${API_BASE_URL}/api/v1/upload/image`,
-  }
+    UPLOAD: {
+      IMAGE: `${API_BASE_URL}/api/v1/upload/image`,
+    }
 };
 
 // Types

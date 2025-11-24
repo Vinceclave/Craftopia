@@ -22,76 +22,34 @@ import { CraftStackParamList } from '~/navigations/types';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftResults'>;
 
-interface DetectedItem {
-  id: string;
-  name: string;
-  category: string;
-  confidence: number;
-  recyclable: boolean;
+interface CraftIdea {
+  title: string;
+  description: string;
+  steps: string[];
+  timeNeeded: string;
+  quickTip: string;
 }
-
-// Mock craft suggestions (static for now)
-const MOCK_CRAFT_IDEAS = [
-  {
-    id: '1',
-    title: 'Vertical Garden Planter',
-    difficulty: 'Easy',
-    time: '30 min',
-    materials: ['Plastic Bottle', 'Scissors', 'Soil'],
-    description: 'Transform plastic bottles into hanging planters for herbs or flowers',
-    image: 'https://via.placeholder.com/300x200/3B6E4D/FFFFFF?text=Planter',
-  },
-  {
-    id: '2',
-    title: 'Storage Organizer',
-    difficulty: 'Medium',
-    time: '45 min',
-    materials: ['Cardboard Box', 'Fabric', 'Glue'],
-    description: 'Create a decorative storage box for desk or closet organization',
-    image: 'https://via.placeholder.com/300x200/E6B655/FFFFFF?text=Organizer',
-  },
-  {
-    id: '3',
-    title: 'Decorative Vase',
-    difficulty: 'Easy',
-    time: '20 min',
-    materials: ['Glass Jar', 'Paint', 'Twine'],
-    description: 'Upcycle glass jars into beautiful decorative vases',
-    image: 'https://via.placeholder.com/300x200/5BA776/FFFFFF?text=Vase',
-  },
-];
 
 export const CraftResultsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
   const route = useRoute<RouteParams>();
-  const { imageUri, detectedItems } = route.params;
+  const { imageUri, detectedMaterials, craftIdeas } = route.params;
 
   const handleBack = () => navigation.navigate('Craft');
 
-  const handleCraftPress = (craft: typeof MOCK_CRAFT_IDEAS[0]) => {
+  const handleCraftPress = (craft: CraftIdea) => {
     navigation.navigate('CraftDetails', {
       craftTitle: craft.title,
-      materials: craft.materials,
-      steps: [
-        'Gather all materials',
-        'Clean and prepare recyclables',
-        'Follow the crafting process',
-        'Add final touches',
-      ],
+      materials: detectedMaterials,
+      steps: craft.steps,
     });
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'plastic':
-        return { bg: 'bg-craftopia-info/10', text: 'text-craftopia-info', border: 'border-craftopia-info/20' };
-      case 'paper':
-        return { bg: 'bg-craftopia-accent/10', text: 'text-craftopia-accent', border: 'border-craftopia-accent/20' };
-      case 'glass':
-        return { bg: 'bg-craftopia-success/10', text: 'text-craftopia-success', border: 'border-craftopia-success/20' };
-      default:
-        return { bg: 'bg-craftopia-light', text: 'text-craftopia-textSecondary', border: 'border-craftopia-light' };
-    }
+  const getDifficultyFromTime = (timeNeeded: string): string => {
+    const minutes = parseInt(timeNeeded.match(/\d+/)?.[0] || '0');
+    if (minutes <= 20) return 'Easy';
+    if (minutes <= 35) return 'Medium';
+    return 'Hard';
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -124,7 +82,7 @@ export const CraftResultsScreen = () => {
               Scan Results
             </Text>
             <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
-              {detectedItems.length} Items Detected
+              {detectedMaterials.length} Materials Detected
             </Text>
           </View>
 
@@ -155,7 +113,7 @@ export const CraftResultsScreen = () => {
           </View>
         </View>
 
-        {/* Detected Items Section */}
+        {/* Detected Materials Section */}
         <View className="mx-4 mt-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center">
@@ -173,35 +131,68 @@ export const CraftResultsScreen = () => {
             </View>
           </View>
 
-          {/* Items List */}
+          {/* Materials List */}
           <View className="space-y-2">
-            {detectedItems.map((item: DetectedItem) => {
-              const colors = getCategoryColor(item.category);
+            {detectedMaterials.map((material: string, index: number) => {
+              // Parse material string (e.g., "plastic water bottles (5)")
+              const match = material.match(/^(.+?)\s*\((\d+)\)$/);
+              const name = match ? match[1].trim() : material;
+              const quantity = match ? match[2] : '1';
+              
+              // Determine category from material name
+              let category = 'Recyclable';
+              let categoryColor = { 
+                bg: 'bg-craftopia-success/10', 
+                text: 'text-craftopia-success', 
+                border: 'border-craftopia-success/20' 
+              };
+              
+              if (name.toLowerCase().includes('plastic')) {
+                category = 'Plastic';
+                categoryColor = { 
+                  bg: 'bg-craftopia-info/10', 
+                  text: 'text-craftopia-info', 
+                  border: 'border-craftopia-info/20' 
+                };
+              } else if (name.toLowerCase().includes('paper') || name.toLowerCase().includes('cardboard')) {
+                category = 'Paper';
+                categoryColor = { 
+                  bg: 'bg-craftopia-accent/10', 
+                  text: 'text-craftopia-accent', 
+                  border: 'border-craftopia-accent/20' 
+                };
+              } else if (name.toLowerCase().includes('glass')) {
+                category = 'Glass';
+                categoryColor = { 
+                  bg: 'bg-craftopia-success/10', 
+                  text: 'text-craftopia-success', 
+                  border: 'border-craftopia-success/20' 
+                };
+              }
+
               return (
                 <View
-                  key={item.id}
-                  className={`bg-craftopia-surface rounded-xl p-3 border ${colors.border}`}
+                  key={index}
+                  className={`bg-craftopia-surface rounded-xl p-3 border ${categoryColor.border}`}
                 >
                   <View className="flex-row items-center justify-between">
                     <View className="flex-1">
                       <View className="flex-row items-center mb-1">
-                        <Text className="text-sm font-semibold text-craftopia-textPrimary font-poppinsBold">
-                          {item.name}
+                        <Text className="text-sm font-semibold text-craftopia-textPrimary font-poppinsBold capitalize">
+                          {name}
                         </Text>
-                        {item.recyclable && (
-                          <View className="ml-2">
-                            <CheckCircle size={14} color="#5BA776" />
-                          </View>
-                        )}
+                        <View className="ml-2">
+                          <CheckCircle size={14} color="#5BA776" />
+                        </View>
                       </View>
                       <View className="flex-row items-center">
-                        <View className={`px-2 py-0.5 rounded-lg ${colors.bg}`}>
-                          <Text className={`text-xs font-medium font-nunito ${colors.text}`}>
-                            {item.category}
+                        <View className={`px-2 py-0.5 rounded-lg ${categoryColor.bg}`}>
+                          <Text className={`text-xs font-medium font-nunito ${categoryColor.text}`}>
+                            {category}
                           </Text>
                         </View>
                         <Text className="text-xs text-craftopia-textSecondary ml-2 font-nunito">
-                          {item.confidence}% match
+                          Qty: {quantity}
                         </Text>
                       </View>
                     </View>
@@ -224,7 +215,7 @@ export const CraftResultsScreen = () => {
                   Craft Ideas for You
                 </Text>
                 <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                  {MOCK_CRAFT_IDEAS.length} suggestions based on your items
+                  {craftIdeas.length} AI-generated suggestions
                 </Text>
               </View>
             </View>
@@ -232,56 +223,73 @@ export const CraftResultsScreen = () => {
 
           {/* Craft Cards */}
           <View className="space-y-3">
-            {MOCK_CRAFT_IDEAS.map((craft) => (
-              <TouchableOpacity
-                key={craft.id}
-                onPress={() => handleCraftPress(craft)}
-                className="bg-craftopia-surface rounded-xl overflow-hidden border border-craftopia-light"
-                activeOpacity={0.7}
-              >
-                {/* Craft Image */}
-                <Image
-                  source={{ uri: craft.image }}
-                  className="w-full h-40"
-                  resizeMode="cover"
-                />
+            {craftIdeas.map((craft: CraftIdea, index: number) => {
+              const difficulty = getDifficultyFromTime(craft.timeNeeded);
+              
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleCraftPress(craft)}
+                  className="bg-craftopia-surface rounded-xl overflow-hidden border border-craftopia-light"
+                  activeOpacity={0.7}
+                >
+                  {/* Craft Header with Gradient */}
+                  <View className="bg-gradient-to-r from-craftopia-primary/5 to-craftopia-secondary/5 p-4">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text className="text-lg font-bold text-craftopia-textPrimary flex-1 font-poppinsBold">
+                        {craft.title}
+                      </Text>
+                      <ChevronRight size={20} color="#3B6E4D" />
+                    </View>
 
-                {/* Craft Info */}
-                <View className="p-3">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-base font-bold text-craftopia-textPrimary flex-1 font-poppinsBold">
-                      {craft.title}
+                    <Text className="text-sm text-craftopia-textSecondary mb-3 font-nunito leading-5">
+                      {craft.description}
                     </Text>
-                    <ChevronRight size={18} color="#3B6E4D" />
-                  </View>
 
-                  <Text className="text-xs text-craftopia-textSecondary mb-3 font-nunito">
-                    {craft.description}
-                  </Text>
-
-                  {/* Meta Info */}
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-2">
-                      <View className="flex-row items-center bg-craftopia-light px-2 py-1 rounded-lg">
-                        <Clock size={12} color="#5F6F64" />
-                        <Text className="text-xs text-craftopia-textSecondary ml-1 font-nunito">
-                          {craft.time}
-                        </Text>
+                    {/* Meta Info */}
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center bg-white/50 px-2.5 py-1.5 rounded-lg">
+                          <Clock size={14} color="#5F6F64" />
+                          <Text className="text-xs text-craftopia-textSecondary ml-1 font-nunito">
+                            {craft.timeNeeded}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center bg-white/50 px-2.5 py-1.5 rounded-lg">
+                          <Text className={`text-xs font-semibold font-nunito ${getDifficultyColor(difficulty)}`}>
+                            {difficulty}
+                          </Text>
+                        </View>
                       </View>
-                      <View className="flex-row items-center bg-craftopia-light px-2 py-1 rounded-lg">
-                        <Text className={`text-xs font-semibold font-nunito ${getDifficultyColor(craft.difficulty)}`}>
-                          {craft.difficulty}
+
+                      <View className="flex-row items-center bg-craftopia-accent/10 px-2.5 py-1.5 rounded-lg">
+                        <Sparkles size={12} color="#E6B655" />
+                        <Text className="text-xs text-craftopia-accent ml-1 font-nunito font-semibold">
+                          {craft.steps.length} steps
                         </Text>
                       </View>
                     </View>
-
-                    <Text className="text-xs text-craftopia-textSecondary font-nunito">
-                      {craft.materials.length} materials
-                    </Text>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
+
+                  {/* Quick Tip Section */}
+                  {craft.quickTip && (
+                    <View className="px-4 py-3 bg-craftopia-accent/5 border-t border-craftopia-light">
+                      <View className="flex-row items-start">
+                        <Lightbulb size={14} color="#E6B655" className="mt-0.5 mr-2" />
+                        <View className="flex-1">
+                          <Text className="text-xs font-semibold text-craftopia-accent mb-0.5 font-nunito">
+                            Quick Tip
+                          </Text>
+                          <Text className="text-xs text-craftopia-textSecondary font-nunito leading-4">
+                            {craft.quickTip}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 

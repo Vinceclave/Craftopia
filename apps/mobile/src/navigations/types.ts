@@ -1,6 +1,14 @@
 // apps/mobile/src/navigations/types.ts 
 import type { NavigatorScreenParams } from "@react-navigation/native";
 
+export interface CraftIdea {
+  title: string;
+  description: string;
+  steps: string[];
+  timeNeeded: string;
+  quickTip: string;
+}
+
 export type HomeStackParamList = {
   Home: undefined;
   Details: { id: string };
@@ -15,18 +23,15 @@ export type FeedStackParamList = {
 export type CraftStackParamList = {
   Craft: undefined;
   CraftScan: undefined;
-  CraftProcessing: { imageUri: string };
-  CraftResults: { 
+  CraftProcessing: {
     imageUri: string;
-    detectedItems: Array<{
-      id: string;
-      name: string;
-      category: string;
-      confidence: number;
-      recyclable: boolean;
-    }>;
   };
-  CraftDetails: { 
+  CraftResults: {
+    imageUri: string;
+    detectedMaterials: string[];
+    craftIdeas: CraftIdea[];
+  };
+  CraftDetails: {
     craftTitle: string;
     materials: string[];
     steps: string[];

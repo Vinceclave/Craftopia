@@ -17,6 +17,9 @@ export const config = {
   ai: {
     apiKey: process.env.GOOGLE_API_KEY!,
     model: process.env.AI_MODEL || 'gemini-1.5-flash',
+    imageApiKey: process.env.GOOGLE_API_IMAGE_KEY || process.env.GOOGLE_API_KEY!,
+    imageModel: process.env.AI_IMAGE_MODEL || process.env.AI_MODEL || 'gemini-1.5-flash',
+   
     maxFileSize: 10 * 1024 * 1024, // 10MB
   },
   

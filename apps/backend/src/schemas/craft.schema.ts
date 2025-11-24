@@ -1,6 +1,13 @@
 import Joi from 'joi';
 import { commonSchemas } from '../utils/validation';
 
+export const generateCraftSchema = Joi.object({
+  materials: Joi.alternatives().try(
+    Joi.string().trim().min(1),
+    Joi.array().items(Joi.string().trim().min(1))
+  ).required()
+});
+
 export const createCraftIdeaSchema = Joi.object({
   idea_json: commonSchemas.jsonObject.required(),
   recycled_materials: commonSchemas.jsonObject
