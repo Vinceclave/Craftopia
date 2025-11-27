@@ -6,7 +6,7 @@ import { craftService, GenerateCraftRequest } from "~/services/craft.service";
 export const useGenerateCraft = () =>
   useMutation({
     mutationFn: (request: GenerateCraftRequest) => 
-      craftService.generateCraft(request.materials, request.referenceImageBase64),
+      craftService.generateCraft(request), // ✅ Pass the whole object
   });
 
 export const useDetectMaterials = () =>

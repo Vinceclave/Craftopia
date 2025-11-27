@@ -9,20 +9,18 @@ export default function MainNavigatorContent() {
 
   return (
     <View
-      style={{
-        flex: 1,
-        backgroundColor: 'transparent',
-        marginBottom: Platform.OS === 'android' ? insets.bottom : 0
-      }}
+      className="flex-1 bg-white"
+      style={{ paddingBottom: Platform.OS === 'android' ? insets.bottom : 0 }}
     >
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="transparent"
-        translucent={true}
+        backgroundColor="#FFFFFF"
+        translucent={false}
       />
-      
+
       <TabNavigator />
       <DraggableButton />
     </View>
   );
 }
+  

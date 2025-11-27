@@ -12,12 +12,12 @@ export interface CraftIdea {
   steps: string[];
   timeNeeded: string;
   quickTip: string;
-  generatedImageUrl?: string; // NEW: URL of the AI-generated visualization
+  generatedImageUrl?: string;
 }
 
 export interface GenerateCraftRequest {
   materials: string[];
-  referenceImageBase64: string; // NEW: Original detected materials image
+  referenceImageBase64: string;
 }
 
 export interface GenerateCraftResponse {
@@ -28,14 +28,14 @@ export interface GenerateCraftResponse {
     ideas: CraftIdea[];
     count: number;
     generatedAt: string;
-    referenceImageUrl?: string; // NEW: Original image URL (if uploaded to storage)
+    referenceImageUrl?: string;
   };
   timestamp: string;
 }
 
 export interface DetectMaterialsResult {
   imageUrl: string;
-  imageBase64: string; // NEW: Store base64 for later use
+  imageBase64: string;
   materials: string[];
 }
 
@@ -50,21 +50,40 @@ export interface DetectMaterialsResponse {
 // ----------------------
 class CraftService {
   async generateCraft(
-    materials: string[],
-    referenceImageBase64: string
+    request: GenerateCraftRequest
   ): Promise<GenerateCraftResponse> {
     try {
-      console.log("🎨 GENERATE CRAFT with image:", {
-        materials,
-        imagePreview: referenceImageBase64.substring(0, 50)
-      });
+      const payload = { 
+        materials: request.materials.join(", "),
+        referenceImageBase64: request.referenceImageBase64
+      };
+      
+      // Calculate payload size for debugging
+      const payloadString = JSON.stringify(payload);
+      const payloadSize = new Blob([payloadString]).size;
+      const payloadSizeMB = (payloadSize / (1024 * 1024)).toFixed(2);
+      
+      console.log("🎨 GENERATE CRAFT REQUEST:");
+      console.log("  📦 Materials:", request.materials);
+      console.log("  🖼️  Has Image:", !!request.referenceImageBase64);
+      console.log("  📏 Image Length:", request.referenceImageBase64?.length);
+      console.log("  📊 Total Payload Size:", payloadSizeMB + " MB");
+      
+      if (parseFloat(payloadSizeMB) > 50) {
+        console.warn("⚠️  WARNING: Payload exceeds 50MB! Size:", payloadSizeMB + " MB");
+        throw new Error(`Payload too large: ${payloadSizeMB} MB. Please use a smaller image.`);
+      }
+      
+      if (parseFloat(payloadSizeMB) > 10) {
+        console.warn("⚠️  Large payload detected:", payloadSizeMB + " MB");
+      }
 
-      return await apiService.post<GenerateCraftResponse>(
+      // ✅ USE postAI with extended timeout for image generation
+      console.log("⏳ Sending request with extended timeout (120s)...");
+      
+      return await apiService.postAI<GenerateCraftResponse>(
         API_ENDPOINTS.AI.GENERATE_CRAFT,
-        { 
-          materials: materials.join(", "),
-          referenceImageBase64 
-        }
+        payload
       );
     } catch (error: any) {
       console.error("❌ generateCraft error:", error);
@@ -74,9 +93,16 @@ class CraftService {
 
   async detectMaterials(imageBase64: string): Promise<DetectMaterialsResponse> {
     try {
-      console.log("🔍 DETECT MATERIALS:", imageBase64.substring(0, 50));
+      const payloadSize = new Blob([JSON.stringify({ imageBase64 })]).size;
+      const payloadSizeMB = (payloadSize / (1024 * 1024)).toFixed(2);
+      
+      console.log("🔍 DETECT MATERIALS:");
+      console.log("  📏 Image Length:", imageBase64.length);
+      console.log("  📊 Payload Size:", payloadSizeMB + " MB");
+      console.log("  🖼️  Image Preview:", imageBase64.substring(0, 50));
 
-      return await apiService.post<DetectMaterialsResponse>(
+      // ✅ USE postAI with extended timeout
+      return await apiService.postAI<DetectMaterialsResponse>(
         API_ENDPOINTS.AI.DETECT_MATERIALS,
         { imageBase64 }
       );

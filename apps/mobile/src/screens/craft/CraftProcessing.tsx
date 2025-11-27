@@ -13,7 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Sparkles, CheckCircle, Zap, Scan, ImageIcon } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
-import { File } from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useDetectMaterials, useGenerateCraft } from '~/hooks/queries/useCraft';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftProcessing'>;
@@ -27,7 +27,7 @@ export const CraftProcessingScreen = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [progressAnim] = useState(new Animated.Value(0));
-  const [imageBase64, setImageBase64] = useState<string>(''); // Store for later use
+  const [imageBase64, setImageBase64] = useState<string>('');
 
   const detectMaterialsMutation = useDetectMaterials();
   const generateCraftMutation = useGenerateCraft();
@@ -36,7 +36,7 @@ export const CraftProcessingScreen = () => {
     { icon: Scan, label: 'Analyzing image', color: '#3B6E4D' },
     { icon: Zap, label: 'Detecting materials', color: '#E6B655' },
     { icon: Sparkles, label: 'Identifying recyclables', color: '#5C89B5' },
-    { icon: ImageIcon, label: 'Generating visualizations', color: '#E6B655' }, // NEW STEP
+    { icon: ImageIcon, label: 'Generating visualizations', color: '#E6B655' },
     { icon: CheckCircle, label: 'Creating craft ideas', color: '#5BA776' },
   ];
 
@@ -56,10 +56,10 @@ export const CraftProcessingScreen = () => {
       }),
     ]).start();
 
-    // Progress bar animation (adjusted for new step)
+    // Progress bar animation
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 8000, // Increased duration for image generation
+      duration: 8000,
       useNativeDriver: false,
     }).start();
 
@@ -73,30 +73,54 @@ export const CraftProcessingScreen = () => {
       setProcessingStep(0);
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Step 2: Convert image to base64 and detect materials
+      // Step 2: Compress and convert image to base64
       setProcessingStep(1);
       
-      // Use the new File API to read the image as base64
-      const file = new File(imageUri);
-      const base64Data = await file.base64();
+      console.log('🖼️  Original image URI:', imageUri);
       
-      // Determine the MIME type from the file extension or default to jpeg
-      let mimeType = 'image/jpeg';
-      if (imageUri.toLowerCase().endsWith('.png')) {
-        mimeType = 'image/png';
-      } else if (imageUri.toLowerCase().endsWith('.webp')) {
-        mimeType = 'image/webp';
+      // ✅ COMPRESS IMAGE BEFORE CONVERTING TO BASE64
+      const compressedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [
+          { resize: { width: 1024 } } // Resize to max width of 1024px
+        ],
+        {
+          compress: 0.7, // 70% quality
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true
+        }
+      );
+
+      console.log('🖼️  Image compressed successfully');
+      
+      // Get base64 from compressed image
+      const base64Data = compressedImage.base64;
+      if (!base64Data) {
+        throw new Error('Failed to convert image to base64');
       }
       
-      // Add the data URI prefix that the backend expects
-      const base64Image = `data:${mimeType};base64,${base64Data}`;
+      // Add the data URI prefix
+      const base64Image = `data:image/jpeg;base64,${base64Data}`;
+      
+      // Calculate and log size
+      const sizeInBytes = base64Image.length;
+      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+      console.log('🖼️  Base64 size:', sizeInMB + ' MB');
+      
+      if (parseFloat(sizeInMB) > 10) {
+        console.warn('⚠️  Image is large:', sizeInMB + ' MB - may cause issues');
+      }
+      
       setImageBase64(base64Image); // Store for craft generation
 
+      // Detect materials
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
       
       if (!detectResponse.success || !detectResponse.data?.materials) {
         throw new Error('Failed to detect materials');
       }
+
+      console.log('✅ Materials detected:', detectResponse.data.materials);
 
       // Step 3: Identifying recyclables (brief delay for UX)
       setProcessingStep(2);
@@ -105,7 +129,9 @@ export const CraftProcessingScreen = () => {
       // Step 4: Generating visualizations & craft ideas
       setProcessingStep(3);
       
-      // NEW: Pass both materials AND the original image to craft generation
+      console.log('🎨 Starting craft generation with image...');
+      
+      // Generate craft ideas WITH the reference image
       const craftResponse = await generateCraftMutation.mutateAsync({
         materials: detectResponse.data.materials,
         referenceImageBase64: base64Image,
@@ -115,6 +141,8 @@ export const CraftProcessingScreen = () => {
         throw new Error('Failed to generate craft ideas');
       }
 
+      console.log('✅ Craft ideas generated:', craftResponse.data.ideas.length);
+
       // Step 5: Finalizing
       setProcessingStep(4);
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -123,14 +151,14 @@ export const CraftProcessingScreen = () => {
       navigation.replace('CraftResults', {
         imageUri,
         detectedMaterials: detectResponse.data.materials,
-        craftIdeas: craftResponse.data.ideas, // Now includes generatedImageUrl for each idea
+        craftIdeas: craftResponse.data.ideas,
       });
 
-    } catch (error) {
-      console.error('Processing error:', error);
+    } catch (error: any) {
+      console.error('❌ Processing error:', error);
       Alert.alert(
         'Processing Failed',
-        'Unable to process the image. Please try again.',
+        error.message || 'Unable to process the image. Please try again.',
         [
           {
             text: 'OK',

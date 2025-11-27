@@ -18,12 +18,20 @@ interface CraftIdea {
 
 export const generateCraft = async (
   materials: string | string[],
-  referenceImageBase64?: string
+  referenceImageBase64?: string  // ✅ MAKE SURE THIS PARAMETER EXISTS
 ) => {
   // Normalize input: join array into a single string if needed
   const cleanMaterials = Array.isArray(materials)
     ? materials.map((m) => m.trim()).filter(Boolean).join(", ")
     : materials?.trim();
+
+  // ✅ ADD LOGGING AT THE START
+  console.log("🎨 generateCraft service called with:");
+  console.log("  📦 Materials:", cleanMaterials);
+  console.log("  🖼️  Has referenceImageBase64:", !!referenceImageBase64);
+  if (referenceImageBase64) {
+    console.log("  📏 referenceImageBase64 length:", referenceImageBase64.length);
+  }
 
   // Validation
   if (!cleanMaterials) {
@@ -105,19 +113,19 @@ export const generateCraft = async (
 
     console.log(`✅ Generated ${validIdeas.length} craft ideas`);
 
-    // NEW: Generate images for each craft idea
+    // Generate images for each craft idea
     const ideasWithImages: CraftIdea[] = [];
 
     for (const idea of validIdeas) {
       try {
         console.log(`🎨 Generating image for: ${idea.title}`);
 
-        // Generate visualization for this craft idea
+        // ✅ PASS THE REFERENCE IMAGE HERE
         const imageUrl = await generateCraftImage(
           idea.title,
           idea.description,
           cleanMaterials,
-          referenceImageBase64
+          referenceImageBase64  // ✅ CRITICAL: Pass the reference image
         );
 
         ideasWithImages.push({

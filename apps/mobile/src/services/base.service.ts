@@ -14,7 +14,7 @@ class ApiService {
   constructor() {
     this.axios = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000,
+      timeout: 30000, // Default 30s timeout
       headers: {
         'Content-Type': 'application/json',
       },
@@ -174,6 +174,48 @@ class ApiService {
       } else {
         // Other error
         throw new Error(error.message || 'Request failed');
+      }
+    }
+  }
+
+  // ✅ NEW: Special method for AI requests with extended timeout
+  async postAI<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      console.log('🤖 AI Request:', {
+        url,
+        hasData: !!data,
+        dataSize: data ? JSON.stringify(data).length : 0,
+      });
+
+      const response = await this.axios({
+        url,
+        method: 'POST',
+        data,
+        ...config,
+        timeout: 120000, // 120 seconds for AI requests (image generation takes time)
+      });
+
+      console.log('✅ AI Response:', { url, success: true });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ AI Request Error:', { url, error: error.message });
+      
+      // Enhanced error handling
+      if (error.response) {
+        const status = error.response.status;
+        const errorData = error.response.data;
+        const errorMessage = errorData?.error || `AI request failed with status ${status}`;
+        
+        const enhancedError = new Error(errorMessage) as any;
+        enhancedError.status = status;
+        enhancedError.data = errorData;
+        throw enhancedError;
+      } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        throw new Error('AI request timed out. Please try again.');
+      } else if (error.request) {
+        throw new Error('Network error. Please check your connection.');
+      } else {
+        throw new Error(error.message || 'AI request failed');
       }
     }
   }

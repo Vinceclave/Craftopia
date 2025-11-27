@@ -67,11 +67,39 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // ============================================
-// BODY PARSING
+// BODY PARSING - INCREASED LIMITS FOR IMAGES
 // ============================================
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ============================================
+// DEBUG MIDDLEWARE (Remove in production)
+// ============================================
+
+if (process.env.NODE_ENV === 'development') {
+  app.use('/api/v1/ai/craft/generate', (req, res, next) => {
+    console.log('\n🔍 ===== CRAFT GENERATE REQUEST DEBUG =====');
+    console.log('🔍 Request body keys:', Object.keys(req.body));
+    console.log('🔍 Materials:', req.body.materials);
+    console.log('🔍 Has referenceImageBase64:', !!req.body.referenceImageBase64);
+    
+    if (req.body.referenceImageBase64) {
+      console.log('🔍 referenceImageBase64 type:', typeof req.body.referenceImageBase64);
+      console.log('🔍 referenceImageBase64 length:', req.body.referenceImageBase64.length);
+      console.log('🔍 referenceImageBase64 preview:', req.body.referenceImageBase64.substring(0, 100));
+      
+      // Calculate size
+      const sizeInBytes = Buffer.byteLength(req.body.referenceImageBase64, 'utf8');
+      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
+      console.log('🔍 referenceImageBase64 size:', sizeInMB + ' MB');
+    } else {
+      console.log('❌ referenceImageBase64 is:', req.body.referenceImageBase64);
+    }
+    console.log('🔍 ==========================================\n');
+    next();
+  });
+}
 
 // ============================================
 // STATIC FILES

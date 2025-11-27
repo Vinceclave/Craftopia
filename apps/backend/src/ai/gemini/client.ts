@@ -6,6 +6,6 @@ export const ai = new GoogleGenAI({
 });
 
 export const aiImage = new GoogleGenAI({
-  apiKey: config.ai.imageApiKey,
+  apiKey: "AIzaSyCPVxhwhR6iqCWa4__iENDkc5Dsxf6wcNE",
 });
   
