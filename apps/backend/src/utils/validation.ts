@@ -1,4 +1,4 @@
-// apps/backend/src/utils/validation.ts - ENHANCED VERSION
+// apps/backend/src/utils/validation.ts - FIXED VERSION
 import Joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import { ValidationError } from './error';
@@ -19,18 +19,54 @@ const createValidationMiddleware = (
   source: 'body' | 'query' | 'params'
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    // ✅ Add debugging for craft generate endpoint
+    if (req.path.includes('/craft/generate')) {
+      console.log('\n🔍 ===== VALIDATION MIDDLEWARE =====');
+      console.log('🔍 Request path:', req.path);
+      console.log('🔍 Source:', source);
+      console.log('🔍 Keys BEFORE validation:', Object.keys(req[source]));
+      console.log('🔍 Has referenceImageBase64 BEFORE:', !!(req[source] as any).referenceImageBase64);
+      if ((req[source] as any).referenceImageBase64) {
+        const imageLength = (req[source] as any).referenceImageBase64.length;
+        console.log('🔍 Image length BEFORE:', imageLength, 'characters');
+        console.log('🔍 Image size BEFORE:', (imageLength / (1024 * 1024)).toFixed(2), 'MB');
+      }
+    }
+
     const { error, value } = schema.validate(req[source], {
       abortEarly: false,
-      stripUnknown: true,
+      stripUnknown: false,  // ✅ CRITICAL FIX: Don't strip unknown fields!
+      allowUnknown: true,   // ✅ CRITICAL FIX: Allow unknown fields!
       convert: true
     });
 
     if (error) {
       const details = formatJoiErrors(error);
+      
+      // ✅ Add debugging for validation errors
+      if (req.path.includes('/craft/generate')) {
+        console.log('❌ VALIDATION FAILED');
+        console.log('❌ Errors:', details);
+        console.log('🔍 ====================================\n');
+      }
+      
       return next(new ValidationError(
         error.details[0]?.message || `${source} validation failed`,
         details
       ));
+    }
+
+    // ✅ Add debugging after validation
+    if (req.path.includes('/craft/generate')) {
+      console.log('✅ VALIDATION PASSED');
+      console.log('🔍 Keys AFTER validation:', Object.keys(value));
+      console.log('🔍 Has referenceImageBase64 AFTER:', !!(value as any).referenceImageBase64);
+      if ((value as any).referenceImageBase64) {
+        const imageLength = (value as any).referenceImageBase64.length;
+        console.log('🔍 Image length AFTER:', imageLength, 'characters');
+        console.log('🔍 Image size AFTER:', (imageLength / (1024 * 1024)).toFixed(2), 'MB');
+      }
+      console.log('🔍 ====================================\n');
     }
 
     // Replace request data with validated & sanitized data

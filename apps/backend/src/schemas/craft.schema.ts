@@ -3,9 +3,11 @@ import { commonSchemas } from '../utils/validation';
 
 export const generateCraftSchema = Joi.object({
   materials: Joi.array().items(Joi.string()).min(1).required(),
-  referenceImageBase64: Joi.string().required(),
+  referenceImageBase64: Joi.string()
+    .max(52428800) // 50MB in characters (50 * 1024 * 1024)
+    .optional()
+    .allow('', null), // Allow empty string or null
 });
-
 
 export const createCraftIdeaSchema = Joi.object({
   idea_json: commonSchemas.jsonObject.required(),
