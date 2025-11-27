@@ -18,19 +18,26 @@ interface CraftIdea {
 
 export const generateCraft = async (
   materials: string | string[],
-  referenceImageBase64?: string  // ✅ MAKE SURE THIS PARAMETER EXISTS
+  referenceImageBase64?: string
 ) => {
   // Normalize input: join array into a single string if needed
   const cleanMaterials = Array.isArray(materials)
     ? materials.map((m) => m.trim()).filter(Boolean).join(", ")
     : materials?.trim();
 
-  // ✅ ADD LOGGING AT THE START
-  console.log("🎨 generateCraft service called with:");
-  console.log("  📦 Materials:", cleanMaterials);
-  console.log("  🖼️  Has referenceImageBase64:", !!referenceImageBase64);
+  console.log("🎨 ============================================");
+  console.log("🎨 CRAFT SERVICE - Generate Craft Called");
+  console.log("🎨 ============================================");
+  console.log("📦 Materials:", cleanMaterials);
+  console.log("🖼️  Has referenceImageBase64:", !!referenceImageBase64);
+  
   if (referenceImageBase64) {
-    console.log("  📏 referenceImageBase64 length:", referenceImageBase64.length);
+    const imageSizeMB = (referenceImageBase64.length / (1024 * 1024)).toFixed(2);
+    console.log("📏 Reference Image Length:", referenceImageBase64.length);
+    console.log("📊 Reference Image Size:", imageSizeMB, "MB");
+    console.log("🔍 Reference Image Preview:", referenceImageBase64.substring(0, 100));
+  } else {
+    console.log("⚠️  No reference image - generating generic craft images");
   }
 
   // Validation
@@ -70,8 +77,7 @@ export const generateCraft = async (
   }
 
   try {
-    console.log("🎨 Generating craft ideas for:", cleanMaterials);
-    console.log("🖼️  Reference image provided:", !!referenceImageBase64);
+    console.log("🤖 Generating craft ideas from AI...");
 
     const prompt = craftPrompt(cleanMaterials);
 
@@ -84,6 +90,8 @@ export const generateCraft = async (
     if (!text?.trim()) {
       throw new AppError("AI did not return a response", 500);
     }
+
+    console.log("✅ AI response received");
 
     const ideas = parseJsonFromMarkdown(text);
 
@@ -111,21 +119,24 @@ export const generateCraft = async (
       throw new AppError("AI returned invalid craft idea format", 500);
     }
 
-    console.log(`✅ Generated ${validIdeas.length} craft ideas`);
+    console.log(`✅ Generated ${validIdeas.length} valid craft ideas`);
+    console.log("🎨 Starting image generation for each craft idea...");
 
     // Generate images for each craft idea
     const ideasWithImages: CraftIdea[] = [];
 
-    for (const idea of validIdeas) {
+    for (let i = 0; i < validIdeas.length; i++) {
+      const idea = validIdeas[i];
+      
       try {
-        console.log(`🎨 Generating image for: ${idea.title}`);
+        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating image for: "${idea.title}"`);
 
-        // ✅ PASS THE REFERENCE IMAGE HERE
+        // Pass the reference image to image generation
         const imageUrl = await generateCraftImage(
           idea.title,
           idea.description,
           cleanMaterials,
-          referenceImageBase64  // ✅ CRITICAL: Pass the reference image
+          referenceImageBase64  // ✅ CRITICAL: Pass the scanned image as reference
         );
 
         ideasWithImages.push({
@@ -133,12 +144,9 @@ export const generateCraft = async (
           generatedImageUrl: imageUrl,
         });
 
-        console.log(`✅ Image generated for: ${idea.title}`);
-      } catch (imageError) {
-        console.error(
-          `⚠️  Failed to generate image for ${idea.title}:`,
-          imageError
-        );
+        console.log(`✅ [${i + 1}/${validIdeas.length}] Image generated successfully`);
+      } catch (imageError: any) {
+        console.error(`❌ [${i + 1}/${validIdeas.length}] Failed to generate image:`, imageError.message);
         
         // Include the idea even without an image
         ideasWithImages.push({
@@ -147,6 +155,12 @@ export const generateCraft = async (
         });
       }
     }
+
+    console.log("\n🎨 ============================================");
+    console.log(`✅ CRAFT SERVICE COMPLETE`);
+    console.log(`📊 Total Ideas: ${ideasWithImages.length}`);
+    console.log(`🖼️  Ideas with Images: ${ideasWithImages.filter(i => i.generatedImageUrl).length}`);
+    console.log("🎨 ============================================\n");
 
     return {
       materials: Array.isArray(materials) ? materials : [materials],
@@ -157,7 +171,7 @@ export const generateCraft = async (
   } catch (error: any) {
     if (error instanceof AppError) throw error;
 
-    console.error("AI Craft Generation Error:", error);
+    console.error("❌ AI Craft Generation Error:", error);
 
     if (error.message?.includes("API key")) {
       throw new AppError("AI service configuration error", 500);

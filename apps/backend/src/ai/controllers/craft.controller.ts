@@ -8,6 +8,31 @@ import { generateCraft } from "../services/craft.service";
 export const craftController = asyncHandler(async (req: Request, res: Response) => {
     const { materials, referenceImageBase64 } = req.body;
     
+    console.log('🎨 ============================================');
+    console.log('🎨 CRAFT CONTROLLER - Request Received');
+    console.log('🎨 ============================================');
+    console.log('📦 Materials:', materials);
+    console.log('🖼️  Has referenceImageBase64:', !!referenceImageBase64);
+    console.log('📏 Type of referenceImageBase64:', typeof referenceImageBase64);
+    
+    if (referenceImageBase64) {
+        const imageLength = referenceImageBase64.length;
+        const imageSizeMB = (imageLength / (1024 * 1024)).toFixed(2);
+        console.log('📊 Reference Image Length:', imageLength, 'characters');
+        console.log('📊 Reference Image Size:', imageSizeMB, 'MB');
+        console.log('🔍 Reference Image Preview (first 100 chars):', referenceImageBase64.substring(0, 100));
+        
+        // Check if it has proper data URI prefix
+        if (referenceImageBase64.startsWith('data:image')) {
+            console.log('✅ Image has proper data URI prefix');
+        } else {
+            console.log('⚠️  Image missing data URI prefix');
+        }
+    } else {
+        console.log('❌ referenceImageBase64 is:', referenceImageBase64);
+        console.log('⚠️  WARNING: No reference image provided - images will be generated without visual reference');
+    }
+    
     if (!materials) {
         return sendError(res, 'Materials field is required', 400);
     }
@@ -30,14 +55,8 @@ export const craftController = asyncHandler(async (req: Request, res: Response) 
     }
     
     console.log('📦 Processing materials:', materialsString);
-    console.log('🖼️  Reference image provided:', !!referenceImageBase64);
-    
-    if (referenceImageBase64) {
-        const imageLength = referenceImageBase64.length;
-        const imageSizeMB = (imageLength / (1024 * 1024)).toFixed(2);
-        console.log('🖼️  Reference image size:', imageSizeMB + ' MB');
-        console.log('🖼️  Reference image preview:', referenceImageBase64.substring(0, 100));
-    }
+    console.log('🚀 Starting craft generation...');
+    console.log('🎨 ============================================\n');
     
     const result = await generateCraft(materialsString, referenceImageBase64);
     sendSuccess(res, result, 'Craft ideas generated successfully');
