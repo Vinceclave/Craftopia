@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Announcements.tsx
-import { useState, useMemo, useEffect } from 'react';
+// apps/web/src/pages/admin/Announcements.tsx - FIXED
+import { useState, useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -61,16 +61,10 @@ export default function AdminAnnouncements() {
     isUpdating,
     isDeleting,
     isToggling,
-    meta,
-    goToPage,
-    nextPage,
-    prevPage,
-    setLimit,
-    params,
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { success, error: showError } = useToast();
+  const { success, error: showError, info } = useToast(); // FIXED: Use individual methods instead of 'toast'
 
   // State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -87,39 +81,9 @@ export default function AdminAnnouncements() {
     expires_at: '',
   });
 
-  // Auto-close dialogs on success
-  useEffect(() => {
-    if (!isCreating && createDialogOpen) {
-      setCreateDialogOpen(false);
-      setFormData({ title: '', content: '', expires_at: '' });
-    }
-  }, [isCreating, createDialogOpen]);
-
-  useEffect(() => {
-    if (!isUpdating && editDialogOpen) {
-      setEditDialogOpen(false);
-      setSelectedAnnouncement(null);
-      setFormData({ title: '', content: '', expires_at: '' });
-    }
-  }, [isUpdating, editDialogOpen]);
-
-  useEffect(() => {
-    if (!isDeleting && deleteDialogOpen) {
-      setDeleteDialogOpen(false);
-      setSelectedAnnouncement(null);
-    }
-  }, [isDeleting, deleteDialogOpen]);
-
-  useEffect(() => {
-    if (!isToggling && toggleDialogOpen) {
-      setToggleDialogOpen(false);
-      setSelectedAnnouncement(null);
-    }
-  }, [isToggling, toggleDialogOpen]);
-
   // Stats
   const stats = useMemo(() => {
-    const total = meta?.total || announcements.length;
+    const total = announcements.length;
     const active = announcements.filter((a: Announcement) =>
       a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
     ).length;
@@ -163,9 +127,9 @@ export default function AdminAnnouncements() {
         color: 'text-blue-600',
       },
     ];
-  }, [announcements, meta]);
+  }, [announcements]);
 
-  // Filtered data - client-side only for search/filter
+  // Filtered data
   const filteredData = useMemo(() => {
     return announcements.filter((announcement: Announcement) => {
       const searchTerm = globalFilter.toLowerCase();
@@ -190,9 +154,8 @@ export default function AdminAnnouncements() {
   // Filters
   const filters: FilterOption[] = [
     {
-      label: 'Status',
+      label: 'All Status',
       value: statusFilter,
-      onChange: setStatusFilter,
       options: [
         { label: 'All Status', value: 'all' },
         { label: 'Active', value: 'active' },
@@ -200,21 +163,9 @@ export default function AdminAnnouncements() {
         { label: 'Expired', value: 'expired' },
         { label: 'Scheduled', value: 'scheduled' },
       ],
+      onChange: setStatusFilter,
     },
   ];
-
-  // Pagination configuration
-  const pagination = useMemo(() => ({
-    page: params.page,
-    limit: params.limit,
-    total: meta?.total || 0,
-    onPageChange: goToPage,
-    onLimitChange: setLimit,
-    onNextPage: nextPage,
-    onPrevPage: prevPage,
-    hasNextPage: meta?.hasNextPage || false,
-    hasPrevPage: meta?.hasPrevPage || false,
-  }), [params, meta, goToPage, setLimit, nextPage, prevPage]);
 
   // Columns
   const columns = useMemo<ColumnDef<Announcement>[]>(
@@ -398,9 +349,11 @@ export default function AdminAnnouncements() {
         content: formData.content,
         expires_at: formData.expires_at ? new Date(formData.expires_at) : undefined,
       });
-      // Dialog closes automatically via useEffect
+      success('Announcement created and published!'); // FIXED: Use success method
+      setFormData({ title: '', content: '', expires_at: '' });
+      setCreateDialogOpen(false);
     } catch (err: any) {
-      // Error handled in mutation
+      showError(err?.message || 'Failed to create announcement'); // FIXED: Use showError method
     }
   };
 
@@ -417,9 +370,12 @@ export default function AdminAnnouncements() {
           expires_at: formData.expires_at ? new Date(formData.expires_at) : null,
         },
       });
-      // Dialog closes automatically via useEffect
+      success('Announcement updated successfully!'); // FIXED: Use success method
+      setFormData({ title: '', content: '', expires_at: '' });
+      setSelectedAnnouncement(null);
+      setEditDialogOpen(false);
     } catch (err: any) {
-      // Error handled in mutation
+      showError(err?.message || 'Failed to update announcement'); // FIXED: Use showError method
     }
   };
 
@@ -428,9 +384,11 @@ export default function AdminAnnouncements() {
 
     try {
       await deleteAnnouncement(selectedAnnouncement.announcement_id);
-      // Dialog closes automatically via useEffect
+      success('Announcement deleted successfully!'); // FIXED: Use success method
+      setSelectedAnnouncement(null);
+      setDeleteDialogOpen(false);
     } catch (err: any) {
-      // Error handled in mutation
+      showError(err?.message || 'Failed to delete announcement'); // FIXED: Use showError method
     }
   };
 
@@ -439,9 +397,12 @@ export default function AdminAnnouncements() {
 
     try {
       await toggleStatus(selectedAnnouncement.announcement_id);
-      // Dialog closes automatically via useEffect
+      const newStatus = !selectedAnnouncement.is_active;
+      success(newStatus ? 'Announcement published!' : 'Announcement unpublished'); // FIXED: Use success method
+      setSelectedAnnouncement(null);
+      setToggleDialogOpen(false);
     } catch (err: any) {
-      // Error handled in mutation
+      showError(err?.message || 'Failed to toggle status'); // FIXED: Use showError method
     }
   };
 
@@ -453,10 +414,9 @@ export default function AdminAnnouncements() {
     <PageContainer>
       {/* Header */}
       <PageHeader
-        title="Announcements"
-        description={
-          <div className="flex items-center gap-2">
-            Create and manage platform-wide announcements
+        title={
+          <div className="flex items-center gap-3">
+            Announcements
             {isConnected && (
               <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
                 <Wifi className="w-3 h-3 mr-1" />
@@ -465,6 +425,7 @@ export default function AdminAnnouncements() {
             )}
           </div>
         }
+        description="Create and manage platform-wide announcements"
         icon={<Megaphone className="w-6 h-6 text-white" />}
         actions={
           <Button
@@ -556,15 +517,14 @@ export default function AdminAnnouncements() {
         </Card>
       )}
 
-      {/* Data Table with Pagination */}
+      {/* Data Table */}
       <DataTable
         data={filteredData}
         columns={columns}
         searchPlaceholder="Search titles, content, authors, dates..."
         onSearchChange={setGlobalFilter}
         filters={filters}
-        title={`All Announcements (${meta?.total || 0} total)`}
-        pagination={pagination}
+        title="All Announcements"
         emptyState={{
           icon: <Megaphone className="w-12 h-12 text-gray-300" />,
           title: 'No announcements found',

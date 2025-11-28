@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useAnnouncements.ts - FIXED TO INCLUDE EXPIRED
+// apps/web/src/hooks/useAnnouncements.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsAPI } from '../lib/api';
 import { useState, useCallback, useEffect } from 'react';
@@ -11,19 +11,18 @@ interface AnnouncementFilters {
   includeExpired: boolean;
 }
 
-export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {}) => {
+export const useAnnouncements = () => {
   const [params, setParams] = useState<AnnouncementFilters>({
     page: 1,
-    limit: 20,
-    includeExpired: true, // CHANGED: Include expired announcements by default
-    ...initialParams,
+    limit: 10,
+    includeExpired: false,
   });
 
   const queryClient = useQueryClient();
   const { subscribe } = useWebSocket();
-  const { success, info, error: showError } = useToast();
+  const { success, info } = useToast();
 
-  // Fetch all announcements INCLUDING expired
+  // Fetch all announcements
   const {
     data,
     isLoading,
@@ -32,52 +31,29 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
   } = useQuery({
     queryKey: ['announcements', params],
     queryFn: async () => {
-      try {
-        console.log('📢 Fetching announcements with params:', params);
-        
-        const response: any = await announcementsAPI.getAll(
-          params.page, 
-          params.limit, 
-          params.includeExpired // This now includes expired announcements
-        );
-        
-        console.log('📢 Announcements API Response:', response);
-        
-        const announcementsData = response?.data || [];
-        const meta = response?.meta || {
-          total: Array.isArray(announcementsData) ? announcementsData.length : 0,
-          page: params.page,
-          limit: params.limit,
-          lastPage: 1,
-        };
-        
-        return {
-          data: Array.isArray(announcementsData) ? announcementsData : [],
-          meta,
-        };
-      } catch (err) {
-        console.error('❌ Error fetching announcements:', err);
-        throw err;
-      }
+      const response: any = await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
+      
+      // Backend returns: { success: true, data: [...], meta: {...} }
+      // NOT nested as { success: true, data: { data: [...], meta: {...} } }
+      return {
+        data: response?.data ?? [],
+        meta: response?.meta ?? {},
+      };
     },
-    retry: 2,
+    retry: 1,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
-  // Fetch active announcements (for the preview section)
+  // Fetch active announcements
   const {
     data: activeData,
   } = useQuery({
     queryKey: ['active-announcements'],
     queryFn: async () => {
-      try {
-        const response: any = await announcementsAPI.getActive(5);
-        return response?.data || [];
-      } catch (err) {
-        console.error('❌ Error fetching active announcements:', err);
-        return [];
-      }
+      const response: any = await announcementsAPI.getActive(5);
+      // Backend returns: { success: true, data: [...] }
+      return response?.data ?? [];
     },
     staleTime: 60_000,
   });
@@ -96,9 +72,6 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement created successfully!');
-    },
-    onError: (err: any) => {
-      showError(err?.message || 'Failed to create announcement');
     },
   });
 
@@ -124,9 +97,6 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement updated successfully!');
     },
-    onError: (err: any) => {
-      showError(err?.message || 'Failed to update announcement');
-    },
   });
 
   // Delete announcement
@@ -138,9 +108,6 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement deleted successfully!');
-    },
-    onError: (err: any) => {
-      showError(err?.message || 'Failed to delete announcement');
     },
   });
 
@@ -154,9 +121,6 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement status updated!');
-    },
-    onError: (err: any) => {
-      showError(err?.message || 'Failed to toggle announcement status');
     },
   });
 
@@ -213,22 +177,11 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
     setParams(prev => ({ ...prev, limit, page: 1 }));
   }, []);
 
-  const setIncludeExpired = useCallback((includeExpired: boolean) => {
-    setParams(prev => ({ ...prev, includeExpired, page: 1 }));
-  }, []);
-
   return {
     // Data
     announcements: data?.data || [],
     activeAnnouncements: activeData || [],
-    meta: data?.meta || {
-      total: 0,
-      page: params.page,
-      limit: params.limit,
-      lastPage: 1,
-      hasNextPage: false,
-      hasPrevPage: false,
-    },
+    meta: data?.meta,
     isLoading,
     error,
     params,
@@ -246,7 +199,6 @@ export const useAnnouncements = (initialParams: Partial<AnnouncementFilters> = {
     nextPage,
     prevPage,
     setLimit,
-    setIncludeExpired,
     
     // Loading states
     isCreating: createMutation.isPending,
