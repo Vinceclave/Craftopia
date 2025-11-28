@@ -20,7 +20,7 @@ export const useChallenges = () => {
   const queryClient = useQueryClient();
   const { error: errorToast } = useToast();
 
-  // Fetch challenges
+  // ✅ FIX: Fetch ALL challenges once, filter client-side
   const {
     data,
     isLoading,
@@ -28,10 +28,11 @@ export const useChallenges = () => {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['challenges', filters.category],
+    queryKey: ['challenges'], // ✅ Removed category from queryKey
     queryFn: async () => {
       try {
-        const response = await challengesAPI.getAll(filters.category);
+        // ✅ Fetch ALL challenges without category filter
+        const response = await challengesAPI.getAll();
         return {
           data: response?.data ?? [],
           success: response?.success ?? true,
@@ -42,8 +43,8 @@ export const useChallenges = () => {
     },
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
-    staleTime: 30000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // ✅ 5 minutes - data stays fresh longer
+    gcTime: 10 * 60 * 1000, // ✅ 10 minutes - cache persists
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
@@ -79,7 +80,7 @@ export const useChallenges = () => {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      const previousChallenges = queryClient.getQueryData(['challenges', filters.category]);
+      const previousChallenges = queryClient.getQueryData(['challenges']);
       return { previousChallenges };
     },
     onSuccess: () => {
@@ -87,7 +88,7 @@ export const useChallenges = () => {
     },
     onError: (err: any, _vars, ctx) => {
       if (ctx?.previousChallenges) {
-        queryClient.setQueryData(['challenges', filters.category], ctx.previousChallenges);
+        queryClient.setQueryData(['challenges'], ctx.previousChallenges);
       }
       errorToast(err?.message || 'Failed to create challenge');
     },
@@ -101,7 +102,7 @@ export const useChallenges = () => {
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
-      const previousChallenges = queryClient.getQueryData(['challenges', filters.category]);
+      const previousChallenges = queryClient.getQueryData(['challenges']);
       return { previousChallenges };
     },
     onSuccess: () => {
@@ -109,7 +110,7 @@ export const useChallenges = () => {
     },
     onError: (err: any, _vars, ctx) => {
       if (ctx?.previousChallenges) {
-        queryClient.setQueryData(['challenges', filters.category], ctx.previousChallenges);
+        queryClient.setQueryData(['challenges'], ctx.previousChallenges);
       }
       errorToast(err?.message || 'Failed to generate AI challenge');
     },
@@ -124,10 +125,10 @@ export const useChallenges = () => {
     onMutate: async ({ challengeId, data: updateData }) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
 
-      const previousData = queryClient.getQueryData(['challenges', filters.category]);
+      const previousData = queryClient.getQueryData(['challenges']);
 
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
-        queryClient.setQueryData(['challenges', filters.category], {
+        queryClient.setQueryData(['challenges'], {
           ...previousData,
           data: (previousData.data as any[]).map((challenge: any) =>
             challenge.challenge_id === challengeId
@@ -144,7 +145,7 @@ export const useChallenges = () => {
     },
     onError: (err: any, _vars, ctx) => {
       if (ctx?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
+        queryClient.setQueryData(['challenges'], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to update challenge');
     },
@@ -159,10 +160,10 @@ export const useChallenges = () => {
     onMutate: async (challengeId) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
 
-      const previousData = queryClient.getQueryData(['challenges', filters.category]);
+      const previousData = queryClient.getQueryData(['challenges']);
 
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
-        queryClient.setQueryData(['challenges', filters.category], {
+        queryClient.setQueryData(['challenges'], {
           ...previousData,
           data: (previousData.data as any[]).filter(
             (challenge: any) => challenge.challenge_id !== challengeId
@@ -177,7 +178,7 @@ export const useChallenges = () => {
     },
     onError: (err: any, _id, ctx) => {
       if (ctx?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
+        queryClient.setQueryData(['challenges'], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to delete challenge');
     },
@@ -192,10 +193,10 @@ export const useChallenges = () => {
     onMutate: async (challengeId) => {
       await queryClient.cancelQueries({ queryKey: ['challenges'] });
 
-      const previousData = queryClient.getQueryData(['challenges', filters.category]);
+      const previousData = queryClient.getQueryData(['challenges']);
 
       if (previousData && typeof previousData === 'object' && 'data' in previousData) {
-        queryClient.setQueryData(['challenges', filters.category], {
+        queryClient.setQueryData(['challenges'], {
           ...previousData,
           data: (previousData.data as any[]).map((challenge: any) =>
             challenge.challenge_id === challengeId
@@ -212,7 +213,7 @@ export const useChallenges = () => {
     },
     onError: (err: any, _id, ctx) => {
       if (ctx?.previousData) {
-        queryClient.setQueryData(['challenges', filters.category], ctx.previousData);
+        queryClient.setQueryData(['challenges'], ctx.previousData);
       }
       errorToast(err?.message || 'Failed to toggle status');
     },
@@ -239,12 +240,22 @@ export const useChallenges = () => {
     });
   }, []);
 
-  // Computed
-  const challenges = useMemo(() => data?.data || [], [data?.data]);
+  // ✅ FIX: Filter challenges client-side
+  const challenges = useMemo(() => {
+    const allChallenges = data?.data || [];
+    
+    // Apply category filter client-side
+    if (filters.category) {
+      return allChallenges.filter((c: any) => c.category === filters.category);
+    }
+    
+    return allChallenges;
+  }, [data?.data, filters.category]);
+
   const pendingVerifications = useMemo(() => pendingData?.data || [], [pendingData?.data]);
 
   const stats = useMemo(() => {
-    const list = Array.isArray(challenges) ? challenges : [];
+    const list = Array.isArray(data?.data) ? data.data : [];
     const pendingList = Array.isArray(pendingVerifications) ? pendingVerifications : [];
 
     return {
@@ -254,7 +265,7 @@ export const useChallenges = () => {
       adminCreated: list.filter((c: any) => c.source === 'admin').length,
       pending: pendingList.length,
     };
-  }, [challenges, pendingVerifications]);
+  }, [data?.data, pendingVerifications]);
 
   return {
     challenges,

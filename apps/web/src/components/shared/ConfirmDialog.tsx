@@ -17,7 +17,7 @@ export type DialogVariant = 'default' | 'danger' | 'warning' | 'success' | 'info
 interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (() => void) | ((e?: React.FormEvent) => Promise<void>); // More flexible type
   title: string;
   description: string;
   confirmText?: string;

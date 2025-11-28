@@ -165,8 +165,8 @@ export default function AdminChallenges() {
 
   const { success, error: showError, info } = useToast();
 
-  // Separate filters for each tab
-  const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('all');
+  // ✅ FIX: Set default filters - active challenges and pending user challenges
+  const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('active');
   const [userChallengeStatusFilter, setUserChallengeStatusFilter] = useState<UserChallengeStatusFilter>('pending_verification');
   const [challengeSearchQuery, setChallengeSearchQuery] = useState('');
   const [userChallengeSearchQuery, setUserChallengeSearchQuery] = useState('');
@@ -199,26 +199,23 @@ export default function AdminChallenges() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
-  // ✅ FIX: Fetch user challenges with proper caching
+  // ✅ FIX: Fetch ALL user challenges once, filter client-side
   const {
     data: userChallengesData,
     isLoading: isUserChallengesLoading,
     refetch: refetchUserChallenges,
   } = useQuery({
-    queryKey: ['admin-user-challenges', userChallengeStatusFilter],
+    queryKey: ['admin-user-challenges'], // ✅ Removed filter from queryKey
     queryFn: async () => {
-      const filters: any = {};
-      if (userChallengeStatusFilter !== 'all') {
-        filters.status = userChallengeStatusFilter;
-      }
-      const response = await challengesAPI.getAllUserChallenges(1, 100, filters);
+      // ✅ Fetch ALL user challenges without status filter
+      const response = await challengesAPI.getAllUserChallenges(1, 100, {});
       return response?.data || [];
     },
     retry: 2,
-    staleTime: 5 * 60 * 1000, // ✅ 5 minutes - data stays fresh longer
-    gcTime: 10 * 60 * 1000, // ✅ 10 minutes - cache persists
-    refetchOnWindowFocus: false, // ✅ Don't refetch when window regains focus
-    refetchOnMount: false, // ✅ Don't refetch on component mount if data exists
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     refetchOnReconnect: true,
   });
 
@@ -283,7 +280,6 @@ export default function AdminChallenges() {
     setCreateDialogOpen(true);
   };
 
-  // ✅ FIX: Edit functionality - removed AI check restriction
   const handleOpenEdit = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setFormData({
@@ -324,9 +320,12 @@ export default function AdminChallenges() {
     setVerifyDialogOpen(true);
   };
 
-  // CRUD operations
-  const handleCreateChallenge = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // CRUD operations - FIXED: Made event parameter optional
+  const handleCreateChallenge = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -346,9 +345,11 @@ export default function AdminChallenges() {
     }
   };
 
-  // ✅ FIX: Update challenge functionality
-  const handleUpdateChallenge = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateChallenge = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
     if (!selectedChallenge) return;
     
     const errors = validateChallengeForm(formData);
@@ -375,7 +376,6 @@ export default function AdminChallenges() {
     }
   };
 
-  // ✅ FIX: Delete challenge functionality
   const handleConfirmDelete = async () => {
     if (!selectedChallenge) return;
     try {
@@ -388,7 +388,6 @@ export default function AdminChallenges() {
     }
   };
 
-  // ✅ FIX: Toggle status functionality
   const handleConfirmToggle = async () => {
     if (!selectedChallenge) return;
     try {
@@ -476,16 +475,27 @@ export default function AdminChallenges() {
     return filtered;
   }, [challengeList, challengeStatusFilter, challengeSearchQuery]);
 
-  // Filtered user challenges
+  // ✅ FIX: Filter user challenges client-side
   const filteredUserChallenges = useMemo(() => {
-    if (!userChallengeSearchQuery.trim()) return userChallengeList;
-    const query = userChallengeSearchQuery.toLowerCase();
-    return userChallengeList.filter((uc: UserChallenge) =>
-      uc.challenge?.title?.toLowerCase().includes(query) ||
-      uc.user?.username?.toLowerCase().includes(query) ||
-      uc.user?.email?.toLowerCase().includes(query)
-    );
-  }, [userChallengeList, userChallengeSearchQuery]);
+    let filtered = userChallengeList;
+
+    // Status filter
+    if (userChallengeStatusFilter !== 'all') {
+      filtered = filtered.filter((uc: UserChallenge) => uc.status === userChallengeStatusFilter);
+    }
+
+    // Search filter
+    if (userChallengeSearchQuery.trim()) {
+      const query = userChallengeSearchQuery.toLowerCase();
+      filtered = filtered.filter((uc: UserChallenge) =>
+        uc.challenge?.title?.toLowerCase().includes(query) ||
+        uc.user?.username?.toLowerCase().includes(query) ||
+        uc.user?.email?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [userChallengeList, userChallengeStatusFilter, userChallengeSearchQuery]);
 
   // User challenge stats
   const userChallengeStats = useMemo(() => {
@@ -609,7 +619,7 @@ export default function AdminChallenges() {
             label: 'Edit',
             onClick: () => handleOpenEdit(row.original),
             variant: 'default',
-            disabled: isUpdating, // ✅ Only disable while updating
+            disabled: isUpdating,
           },
           {
             icon: <Trash2 className="w-4 h-4" />,
@@ -1010,7 +1020,7 @@ export default function AdminChallenges() {
         variant="default"
         icon={<Trophy className="w-5 h-5" />}
       >
-        <form onSubmit={editDialogOpen ? handleUpdateChallenge : handleCreateChallenge} className="space-y-5">
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
             <Input
@@ -1022,6 +1032,12 @@ export default function AdminChallenges() {
               }}
               placeholder="e.g., Plastic Bottle Upcycling Challenge"
               className={formErrors.title ? 'border-red-300' : ''}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  editDialogOpen ? handleUpdateChallenge() : handleCreateChallenge();
+                }
+              }}
             />
             {formErrors.title && <p className="text-xs text-red-600">{formErrors.title}</p>}
           </div>
@@ -1100,7 +1116,7 @@ export default function AdminChallenges() {
               </SelectContent>
             </Select>
           </div>
-        </form>
+        </div>
       </ConfirmDialog>
 
       {/* Delete Dialog */}
@@ -1268,5 +1284,3 @@ export default function AdminChallenges() {
     </PageContainer>
   );
 }
-
-
