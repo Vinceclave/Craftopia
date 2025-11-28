@@ -7,9 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
-  FileText, Trash2, Star, Loader2, RefreshCw,
+  FileText, Trash2, Star, Loader2,
   MessageCircle, AlertCircle, CheckSquare,
-  Calendar, MoreHorizontal, Wifi, Eye, User, ThumbsUp,
+  Calendar, Wifi, Eye, User, ThumbsUp,
   Clock, CheckCircle, Flag, Image as ImageIcon,
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
@@ -690,23 +690,6 @@ export default function AdminPosts() {
                 <span className="ml-2">Delete {selectedPosts.length}</span>
               </Button>
             )}
-            <Button 
-              size="sm" 
-              onClick={() => {
-                refetch();
-                refetchReports();
-              }} 
-              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-            <Button 
-              size="sm" 
-              className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
           </>
         }
       />

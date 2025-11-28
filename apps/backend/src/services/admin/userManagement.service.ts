@@ -76,7 +76,7 @@ class UserManagementService extends BaseService {
               prisma.comment.count({ where: { user_id: user.user_id, deleted_at: null } }),
               prisma.userChallenge.count({ 
                 where: { user_id: user.user_id, status: 'completed', deleted_at: null } 
-              })
+              })  
             ])
           ]);
 

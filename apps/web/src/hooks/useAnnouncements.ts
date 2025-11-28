@@ -15,41 +15,33 @@ export const useAnnouncements = () => {
   const [params, setParams] = useState<AnnouncementFilters>({
     page: 1,
     limit: 20,
-    includeExpired: true, // ✅ Show all by default
+    includeExpired: true,
   });
 
   const queryClient = useQueryClient();
   const { subscribe } = useWebSocket();
   const { success, info } = useToast();
 
-  // ✅ NEW: Fetch ALL announcements for accurate stats (always includeExpired=true)
-  const {
-    data: allAnnouncementsData,
-  } = useQuery({
-    queryKey: ['announcements-all'], // Separate query for stats
+  // Fetch all announcements for stats
+  const { data: allAnnouncementsData } = useQuery({
+    queryKey: ['announcements-all'],
     queryFn: async () => {
-      console.log('📊 Fetching ALL announcements for stats');
-      const response: any = await announcementsAPI.getAll(1, 1000, true); // Get all (high limit)
-      console.log('📊 All announcements count:', response?.data?.length || 0);
+      const response: any = await announcementsAPI.getAll(1, 1000, true);
       return response?.data ?? [];
     },
-    staleTime: 60_000, // Cache for 1 minute
+    staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
 
-  // Fetch filtered announcements for display (respects includeExpired filter)
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
+  // Fetch filtered announcements
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['announcements', params],
     queryFn: async () => {
-      console.log('🔍 Fetching announcements with params:', params);
-      const response: any = await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
-      console.log('📦 API Response:', response);
-      
+      const response: any = await announcementsAPI.getAll(
+        params.page,
+        params.limit,
+        params.includeExpired
+      );
       return {
         data: response?.data ?? [],
         meta: response?.meta ?? {},
@@ -61,9 +53,7 @@ export const useAnnouncements = () => {
   });
 
   // Fetch active announcements
-  const {
-    data: activeData,
-  } = useQuery({
+  const { data: activeData } = useQuery({
     queryKey: ['active-announcements'],
     queryFn: async () => {
       const response: any = await announcementsAPI.getActive(5);
@@ -84,7 +74,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement created successfully!');
     },
@@ -109,7 +99,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement updated successfully!');
     },
@@ -122,7 +112,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement deleted successfully!');
     },
@@ -136,33 +126,42 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement status updated!');
     },
   });
 
   // WebSocket event handlers
-  const handleAnnouncementCreated = useCallback((data: any) => {
-    info(data.message || 'New announcement created!');
-    queryClient.invalidateQueries({ queryKey: ['announcements'] });
-    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
-    queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-  }, [queryClient, info]);
+  const handleAnnouncementCreated = useCallback(
+    (data: any) => {
+      info(data.message || 'New announcement created!');
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
+      queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
+    },
+    [queryClient, info]
+  );
 
-  const handleAnnouncementUpdated = useCallback((data: any) => {
-    info(data.message || 'Announcement updated!');
-    queryClient.invalidateQueries({ queryKey: ['announcements'] });
-    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
-    queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-  }, [queryClient, info]);
+  const handleAnnouncementUpdated = useCallback(
+    (data: any) => {
+      info(data.message || 'Announcement updated!');
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
+      queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
+    },
+    [queryClient, info]
+  );
 
-  const handleAnnouncementDeleted = useCallback((data: any) => {
-    info(data.message || 'Announcement deleted!');
-    queryClient.invalidateQueries({ queryKey: ['announcements'] });
-    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
-    queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-  }, [queryClient, info]);
+  const handleAnnouncementDeleted = useCallback(
+    (data: any) => {
+      info(data.message || 'Announcement deleted!');
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
+      queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
+    },
+    [queryClient, info]
+  );
 
   // Subscribe to WebSocket events
   useEffect(() => {
@@ -179,55 +178,51 @@ export const useAnnouncements = () => {
 
   // Pagination helpers
   const goToPage = useCallback((page: number) => {
-    setParams(prev => ({ ...prev, page }));
+    setParams((prev) => ({ ...prev, page }));
   }, []);
 
   const nextPage = useCallback(() => {
     if (data?.meta?.hasNextPage) {
-      setParams(prev => ({ ...prev, page: prev.page + 1 }));
+      setParams((prev) => ({ ...prev, page: prev.page + 1 }));
     }
   }, [data?.meta]);
 
   const prevPage = useCallback(() => {
     if (data?.meta?.hasPrevPage) {
-      setParams(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }));
+      setParams((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }));
     }
   }, [data?.meta]);
 
   const setLimit = useCallback((limit: number) => {
-    setParams(prev => ({ ...prev, limit, page: 1 }));
+    setParams((prev) => ({ ...prev, limit, page: 1 }));
   }, []);
 
   const toggleIncludeExpired = useCallback(() => {
-    setParams(prev => ({ ...prev, includeExpired: !prev.includeExpired, page: 1 }));
+    setParams((prev) => ({ ...prev, includeExpired: !prev.includeExpired, page: 1 }));
   }, []);
 
   return {
-    // Data
     announcements: data?.data || [],
-    allAnnouncements: allAnnouncementsData || [], // ✅ NEW: All announcements for stats
+    allAnnouncements: allAnnouncementsData || [],
     activeAnnouncements: activeData || [],
     meta: data?.meta,
     isLoading,
     error,
     params,
-    
-    // Actions
+
     setParams,
     refetch,
     createAnnouncement: createMutation.mutateAsync,
     updateAnnouncement: updateMutation.mutateAsync,
     deleteAnnouncement: deleteMutation.mutateAsync,
     toggleStatus: toggleStatusMutation.mutateAsync,
-    
-    // Pagination
+
     goToPage,
     nextPage,
     prevPage,
     setLimit,
     toggleIncludeExpired,
-    
-    // Loading states
+
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

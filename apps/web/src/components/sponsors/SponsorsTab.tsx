@@ -106,7 +106,6 @@ export function SponsorsTab() {
       setFormData((prev) => ({ ...prev, logo_url: imageUrl }));
       success('Image uploaded successfully!');
     } catch (error: any) {
-      console.error('❌ Image upload error:', error);
       showError(error?.message || 'Failed to upload image');
       setImagePreview(null);
     } finally {

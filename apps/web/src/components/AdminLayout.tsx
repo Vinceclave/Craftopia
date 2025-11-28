@@ -1,8 +1,7 @@
-// apps/web/src/components/AdminLayout.tsx - WITH WEBSOCKET STATUS
+// apps/web/src/components/AdminLayout.tsx - WITHOUT WEBSOCKET STATUS
 import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { useWebSocket } from '@/hooks/useWebSocket';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,20 +12,18 @@ import {
   Menu,
   X,
   LogOut,
-  Shield,
   Settings,
   ChevronRight,
-  Wifi,
-  WifiOff,
   Megaphone,
+  Sparkles,
 } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { isConnected } = useWebSocket();
 
   const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3, badge: null },
@@ -77,13 +74,26 @@ const AdminLayout = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[#6CAC73]/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
-                <Shield className="w-4 h-4 text-white" />
+              {/* Improved Logo Container */}
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg border border-[#6CAC73]/30">
+                  <img 
+                    src={logo} 
+                    alt="Craftopia Logo" 
+                    className="w-6 h-6 object-contain filter brightness-0 invert"
+                  />
+                </div>
+                {/* Subtle shine effect */}
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
               </div>
+              
               {sidebarOpen && (
-                <div>
-                  <h1 className="font-semibold text-[#2B4A2F] text-sm font-poppins">Craftopia</h1>
-                  <p className="text-xs text-gray-600 font-nunito">Admin</p>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1">
+                    <h1 className="font-bold text-[#2B4A2F] text-lg font-poppins tracking-tight">Craftopia</h1>
+                    <Sparkles className="w-4 h-4 text-[#6CAC73]" fill="currentColor" />
+                  </div>
+                  <p className="text-xs text-gray-600 font-nunito mt-0.5">Admin Portal</p>
                 </div>
               )}
             </div>
@@ -131,6 +141,7 @@ const AdminLayout = () => {
               );
             })}
           </nav>
+
           {/* User Section */}
           <div className="p-4 border-t border-[#6CAC73]/10">
             {sidebarOpen ? (
@@ -211,20 +222,7 @@ const AdminLayout = () => {
               </div>
             </div>
 
-            {/* WebSocket Status Badge (Desktop) */}
-            <div className="hidden lg:flex items-center gap-2">
-              {isConnected ? (
-                <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins">
-                  <Wifi className="w-3 h-3 mr-1" />
-                  Live
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="bg-rose-50 text-rose-700 border-rose-200">
-                  <WifiOff className="w-3 h-3 mr-1" />
-                  Offline
-                </Badge>
-              )}
-            </div>
+            {/* Removed WebSocket Status Badge */}
           </div>
         </header>
 

@@ -115,7 +115,6 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
     doc.save(`${filename}-${new Date().getTime()}.pdf`);
     
   } catch (error) {
-    console.error('PDF export error:', error);
     throw new Error('Failed to generate PDF: ' + (error as Error).message);
   }
 };

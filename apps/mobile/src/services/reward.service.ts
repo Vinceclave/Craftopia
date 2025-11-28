@@ -48,7 +48,7 @@ export interface RedeemRewardResponse {
 
 class RewardService {
   /**
-   * Get available rewards with filters
+   * Get available rewards
    */
   async getRewards(
     page: number = 1,
@@ -63,46 +63,30 @@ class RewardService {
       const queryParams = new URLSearchParams();
       queryParams.append('page', String(page));
       queryParams.append('limit', String(limit));
-      
-      if (filters?.sponsor_id) {
-        queryParams.append('sponsor_id', String(filters.sponsor_id));
-      }
-      if (filters?.activeOnly) {
-        queryParams.append('activeOnly', 'true');
-      }
-      if (filters?.availableOnly) {
-        queryParams.append('availableOnly', 'true');
-      }
 
-      console.log('📡 Fetching rewards:', { page, limit, filters });
+      if (filters?.sponsor_id) queryParams.append('sponsor_id', String(filters.sponsor_id));
+      if (filters?.activeOnly) queryParams.append('activeOnly', 'true');
+      if (filters?.availableOnly) queryParams.append('availableOnly', 'true');
 
-      const response = await apiService.get<PaginatedResponse<Reward>>(
+      return await apiService.get<PaginatedResponse<Reward>>(
         `/api/v1/sponsors/rewards?${queryParams.toString()}`
       );
-
-      console.log('✅ Rewards fetched:', response.data?.length || 0);
-      return response;
     } catch (error) {
-      console.error('❌ Failed to fetch rewards:', error);
+      console.error('Failed to fetch rewards:', error);
       throw error;
     }
   }
 
   /**
-   * Get single reward by ID
+   * Get single reward
    */
   async getRewardById(rewardId: number): Promise<ApiResponse<Reward>> {
     try {
-      console.log('📡 Fetching reward:', rewardId);
-      
-      const response = await apiService.get<ApiResponse<Reward>>(
+      return await apiService.get<ApiResponse<Reward>>(
         `/api/v1/sponsors/rewards/${rewardId}`
       );
-
-      console.log('✅ Reward fetched:', response.data);
-      return response;
     } catch (error) {
-      console.error(`❌ Failed to fetch reward ${rewardId}:`, error);
+      console.error(`Failed to fetch reward ${rewardId}:`, error);
       throw error;
     }
   }
@@ -112,23 +96,18 @@ class RewardService {
    */
   async redeemReward(rewardId: number): Promise<ApiResponse<RedeemRewardResponse>> {
     try {
-      console.log('🎁 Redeeming reward:', rewardId);
-
-      const response = await apiService.post<ApiResponse<RedeemRewardResponse>>(
+      return await apiService.post<ApiResponse<RedeemRewardResponse>>(
         '/api/v1/sponsors/redemptions',
         { reward_id: rewardId }
       );
-
-      console.log('✅ Reward redeemed successfully:', response.data);
-      return response;
     } catch (error) {
-      console.error('❌ Failed to redeem reward:', error);
+      console.error('Failed to redeem reward:', error);
       throw error;
     }
   }
 
   /**
-   * Get user's redemptions (for history)
+   * Get user's redemption history
    */
   async getMyRedemptions(
     page: number = 1,
@@ -139,28 +118,19 @@ class RewardService {
       const queryParams = new URLSearchParams();
       queryParams.append('page', String(page));
       queryParams.append('limit', String(limit));
-      
-      if (status) {
-        queryParams.append('status', status);
-      }
+      if (status) queryParams.append('status', status);
 
-      console.log('📡 Fetching my redemptions:', { page, limit, status });
-
-      // Note: Backend should filter by user from token
-      const response = await apiService.get<PaginatedResponse<Redemption>>(
+      return await apiService.get<PaginatedResponse<Redemption>>(
         `/api/v1/sponsors/redemptions?${queryParams.toString()}`
       );
-
-      console.log('✅ Redemptions fetched:', response.data?.length || 0);
-      return response;
     } catch (error) {
-      console.error('❌ Failed to fetch redemptions:', error);
+      console.error('Failed to fetch redemptions:', error);
       throw error;
     }
   }
 
   /**
-   * Get available sponsors
+   * Get sponsors
    */
   async getSponsors(
     page: number = 1,
@@ -171,21 +141,13 @@ class RewardService {
       const queryParams = new URLSearchParams();
       queryParams.append('page', String(page));
       queryParams.append('limit', String(limit));
-      
-      if (activeOnly) {
-        queryParams.append('activeOnly', 'true');
-      }
+      if (activeOnly) queryParams.append('activeOnly', 'true');
 
-      console.log('📡 Fetching sponsors:', { page, limit, activeOnly });
-
-      const response = await apiService.get<PaginatedResponse<Sponsor>>(
+      return await apiService.get<PaginatedResponse<Sponsor>>(
         `/api/v1/sponsors/sponsors?${queryParams.toString()}`
       );
-
-      console.log('✅ Sponsors fetched:', response.data?.length || 0);
-      return response;
     } catch (error) {
-      console.error('❌ Failed to fetch sponsors:', error);
+      console.error('Failed to fetch sponsors:', error);
       throw error;
     }
   }
