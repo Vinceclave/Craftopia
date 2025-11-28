@@ -1,5 +1,13 @@
-// apps/web/src/pages/admin/Posts.tsx - FULLY SYNCED DESIGN
-import { useState, useCallback } from 'react';
+// apps/web/src/pages/admin/Posts.tsx - WITH TANSTACK TABLE FOR POSTS ONLY
+import { useState, useCallback, useMemo } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  ColumnDef,
+  flexRender,
+} from '@tanstack/react-table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +33,12 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   FileText, Trash2, Star, Loader2, RefreshCw,
   MessageCircle, AlertCircle, CheckSquare, Image as ImageIcon,
   Calendar, MoreHorizontal, Wifi, Eye, X, User, ThumbsUp,
-  Clock, CheckCircle, Flag, ChevronLeft, ChevronRight,
+  Clock, CheckCircle, Flag, ChevronLeft, ChevronRight, Search,
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useReports } from '@/hooks/useReports';
@@ -74,6 +83,11 @@ export default function AdminPosts() {
 
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<string>('posts');
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   
   // Dialog states
   const [viewPostModal, setViewPostModal] = useState(false);
@@ -88,7 +102,188 @@ export default function AdminPosts() {
   const [selectedReport, setSelectedReport] = useState<ExtendedReport | null>(null);
   const [moderatorNotes, setModeratorNotes] = useState('');
 
-  // WebSocket real-time updates for posts
+  // Define columns for TanStack Table
+  const postColumns = useMemo<ColumnDef<Post>[]>(
+    () => [
+      {
+        id: 'select',
+        header: () => (
+          <input
+            type="checkbox"
+            checked={selectedPosts.length === posts.length && posts.length > 0}
+            onChange={selectAllPosts}
+            className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
+          />
+        ),
+        cell: ({ row }) => (
+          <input
+            type="checkbox"
+            checked={selectedPosts.includes(row.original.post_id)}
+            onChange={() => togglePostSelection(row.original.post_id)}
+            className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
+          />
+        ),
+        size: 40,
+      },
+      {
+        accessorKey: 'title',
+        header: 'Post',
+        cell: ({ row }) => {
+          const post = row.original;
+          return (
+            <div className="flex items-start gap-3">
+              {post.image_url && (
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
+                  <img 
+                    src={post.image_url} 
+                    alt={post.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-[#2B4A2F] font-poppins text-sm truncate">
+                    {post.title}
+                  </p>
+                  {post.featured && (
+                    <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins text-xs">
+                      <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> 
+                      Featured
+                    </Badge>
+                  )}
+                  {post._count && post._count.reports > 0 && (
+                    <Badge className="bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 border-0 font-poppins text-xs">
+                      <AlertCircle className="w-3 h-3 mr-1" /> 
+                      {post._count.reports}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 font-nunito line-clamp-2">
+                  {post.content}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                    {post.category}
+                  </Badge>
+                  {post.tags?.slice(0, 2).map((tag, i) => (
+                    <Badge key={i} className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                      #{tag}
+                    </Badge>
+                  ))}
+                  {post.tags && post.tags.length > 2 && (
+                    <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                      +{post.tags.length - 2}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        },
+        size: 300,
+      },
+      {
+        accessorKey: 'user',
+        header: 'Author',
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-sm text-[#2B4A2F] font-poppins">
+              <User className="w-4 h-4" />
+              {row.original.user.username}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500 font-nunito">
+              <Calendar className="w-3 h-3" />
+              {new Date(row.original.created_at).toLocaleDateString()}
+            </div>
+          </div>
+        ),
+        size: 120,
+      },
+      {
+        accessorKey: 'stats',
+        header: 'Stats',
+        cell: ({ row }) => {
+          const post = row.original;
+          return (
+            <div className="flex flex-col gap-1 text-xs">
+              <div className="flex items-center gap-1">
+                <ThumbsUp className="w-3 h-3 text-[#6CAC73]" />
+                <span className="font-nunito">{post._count?.likes || 0} likes</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MessageCircle className="w-3 h-3 text-[#6CAC73]" />
+                <span className="font-nunito">{post._count?.comments || 0} comments</span>
+              </div>
+              {post.image_url && (
+                <div className="flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3 text-[#6CAC73]" />
+                  <span className="font-nunito">Has image</span>
+                </div>
+              )}
+            </div>
+          );
+        },
+        size: 100,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const post = row.original;
+          return (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleViewPost(post)}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                title="View Post Details"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleFeaturePost(post.post_id)}
+                disabled={isFeaturing}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                title="Toggle Featured"
+              >
+                <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleOpenDeletePost(post)}
+                disabled={isDeleting}
+                className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+                title="Delete Post"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          );
+        },
+        size: 120,
+      },
+    ],
+    [selectedPosts, posts, isFeaturing, isDeleting]
+  );
+
+  // Create table instance
+  const table = useReactTable({
+    data: posts,
+    columns: postColumns,
+    state: {
+      globalFilter,
+      pagination,
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  // WebSocket real-time updates
   useWebSocketPosts({
     onCreated: useCallback(() => {
       info('New post created');
@@ -106,7 +301,6 @@ export default function AdminPosts() {
     }, [info, refetch]),
   });
 
-  // WebSocket real-time updates for reports
   useWebSocketReports({
     onCreated: useCallback((data: any) => {
       success(data.message || 'New report filed');
@@ -250,8 +444,8 @@ export default function AdminPosts() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto mb-4" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73]" />
           <p className="text-[#2B4A2F] font-poppins">Loading content...</p>
         </div>
       </div>
@@ -318,9 +512,9 @@ export default function AdminPosts() {
         ))}
       </div>
 
-      <div className="w-full max-w-7xl mx-auto relative z-10">
+      <div className="w-full max-w-7xl mx-auto relative z-10 flex flex-col gap-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
               <FileText className="w-6 h-6 text-white" />
@@ -376,7 +570,7 @@ export default function AdminPosts() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
             { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-[#2B4A2F]' },
             { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-[#2B4A2F]' },
@@ -425,25 +619,38 @@ export default function AdminPosts() {
             </TabsList>
 
             {activeTab === 'posts' && posts.length > 0 && (
-              <Button
-                size="sm"
-                onClick={selectAllPosts}
-                className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F] text-sm font-poppins"
-              >
-                <CheckSquare className="w-4 h-4 mr-2" />
-                {selectedPosts.length === posts.length ? 'Deselect All' : 'Select All'}
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search posts..."
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] w-64"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={selectAllPosts}
+                  className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F] text-sm font-poppins"
+                >
+                  <CheckSquare className="w-4 h-4 mr-2" />
+                  {selectedPosts.length === posts.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </div>
             )}
           </div>
 
-          {/* Posts Tab */}
+          {/* Posts Tab with TanStack Table */}
           <TabsContent value="posts">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader className="p-6 pb-4">
                 <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Posts</CardTitle>
-                <CardDescription className="text-gray-600 font-nunito">Manage all platform posts with real-time updates</CardDescription>
+                <CardDescription className="text-gray-600 font-nunito">
+                  Manage all platform posts with real-time updates
+                </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 pt-0">
+              <CardContent className="p-6 pt-0 flex flex-col gap-4">
                 {posts.length === 0 ? (
                   <div className="text-center py-12 flex flex-col items-center gap-2">
                     <FileText className="w-12 h-12 text-gray-300" />
@@ -452,177 +659,146 @@ export default function AdminPosts() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col gap-3">
-                      {posts.map((post: Post) => (
-                        <div
-                          key={post.post_id}
-                          className={`p-4 rounded-xl border transition-all duration-200 bg-white/60 backdrop-blur-sm ${
-                            selectedPosts.includes(post.post_id)
-                              ? 'border-blue-300 bg-blue-50/70 shadow-md'
-                              : 'border-[#6CAC73]/20 hover:bg-white/80 hover:shadow-md'
-                          }`}
-                        >
-                          <div className="flex gap-4">
-                            {/* Checkbox */}
-                            <div className="flex items-start pt-1">
-                              <input
-                                type="checkbox"
-                                checked={selectedPosts.includes(post.post_id)}
-                                onChange={() => togglePostSelection(post.post_id)}
-                                className="w-4 h-4 rounded border-[#6CAC73]/30 text-[#6CAC73] focus:ring-[#6CAC73]/20"
-                              />
-                            </div>
-
-                            {/* Thumbnail */}
-                            {post.image_url && (
-                              <div className="w-20 h-20 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
-                                <img 
-                                  src={post.image_url} 
-                                  alt={post.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-
-                            {/* Post Content */}
-                            <div className="flex-1 flex flex-col gap-3">
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="font-semibold text-[#2B4A2F] font-poppins text-sm">{post.title}</h3>
-                                  {post.featured && (
-                                    <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins">
-                                      <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> Featured
-                                    </Badge>
-                                  )}
-                                  {post._count && post._count.reports > 0 && (
-                                    <Badge className="bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 border-0 font-poppins animate-pulse">
-                                      <AlertCircle className="w-3 h-3 mr-1" /> {post._count.reports} Reports
-                                    </Badge>
-                                  )}
+                    <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          {table.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
+                              {headerGroup.headers.map(header => (
+                                <th 
+                                  key={header.id} 
+                                  className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins"
+                                  style={{ width: header.getSize() }}
+                                >
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                        <tbody>
+                          {table.getRowModel().rows.length === 0 ? (
+                            <tr>
+                              <td colSpan={postColumns.length} className="p-8 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                  <FileText className="w-12 h-12 text-gray-300" />
+                                  <p className="text-gray-500 font-medium font-poppins">No posts found</p>
+                                  <p className="text-gray-400 text-sm font-nunito">Try adjusting your search</p>
                                 </div>
-                                <p className="text-sm text-gray-600 font-nunito line-clamp-2">{post.content}</p>
-                              </div>
-
-                              <div className="flex flex-wrap gap-2">
-                                <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                  {post.category}
-                                </Badge>
-                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                  <ThumbsUp className="w-3 h-3 mr-1" />
-                                  {post._count?.likes || 0} likes
-                                </Badge>
-                                <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                  <MessageCircle className="w-3 h-3 mr-1" />
-                                  {post._count?.comments || 0} comments
-                                </Badge>
-                                {post.image_url && (
-                                  <Badge className="text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                    <ImageIcon className="w-3 h-3 mr-1" /> Has image
-                                  </Badge>
-                                )}
-                              </div>
-
-                              {post.tags?.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {post.tags.slice(0, 5).map((tag, i) => (
-                                    <Badge key={i} className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                      #{tag}
-                                    </Badge>
-                                  ))}
-                                  {post.tags.length > 5 && (
-                                    <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                      +{post.tags.length - 5} more
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
-                                <span className="flex items-center gap-1">
-                                  <User className="w-3 h-3" />
-                                  {post.user.username}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(post.created_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex flex-col gap-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handleViewPost(post)}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                                title="View Post Details"
+                              </td>
+                            </tr>
+                          ) : (
+                            table.getRowModel().rows.map(row => (
+                              <tr 
+                                key={row.id} 
+                                className={`border-b border-[#6CAC73]/10 transition-colors last:border-0 ${
+                                  selectedPosts.includes(row.original.post_id)
+                                    ? 'bg-blue-50/70 border-blue-200'
+                                    : 'hover:bg-gray-50/50'
+                                }`}
                               >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleFeaturePost(post.post_id)}
-                                disabled={isFeaturing}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                                title="Toggle Featured"
-                              >
-                                <Star className={`w-4 h-4 ${post.featured ? 'fill-yellow-500 text-yellow-500' : 'text-gray-400'}`} />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenDeletePost(post)}
-                                disabled={isDeleting}
-                                className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                                title="Delete Post"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                {row.getVisibleCells().map(cell => (
+                                  <td key={cell.id} className="p-4">
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
 
-                    {/* Synced Pagination */}
-                    {meta && meta.totalPages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Showing {((page - 1) * meta.itemsPerPage) + 1} to {Math.min(page * meta.itemsPerPage, meta.totalItems)} of {meta.totalItems}
-                        </p>
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
+                      <div className="text-sm text-gray-500 font-nunito">
+                        Showing{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {table.getRowModel().rows.length > 0 
+                            ? (table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + 1 
+                            : 0
+                          }
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {Math.min(
+                            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+                            posts.length
+                          )}
+                        </span>{' '}
+                        of <span className="font-semibold text-[#2B4A2F]">{posts.length}</span> posts
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                          Page <span className="font-semibold text-[#2B4A2F]">{table.getState().pagination.pageIndex + 1}</span>{' '}
+                          of <span className="font-semibold text-[#2B4A2F]">{table.getPageCount()}</span>
+                        </div>
+                        
                         <div className="flex gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setPage(page - 1)}
-                            disabled={page === 1}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                            onClick={() => table.previousPage()}
+                            disabled={!table.getCanPreviousPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Previous
                           </Button>
-                          <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
-                            Page {page} of {meta.totalPages}
-                          </span>
+                          
+                          <div className="flex gap-1">
+                            {Array.from({ length: Math.min(5, table.getPageCount()) }, (_, i) => {
+                              let pageIndex;
+                              if (table.getPageCount() <= 5) {
+                                pageIndex = i;
+                              } else {
+                                const startPage = Math.max(0, Math.min(table.getPageCount() - 5, table.getState().pagination.pageIndex - 2));
+                                pageIndex = startPage + i;
+                              }
+                              
+                              return (
+                                <Button
+                                  key={pageIndex}
+                                  variant={table.getState().pagination.pageIndex === pageIndex ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => table.setPageIndex(pageIndex)}
+                                  className={`min-w-9 h-9 p-0 ${
+                                    table.getState().pagination.pageIndex === pageIndex
+                                      ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white border-0'
+                                      : 'border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10'
+                                  }`}
+                                >
+                                  {pageIndex + 1}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setPage(page + 1)}
-                            disabled={page === meta.totalPages}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                            onClick={() => table.nextPage()}
+                            disabled={!table.getCanNextPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronRight className="w-4 h-4" />
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Comments Tab */}
+          {/* Comments Tab - Simple List without Pagination */}
           <TabsContent value="comments">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader className="p-6 pb-4">
-                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Comments</CardTitle>
+                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Comments ({totalComments})</CardTitle>
                 <CardDescription className="text-gray-600 font-nunito">Manage platform comments</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-0">
@@ -673,7 +849,7 @@ export default function AdminPosts() {
             </Card>
           </TabsContent>
 
-          {/* Reports Tab */}
+          {/* Reports Tab - Simple List without Pagination */}
           <TabsContent value="reports">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader className="p-6 pb-4">
@@ -866,6 +1042,7 @@ export default function AdminPosts() {
         </Tabs>
       </div>
 
+      {/* Dialogs remain the same */}
       {/* View Post Dialog */}
       <Dialog open={viewPostModal} onOpenChange={setViewPostModal}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
@@ -883,7 +1060,7 @@ export default function AdminPosts() {
           </DialogHeader>
           
           {selectedPost && (
-            <div className="space-y-4 py-4">
+            <div className="flex flex-col gap-4 py-4">
               {/* Post Header */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1153,14 +1330,14 @@ export default function AdminPosts() {
               Add moderator notes and resolve this report
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="flex flex-col gap-4 py-4">
             {selectedReport && (
               <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
                 <p className="text-sm font-medium text-[#2B4A2F] font-poppins mb-1">Report #{selectedReport.report_id}</p>
                 <p className="text-sm text-gray-600 font-nunito">{selectedReport.reason}</p>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="notes" className="text-[#2B4A2F] font-poppins">Moderator Notes</Label>
               <Textarea
                 id="notes"

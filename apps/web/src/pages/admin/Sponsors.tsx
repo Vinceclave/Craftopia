@@ -1,5 +1,13 @@
-// apps/web/src/pages/admin/Sponsors.tsx - COMPLETE FINAL VERSION
+// apps/web/src/pages/admin/Sponsors.tsx - COMPLETE WITH TANSTACK TABLE
 import { useState, useCallback, useMemo, useRef } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  ColumnDef,
+  flexRender,
+} from '@tanstack/react-table';
 import {
   Card,
   CardContent,
@@ -64,6 +72,7 @@ import {
   Ban,
   Upload,
   Image as ImageIcon,
+  Search,
 } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { useSponsors, useRewards, useRedemptions } from '@/hooks/useSponsors';
@@ -81,8 +90,6 @@ export default function AdminSponsors() {
     sponsors,
     meta: sponsorsMeta,
     isLoading: sponsorsLoading,
-    page: sponsorsPage,
-    setPage: setSponsorsPage,
     refetch: refetchSponsors,
     createSponsor,
     updateSponsor,
@@ -101,8 +108,6 @@ export default function AdminSponsors() {
     rewards,
     meta: rewardsMeta,
     isLoading: rewardsLoading,
-    page: rewardsPage,
-    setPage: setRewardsPage,
     refetch: refetchRewards,
     createReward,
     updateReward,
@@ -122,14 +127,34 @@ export default function AdminSponsors() {
     meta: redemptionsMeta,
     stats: redemptionStats,
     isLoading: redemptionsLoading,
-    page: redemptionsPage,
-    setPage: setRedemptionsPage,
     refetch: refetchRedemptions,
     fulfillRedemption,
     cancelRedemption,
     isFulfilling,
     isCancelling,
   } = useRedemptions();
+
+  // ==========================================
+  // TANSTACK TABLE STATES
+  // ==========================================
+  const [sponsorsGlobalFilter, setSponsorsGlobalFilter] = useState('');
+  const [rewardsGlobalFilter, setRewardsGlobalFilter] = useState('');
+  const [redemptionsGlobalFilter, setRedemptionsGlobalFilter] = useState('');
+
+  const [sponsorsPagination, setSponsorsPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const [rewardsPagination, setRewardsPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const [redemptionsPagination, setRedemptionsPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   // ==========================================
   // WEBSOCKET INTEGRATION
@@ -240,13 +265,424 @@ export default function AdminSponsors() {
   }, [sponsors, rewards, sponsorsMeta, rewardsMeta, redemptionsMeta, redemptionStats]);
 
   // ==========================================
+  // TANSTACK TABLE COLUMN DEFINITIONS
+  // ==========================================
+
+  // Sponsors Columns
+  const sponsorsColumns = useMemo<ColumnDef<Sponsor>[]>(
+    () => [
+      {
+        accessorKey: 'name',
+        header: 'Sponsor',
+        cell: ({ row }) => {
+          const sponsor = row.original;
+          return (
+            <div className="flex items-center gap-3">
+              {sponsor.logo_url ? (
+                <img
+                  src={sponsor.logo_url}
+                  alt={sponsor.name}
+                  className="w-10 h-10 rounded-lg object-cover border border-[#6CAC73]/20"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-purple-600" />
+                </div>
+              )}
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold text-[#2B4A2F] font-poppins text-sm">
+                  {sponsor.name}
+                </p>
+                {sponsor.contact_email && (
+                  <p className="text-xs text-gray-500 font-nunito">{sponsor.contact_email}</p>
+                )}
+              </div>
+            </div>
+          );
+        },
+        size: 250,
+      },
+      {
+        accessorKey: 'description',
+        header: 'Description',
+        cell: ({ row }) => (
+          <p className="text-sm text-gray-600 font-nunito line-clamp-2">
+            {row.original.description || 'No description'}
+          </p>
+        ),
+        size: 300,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <Badge
+            className={`font-poppins border-0 ${
+              row.original.is_active
+                ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+            }`}
+          >
+            {row.original.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        ),
+        size: 100,
+      },
+      {
+        accessorKey: 'rewards',
+        header: 'Rewards',
+        cell: ({ row }) => (
+          <div className="text-sm text-gray-600 font-nunito">
+            {row.original._count?.rewards || 0} rewards
+          </div>
+        ),
+        size: 100,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const sponsor = row.original;
+          return (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleToggleSponsorStatus(sponsor)}
+                disabled={isTogglingSponsor}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
+              >
+                {isTogglingSponsor ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : sponsor.is_active ? (
+                  <ToggleRight className="w-4 h-4" />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleOpenEditSponsor(sponsor)}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedSponsor(sponsor);
+                  setDeleteSponsorOpen(true);
+                }}
+                className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          );
+        },
+        size: 120,
+      },
+    ],
+    [isTogglingSponsor]
+  );
+
+  // Rewards Columns
+  const rewardsColumns = useMemo<ColumnDef<SponsorReward>[]>(
+    () => [
+      {
+        accessorKey: 'title',
+        header: 'Reward',
+        cell: ({ row }) => {
+          const reward = row.original;
+          return (
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-[#2B4A2F] font-poppins text-sm">
+                {reward.title}
+              </p>
+              <p className="text-xs text-gray-500 font-nunito">
+                by {reward.sponsor?.name || 'Unknown'}
+              </p>
+            </div>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: 'description',
+        header: 'Description',
+        cell: ({ row }) => (
+          <p className="text-sm text-gray-600 font-nunito line-clamp-2">
+            {row.original.description || 'No description'}
+          </p>
+        ),
+        size: 250,
+      },
+      {
+        accessorKey: 'points_cost',
+        header: 'Points',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1 text-sm font-semibold text-blue-600">
+            <Award className="w-4 h-4" />
+            {row.original.points_cost}
+          </div>
+        ),
+        size: 100,
+      },
+      {
+        accessorKey: 'quantity',
+        header: 'Stock',
+        cell: ({ row }) => {
+          const reward = row.original;
+          if (reward.quantity === null) {
+            return <span className="text-sm text-gray-500 font-nunito">Unlimited</span>;
+          }
+          return (
+            <span className="text-sm text-gray-600 font-nunito">
+              {reward.quantity - (reward.redeemed_count || 0)} / {reward.quantity}
+            </span>
+          );
+        },
+        size: 120,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <Badge
+            className={`font-poppins border-0 ${
+              row.original.is_active
+                ? 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+            }`}
+          >
+            {row.original.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        ),
+        size: 100,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const reward = row.original;
+          return (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleToggleRewardStatus(reward)}
+                disabled={isTogglingReward}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
+              >
+                {isTogglingReward ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : reward.is_active ? (
+                  <ToggleRight className="w-4 h-4" />
+                ) : (
+                  <ToggleLeft className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleOpenEditReward(reward)}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelectedReward(reward);
+                  setDeleteRewardOpen(true);
+                }}
+                className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          );
+        },
+        size: 120,
+      },
+    ],
+    [isTogglingReward]
+  );
+
+  // Redemptions Columns
+  const redemptionsColumns = useMemo<ColumnDef<UserRedemption>[]>(
+    () => [
+      {
+        accessorKey: 'reward',
+        header: 'Reward',
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-[#2B4A2F] font-poppins text-sm">
+              {row.original.reward?.title || 'Unknown Reward'}
+            </p>
+            <p className="text-xs text-gray-500 font-nunito">
+              by {row.original.user?.username || 'Unknown User'}
+            </p>
+          </div>
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: 'user',
+        header: 'User',
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-[#2B4A2F] font-poppins">
+              {row.original.user?.username || 'Unknown'}
+            </p>
+            <p className="text-xs text-gray-500 font-nunito">
+              {row.original.user?.email}
+            </p>
+          </div>
+        ),
+        size: 180,
+      },
+      {
+        accessorKey: 'points_cost',
+        header: 'Points',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-1 text-sm font-semibold text-blue-600">
+            <Award className="w-4 h-4" />
+            {row.original.reward?.points_cost || 0}
+          </div>
+        ),
+        size: 100,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => (
+          <Badge
+            className={`font-poppins border-0 ${
+              row.original.status === 'fulfilled'
+                ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                : row.original.status === 'pending'
+                ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+            }`}
+          >
+            {row.original.status === 'fulfilled' && <CheckCircle className="w-3 h-3 mr-1" />}
+            {row.original.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+            {row.original.status === 'cancelled' && <XCircle className="w-3 h-3 mr-1" />}
+            {row.original.status.charAt(0).toUpperCase() + row.original.status.slice(1)}
+          </Badge>
+        ),
+        size: 120,
+      },
+      {
+        accessorKey: 'claimed_at',
+        header: 'Claimed',
+        cell: ({ row }) => (
+          <div className="text-sm text-gray-600 font-nunito">
+            {new Date(row.original.claimed_at).toLocaleDateString()}
+          </div>
+        ),
+        size: 120,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const redemption = row.original;
+          return (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleOpenViewRedemption(redemption)}
+                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+              {redemption.status === 'pending' && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedRedemption(redemption);
+                      setFulfillRedemptionOpen(true);
+                    }}
+                    disabled={isFulfilling}
+                    className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
+                  >
+                    <CheckCheck className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedRedemption(redemption);
+                      setCancelRedemptionOpen(true);
+                    }}
+                    disabled={isCancelling}
+                    className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+                  >
+                    <Ban className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          );
+        },
+        size: 140,
+      },
+    ],
+    [isFulfilling, isCancelling]
+  );
+
+  // ==========================================
+  // TANSTACK TABLE INSTANCES
+  // ==========================================
+
+  const sponsorsTable = useReactTable({
+    data: sponsors,
+    columns: sponsorsColumns,
+    state: {
+      globalFilter: sponsorsGlobalFilter,
+      pagination: sponsorsPagination,
+    },
+    onGlobalFilterChange: setSponsorsGlobalFilter,
+    onPaginationChange: setSponsorsPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const rewardsTable = useReactTable({
+    data: rewards,
+    columns: rewardsColumns,
+    state: {
+      globalFilter: rewardsGlobalFilter,
+      pagination: rewardsPagination,
+    },
+    onGlobalFilterChange: setRewardsGlobalFilter,
+    onPaginationChange: setRewardsPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  const redemptionsTable = useReactTable({
+    data: redemptions,
+    columns: redemptionsColumns,
+    state: {
+      globalFilter: redemptionsGlobalFilter,
+      pagination: redemptionsPagination,
+    },
+    onGlobalFilterChange: setRedemptionsGlobalFilter,
+    onPaginationChange: setRedemptionsPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  });
+
+  // ==========================================
   // HANDLERS - IMAGE UPLOAD
   // ==========================================
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file
     const validation = validateImageFile(file);
     if (!validation.valid) {
       showError(validation.error || 'Invalid file');
@@ -255,17 +691,10 @@ export default function AdminSponsors() {
 
     try {
       setIsUploadingImage(true);
-      
-      // Create preview
       const preview = await createImagePreview(file);
       setImagePreview(preview);
-
-      // Upload to S3
       const imageUrl = await uploadImageToS3(file);
-      
-      // Update form
       setSponsorForm((prev) => ({ ...prev, logo_url: imageUrl }));
-      
       success('Image uploaded successfully!');
     } catch (error: any) {
       console.error('❌ Image upload error:', error);
@@ -523,59 +952,57 @@ export default function AdminSponsors() {
         ))}
       </div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-7xl mx-auto relative z-10 flex flex-col gap-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
-                <Gift className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-3">
-                  Sponsorships & Rewards
-                  <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border border-purple-300 font-poppins animate-pulse">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    Live
-                  </Badge>
-                </h1>
-                <p className="text-gray-600 mt-1 font-nunito">
-                  Manage sponsors, rewards, and user redemptions
-                </p>
-              </div>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg">
+              <Gift className="w-6 h-6 text-white" />
             </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  refetchSponsors();
-                  refetchRewards();
-                  refetchRedemptions();
-                }}
-                disabled={sponsorsLoading || rewardsLoading || redemptionsLoading}
-                className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-              >
-                {sponsorsLoading || rewardsLoading || redemptionsLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Refresh
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleOpenCreateSponsor}
-                className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0 shadow-lg"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Sponsor
-              </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-3">
+                Sponsorships & Rewards
+                <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border border-purple-300 font-poppins animate-pulse">
+                  <Wifi className="w-3 h-3 mr-1" />
+                  Live
+                </Badge>
+              </h1>
+              <p className="text-gray-600 mt-1 font-nunito">
+                Manage sponsors, rewards, and user redemptions
+              </p>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                refetchSponsors();
+                refetchRewards();
+                refetchRedemptions();
+              }}
+              disabled={sponsorsLoading || rewardsLoading || redemptionsLoading}
+              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+            >
+              {sponsorsLoading || rewardsLoading || redemptionsLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleOpenCreateSponsor}
+              className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0 shadow-lg"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Sponsor
+            </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Sponsors', value: stats.totalSponsors, icon: Building2, color: 'text-purple-600' },
             { label: 'Active Rewards', value: stats.activeRewards, icon: Gift, color: 'text-blue-600' },
@@ -626,17 +1053,47 @@ export default function AdminSponsors() {
           </TabsList>
 
           {/* ==========================================
-              SPONSORS TAB
+              SPONSORS TAB - WITH TANSTACK TABLE
               ========================================== */}
           <TabsContent value="sponsors">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
-                <CardTitle className="text-[#2B4A2F] font-poppins">Manage Sponsors</CardTitle>
-                <CardDescription className="font-nunito">
-                  Companies and organizations providing rewards
-                </CardDescription>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-[#2B4A2F] font-poppins">Manage Sponsors</CardTitle>
+                    <CardDescription className="font-nunito">
+                      Companies and organizations providing rewards
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search sponsors..."
+                        value={sponsorsGlobalFilter}
+                        onChange={(e) => setSponsorsGlobalFilter(e.target.value)}
+                        className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] w-64"
+                      />
+                    </div>
+                    <Select
+                      value={String(sponsorsTable.getState().pagination.pageSize)}
+                      onValueChange={(value) => {
+                        sponsorsTable.setPageSize(Number(value));
+                      }}
+                    >
+                      <SelectTrigger className="w-32 border-[#6CAC73]/20">
+                        <SelectValue placeholder="Page size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 per page</SelectItem>
+                        <SelectItem value="20">20 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-4">
                 {sponsorsLoading ? (
                   <div className="text-center py-16">
                     <Loader2 className="w-12 h-12 animate-spin mx-auto text-purple-600 mb-4" />
@@ -659,129 +1116,131 @@ export default function AdminSponsors() {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-4">
-                      {sponsors.map((sponsor) => (
-                        <div
-                          key={sponsor.sponsor_id}
-                          className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex gap-4 flex-1">
-                              {/* Logo */}
-                              {sponsor.logo_url ? (
-                                <img
-                                  src={sponsor.logo_url}
-                                  alt={sponsor.name}
-                                  className="w-16 h-16 rounded-lg object-cover border-2 border-[#6CAC73]/20"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    const fallback = e.currentTarget.nextElementSibling;
-                                    if (fallback) fallback.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <div className={sponsor.logo_url ? 'hidden' : ''}>
-                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center">
-                                  <Building2 className="w-8 h-8 text-purple-600" />
+                    <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          {sponsorsTable.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
+                              {headerGroup.headers.map(header => (
+                                <th 
+                                  key={header.id} 
+                                  className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins"
+                                  style={{ width: header.getSize() }}
+                                >
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                        <tbody>
+                          {sponsorsTable.getRowModel().rows.length === 0 ? (
+                            <tr>
+                              <td colSpan={sponsorsColumns.length} className="p-8 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                  <Building2 className="w-12 h-12 text-gray-300" />
+                                  <p className="text-gray-500 font-medium font-poppins">No sponsors found</p>
+                                  <p className="text-gray-400 text-sm font-nunito">Try adjusting your search</p>
                                 </div>
-                              </div>
-                              
-                              {/* Details */}
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h3 className="font-semibold text-[#2B4A2F] font-poppins text-lg">
-                                    {sponsor.name}
-                                  </h3>
-                                  <Badge
-                                    className={`font-poppins border-0 ${
-                                      sponsor.is_active
-                                        ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                        : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                                    }`}
-                                  >
-                                    {sponsor.is_active ? 'Active' : 'Inactive'}
-                                  </Badge>
-                                </div>
-                                {sponsor.description && (
-                                  <p className="text-sm text-gray-600 font-nunito mb-2">
-                                    {sponsor.description}
-                                  </p>
-                                )}
-                                <div className="flex gap-2 text-xs text-gray-500 font-nunito">
-                                  {sponsor.contact_email && (
-                                    <span>📧 {sponsor.contact_email}</span>
-                                  )}
-                                  {sponsor.contact_email && <span>•</span>}
-                                  <span>{sponsor._count?.rewards || 0} rewards</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Actions */}
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleToggleSponsorStatus(sponsor)}
-                                disabled={isTogglingSponsor}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
+                              </td>
+                            </tr>
+                          ) : (
+                            sponsorsTable.getRowModel().rows.map(row => (
+                              <tr 
+                                key={row.id} 
+                                className="border-b border-[#6CAC73]/10 hover:bg-gray-50/50 transition-colors last:border-0"
                               >
-                                {isTogglingSponsor ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : sponsor.is_active ? (
-                                  <ToggleRight className="w-4 h-4" />
-                                ) : (
-                                  <ToggleLeft className="w-4 h-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenEditSponsor(sponsor)}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedSponsor(sponsor);
-                                  setDeleteSponsorOpen(true);
-                                }}
-                                className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                {row.getVisibleCells().map(cell => (
+                                  <td key={cell.id} className="p-4">
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Pagination */}
-                    {sponsorsMeta && sponsorsMeta.lastPage > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Page {sponsorsMeta.page} of {sponsorsMeta.lastPage} ({sponsorsMeta.total} total)
-                        </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
+                      <div className="text-sm text-gray-500 font-nunito">
+                        Showing{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {sponsorsTable.getRowModel().rows.length > 0 
+                            ? (sponsorsTable.getState().pagination.pageIndex * sponsorsTable.getState().pagination.pageSize) + 1 
+                            : 0
+                          }
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {Math.min(
+                            (sponsorsTable.getState().pagination.pageIndex + 1) * sponsorsTable.getState().pagination.pageSize,
+                            sponsors.length
+                          )}
+                        </span>{' '}
+                        of <span className="font-semibold text-[#2B4A2F]">{sponsors.length}</span> sponsors
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                          Page <span className="font-semibold text-[#2B4A2F]">{sponsorsTable.getState().pagination.pageIndex + 1}</span>{' '}
+                          of <span className="font-semibold text-[#2B4A2F]">{sponsorsTable.getPageCount()}</span>
+                        </div>
+                        
                         <div className="flex gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setSponsorsPage(sponsorsPage - 1)}
-                            disabled={!sponsorsMeta.hasPrevPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => sponsorsTable.previousPage()}
+                            disabled={!sponsorsTable.getCanPreviousPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Previous
                           </Button>
+                          
+                          <div className="flex gap-1">
+                            {Array.from({ length: Math.min(5, sponsorsTable.getPageCount()) }, (_, i) => {
+                              let pageIndex;
+                              if (sponsorsTable.getPageCount() <= 5) {
+                                pageIndex = i;
+                              } else {
+                                const startPage = Math.max(0, Math.min(sponsorsTable.getPageCount() - 5, sponsorsTable.getState().pagination.pageIndex - 2));
+                                pageIndex = startPage + i;
+                              }
+                              
+                              return (
+                                <Button
+                                  key={pageIndex}
+                                  variant={sponsorsTable.getState().pagination.pageIndex === pageIndex ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => sponsorsTable.setPageIndex(pageIndex)}
+                                  className={`min-w-9 h-9 p-0 ${
+                                    sponsorsTable.getState().pagination.pageIndex === pageIndex
+                                      ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white border-0'
+                                      : 'border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10'
+                                  }`}
+                                >
+                                  {pageIndex + 1}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setSponsorsPage(sponsorsPage + 1)}
-                            disabled={!sponsorsMeta.hasNextPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => sponsorsTable.nextPage()}
+                            disabled={!sponsorsTable.getCanNextPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronRight className="w-4 h-4" />
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -789,30 +1248,56 @@ export default function AdminSponsors() {
           </TabsContent>
 
           {/* ==========================================
-              REWARDS TAB
+              REWARDS TAB - WITH TANSTACK TABLE
               ========================================== */}
           <TabsContent value="rewards">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <div>
                     <CardTitle className="text-[#2B4A2F] font-poppins">Reward Catalog</CardTitle>
                     <CardDescription className="font-nunito">
                       Points-based rewards users can redeem
                     </CardDescription>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={handleOpenCreateReward}
-                    disabled={sponsors.filter(s => s.is_active).length === 0}
-                    className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Reward
-                  </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search rewards..."
+                        value={rewardsGlobalFilter}
+                        onChange={(e) => setRewardsGlobalFilter(e.target.value)}
+                        className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] w-64"
+                      />
+                    </div>
+                    <Select
+                      value={String(rewardsTable.getState().pagination.pageSize)}
+                      onValueChange={(value) => {
+                        rewardsTable.setPageSize(Number(value));
+                      }}
+                    >
+                      <SelectTrigger className="w-32 border-[#6CAC73]/20">
+                        <SelectValue placeholder="Page size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 per page</SelectItem>
+                        <SelectItem value="20">20 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={handleOpenCreateReward}
+                      disabled={sponsors.filter(s => s.is_active).length === 0}
+                      className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Reward
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-4">
                 {rewardsLoading ? (
                   <div className="text-center py-16">
                     <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-600 mb-4" />
@@ -839,131 +1324,131 @@ export default function AdminSponsors() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {rewards.map((reward: any) => (
-                        <div
-                          key={reward.reward_id}
-                          className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-[#2B4A2F] font-poppins mb-1">
-                                {reward.title}
-                              </h3>
-                              <p className="text-xs text-gray-500 font-nunito mb-2">
-                                by {reward.sponsor?.name || 'Unknown'}
-                              </p>
-                            </div>
-                            <Badge
-                              className={`font-poppins border-0 ${
-                                reward.is_active
-                                  ? 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700'
-                                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                              }`}
-                            >
-                              {reward.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </div>
-
-                          {reward.description && (
-                            <p className="text-sm text-gray-600 font-nunito mb-3">
-                              {reward.description}
-                            </p>
+                    <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          {rewardsTable.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
+                              {headerGroup.headers.map(header => (
+                                <th 
+                                  key={header.id} 
+                                  className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins"
+                                  style={{ width: header.getSize() }}
+                                >
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                        <tbody>
+                          {rewardsTable.getRowModel().rows.length === 0 ? (
+                            <tr>
+                              <td colSpan={rewardsColumns.length} className="p-8 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                  <Gift className="w-12 h-12 text-gray-300" />
+                                  <p className="text-gray-500 font-medium font-poppins">No rewards found</p>
+                                  <p className="text-gray-400 text-sm font-nunito">Try adjusting your search</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            rewardsTable.getRowModel().rows.map(row => (
+                              <tr 
+                                key={row.id} 
+                                className="border-b border-[#6CAC73]/10 hover:bg-gray-50/50 transition-colors last:border-0"
+                              >
+                                {row.getVisibleCells().map(cell => (
+                                  <td key={cell.id} className="p-4">
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
                           )}
-
-                          <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <div className="flex items-center gap-1 text-sm font-semibold text-blue-600">
-                              <Award className="w-4 h-4" />
-                              {reward.points_cost} points
-                            </div>
-                            {reward.quantity !== null && (
-                              <>
-                                <span className="text-gray-400">•</span>
-                                <span className="text-xs text-gray-500">
-                                  {reward.quantity - reward.redeemed_count} / {reward.quantity} left
-                                </span>
-                              </>
-                            )}
-                            {reward.expires_at && (
-                              <>
-                                <span className="text-gray-400">•</span>
-                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(reward.expires_at).toLocaleDateString()}
-                                </span>
-                              </>
-                            )}
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleToggleRewardStatus(reward)}
-                              disabled={isTogglingReward}
-                              className="flex-1 h-8 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
-                            >
-                              {isTogglingReward ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : reward.is_active ? (
-                                <>
-                                  <ToggleRight className="w-3 h-3 mr-1" />
-                                  <span className="text-xs">Deactivate</span>
-                                </>
-                              ) : (
-                                <>
-                                  <ToggleLeft className="w-3 h-3 mr-1" />
-                                  <span className="text-xs">Activate</span>
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenEditReward(reward)}
-                              className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setSelectedReward(reward);
-                                setDeleteRewardOpen(true);
-                              }}
-                              className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Pagination */}
-                    {rewardsMeta && rewardsMeta.lastPage > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Page {rewardsMeta.page} of {rewardsMeta.lastPage} ({rewardsMeta.total} total)
-                        </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
+                      <div className="text-sm text-gray-500 font-nunito">
+                        Showing{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {rewardsTable.getRowModel().rows.length > 0 
+                            ? (rewardsTable.getState().pagination.pageIndex * rewardsTable.getState().pagination.pageSize) + 1 
+                            : 0
+                          }
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {Math.min(
+                            (rewardsTable.getState().pagination.pageIndex + 1) * rewardsTable.getState().pagination.pageSize,
+                            rewards.length
+                          )}
+                        </span>{' '}
+                        of <span className="font-semibold text-[#2B4A2F]">{rewards.length}</span> rewards
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                          Page <span className="font-semibold text-[#2B4A2F]">{rewardsTable.getState().pagination.pageIndex + 1}</span>{' '}
+                          of <span className="font-semibold text-[#2B4A2F]">{rewardsTable.getPageCount()}</span>
+                        </div>
+                        
                         <div className="flex gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setRewardsPage(rewardsPage - 1)}
-                            disabled={!rewardsMeta.hasPrevPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => rewardsTable.previousPage()}
+                            disabled={!rewardsTable.getCanPreviousPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Previous
                           </Button>
+                          
+                          <div className="flex gap-1">
+                            {Array.from({ length: Math.min(5, rewardsTable.getPageCount()) }, (_, i) => {
+                              let pageIndex;
+                              if (rewardsTable.getPageCount() <= 5) {
+                                pageIndex = i;
+                              } else {
+                                const startPage = Math.max(0, Math.min(rewardsTable.getPageCount() - 5, rewardsTable.getState().pagination.pageIndex - 2));
+                                pageIndex = startPage + i;
+                              }
+                              
+                              return (
+                                <Button
+                                  key={pageIndex}
+                                  variant={rewardsTable.getState().pagination.pageIndex === pageIndex ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => rewardsTable.setPageIndex(pageIndex)}
+                                  className={`min-w-9 h-9 p-0 ${
+                                    rewardsTable.getState().pagination.pageIndex === pageIndex
+                                      ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white border-0'
+                                      : 'border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10'
+                                  }`}
+                                >
+                                  {pageIndex + 1}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setRewardsPage(rewardsPage + 1)}
-                            disabled={!rewardsMeta.hasNextPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => rewardsTable.nextPage()}
+                            disabled={!rewardsTable.getCanNextPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronRight className="w-4 h-4" />
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -971,17 +1456,47 @@ export default function AdminSponsors() {
           </TabsContent>
 
           {/* ==========================================
-              REDEMPTIONS TAB
+              REDEMPTIONS TAB - WITH TANSTACK TABLE
               ========================================== */}
           <TabsContent value="redemptions">
             <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
               <CardHeader>
-                <CardTitle className="text-[#2B4A2F] font-poppins">User Redemptions</CardTitle>
-                <CardDescription className="font-nunito">
-                  Track and fulfill user reward redemptions
-                </CardDescription>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-[#2B4A2F] font-poppins">User Redemptions</CardTitle>
+                    <CardDescription className="font-nunito">
+                      Track and fulfill user reward redemptions
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search redemptions..."
+                        value={redemptionsGlobalFilter}
+                        onChange={(e) => setRedemptionsGlobalFilter(e.target.value)}
+                        className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] w-64"
+                      />
+                    </div>
+                    <Select
+                      value={String(redemptionsTable.getState().pagination.pageSize)}
+                      onValueChange={(value) => {
+                        redemptionsTable.setPageSize(Number(value));
+                      }}
+                    >
+                      <SelectTrigger className="w-32 border-[#6CAC73]/20">
+                        <SelectValue placeholder="Page size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10 per page</SelectItem>
+                        <SelectItem value="20">20 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-4">
                 {redemptionsLoading ? (
                   <div className="text-center py-16">
                     <Loader2 className="w-12 h-12 animate-spin mx-auto text-orange-600 mb-4" />
@@ -997,112 +1512,131 @@ export default function AdminSponsors() {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-4">
-                      {redemptions.map((redemption) => (
-                        <div
-                          key={redemption.redemption_id}
-                          className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins">
-                                  {redemption.reward?.title || 'Unknown Reward'}
-                                </h3>
-                                <Badge
-                                  className={`font-poppins border-0 ${
-                                    redemption.status === 'fulfilled'
-                                      ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                      : redemption.status === 'pending'
-                                      ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700'
-                                      : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                                  }`}
+                    <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          {redemptionsTable.getHeaderGroups().map(headerGroup => (
+                            <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
+                              {headerGroup.headers.map(header => (
+                                <th 
+                                  key={header.id} 
+                                  className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins"
+                                  style={{ width: header.getSize() }}
                                 >
-                                  {redemption.status === 'fulfilled' && <CheckCircle className="w-3 h-3 mr-1" />}
-                                  {redemption.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
-                                  {redemption.status === 'cancelled' && <XCircle className="w-3 h-3 mr-1" />}
-                                  {redemption.status.charAt(0).toUpperCase() + redemption.status.slice(1)}
-                                </Badge>
-                              </div>
-
-                              <div className="space-y-1 text-sm text-gray-600 font-nunito">
-                                <p>User: <span className="font-medium">{redemption.user?.username || 'Unknown'}</span> ({redemption.user?.email})</p>
-                                <p>Points Cost: <span className="font-medium text-blue-600">{redemption.reward?.points_cost || 0}</span></p>
-                                <p>Claimed: {new Date(redemption.claimed_at).toLocaleString()}</p>
-                                {redemption.fulfilled_at && (
-                                  <p className="text-[#6CAC73]">
-                                    Fulfilled: {new Date(redemption.fulfilled_at).toLocaleString()}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenViewRedemption(redemption)}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </th>
+                              ))}
+                            </tr>
+                          ))}
+                        </thead>
+                        <tbody>
+                          {redemptionsTable.getRowModel().rows.length === 0 ? (
+                            <tr>
+                              <td colSpan={redemptionsColumns.length} className="p-8 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                  <Package className="w-12 h-12 text-gray-300" />
+                                  <p className="text-gray-500 font-medium font-poppins">No redemptions found</p>
+                                  <p className="text-gray-400 text-sm font-nunito">Try adjusting your search</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            redemptionsTable.getRowModel().rows.map(row => (
+                              <tr 
+                                key={row.id} 
+                                className="border-b border-[#6CAC73]/10 hover:bg-gray-50/50 transition-colors last:border-0"
                               >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {redemption.status === 'pending' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedRedemption(redemption);
-                                      setFulfillRedemptionOpen(true);
-                                    }}
-                                    disabled={isFulfilling}
-                                    className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]"
-                                  >
-                                    <CheckCheck className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      setSelectedRedemption(redemption);
-                                      setCancelRedemptionOpen(true);
-                                    }}
-                                    disabled={isCancelling}
-                                    className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                                  >
-                                    <Ban className="w-4 h-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                {row.getVisibleCells().map(cell => (
+                                  <td key={cell.id} className="p-4">
+                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
 
                     {/* Pagination */}
-                    {redemptionsMeta && redemptionsMeta.lastPage > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Page {redemptionsMeta.page} of {redemptionsMeta.lastPage} ({redemptionsMeta.total} total)
-                        </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
+                      <div className="text-sm text-gray-500 font-nunito">
+                        Showing{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {redemptionsTable.getRowModel().rows.length > 0 
+                            ? (redemptionsTable.getState().pagination.pageIndex * redemptionsTable.getState().pagination.pageSize) + 1 
+                            : 0
+                          }
+                        </span>{' '}
+                        to{' '}
+                        <span className="font-semibold text-[#2B4A2F]">
+                          {Math.min(
+                            (redemptionsTable.getState().pagination.pageIndex + 1) * redemptionsTable.getState().pagination.pageSize,
+                            redemptions.length
+                          )}
+                        </span>{' '}
+                        of <span className="font-semibold text-[#2B4A2F]">{redemptions.length}</span> redemptions
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                          Page <span className="font-semibold text-[#2B4A2F]">{redemptionsTable.getState().pagination.pageIndex + 1}</span>{' '}
+                          of <span className="font-semibold text-[#2B4A2F]">{redemptionsTable.getPageCount()}</span>
+                        </div>
+                        
                         <div className="flex gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setRedemptionsPage(redemptionsPage - 1)}
-                            disabled={!redemptionsMeta.hasPrevPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => redemptionsTable.previousPage()}
+                            disabled={!redemptionsTable.getCanPreviousPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronLeft className="w-4 h-4" />
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Previous
                           </Button>
+                          
+                          <div className="flex gap-1">
+                            {Array.from({ length: Math.min(5, redemptionsTable.getPageCount()) }, (_, i) => {
+                              let pageIndex;
+                              if (redemptionsTable.getPageCount() <= 5) {
+                                pageIndex = i;
+                              } else {
+                                const startPage = Math.max(0, Math.min(redemptionsTable.getPageCount() - 5, redemptionsTable.getState().pagination.pageIndex - 2));
+                                pageIndex = startPage + i;
+                              }
+                              
+                              return (
+                                <Button
+                                  key={pageIndex}
+                                  variant={redemptionsTable.getState().pagination.pageIndex === pageIndex ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => redemptionsTable.setPageIndex(pageIndex)}
+                                  className={`min-w-9 h-9 p-0 ${
+                                    redemptionsTable.getState().pagination.pageIndex === pageIndex
+                                      ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white border-0'
+                                      : 'border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10'
+                                  }`}
+                                >
+                                  {pageIndex + 1}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => setRedemptionsPage(redemptionsPage + 1)}
-                            disabled={!redemptionsMeta.hasNextPage}
-                            className="border-[#6CAC73]/20 bg-white/80"
+                            onClick={() => redemptionsTable.nextPage()}
+                            disabled={!redemptionsTable.getCanNextPage()}
+                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                           >
-                            <ChevronRight className="w-4 h-4" />
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-1" />
                           </Button>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -1111,7 +1645,7 @@ export default function AdminSponsors() {
         </Tabs>
 
         {/* ==========================================
-            DIALOGS
+            DIALOGS - COMPLETE SET
             ========================================== */}
 
         {/* Create/Edit Sponsor Dialog */}
@@ -1136,13 +1670,12 @@ export default function AdminSponsors() {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              {/* Image Upload */}
+              {/* Image Upload Section */}
               <div className="space-y-2">
                 <Label className="text-[#2B4A2F] font-poppins">
                   Sponsor Logo
                 </Label>
                 <div className="flex items-center gap-4">
-                  {/* Preview */}
                   <div className="flex-shrink-0">
                     {imagePreview || sponsorForm.logo_url ? (
                       <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-[#6CAC73]/20">
@@ -1166,7 +1699,6 @@ export default function AdminSponsors() {
                     )}
                   </div>
                   
-                  {/* Upload Button */}
                   <div className="flex-1">
                     <input
                       ref={fileInputRef}

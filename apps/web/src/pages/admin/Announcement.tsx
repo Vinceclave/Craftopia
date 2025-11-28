@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Announcements.tsx - ADMIN-FRIENDLY UI
-import { useState } from 'react';
+// apps/web/src/pages/admin/Announcements.tsx - FIXED VERSION
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -38,12 +38,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import {
   AlertCircle,
   Bell,
   Plus,
@@ -62,18 +56,25 @@ import {
   User,
   Archive,
   Send,
-  TrendingUp,
+  Search,
 } from 'lucide-react';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  type ColumnDef,
+  flexRender,
+} from '@tanstack/react-table';
 import type { Announcement } from '@/lib/api';
 
 export default function AdminAnnouncements() {
   const {
     announcements,
-    activeAnnouncements,
     meta,
     isLoading,
     error,
@@ -92,19 +93,235 @@ export default function AdminAnnouncements() {
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<string>('active');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toggleDialogOpen, setToggleDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<any>(null);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     expires_at: '',
+  });
+
+  // Calculate stats correctly
+  const stats = useMemo(() => {
+    const total = meta?.total || 0;
+    const active = announcements.filter((a: Announcement) => 
+      a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
+    ).length;
+    const draft = announcements.filter((a: Announcement) => !a.is_active).length;
+    const expired = announcements.filter((a: Announcement) => 
+      a.expires_at && new Date(a.expires_at) < new Date()
+    ).length;
+    const scheduled = announcements.filter((a: Announcement) => 
+      a.is_active && a.expires_at && new Date(a.expires_at) > new Date()
+    ).length;
+
+    return {
+      total,
+      active,
+      draft,
+      expired,
+      scheduled,
+    };
+  }, [announcements, meta]);
+
+  // Enhanced search function - CLIENT SIDE ONLY
+  const filteredData = useMemo(() => {
+    return announcements.filter((announcement: Announcement) => {
+      // Search across multiple fields
+      const searchTerm = globalFilter.toLowerCase();
+      const matchesSearch = !globalFilter || 
+        announcement.title.toLowerCase().includes(searchTerm) ||
+        announcement.content.toLowerCase().includes(searchTerm) ||
+        (announcement.admin?.username || 'Admin').toLowerCase().includes(searchTerm) ||
+        new Date(announcement.created_at).toLocaleDateString().toLowerCase().includes(searchTerm) ||
+        (announcement.expires_at ? new Date(announcement.expires_at).toLocaleDateString().toLowerCase().includes(searchTerm) : false) ||
+        (announcement.is_active ? 'active published' : 'draft').includes(searchTerm);
+      
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'active' && announcement.is_active && (!announcement.expires_at || new Date(announcement.expires_at) > new Date())) ||
+        (statusFilter === 'draft' && !announcement.is_active) ||
+        (statusFilter === 'expired' && announcement.expires_at && new Date(announcement.expires_at) < new Date()) ||
+        (statusFilter === 'scheduled' && announcement.is_active && announcement.expires_at && new Date(announcement.expires_at) > new Date());
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [announcements, globalFilter, statusFilter]);
+
+  // Define columns for TanStack Table
+  const columns = useMemo<ColumnDef<Announcement>[]>(
+    () => [
+      {
+        accessorKey: 'title',
+        header: 'Announcement',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-[#2B4A2F] font-poppins truncate">
+                {row.original.title}
+              </p>
+              <p className="text-sm text-gray-500 font-nunito truncate">
+                {row.original.content}
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'admin',
+        header: 'Author',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 text-sm text-gray-600 font-nunito">
+            <User className="w-4 h-4" />
+            {row.original.admin?.username || 'Admin'}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'is_active',
+        header: 'Status',
+        cell: ({ row }) => {
+          const announcement = row.original;
+          const isExpired = !!(announcement.expires_at && new Date(announcement.expires_at) < new Date());
+          const isActive = announcement.is_active && !isExpired;
+          const isScheduled = announcement.is_active && announcement.expires_at && new Date(announcement.expires_at) > new Date();
+
+          return (
+            <Badge className={
+              isActive
+                ? "bg-green-100 text-green-800 border-0"
+                : isExpired
+                ? "bg-gray-100 text-gray-800 border-0"
+                : isScheduled
+                ? "bg-blue-100 text-blue-800 border-0"
+                : "bg-orange-100 text-orange-800 border-0"
+            }>
+              {isActive ? (
+                <>
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Active
+                </>
+              ) : isExpired ? (
+                <>
+                  <Archive className="w-3 h-3 mr-1" />
+                  Expired
+                </>
+              ) : isScheduled ? (
+                <>
+                  <Clock className="w-3 h-3 mr-1" />
+                  Scheduled
+                </>
+              ) : (
+                <>
+                  <Edit2 className="w-3 h-3 mr-1" />
+                  Draft
+                </>
+              )}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: 'created_at',
+        header: 'Created',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 text-sm text-gray-500 font-nunito">
+            <Calendar className="w-4 h-4" />
+            {new Date(row.original.created_at).toLocaleDateString()}
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'expires_at',
+        header: 'Expires',
+        cell: ({ row }) => {
+          const expiresAt = row.original.expires_at;
+          if (!expiresAt) return <span className="text-gray-400 text-sm">Never</span>;
+          
+          const isExpired = new Date(expiresAt) < new Date();
+          return (
+            <div className={`flex items-center gap-2 text-sm font-nunito ${
+              isExpired ? 'text-orange-600' : 'text-gray-500'
+            }`}>
+              <Clock className="w-4 h-4" />
+              {isExpired ? 'Expired' : 'Expires'} {new Date(expiresAt).toLocaleDateString()}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const announcement = row.original;
+          const isExpired = !!(announcement.expires_at && new Date(announcement.expires_at) < new Date());
+          const isActive = announcement.is_active && !isExpired;
+
+          return (
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleOpenToggle(announcement)}
+                disabled={isToggling}
+                className={`h-9 w-9 p-0 border-[#6CAC73]/20 ${
+                  isActive 
+                    ? 'text-orange-600 hover:bg-orange-50' 
+                    : 'text-green-600 hover:bg-green-50'
+                }`}
+                title={isActive ? 'Unpublish' : 'Publish'}
+              >
+                {isActive ? <EyeOff className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleOpenEdit(announcement)}
+                disabled={isUpdating}
+                className="h-9 w-9 p-0 border-[#6CAC73]/20 text-blue-600 hover:bg-blue-50"
+                title="Edit"
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => handleOpenDelete(announcement)}
+                disabled={isDeleting}
+                className="h-9 w-9 p-0 border-[#6CAC73]/20 text-red-600 hover:bg-red-50"
+                title="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          );
+        },
+      },
+    ],
+    [isToggling, isUpdating, isDeleting]
+  );
+
+  // Create table instance with CLIENT-SIDE pagination only
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      globalFilter,
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
   });
 
   const handleOpenCreate = () => {
@@ -134,6 +351,7 @@ export default function AdminAnnouncements() {
     setToggleDialogOpen(true);
   };
 
+  // FIXED: Proper modal close after successful operations
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -142,11 +360,19 @@ export default function AdminAnnouncements() {
         content: formData.content,
         expires_at: formData.expires_at ? new Date(formData.expires_at) : undefined,
       });
-      success('Announcement created and published!');
-      setCreateDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Announcement created and published!",
+      });
+      // Reset form and close modal
       setFormData({ title: '', content: '', expires_at: '' });
+      setCreateDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to create announcement');
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to create announcement",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,12 +389,20 @@ export default function AdminAnnouncements() {
           expires_at: formData.expires_at ? new Date(formData.expires_at) : null,
         },
       });
-      success('Announcement updated successfully!');
-      setEditDialogOpen(false);
-      setSelectedAnnouncement(null);
+      toast({
+        title: "Success",
+        description: "Announcement updated successfully!",
+      });
+      // Reset and close modal
       setFormData({ title: '', content: '', expires_at: '' });
+      setSelectedAnnouncement(null);
+      setEditDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to update announcement');
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to update announcement",
+        variant: "destructive",
+      });
     }
   };
 
@@ -177,11 +411,19 @@ export default function AdminAnnouncements() {
 
     try {
       await deleteAnnouncement(selectedAnnouncement.announcement_id);
-      success('Announcement deleted successfully!');
-      setDeleteDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Announcement deleted successfully!",
+      });
+      // Close modal after successful deletion
       setSelectedAnnouncement(null);
+      setDeleteDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to delete announcement');
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to delete announcement",
+        variant: "destructive",
+      });
     }
   };
 
@@ -191,182 +433,189 @@ export default function AdminAnnouncements() {
     try {
       await toggleStatus(selectedAnnouncement.announcement_id);
       const newStatus = !selectedAnnouncement.is_active;
-      success(newStatus ? 'Announcement published!' : 'Announcement unpublished');
-      setToggleDialogOpen(false);
+      toast({
+        title: "Success",
+        description: newStatus ? "Announcement published!" : "Announcement unpublished",
+      });
+      // Close modal after successful toggle
       setSelectedAnnouncement(null);
+      setToggleDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to toggle status');
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to toggle status",
+        variant: "destructive",
+      });
     }
   };
 
-  // Filter announcements based on active tab
-  const filteredAnnouncements = announcements.filter((a: Announcement) => {
-    const isExpired = !!(a.expires_at && new Date(a.expires_at) < new Date());
+  const handleLimitChange = (value: string) => {
+    const newLimit = Number(value);
+    setLimit(newLimit);
+    // Reset to first page when changing limit
+    table.setPageIndex(0);
+  };
+
+  // Server-side pagination handlers
+  const handleNextPage = () => {
+    nextPage();
+  };
+
+  const handlePrevPage = () => {
+    prevPage();
+  };
+
+  // Calculate display range for server-side pagination
+  const displayRange = useMemo(() => {
+    if (!meta) return { from: 0, to: 0, total: 0 };
     
-    if (activeTab === 'active') {
-      return a.is_active && !isExpired;
-    } else if (activeTab === 'scheduled') {
-      return a.is_active && a.expires_at && new Date(a.expires_at) > new Date();
-    } else if (activeTab === 'expired') {
-      return isExpired;
-    } else if (activeTab === 'draft') {
-      return !a.is_active;
-    }
-    return true;
-  });
+    const from = ((meta.page - 1) * meta.limit) + 1;
+    const to = Math.min(meta.page * meta.limit, meta.total);
+    return { from, to, total: meta.total };
+  }, [meta]);
 
-  const stats = {
-    active: announcements.filter((a: Announcement) => 
-      a.is_active && !(a.expires_at && new Date(a.expires_at) < new Date())
-    ).length,
-    draft: announcements.filter((a: Announcement) => !a.is_active).length,
-    expired: announcements.filter((a: Announcement) => 
-      a.expires_at && new Date(a.expires_at) < new Date()
-    ).length,
-    total: meta?.total || 0,
-  };
-
-  if (isLoading) {
+  if (isLoading && announcements.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto mb-4" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white p-4">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73]" />
           <p className="text-[#2B4A2F] font-poppins">Loading announcements...</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6">
-        <div className="max-w-7xl mx-auto">
-          <Alert className="border-rose-200 bg-rose-50/80 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
-            <AlertDescription>
-              <p className="font-semibold text-rose-900 font-poppins mb-1">Error loading announcements</p>
-              <p className="text-rose-700 text-sm font-nunito">{(error as Error).message}</p>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-4 sm:p-6">
+      <div className="max-w-7xl mx-auto flex flex-col gap-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
+              <Megaphone className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-2">
+                Announcements
+                {isConnected && (
+                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
+                    <Wifi className="w-3 h-3 mr-1" />
+                    Live
+                  </Badge>
+                )}
+              </h1>
+              <p className="text-gray-600 text-sm font-nunito">Create and manage platform-wide announcements</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleOpenCreate}
+            className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Announcement
+          </Button>
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <AlertDescription className="text-red-800">
+              Error loading announcements: {(error as Error).message}
             </AlertDescription>
           </Alert>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-      {/* Background Floating Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
-            style={{
-              left: `${15 + i * 20}%`,
-              top: `${10 + (i % 3) * 25}%`,
-              animationDelay: `${i * 1.2}s`,
-              animationDuration: '4s'
-            }}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard 
+            label="Total" 
+            value={stats.total} 
+            icon={<Megaphone className="w-5 h-5" />}
+            color="text-[#2B4A2F]"
           />
-        ))}
-      </div>
+          <StatCard 
+            label="Active" 
+            value={stats.active} 
+            icon={<CheckCircle className="w-5 h-5" />}
+            color="text-green-600"
+          />
+          <StatCard 
+            label="Drafts" 
+            value={stats.draft} 
+            icon={<Edit2 className="w-5 h-5" />}
+            color="text-orange-600"
+          />
+          <StatCard 
+            label="Expired" 
+            value={stats.expired} 
+            icon={<Archive className="w-5 h-5" />}
+            color="text-gray-600"
+          />
+          <StatCard 
+            label="Scheduled" 
+            value={stats.scheduled} 
+            icon={<Clock className="w-5 h-5" />}
+            color="text-blue-600"
+          />
+        </div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
-                <Megaphone className="w-6 h-6 text-white" />
+        {/* Filters Card */}
+        <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-col gap-2">
+            <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">Filters & Search</CardTitle>
+            <CardDescription className="font-nunito">
+              Search across all announcement data including titles, content, authors, and dates
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative md:col-span-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search titles, content, authors, dates..."
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73]"
+                />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-2">
-                  Announcements
-                  {isConnected && (
-                    <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
-                      <Wifi className="w-3 h-3 mr-1" />
-                      Live
-                    </Badge>
-                  )}
-                </h1>
-                <p className="text-gray-600 mt-1 font-nunito">
-                  Create and manage platform-wide announcements
-                </p>
-              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={String(params.limit || 10)}
+                onValueChange={handleLimitChange}
+                disabled={isLoading}
+              >
+                <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73]">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 per page</SelectItem>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Button
-              size="sm"
-              onClick={handleOpenCreate}
-              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Announcement
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1 font-nunito">Active Now</p>
-                  <p className="text-3xl font-bold text-[#6CAC73] font-poppins">{stats.active}</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-[#6CAC73]/20 to-[#2B4A2F]/10 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-[#6CAC73]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1 font-nunito">Drafts</p>
-                  <p className="text-3xl font-bold text-blue-600 font-poppins">{stats.draft}</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl flex items-center justify-center">
-                  <Edit2 className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1 font-nunito">Expired</p>
-                  <p className="text-3xl font-bold text-gray-600 font-poppins">{stats.expired}</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-gray-500/20 to-gray-600/10 rounded-xl flex items-center justify-center">
-                  <Archive className="w-6 h-6 text-gray-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1 font-nunito">Total</p>
-                  <p className="text-3xl font-bold text-[#2B4A2F] font-poppins">{stats.total}</p>
-                </div>
-                <div className="w-12 h-12 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl flex items-center justify-center border border-[#6CAC73]/10">
-                  <TrendingUp className="w-6 h-6 text-[#2B4A2F]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Active Announcements Preview */}
-        {activeAnnouncements.length > 0 && (
-          <Card className="mb-6 border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-white/80 backdrop-blur-sm shadow-lg">
+        {stats.active > 0 && (
+          <Card className="border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-white/80 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -375,18 +624,21 @@ export default function AdminAnnouncements() {
                     Live Announcements
                   </CardTitle>
                   <CardDescription className="font-nunito">
-                    Currently visible to all users
+                    Currently visible to all users ({stats.active} total)
                   </CardDescription>
                 </div>
                 <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
                   <Send className="w-3 h-3 mr-1" />
-                  {activeAnnouncements.length} Active
+                  {stats.active} Active
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {activeAnnouncements.slice(0, 3).map((announcement: Announcement) => (
+              <div className="flex flex-col gap-3">
+                {announcements
+                  .filter((a: Announcement) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date()))
+                  .slice(0, 3)
+                  .map((announcement: Announcement) => (
                   <div
                     key={announcement.announcement_id}
                     className="p-4 border border-blue-200 rounded-xl bg-white/60 backdrop-blur-sm"
@@ -419,214 +671,163 @@ export default function AdminAnnouncements() {
                     </div>
                   </div>
                 ))}
+                {stats.active > 3 && (
+                  <div className="text-center pt-2">
+                    <p className="text-sm text-gray-500 font-nunito">
+                      + {stats.active - 3} more active announcements
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Tabs & List */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex items-center justify-between mb-4">
-            <TabsList className="bg-white/80 border border-[#6CAC73]/20">
-              <TabsTrigger 
-                value="active" 
-                className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
+        {/* Announcements Table Card */}
+        <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
+              All Announcements ({filteredData.length})
+            </CardTitle>
+            
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-4">
+              <Select
+                value={String(table.getState().pagination.pageSize)}
+                onValueChange={(value) => {
+                  table.setPageSize(Number(value));
+                }}
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Active ({stats.active})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="draft" 
-                className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white font-poppins"
-              >
-                <Edit2 className="w-4 h-4 mr-2" />
-                Drafts ({stats.draft})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="expired" 
-                className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-gray-500 data-[state=active]:to-gray-600 data-[state=active]:text-white font-poppins"
-              >
-                <Archive className="w-4 h-4 mr-2" />
-                Expired ({stats.expired})
-              </TabsTrigger>
-            </TabsList>
-
-            <Select
-              value={String(params.limit)}
-              onValueChange={(value) => setLimit(Number(value))}
-            >
-              <SelectTrigger className="w-32 border-[#6CAC73]/20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5 per page</SelectItem>
-                <SelectItem value="10">10 per page</SelectItem>
-                <SelectItem value="20">20 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <TabsContent value={activeTab}>
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardContent className="p-6">
-                {filteredAnnouncements.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 font-poppins">No {activeTab} announcements</p>
-                    <p className="text-sm text-gray-400 mt-2 font-nunito">
-                      {activeTab === 'active' && 'Create your first announcement to get started'}
-                      {activeTab === 'draft' && 'All announcements are published'}
-                      {activeTab === 'expired' && 'No expired announcements yet'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredAnnouncements.map((announcement: Announcement) => {
-                      const isExpired = !!(announcement.expires_at && new Date(announcement.expires_at) < new Date());
-                      const isActive = announcement.is_active && !isExpired;
-
-                      return (
-                        <div
-                          key={announcement.announcement_id}
-                          className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:shadow-md transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins">
-                                  {announcement.title}
-                                </h3>
-                                <Badge
-                                  className={`font-poppins border-0 ${
-                                    isActive
-                                      ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                      : isExpired
-                                      ? 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                                      : 'bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700'
-                                  }`}
-                                >
-                                  {isActive ? (
-                                    <>
-                                      <CheckCircle className="w-3 h-3 mr-1" />
-                                      Active
-                                    </>
-                                  ) : isExpired ? (
-                                    <>
-                                      <Clock className="w-3 h-3 mr-1" />
-                                      Expired
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Edit2 className="w-3 h-3 mr-1" />
-                                      Draft
-                                    </>
-                                  )}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 font-nunito mb-3">
-                                {announcement.content}
-                              </p>
-                              <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
-                                <span className="flex items-center gap-1">
-                                  <User className="w-3 h-3" />
-                                  {announcement.admin?.username || 'Admin'}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(announcement.created_at).toLocaleDateString()}
-                                </span>
-                                {announcement.expires_at && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {isExpired ? 'Expired' : 'Expires'} {new Date(announcement.expires_at).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenToggle(announcement)}
-                                disabled={isToggling}
-                                className={`h-9 px-3 border-[#6CAC73]/20 ${
-                                  announcement.is_active
-                                    ? 'bg-white/80 hover:bg-orange-50 text-orange-600'
-                                    : 'bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]'
-                                }`}
-                                title={announcement.is_active ? 'Unpublish' : 'Publish'}
-                              >
-                                {announcement.is_active ? (
-                                  <>
-                                    <EyeOff className="w-4 h-4 mr-1" />
-                                    Unpublish
-                                  </>
-                                ) : (
-                                  <>
-                                    <Send className="w-4 h-4 mr-1" />
-                                    Publish
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenEdit(announcement)}
-                                disabled={isUpdating}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenDelete(announcement)}
-                                disabled={isDeleting}
-                                className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
+                <SelectTrigger className="w-32 border-[#6CAC73]/20">
+                  <SelectValue placeholder="Page size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 per page</SelectItem>
+                  <SelectItem value="10">10 per page</SelectItem>
+                  <SelectItem value="20">20 per page</SelectItem>
+                  <SelectItem value="50">50 per page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  {table.getHeaderGroups().map(headerGroup => (
+                    <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
+                      {headerGroup.headers.map(header => (
+                        <th key={header.id} className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length} className="p-8 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <Megaphone className="w-12 h-12 text-gray-300" />
+                          <p className="text-gray-500 font-medium font-poppins">No announcements found</p>
+                          <p className="text-gray-400 text-sm font-nunito">Try adjusting your search or filters</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </td>
+                    </tr>
+                  ) : (
+                    table.getRowModel().rows.map(row => (
+                      <tr 
+                        key={row.id} 
+                        className="border-b border-[#6CAC73]/10 hover:bg-gray-50/50 transition-colors last:border-0"
+                      >
+                        {row.getVisibleCells().map(cell => (
+                          <td key={cell.id} className="p-4">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-                {/* Pagination */}
-                {meta && meta.lastPage > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                    <p className="text-sm text-gray-600 font-nunito">
-                      Showing {((meta.page - 1) * meta.limit) + 1} to {Math.min(meta.page * meta.limit, meta.total)} of {meta.total}
-                    </p>
+            {/* Enhanced Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
+              {/* Server-side pagination info */}
+              {meta && (
+                <div className="text-sm text-gray-500 font-nunito">
+                  Showing {displayRange.from} to {displayRange.to} of {displayRange.total} entries
+                </div>
+              )}
+
+              <div className="flex items-center gap-6">
+                {/* Client-side table pagination */}
+                {table.getPageCount() > 1 && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                      Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                    </div>
                     <div className="flex gap-2">
                       <Button
+                        variant="outline"
                         size="sm"
-                        onClick={prevPage}
-                        disabled={!meta.hasPrevPage}
-                        className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                        className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                       >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Prev
                       </Button>
-                      <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
-                        Page {meta.page} of {meta.lastPage}
-                      </span>
                       <Button
+                        variant="outline"
                         size="sm"
-                        onClick={nextPage}
-                        disabled={!meta.hasNextPage}
-                        className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                        className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
                       >
-                        <ChevronRight className="w-4 h-4" />
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+
+                {/* Server-side pagination - ONLY show if we have server pagination data */}
+                {meta && meta.lastPage > 1 && (
+                  <div className="flex items-center gap-4 border-l border-[#6CAC73]/20 pl-4">
+                    <div className="text-sm text-gray-500 font-nunito hidden sm:block">
+                      Server Page {meta.page} of {meta.lastPage}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePrevPage}
+                        disabled={!meta.hasPrevPage || isLoading}
+                        className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        Prev
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNextPage}
+                        disabled={!meta.hasNextPage || isLoading}
+                        className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Create/Edit Dialog */}
         <Dialog
@@ -652,8 +853,8 @@ export default function AdminAnnouncements() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={editDialogOpen ? handleUpdate : handleCreate}>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4 py-4">
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="title" className="text-[#2B4A2F] font-poppins">
                     Title <span className="text-red-500">*</span>
                   </Label>
@@ -666,7 +867,7 @@ export default function AdminAnnouncements() {
                     className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="content" className="text-[#2B4A2F] font-poppins">
                     Content <span className="text-red-500">*</span>
                   </Label>
@@ -680,7 +881,7 @@ export default function AdminAnnouncements() {
                     className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="expires_at" className="text-[#2B4A2F] font-poppins">
                     Expiration Date (Optional)
                   </Label>
@@ -738,7 +939,7 @@ export default function AdminAnnouncements() {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-rose-600 font-poppins">
+              <AlertDialogTitle className="text-red-600 font-poppins">
                 <Trash2 className="w-5 h-5 inline mr-2" />
                 Delete Announcement?
               </AlertDialogTitle>
@@ -770,7 +971,7 @@ export default function AdminAnnouncements() {
               <AlertDialogAction
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+                className="bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white border-0"
               >
                 {isDeleting ? (
                   <>
@@ -793,7 +994,7 @@ export default function AdminAnnouncements() {
           <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
             <AlertDialogHeader>
               <AlertDialogTitle className={`font-poppins ${
-                selectedAnnouncement?.is_active ? 'text-orange-600' : 'text-[#6CAC73]'
+                selectedAnnouncement?.is_active ? 'text-orange-600' : 'text-green-600'
               }`}>
                 {selectedAnnouncement?.is_active ? (
                   <>
@@ -842,7 +1043,7 @@ export default function AdminAnnouncements() {
                 className={`border-0 ${
                   selectedAnnouncement?.is_active
                     ? 'bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
-                    : 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90'
+                    : 'bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
                 } text-white`}
               >
                 {isToggling ? (
@@ -867,5 +1068,31 @@ export default function AdminAnnouncements() {
         </AlertDialog>
       </div>
     </div>
+  );
+}
+
+// Stat Card Component
+interface StatCardProps {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+}
+
+function StatCard({ label, value, icon, color }: StatCardProps) {
+  return (
+    <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-gray-500 font-nunito">{label}</p>
+            <p className={`text-2xl font-bold ${color} font-poppins`}>{value}</p>
+          </div>
+          <div className={`p-2 rounded-lg bg-gradient-to-br from-[#6CAC73]/10 to-[#2B4A2F]/10 ${color}`}>
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
