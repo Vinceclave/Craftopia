@@ -652,28 +652,33 @@ class SponsorService extends BaseService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      prisma.userRedemption.findMany({
-        where,
-        orderBy: { claimed_at: 'desc' },
-        skip,
-        take: limit,
-        include: {
-          user: {
+  prisma.userRedemption.findMany({
+    where,
+    orderBy: { claimed_at: 'desc' },
+    skip,
+    take: limit,
+    include: {
+      user: {
+        select: {
+          user_id: true,
+          username: true,
+          email: true,
+          profile: {                    // 🔥 ADD THIS
             select: {
-              user_id: true,
-              username: true,
-              email: true
-            }
-          },
-          reward: {
-            include: {
-              sponsor: true
+              profile_picture_url: true
             }
           }
         }
-      }),
-      prisma.userRedemption.count({ where })
-    ]);
+      },
+      reward: {
+        include: {
+          sponsor: true
+        }
+      }
+    }
+  }),
+  prisma.userRedemption.count({ where })
+]);
 
     const lastPage = Math.ceil(total / limit) || 1;
 

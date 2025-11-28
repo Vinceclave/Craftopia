@@ -10,7 +10,7 @@ import { useToast } from './useToast';
 
 export const useSponsors = () => {
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+   const [limit, setLimit] = useState(1000); // Instead of 10 or 20
   const [activeOnly, setActiveOnly] = useState(false);
 
   const queryClient = useQueryClient();

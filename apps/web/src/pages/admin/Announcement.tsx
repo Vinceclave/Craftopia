@@ -64,7 +64,7 @@ export default function AdminAnnouncements() {
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { success, error: showError, info } = useToast(); // FIXED: Use individual methods instead of 'toast'
+  const { success, error: showError } = useToast(); // FIXED: Use individual methods instead of 'toast'
 
   // State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);

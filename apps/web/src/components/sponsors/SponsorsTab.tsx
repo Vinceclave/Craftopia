@@ -344,6 +344,9 @@ export function SponsorsTab() {
         onSearchChange={setGlobalFilter}
         filters={filters}
         title="Manage Sponsors"
+          showPagination={true}
+   defaultPageSize={10}
+   pageSizeOptions={[5, 10, 20, 50]}
         action={
           sponsors.length > 0 ? (
             <Button

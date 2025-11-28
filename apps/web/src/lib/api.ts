@@ -284,6 +284,9 @@ export interface UserRedemption {
     user_id: number;
     username: string;
     email: string;
+    profile?: {                         
+      profile_picture_url?: string;
+    };
   };
   reward?: SponsorReward;
 }

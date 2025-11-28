@@ -119,10 +119,12 @@ export function RedemptionsTab() {
         header: 'User',
         cell: ({ row }) => {
           const user = row.original.user;
+          const profilePicture = user?.profile?.profile_picture_url;  // 🔥 GET FROM PROFILE
+          
           return (
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 border-2 border-[#6CAC73]/20">
-                <AvatarImage src={user?.profile_picture} alt={user?.username} />
+                <AvatarImage src={profilePicture || undefined} alt={user?.username} />
                 <AvatarFallback className="bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 font-poppins">
                   {user?.username?.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
@@ -346,35 +348,27 @@ export function RedemptionsTab() {
       }
     }
 
-    if (redemption.status === 'cancelled' && redemption.cancelled_at) {
-      const cancelledDate = formatSafeDate(redemption.cancelled_at, 'PPpp');
-      if (cancelledDate !== 'N/A' && cancelledDate !== 'Invalid date') {
-        sections[2].items.push({
-          label: 'Cancelled At',
-          value: cancelledDate,
-          icon: <XCircle className="w-4 h-4" />,
-        });
-      }
-    }
-
     return sections;
   };
 
   return (
     <>
       <DataTable
-        data={filteredData}
-        columns={columns}
-        searchPlaceholder="Search redemptions..."
-        onSearchChange={setGlobalFilter}
-        filters={filters}
-        title="Manage Redemptions"
-        emptyState={{
-          icon: <Package className="w-16 h-16 text-gray-400" />,
-          title: 'No redemptions yet',
-          description: 'User redemptions will appear here',
-        }}
-      />
+      data={filteredData}
+      columns={columns}
+      searchPlaceholder="Search redemptions..."
+      onSearchChange={setGlobalFilter}
+      filters={filters}
+      title="Manage Redemptions"
+       showPagination={true}
+   defaultPageSize={10}
+   pageSizeOptions={[5, 10, 20, 50]}
+      emptyState={{
+        icon: <Package className="w-16 h-16 text-gray-400" />,
+        title: 'No redemptions yet',
+        description: 'User redemptions will appear here',
+      }}
+    />
 
       {/* View Detail Modal */}
       {selectedRedemption && (
