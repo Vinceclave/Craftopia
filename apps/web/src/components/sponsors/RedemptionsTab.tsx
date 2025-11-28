@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/sponsors/RedemptionsTab.tsx
+// apps/web/src/components/sponsors/RedemptionsTab.tsx
 import { useState, useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -22,20 +22,17 @@ import {
   DataTable,
   DetailModal,
   DetailSection,
-  DetailStatGrid,
   ConfirmDialog,
   ActionButtons,
   ActionButton,
-  EmptyState,
   FilterOption,
 } from '@/components/shared';
 import { format } from 'date-fns';
 
 export function RedemptionsTab() {
-  const { success, error: showError } = useToast();
+  const { error: showError } = useToast();
   const {
     redemptions,
-    isLoading,
     fulfillRedemption,
     cancelRedemption,
     isFulfilling,
@@ -85,7 +82,7 @@ export function RedemptionsTab() {
     return redemptions.filter((redemption) => {
       const matchesSearch =
         !globalFilter ||
-        redemption.reward?.name.toLowerCase().includes(globalFilter.toLowerCase()) ||
+        redemption.reward?.title.toLowerCase().includes(globalFilter.toLowerCase()) ||
         redemption.user?.username.toLowerCase().includes(globalFilter.toLowerCase()) ||
         redemption.user?.email.toLowerCase().includes(globalFilter.toLowerCase());
 
@@ -97,7 +94,7 @@ export function RedemptionsTab() {
 
   // Get status badge
   const getStatusBadge = (status: string) => {
-    const statusMap = {
+    const statusMap: Record<string, { label: string; color: string }> = {
       pending: {
         label: 'Pending',
         color: 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700',
@@ -149,7 +146,7 @@ export function RedemptionsTab() {
           return (
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-[#2B4A2F] font-poppins text-sm">
-                {reward?.name}
+                {reward?.title}
               </p>
               <p className="text-xs text-gray-500 font-nunito">{sponsor?.name}</p>
             </div>
@@ -157,20 +154,20 @@ export function RedemptionsTab() {
         },
       },
       {
-        accessorKey: 'points_spent',
+        accessorKey: 'points_cost',
         header: 'Points',
         cell: ({ row }) => (
           <div className="flex items-center gap-1 text-sm font-semibold text-blue-600 font-poppins">
             <Coins className="w-4 h-4" />
-            {row.original.points_spent}
+            {row.original.reward?.points_cost}
           </div>
         ),
       },
       {
-        accessorKey: 'redeemed_at',
+        accessorKey: 'claimed_at',
         header: 'Redeemed',
         cell: ({ row }) => {
-          const formattedDate = formatSafeDate(row.original.redeemed_at);
+          const formattedDate = formatSafeDate(row.original.claimed_at);
           if (formattedDate === 'N/A' || formattedDate === 'Invalid date') {
             return <span className="text-sm text-gray-400 font-nunito">{formattedDate}</span>;
           }
@@ -296,13 +293,18 @@ export function RedemptionsTab() {
         items: [
           {
             label: 'Reward Name',
-            value: redemption.reward?.name,
+            value: redemption.reward?.title,
             icon: <Gift className="w-4 h-4" />,
           },
           {
             label: 'Sponsor',
             value: redemption.reward?.sponsor?.name,
             icon: <Package className="w-4 h-4" />,
+          },
+          {
+            label: 'Points Cost',
+            value: `${redemption.reward?.points_cost} points`,
+            icon: <Coins className="w-4 h-4" />,
           },
           {
             label: 'Description',
@@ -316,13 +318,8 @@ export function RedemptionsTab() {
         title: 'Redemption Details',
         items: [
           {
-            label: 'Points Spent',
-            value: `${redemption.points_spent} points`,
-            icon: <Coins className="w-4 h-4" />,
-          },
-          {
             label: 'Redeemed At',
-            value: formatSafeDate(redemption.redeemed_at, 'PPpp'),
+            value: formatSafeDate(redemption.claimed_at, 'PPpp'),
             icon: <Calendar className="w-4 h-4" />,
           },
           {
@@ -407,7 +404,7 @@ export function RedemptionsTab() {
                 <span className="font-semibold">{selectedRedemption.user?.username}</span> will
                 receive:
               </p>
-              <p className="font-bold text-[#2B4A2F]">{selectedRedemption.reward?.name}</p>
+              <p className="font-bold text-[#2B4A2F]">{selectedRedemption.reward?.title}</p>
             </div>
           }
         />
@@ -436,7 +433,7 @@ export function RedemptionsTab() {
               htmlFor="refund"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
-              Refund {selectedRedemption.points_spent} points to{' '}
+              Refund {selectedRedemption.reward?.points_cost} points to{' '}
               {selectedRedemption.user?.username}
             </label>
           </div>

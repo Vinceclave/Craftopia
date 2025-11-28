@@ -3,8 +3,8 @@ import { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface PageHeaderProps {
-  title: string;
-  description?: string;
+  title: string | ReactNode;
+  description?: string | ReactNode;
   icon: ReactNode;
   actions?: ReactNode;
 }

@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/sponsors/SponsorsTab.tsx
+// apps/web/src/components/sponsors/SponsorsTab.tsx - FIXED
 import { useState, useMemo, useRef } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +20,13 @@ import {
   Loader2,
   Save,
   X,
-  Upload,
-  Image as ImageIcon,
   ToggleLeft,
   ToggleRight,
   Edit2,
   Trash2,
+  Mail,
+  Image as ImageIcon,
+  Upload,
 } from 'lucide-react';
 import { useSponsors } from '@/hooks/useSponsors';
 import { useToast } from '@/hooks/useToast';
@@ -36,14 +37,13 @@ import {
   ConfirmDialog,
   ActionButtons,
   ActionButton,
-  EmptyState,
+  FilterOption,
 } from '@/components/shared';
 
 export function SponsorsTab() {
   const { success, error: showError } = useToast();
   const {
     sponsors,
-    isLoading,
     createSponsor,
     updateSponsor,
     deleteSponsor,
@@ -51,7 +51,6 @@ export function SponsorsTab() {
     isCreating,
     isUpdating,
     isDeleting,
-    isToggling,
   } = useSponsors();
 
   // State
@@ -60,18 +59,35 @@ export function SponsorsTab() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSponsor, setSelectedSponsor] = useState<Sponsor | null>(null);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Image Upload State
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
-    logo_url: '',
     description: '',
     contact_email: '',
+    logo_url: '',
   });
 
-  // Image Upload
+  // Reset Form
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      contact_email: '',
+      logo_url: '',
+    });
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Image Upload Handlers
   const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -90,6 +106,7 @@ export function SponsorsTab() {
       setFormData((prev) => ({ ...prev, logo_url: imageUrl }));
       success('Image uploaded successfully!');
     } catch (error: any) {
+      console.error('❌ Image upload error:', error);
       showError(error?.message || 'Failed to upload image');
       setImagePreview(null);
     } finally {
@@ -105,19 +122,37 @@ export function SponsorsTab() {
     }
   };
 
-  // Reset Form
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      logo_url: '',
-      description: '',
-      contact_email: '',
+  // Filters
+  const filters: FilterOption[] = [
+    {
+      label: 'Status',
+      value: statusFilter,
+      onChange: setStatusFilter,
+      options: [
+        { label: 'All Status', value: 'all' },
+        { label: 'Active', value: 'active' },
+        { label: 'Inactive', value: 'inactive' },
+      ],
+    },
+  ];
+
+  // Filtered Data
+  const filteredData = useMemo(() => {
+    return sponsors.filter((sponsor) => {
+      const matchesSearch =
+        !globalFilter ||
+        sponsor.name.toLowerCase().includes(globalFilter.toLowerCase()) ||
+        sponsor.description?.toLowerCase().includes(globalFilter.toLowerCase()) ||
+        sponsor.contact_email?.toLowerCase().includes(globalFilter.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && sponsor.is_active) ||
+        (statusFilter === 'inactive' && !sponsor.is_active);
+
+      return matchesSearch && matchesStatus;
     });
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+  }, [sponsors, globalFilter, statusFilter]);
 
   // Columns
   const columns = useMemo<ColumnDef<Sponsor>[]>(
@@ -145,7 +180,10 @@ export function SponsorsTab() {
                   {sponsor.name}
                 </p>
                 {sponsor.contact_email && (
-                  <p className="text-xs text-gray-500 font-nunito">{sponsor.contact_email}</p>
+                  <div className="text-xs text-gray-600 font-nunito flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    {sponsor.contact_email}
+                  </div>
                 )}
               </div>
             </div>
@@ -164,26 +202,20 @@ export function SponsorsTab() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => (
-          <Badge
-            className={`font-poppins border-0 ${
-              row.original.is_active
-                ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-            }`}
-          >
-            {row.original.is_active ? 'Active' : 'Inactive'}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'rewards',
-        header: 'Rewards',
-        cell: ({ row }) => (
-          <div className="text-sm text-gray-600 font-nunito">
-            {row.original._count?.rewards || 0} rewards
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isActive = row.original.is_active;
+          return (
+            <Badge
+              className={`font-poppins border-0 ${
+                isActive
+                  ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+              }`}
+            >
+              {isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          );
+        },
       },
       {
         id: 'actions',
@@ -227,9 +259,9 @@ export function SponsorsTab() {
     setSelectedSponsor(sponsor);
     setFormData({
       name: sponsor.name,
-      logo_url: sponsor.logo_url || '',
       description: sponsor.description || '',
       contact_email: sponsor.contact_email || '',
+      logo_url: sponsor.logo_url || '',
     });
     setImagePreview(sponsor.logo_url || null);
     setEditDialogOpen(true);
@@ -250,12 +282,17 @@ export function SponsorsTab() {
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      showError('Sponsor name is required');
+      showError('Please fill in the sponsor name');
       return;
     }
 
     try {
-      await createSponsor(formData);
+      await createSponsor({
+        name: formData.name,
+        description: formData.description,
+        contact_email: formData.contact_email,
+        logo_url: formData.logo_url,
+      });
       setCreateDialogOpen(false);
       resetForm();
     } catch (err: any) {
@@ -265,12 +302,20 @@ export function SponsorsTab() {
 
   const handleUpdate = async () => {
     if (!selectedSponsor || !formData.name.trim()) {
-      showError('Sponsor name is required');
+      showError('Please fill in the sponsor name');
       return;
     }
 
     try {
-      await updateSponsor({ sponsorId: selectedSponsor.sponsor_id, data: formData });
+      await updateSponsor({
+        sponsorId: selectedSponsor.sponsor_id,
+        data: {
+          name: formData.name,
+          description: formData.description,
+          contact_email: formData.contact_email,
+          logo_url: formData.logo_url,
+        },
+      });
       setEditDialogOpen(false);
       setSelectedSponsor(null);
       resetForm();
@@ -293,11 +338,24 @@ export function SponsorsTab() {
   return (
     <>
       <DataTable
-        data={sponsors}
+        data={filteredData}
         columns={columns}
         searchPlaceholder="Search sponsors..."
         onSearchChange={setGlobalFilter}
+        filters={filters}
         title="Manage Sponsors"
+        action={
+          sponsors.length > 0 ? (
+            <Button
+              size="sm"
+              onClick={() => setCreateDialogOpen(true)}
+              className="bg-gradient-to-br from-purple-600 to-purple-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Sponsor
+            </Button>
+          ) : undefined
+        }
         emptyState={{
           icon: <Building2 className="w-16 h-16 text-gray-400" />,
           title: 'No sponsors yet',
@@ -313,20 +371,6 @@ export function SponsorsTab() {
           ),
         }}
       />
-
-      {/* Header Action - Only show when there are sponsors */}
-      {sponsors.length > 0 && (
-        <div className="flex justify-end -mt-16 mb-4">
-          <Button
-            size="sm"
-            onClick={() => setCreateDialogOpen(true)}
-            className="bg-gradient-to-br from-purple-600 to-purple-700 text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Sponsor
-          </Button>
-        </div>
-      )}
 
       {/* Create/Edit Dialog */}
       <Dialog
@@ -346,13 +390,15 @@ export function SponsorsTab() {
               {editDialogOpen ? 'Edit Sponsor' : 'Add New Sponsor'}
             </DialogTitle>
             <DialogDescription className="font-nunito">
-              {editDialogOpen ? 'Update sponsor details' : 'Add a new sponsoring organization'}
+              {editDialogOpen ? 'Update sponsor details' : 'Create a new sponsor organization'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* Image Upload */}
+            {/* Image Upload Section */}
             <div className="space-y-2">
-              <Label className="text-[#2B4A2F] font-poppins">Sponsor Logo</Label>
+              <Label className="text-[#2B4A2F] font-poppins">
+                Sponsor Logo
+              </Label>
               <div className="flex items-center gap-4">
                 <div className="flex-shrink-0">
                   {imagePreview || formData.logo_url ? (
@@ -365,7 +411,7 @@ export function SponsorsTab() {
                       <button
                         onClick={handleRemoveImage}
                         disabled={isUploadingImage}
-                        className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700"
+                        className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 hover:bg-rose-700 disabled:opacity-50"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -376,7 +422,7 @@ export function SponsorsTab() {
                     </div>
                   )}
                 </div>
-
+                
                 <div className="flex-1">
                   <input
                     ref={fileInputRef}
@@ -404,7 +450,9 @@ export function SponsorsTab() {
                       </>
                     )}
                   </Button>
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP up to 10MB</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    PNG, JPG, WEBP up to 10MB
+                  </p>
                 </div>
               </div>
             </div>
@@ -417,7 +465,7 @@ export function SponsorsTab() {
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., EcoTech Solutions"
+                placeholder="e.g., Acme Corporation"
                 className="border-[#6CAC73]/20"
                 disabled={isUploadingImage}
               />
@@ -447,7 +495,7 @@ export function SponsorsTab() {
                 type="email"
                 value={formData.contact_email}
                 onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                placeholder="contact@sponsor.com"
+                placeholder="contact@example.com"
                 className="border-[#6CAC73]/20"
                 disabled={isUploadingImage}
               />
@@ -494,7 +542,7 @@ export function SponsorsTab() {
           onOpenChange={setDeleteDialogOpen}
           onConfirm={handleDelete}
           title="Delete Sponsor?"
-          description="This action cannot be undone. All associated rewards will also be affected."
+          description="This action cannot be undone. All associated rewards will also be deleted."
           confirmText="Delete"
           loading={isDeleting}
           variant="danger"

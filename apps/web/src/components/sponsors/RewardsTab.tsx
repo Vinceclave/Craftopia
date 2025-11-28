@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/sponsors/RewardsTab.tsx
+// apps/web/src/components/sponsors/RewardsTab.tsx - FIXED
 import { useState, useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -43,7 +43,6 @@ import {
   ConfirmDialog,
   ActionButtons,
   ActionButton,
-  EmptyState,
   FilterOption,
 } from '@/components/shared';
 import { format } from 'date-fns';
@@ -56,7 +55,6 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
   const { success, error: showError } = useToast();
   const {
     rewards,
-    isLoading,
     createReward,
     updateReward,
     deleteReward,
@@ -64,7 +62,6 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
     isCreating,
     isUpdating,
     isDeleting,
-    isToggling,
   } = useRewards();
 
   // State
@@ -78,7 +75,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
 
   const [formData, setFormData] = useState({
     sponsor_id: '',
-    name: '',
+    title: '',
     description: '',
     points_cost: '',
     quantity: '',
@@ -89,7 +86,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
   const resetForm = () => {
     setFormData({
       sponsor_id: '',
-      name: '',
+      title: '',
       description: '',
       points_cost: '',
       quantity: '',
@@ -117,7 +114,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       onChange: setSponsorFilter,
       options: [
         { label: 'All Sponsors', value: 'all' },
-        ...sponsors.map((s) => ({ label: s.name, value: s.sponsor_id })),
+        ...sponsors.map((s) => ({ label: s.name, value: s.sponsor_id.toString() })),
       ],
     },
   ];
@@ -127,18 +124,18 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
     return rewards.filter((reward) => {
       const matchesSearch =
         !globalFilter ||
-        reward.name.toLowerCase().includes(globalFilter.toLowerCase()) ||
+        reward.title.toLowerCase().includes(globalFilter.toLowerCase()) ||
         reward.description?.toLowerCase().includes(globalFilter.toLowerCase());
 
       const matchesStatus =
         statusFilter === 'all' ||
-        (statusFilter === 'active' && reward.is_active && reward.quantity > 0 && (!reward.expiration_date || new Date(reward.expiration_date) > new Date())) ||
+        (statusFilter === 'active' && reward.is_active && (reward.quantity ?? 0) > 0 && (!reward.expires_at || new Date(reward.expires_at) > new Date())) ||
         (statusFilter === 'inactive' && !reward.is_active) ||
-        (statusFilter === 'expired' && reward.expiration_date && new Date(reward.expiration_date) <= new Date()) ||
+        (statusFilter === 'expired' && reward.expires_at && new Date(reward.expires_at) <= new Date()) ||
         (statusFilter === 'out_of_stock' && reward.quantity === 0);
 
       const matchesSponsor =
-        sponsorFilter === 'all' || reward.sponsor_id === sponsorFilter;
+        sponsorFilter === 'all' || reward.sponsor_id.toString() === sponsorFilter;
 
       return matchesSearch && matchesStatus && matchesSponsor;
     });
@@ -146,19 +143,19 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
 
   // Get reward status
   const getRewardStatus = (reward: SponsorReward) => {
-    if (!reward.is_active) return { label: 'Inactive', color: 'gray' };
-    if (reward.quantity === 0) return { label: 'Out of Stock', color: 'orange' };
-    if (reward.expiration_date && new Date(reward.expiration_date) <= new Date()) {
-      return { label: 'Expired', color: 'red' };
+    if (!reward.is_active) return { label: 'Inactive', color: 'gray' as const };
+    if (reward.quantity === 0) return { label: 'Out of Stock', color: 'orange' as const };
+    if (reward.expires_at && new Date(reward.expires_at) <= new Date()) {
+      return { label: 'Expired', color: 'red' as const };
     }
-    return { label: 'Active', color: 'green' };
+    return { label: 'Active', color: 'green' as const };
   };
 
   // Columns
   const columns = useMemo<ColumnDef<SponsorReward>[]>(
     () => [
       {
-        accessorKey: 'name',
+        accessorKey: 'title',
         header: 'Reward',
         cell: ({ row }) => {
           const reward = row.original;
@@ -178,7 +175,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
               )}
               <div className="flex flex-col gap-1">
                 <p className="font-semibold text-[#2B4A2F] font-poppins text-sm">
-                  {reward.name}
+                  {reward.title}
                 </p>
                 <p className="text-xs text-gray-500 font-nunito">{sponsor?.name}</p>
               </div>
@@ -221,10 +218,10 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
         },
       },
       {
-        accessorKey: 'expiration_date',
+        accessorKey: 'expires_at',
         header: 'Expires',
         cell: ({ row }) => {
-          const date = row.original.expiration_date;
+          const date = row.original.expires_at;
           if (!date) return <span className="text-sm text-gray-400 font-nunito">No expiry</span>;
           const isExpired = new Date(date) <= new Date();
           return (
@@ -242,7 +239,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
         header: 'Status',
         cell: ({ row }) => {
           const status = getRewardStatus(row.original);
-          const colorMap = {
+          const colorMap: Record<'green' | 'gray' | 'orange' | 'red', string> = {
             green: 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]',
             gray: 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700',
             orange: 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700',
@@ -296,13 +293,13 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
   const handleOpenEdit = (reward: SponsorReward) => {
     setSelectedReward(reward);
     setFormData({
-      sponsor_id: reward.sponsor_id,
-      name: reward.name,
+      sponsor_id: reward.sponsor_id.toString(),
+      title: reward.title,
       description: reward.description || '',
       points_cost: reward.points_cost.toString(),
-      quantity: reward.quantity.toString(),
-      expiration_date: reward.expiration_date
-        ? format(new Date(reward.expiration_date), 'yyyy-MM-dd')
+      quantity: reward.quantity?.toString() || '0',
+      expiration_date: reward.expires_at
+        ? format(new Date(reward.expires_at), 'yyyy-MM-dd')
         : '',
     });
     setEditDialogOpen(true);
@@ -322,30 +319,59 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
   };
 
   const handleCreate = async () => {
-    if (!formData.sponsor_id || !formData.name.trim() || !formData.points_cost || !formData.quantity) {
+    if (!formData.sponsor_id || !formData.title.trim() || !formData.points_cost || !formData.quantity) {
       showError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate points cost
+    const pointsCost = parseInt(formData.points_cost);
+    if (pointsCost < 50 || pointsCost > 10000) {
+      showError('Points cost must be between 50 and 10,000');
+      return;
+    }
+
+    // Validate quantity
+    const quantity = parseInt(formData.quantity);
+    if (quantity < 0) {
+      showError('Quantity cannot be negative');
       return;
     }
 
     try {
       await createReward({
-        sponsor_id: formData.sponsor_id,
-        name: formData.name,
+        sponsor_id: parseInt(formData.sponsor_id),
+        title: formData.title,
         description: formData.description,
-        points_cost: parseInt(formData.points_cost),
-        quantity: parseInt(formData.quantity),
-        expiration_date: formData.expiration_date || undefined,
+        points_cost: pointsCost,
+        quantity: quantity,
+        expires_at: formData.expiration_date || undefined,
       });
       setCreateDialogOpen(false);
       resetForm();
+      success('Reward created successfully!');
     } catch (err: any) {
       showError(err.message || 'Failed to create reward');
     }
   };
 
   const handleUpdate = async () => {
-    if (!selectedReward || !formData.name.trim() || !formData.points_cost || !formData.quantity) {
+    if (!selectedReward || !formData.title.trim() || !formData.points_cost || !formData.quantity) {
       showError('Please fill in all required fields');
+      return;
+    }
+
+    // Validate points cost
+    const pointsCost = parseInt(formData.points_cost);
+    if (pointsCost < 50 || pointsCost > 10000) {
+      showError('Points cost must be between 50 and 10,000');
+      return;
+    }
+
+    // Validate quantity
+    const quantity = parseInt(formData.quantity);
+    if (quantity < 0) {
+      showError('Quantity cannot be negative');
       return;
     }
 
@@ -353,17 +379,18 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       await updateReward({
         rewardId: selectedReward.reward_id,
         data: {
-          sponsor_id: formData.sponsor_id,
-          name: formData.name,
+          sponsor_id: parseInt(formData.sponsor_id),
+          title: formData.title,
           description: formData.description,
-          points_cost: parseInt(formData.points_cost),
-          quantity: parseInt(formData.quantity),
-          expiration_date: formData.expiration_date || undefined,
+          points_cost: pointsCost,
+          quantity: quantity,
+          expires_at: formData.expiration_date || undefined,
         },
       });
       setEditDialogOpen(false);
       setSelectedReward(null);
       resetForm();
+      success('Reward updated successfully!');
     } catch (err: any) {
       showError(err.message || 'Failed to update reward');
     }
@@ -375,6 +402,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       await deleteReward(selectedReward.reward_id);
       setDeleteDialogOpen(false);
       setSelectedReward(null);
+      success('Reward deleted successfully!');
     } catch (err: any) {
       showError(err.message || 'Failed to delete reward');
     }
@@ -389,26 +417,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
         onSearchChange={setGlobalFilter}
         filters={filters}
         title="Manage Rewards"
-        emptyState={{
-          icon: <Gift className="w-16 h-16 text-gray-400" />,
-          title: 'No rewards yet',
-          description: 'Add your first reward to get started',
-          action: (
-            <Button
-              onClick={() => setCreateDialogOpen(true)}
-              className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
-              disabled={sponsors.length === 0}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add First Reward
-            </Button>
-          ),
-        }}
-      />
-
-      {/* Header Action */}
-      {rewards.length > 0 && (
-        <div className="flex justify-end -mt-16 mb-4">
+        action={
           <Button
             size="sm"
             onClick={() => setCreateDialogOpen(true)}
@@ -418,8 +427,24 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
             <Plus className="w-4 h-4 mr-2" />
             Add Reward
           </Button>
-        </div>
-      )}
+        }
+        emptyState={{
+          icon: <Gift className="w-16 h-16 text-gray-400" />,
+          title: 'No rewards yet',
+          description: sponsors.length === 0 
+            ? 'Add a sponsor first before creating rewards' 
+            : 'Add your first reward to get started',
+          action: sponsors.length > 0 ? (
+            <Button
+              onClick={() => setCreateDialogOpen(true)}
+              className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Reward
+            </Button>
+          ) : undefined,
+        }}
+      />
 
       {/* Create/Edit Dialog */}
       <Dialog
@@ -450,28 +475,34 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
               <Select
                 value={formData.sponsor_id}
                 onValueChange={(value) => setFormData({ ...formData, sponsor_id: value })}
+                disabled={editDialogOpen}
               >
                 <SelectTrigger className="border-[#6CAC73]/20">
                   <SelectValue placeholder="Select a sponsor" />
                 </SelectTrigger>
                 <SelectContent>
                   {sponsors.map((sponsor) => (
-                    <SelectItem key={sponsor.sponsor_id} value={sponsor.sponsor_id}>
+                    <SelectItem key={sponsor.sponsor_id} value={sponsor.sponsor_id.toString()}>
                       {sponsor.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {sponsors.length === 0 && (
+                <p className="text-sm text-amber-600 font-nunito">
+                  No sponsors available. Please add a sponsor first.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-[#2B4A2F] font-poppins">
-                Reward Name <span className="text-red-500">*</span>
+              <Label htmlFor="title" className="text-[#2B4A2F] font-poppins">
+                Reward Title <span className="text-red-500">*</span>
               </Label>
               <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="e.g., $10 Gift Card"
                 className="border-[#6CAC73]/20"
               />
@@ -499,12 +530,14 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
                 <Input
                   id="points_cost"
                   type="number"
-                  min="1"
+                  min="50"
+                  max="10000"
                   value={formData.points_cost}
                   onChange={(e) => setFormData({ ...formData, points_cost: e.target.value })}
                   placeholder="100"
                   className="border-[#6CAC73]/20"
                 />
+                <p className="text-xs text-gray-500">Between 50 and 10,000 points</p>
               </div>
 
               <div className="space-y-2">
@@ -520,6 +553,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
                   placeholder="10"
                   className="border-[#6CAC73]/20"
                 />
+                <p className="text-xs text-gray-500">Set to 0 for out of stock</p>
               </div>
             </div>
 
@@ -535,6 +569,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
                 className="border-[#6CAC73]/20"
                 min={format(new Date(), 'yyyy-MM-dd')}
               />
+              <p className="text-xs text-gray-500">Leave empty for no expiration</p>
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -552,7 +587,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
             </Button>
             <Button
               onClick={editDialogOpen ? handleUpdate : handleCreate}
-              disabled={isCreating || isUpdating}
+              disabled={isCreating || isUpdating || sponsors.length === 0}
               className="bg-gradient-to-br from-blue-600 to-blue-700 text-white"
             >
               {isCreating || isUpdating ? (
@@ -585,7 +620,7 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
           icon={<Trash2 className="w-5 h-5" />}
           alertMessage={
             <>
-              You are about to delete: <span className="font-bold">"{selectedReward.name}"</span>
+              You are about to delete: <span className="font-bold">"{selectedReward.title}"</span>
             </>
           }
         />

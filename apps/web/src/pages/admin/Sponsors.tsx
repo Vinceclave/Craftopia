@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/Sponsors.refactored.tsx
+// apps/web/src/pages/admin/Sponsors.tsx - CORRECT IMPLEMENTATION
 import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Gift, Building2, Package, Wifi } from 'lucide-react';
@@ -8,11 +8,12 @@ import { useWebSocketSponsors } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
 import { PageContainer, PageHeader, StatsGrid } from '@/components/shared';
 
+// Import the CORRECT components from your original implementation
 import { SponsorsTab } from '@/components/sponsors/SponsorsTab';
-import { RedemptionsTab } from '@/components/sponsors/RedemptionsTab';
 import { RewardsTab } from '@/components/sponsors/RewardsTab';
+import { RedemptionsTab } from '@/components/sponsors/RedemptionsTab';
 
-export default function AdminSponsorsRefactored() {
+export default function AdminSponsors() {
   const { success, info } = useToast();
   const [activeTab, setActiveTab] = useState('sponsors');
 
@@ -61,10 +62,7 @@ export default function AdminSponsorsRefactored() {
   // Stats
   const stats = useMemo(() => {
     const totalSponsors = sponsors.length;
-    const activeSponsors = sponsors.filter((s) => s.is_active).length;
-    const totalRewards = rewards.length;
     const activeRewards = rewards.filter((r) => r.is_active).length;
-    const totalRedemptions = redemptions.length;
     const pendingRedemptions = redemptionStats?.redemptions?.pending || 0;
     const fulfilledRedemptions = redemptionStats?.redemptions?.fulfilled || 0;
 
@@ -82,7 +80,7 @@ export default function AdminSponsorsRefactored() {
         color: 'text-blue-600',
       },
       {
-        label: 'Pending',
+        label: 'Pending Redemptions',
         value: pendingRedemptions,
         icon: <Package className="w-5 h-5" />,
         color: 'text-orange-600',
@@ -142,14 +140,17 @@ export default function AdminSponsorsRefactored() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Use the CORRECT SponsorsTab component with the proper adding functionality */}
         <TabsContent value="sponsors">
           <SponsorsTab />
         </TabsContent>
 
+        {/* Use the CORRECT RewardsTab component */}
         <TabsContent value="rewards">
           <RewardsTab sponsors={sponsors} />
         </TabsContent>
 
+        {/* Use the CORRECT RedemptionsTab component */}
         <TabsContent value="redemptions">
           <RedemptionsTab />
         </TabsContent>

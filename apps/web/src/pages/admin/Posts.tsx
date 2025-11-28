@@ -52,11 +52,8 @@ export default function AdminPosts() {
   const {
     posts,
     comments,
-    meta,
     isLoading,
     error,
-    page,
-    setPage,
     refetch,
     deletePost,
     deleteComment,

@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Announcements.refactored.tsx
-import { useState, useMemo } from 'react';
+// apps/web/src/pages/admin/Announcements.tsx
+import { useState, useMemo, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ import {
   ActionButton,
 } from '@/components/shared';
 
-export default function AdminAnnouncementsRefactored() {
+export default function AdminAnnouncements() {
   const {
     announcements,
     isLoading,
@@ -61,10 +61,16 @@ export default function AdminAnnouncementsRefactored() {
     isUpdating,
     isDeleting,
     isToggling,
+    meta,
+    goToPage,
+    nextPage,
+    prevPage,
+    setLimit,
+    params,
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { toast } = useToast();
+  const { success, error: showError } = useToast();
 
   // State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -81,17 +87,47 @@ export default function AdminAnnouncementsRefactored() {
     expires_at: '',
   });
 
+  // Auto-close dialogs on success
+  useEffect(() => {
+    if (!isCreating && createDialogOpen) {
+      setCreateDialogOpen(false);
+      setFormData({ title: '', content: '', expires_at: '' });
+    }
+  }, [isCreating, createDialogOpen]);
+
+  useEffect(() => {
+    if (!isUpdating && editDialogOpen) {
+      setEditDialogOpen(false);
+      setSelectedAnnouncement(null);
+      setFormData({ title: '', content: '', expires_at: '' });
+    }
+  }, [isUpdating, editDialogOpen]);
+
+  useEffect(() => {
+    if (!isDeleting && deleteDialogOpen) {
+      setDeleteDialogOpen(false);
+      setSelectedAnnouncement(null);
+    }
+  }, [isDeleting, deleteDialogOpen]);
+
+  useEffect(() => {
+    if (!isToggling && toggleDialogOpen) {
+      setToggleDialogOpen(false);
+      setSelectedAnnouncement(null);
+    }
+  }, [isToggling, toggleDialogOpen]);
+
   // Stats
   const stats = useMemo(() => {
-    const total = announcements.length;
-    const active = announcements.filter((a) =>
+    const total = meta?.total || announcements.length;
+    const active = announcements.filter((a: Announcement) =>
       a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
     ).length;
-    const draft = announcements.filter((a) => !a.is_active).length;
-    const expired = announcements.filter((a) =>
+    const draft = announcements.filter((a: Announcement) => !a.is_active).length;
+    const expired = announcements.filter((a: Announcement) =>
       a.expires_at && new Date(a.expires_at) < new Date()
     ).length;
-    const scheduled = announcements.filter((a) =>
+    const scheduled = announcements.filter((a: Announcement) =>
       a.is_active && a.expires_at && new Date(a.expires_at) > new Date()
     ).length;
 
@@ -127,11 +163,11 @@ export default function AdminAnnouncementsRefactored() {
         color: 'text-blue-600',
       },
     ];
-  }, [announcements]);
+  }, [announcements, meta]);
 
-  // Filtered data
+  // Filtered data - client-side only for search/filter
   const filteredData = useMemo(() => {
-    return announcements.filter((announcement) => {
+    return announcements.filter((announcement: Announcement) => {
       const searchTerm = globalFilter.toLowerCase();
       const matchesSearch =
         !globalFilter ||
@@ -154,8 +190,9 @@ export default function AdminAnnouncementsRefactored() {
   // Filters
   const filters: FilterOption[] = [
     {
-      label: 'All Status',
+      label: 'Status',
       value: statusFilter,
+      onChange: setStatusFilter,
       options: [
         { label: 'All Status', value: 'all' },
         { label: 'Active', value: 'active' },
@@ -163,9 +200,21 @@ export default function AdminAnnouncementsRefactored() {
         { label: 'Expired', value: 'expired' },
         { label: 'Scheduled', value: 'scheduled' },
       ],
-      onChange: setStatusFilter,
     },
   ];
+
+  // Pagination configuration
+  const pagination = useMemo(() => ({
+    page: params.page,
+    limit: params.limit,
+    total: meta?.total || 0,
+    onPageChange: goToPage,
+    onLimitChange: setLimit,
+    onNextPage: nextPage,
+    onPrevPage: prevPage,
+    hasNextPage: meta?.hasNextPage || false,
+    hasPrevPage: meta?.hasPrevPage || false,
+  }), [params, meta, goToPage, setLimit, nextPage, prevPage]);
 
   // Columns
   const columns = useMemo<ColumnDef<Announcement>[]>(
@@ -349,15 +398,9 @@ export default function AdminAnnouncementsRefactored() {
         content: formData.content,
         expires_at: formData.expires_at ? new Date(formData.expires_at) : undefined,
       });
-      toast({ title: 'Success', description: 'Announcement created and published!' });
-      setFormData({ title: '', content: '', expires_at: '' });
-      setCreateDialogOpen(false);
+      // Dialog closes automatically via useEffect
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err?.message || 'Failed to create announcement',
-        variant: 'destructive',
-      });
+      // Error handled in mutation
     }
   };
 
@@ -374,16 +417,9 @@ export default function AdminAnnouncementsRefactored() {
           expires_at: formData.expires_at ? new Date(formData.expires_at) : null,
         },
       });
-      toast({ title: 'Success', description: 'Announcement updated successfully!' });
-      setFormData({ title: '', content: '', expires_at: '' });
-      setSelectedAnnouncement(null);
-      setEditDialogOpen(false);
+      // Dialog closes automatically via useEffect
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err?.message || 'Failed to update announcement',
-        variant: 'destructive',
-      });
+      // Error handled in mutation
     }
   };
 
@@ -392,15 +428,9 @@ export default function AdminAnnouncementsRefactored() {
 
     try {
       await deleteAnnouncement(selectedAnnouncement.announcement_id);
-      toast({ title: 'Success', description: 'Announcement deleted successfully!' });
-      setSelectedAnnouncement(null);
-      setDeleteDialogOpen(false);
+      // Dialog closes automatically via useEffect
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err?.message || 'Failed to delete announcement',
-        variant: 'destructive',
-      });
+      // Error handled in mutation
     }
   };
 
@@ -409,19 +439,9 @@ export default function AdminAnnouncementsRefactored() {
 
     try {
       await toggleStatus(selectedAnnouncement.announcement_id);
-      const newStatus = !selectedAnnouncement.is_active;
-      toast({
-        title: 'Success',
-        description: newStatus ? 'Announcement published!' : 'Announcement unpublished',
-      });
-      setSelectedAnnouncement(null);
-      setToggleDialogOpen(false);
+      // Dialog closes automatically via useEffect
     } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err?.message || 'Failed to toggle status',
-        variant: 'destructive',
-      });
+      // Error handled in mutation
     }
   };
 
@@ -433,9 +453,10 @@ export default function AdminAnnouncementsRefactored() {
     <PageContainer>
       {/* Header */}
       <PageHeader
-        title={
-          <div className="flex items-center gap-3">
-            Announcements
+        title="Announcements"
+        description={
+          <div className="flex items-center gap-2">
+            Create and manage platform-wide announcements
             {isConnected && (
               <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
                 <Wifi className="w-3 h-3 mr-1" />
@@ -444,7 +465,6 @@ export default function AdminAnnouncementsRefactored() {
             )}
           </div>
         }
-        description="Create and manage platform-wide announcements"
         icon={<Megaphone className="w-6 h-6 text-white" />}
         actions={
           <Button
@@ -488,10 +508,10 @@ export default function AdminAnnouncementsRefactored() {
             <div className="flex flex-col gap-3">
               {announcements
                 .filter(
-                  (a) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
+                  (a: Announcement) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
                 )
                 .slice(0, 3)
-                .map((announcement) => (
+                .map((announcement: Announcement) => (
                   <div
                     key={announcement.announcement_id}
                     className="p-4 border border-blue-200 rounded-xl bg-white/60 backdrop-blur-sm"
@@ -536,14 +556,15 @@ export default function AdminAnnouncementsRefactored() {
         </Card>
       )}
 
-      {/* Data Table */}
+      {/* Data Table with Pagination */}
       <DataTable
         data={filteredData}
         columns={columns}
         searchPlaceholder="Search titles, content, authors, dates..."
         onSearchChange={setGlobalFilter}
         filters={filters}
-        title="All Announcements"
+        title={`All Announcements (${meta?.total || 0} total)`}
+        pagination={pagination}
         emptyState={{
           icon: <Megaphone className="w-12 h-12 text-gray-300" />,
           title: 'No announcements found',

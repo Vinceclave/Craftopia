@@ -1,5 +1,5 @@
 // apps/web/src/components/shared/DataTable.tsx
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -35,11 +35,13 @@ interface DataTableProps<TData> {
     icon: React.ReactNode;
     title: string;
     description: string;
+    action?: React.ReactNode;
   };
   title?: string;
   showPagination?: boolean;
   defaultPageSize?: number;
   pageSizeOptions?: number[];
+  action?: React.ReactNode; // New prop for action button
 }
 
 export function DataTable<TData>({
@@ -54,6 +56,7 @@ export function DataTable<TData>({
   showPagination = true,
   defaultPageSize = 10,
   pageSizeOptions = [5, 10, 20, 50],
+  action, // New prop
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState(searchValue);
   const [pagination, setPagination] = useState<PaginationState>({
@@ -84,37 +87,47 @@ export function DataTable<TData>({
   return (
     <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm">
       {/* Filters Header */}
-      {(onSearchChange || filters.length > 0) && (
+      {(onSearchChange || filters.length > 0 || action) && (
         <CardHeader>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search Input */}
-            {onSearchChange && (
-              <div className={`relative ${filters.length > 0 ? 'md:col-span-2' : 'md:col-span-4'}`}>
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder={searchPlaceholder}
-                  value={globalFilter}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73]"
-                />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Search and Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
+              {/* Search Input */}
+              {onSearchChange && (
+                <div className={`relative ${filters.length > 0 ? 'md:col-span-2' : 'md:col-span-4'}`}>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder={searchPlaceholder}
+                    value={globalFilter}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73]"
+                  />
+                </div>
+              )}
+              
+              {/* Dynamic Filters */}
+              {filters.map((filter, index) => (
+                <Select key={index} value={filter.value} onValueChange={filter.onChange}>
+                  <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73]">
+                    <SelectValue placeholder={filter.label} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filter.options.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ))}
+            </div>
+
+            {/* Action Button */}
+            {action && (
+              <div className="flex justify-end">
+                {action}
               </div>
             )}
-            
-            {/* Dynamic Filters */}
-            {filters.map((filter, index) => (
-              <Select key={index} value={filter.value} onValueChange={filter.onChange}>
-                <SelectTrigger className="border-[#6CAC73]/20 focus:border-[#6CAC73]">
-                  <SelectValue placeholder={filter.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  {filter.options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ))}
           </div>
         </CardHeader>
       )}
@@ -179,6 +192,11 @@ export function DataTable<TData>({
                         <p className="text-gray-400 text-sm font-nunito">
                           {emptyState.description}
                         </p>
+                        {emptyState.action && (
+                          <div className="mt-2">
+                            {emptyState.action}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-gray-500 font-nunito">No data found</p>

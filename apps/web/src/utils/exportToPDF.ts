@@ -1,3 +1,4 @@
+// apps/web/src/utils/exportToPDF.ts - FIXED
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -6,14 +7,15 @@ interface ExportOptions {
   filename?: string;
 }
 
+// Define colors as RGB tuples to ensure they have exactly 3 numbers
 const COLORS = {
-  primary: [43, 74, 47],    // #2B4A2F
-  secondary: [108, 172, 115], // #6CAC73
-  lightGreen: [235, 245, 236],
-  border: [200, 200, 200],
+  primary: [43, 74, 47] as [number, number, number],    // #2B4A2F
+  secondary: [108, 172, 115] as [number, number, number], // #6CAC73
+  lightGreen: [235, 245, 236] as [number, number, number],
+  border: [200, 200, 200] as [number, number, number],
   text: {
-    primary: [33, 33, 33],
-    secondary: [100, 100, 100]
+    primary: [33, 33, 33] as [number, number, number],
+    secondary: [100, 100, 100] as [number, number, number]
   }
 };
 
@@ -27,7 +29,7 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
     const doc = new jsPDF();
     
     // Add simple header
-    doc.setFillColor(COLORS.primary[0], COLORS.primary[1], COLORS.primary[2]);
+    doc.setFillColor(...COLORS.primary);
     doc.rect(0, 0, doc.internal.pageSize.width, 15, 'F');
     
     // Title
@@ -38,14 +40,14 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
 
     // Report info
     doc.setFontSize(9);
-    doc.setTextColor(COLORS.text.secondary[0], COLORS.text.secondary[1], COLORS.text.secondary[2]);
+    doc.setTextColor(...COLORS.text.secondary);
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated: ${new Date().toLocaleDateString()} | Total Users: ${data.length}`, 14, 20);
 
     // If no data
     if (data.length === 0) {
       doc.setFontSize(12);
-      doc.setTextColor(COLORS.text.secondary[0], COLORS.text.secondary[1], COLORS.text.secondary[2]);
+      doc.setTextColor(...COLORS.text.secondary);
       doc.text('No user data available', 14, 40);
       doc.save(`${filename}.pdf`);
       return;
@@ -84,23 +86,23 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
         fontStyle: 'bold',
         lineWidth: 0.1,
         fontSize: 9,
+        lineColor: COLORS.border,
       },
       bodyStyles: {
         lineWidth: 0.1,
+        lineColor: COLORS.border,
       },
       alternateRowStyles: {
         fillColor: COLORS.lightGreen,
+        lineColor: COLORS.border,
       },
       margin: { top: 25 },
       theme: 'grid',
-      tableLine: {
-        color: COLORS.border,
-        width: 0.1,
-      },
+      // Removed invalid 'tableLine' property
       didDrawPage: (data) => {
         // Page footer
         doc.setFontSize(8);
-        doc.setTextColor(COLORS.text.secondary[0], COLORS.text.secondary[1], COLORS.text.secondary[2]);
+        doc.setTextColor(...COLORS.text.secondary);
         doc.text(
           `Page ${data.pageNumber}`,
           doc.internal.pageSize.width - 20,

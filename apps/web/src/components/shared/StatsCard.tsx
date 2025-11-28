@@ -1,7 +1,6 @@
 // apps/web/src/components/shared/StatsCard.tsx
 import { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { LucideIcon } from 'lucide-react';
 
 interface StatsCardProps {
   label: string;
