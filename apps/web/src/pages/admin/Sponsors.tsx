@@ -1,8 +1,7 @@
 // apps/web/src/pages/admin/Sponsors.tsx 
 import { useState, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Gift, Building2, Package, Wifi, Coins } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Gift, Building2, Package, Coins } from 'lucide-react';
 import { useSponsors, useRewards, useRedemptions } from '@/hooks/useSponsors';
 import { useWebSocketSponsors } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';

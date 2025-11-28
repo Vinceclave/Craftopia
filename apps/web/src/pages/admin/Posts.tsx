@@ -1,52 +1,38 @@
-// apps/web/src/pages/admin/Posts.tsx - WITH TANSTACK TABLE FOR POSTS ONLY
+// apps/web/src/pages/admin/Posts.tsx - REFACTORED WITH SHARED COMPONENTS
 import { useState, useCallback, useMemo } from 'react';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  ColumnDef,
-  flexRender,
-} from '@tanstack/react-table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription,
-  DialogFooter 
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import {
   FileText, Trash2, Star, Loader2, RefreshCw,
-  MessageCircle, AlertCircle, CheckSquare, Image as ImageIcon,
-  Calendar, MoreHorizontal, Wifi, Eye, X, User, ThumbsUp,
-  Clock, CheckCircle, Flag, ChevronLeft, ChevronRight, Search,
+  MessageCircle, AlertCircle, CheckSquare,
+  Calendar, MoreHorizontal, Wifi, Eye, User, ThumbsUp,
+  Clock, CheckCircle, Flag, Image as ImageIcon,
 } from 'lucide-react';
 import { usePosts } from '@/hooks/usePosts';
 import { useReports } from '@/hooks/useReports';
 import { useWebSocketPosts, useWebSocket, useWebSocketReports } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Post, Comment } from '@/lib/api';
 import type { ExtendedReport } from '@/hooks/useReports';
+
+// Import shared components
+import {
+  DataTable,
+  ConfirmDialog,
+  StatsGrid,
+  PageHeader,
+  LoadingState,
+  ErrorState,
+  PageContainer,
+  DetailModal,
+  DetailStatGrid,
+  type DetailSection,
+  type FilterOption,
+} from '@/components/shared';
 
 export default function AdminPosts() {
   const {
@@ -67,7 +53,6 @@ export default function AdminPosts() {
   const {
     reports,
     stats: reportStats,
-    isLoading: isLoadingReports,
     params: reportParams,
     setParams: setReportParams,
     updateStatus: updateReportStatus,
@@ -80,11 +65,7 @@ export default function AdminPosts() {
 
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<string>('posts');
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [searchValue, setSearchValue] = useState('');
   
   // Dialog states
   const [viewPostModal, setViewPostModal] = useState(false);
@@ -99,7 +80,59 @@ export default function AdminPosts() {
   const [selectedReport, setSelectedReport] = useState<ExtendedReport | null>(null);
   const [moderatorNotes, setModeratorNotes] = useState('');
 
-  // Define columns for TanStack Table
+  // WebSocket real-time updates
+  useWebSocketPosts({
+    onCreated: useCallback(() => {
+      info('New post created');
+      refetch();
+    }, [info, refetch]),
+    
+    onUpdated: useCallback(() => {
+      info('Post updated');
+      refetch();
+    }, [info, refetch]),
+    
+    onDeleted: useCallback(() => {
+      info('Post removed');
+      refetch();
+    }, [info, refetch]),
+  });
+
+  useWebSocketReports({
+    onCreated: useCallback((data: any) => {
+      success(data.message || 'New report filed');
+      refetchReports();
+      refetch();
+    }, [success, refetchReports, refetch]),
+    
+    onUpdated: useCallback((data: any) => {
+      info(data.message || 'Report status updated');
+      refetchReports();
+    }, [info, refetchReports]),
+    
+    onResolved: useCallback((data: any) => {
+      success(data.message || 'Report resolved');
+      refetchReports();
+      refetch();
+    }, [success, refetchReports, refetch]),
+  });
+
+  // Stats
+  const totalPosts = posts.length;
+  const totalComments = comments.length;
+  const featuredPosts = posts.filter(p => p.featured).length;
+  const reportedPosts = posts.filter(p => p._count && p._count.reports > 0).length;
+
+  // Stats configuration
+  const statsConfig = [
+    { label: 'Total Posts', value: totalPosts, icon: <FileText className="w-5 h-5" />, color: 'text-[#2B4A2F]' },
+    { label: 'Total Comments', value: totalComments, icon: <MessageCircle className="w-5 h-5" />, color: 'text-[#2B4A2F]' },
+    { label: 'Featured', value: featuredPosts, icon: <Star className="w-5 h-5" />, color: 'text-yellow-600' },
+    { label: 'Reported', value: reportedPosts, icon: <AlertCircle className="w-5 h-5" />, color: 'text-rose-600' },
+    { label: 'Pending Reports', value: reportStats?.pending || 0, icon: <Flag className="w-5 h-5" />, color: 'text-orange-600' },
+  ];
+
+  // Define columns for Posts DataTable
   const postColumns = useMemo<ColumnDef<Post>[]>(
     () => [
       {
@@ -265,63 +298,165 @@ export default function AdminPosts() {
     [selectedPosts, posts, isFeaturing, isDeleting]
   );
 
-  // Create table instance
-  const table = useReactTable({
-    data: posts,
-    columns: postColumns,
-    state: {
-      globalFilter,
-      pagination,
-    },
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-  });
+  // Define columns for Comments DataTable
+  const commentColumns = useMemo<ColumnDef<Comment>[]>(
+    () => [
+      {
+        accessorKey: 'content',
+        header: 'Comment',
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-[#2B4A2F] font-nunito line-clamp-2">
+              {row.original.content}
+            </p>
+            {row.original.post && (
+              <p className="text-xs text-blue-600 font-nunito">
+                On: {row.original.post.title}
+              </p>
+            )}
+          </div>
+        ),
+        size: 300,
+      },
+      {
+        accessorKey: 'user',
+        header: 'Author',
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-sm text-[#2B4A2F] font-poppins">
+              <User className="w-4 h-4" />
+              {row.original.user.username}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500 font-nunito">
+              <Calendar className="w-3 h-3" />
+              {new Date(row.original.created_at).toLocaleDateString()}
+            </div>
+          </div>
+        ),
+        size: 150,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <Button
+            size="sm"
+            onClick={() => handleOpenDeleteComment(row.original)}
+            disabled={isDeleting}
+            className="h-8 w-8 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
+            title="Delete Comment"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        ),
+        size: 80,
+      },
+    ],
+    [isDeleting]
+  );
 
-  // WebSocket real-time updates
-  useWebSocketPosts({
-    onCreated: useCallback(() => {
-      info('New post created');
-      refetch();
-    }, [info, refetch]),
-    
-    onUpdated: useCallback(() => {
-      info('Post updated');
-      refetch();
-    }, [info, refetch]),
-    
-    onDeleted: useCallback(() => {
-      info('Post removed');
-      refetch();
-    }, [info, refetch]),
-  });
-
-  useWebSocketReports({
-    onCreated: useCallback((data: any) => {
-      success(data.message || 'New report filed');
-      refetchReports();
-      refetch();
-    }, [success, refetchReports, refetch]),
-    
-    onUpdated: useCallback((data: any) => {
-      info(data.message || 'Report status updated');
-      refetchReports();
-    }, [info, refetchReports]),
-    
-    onResolved: useCallback((data: any) => {
-      success(data.message || 'Report resolved');
-      refetchReports();
-      refetch();
-    }, [success, refetchReports, refetch]),
-  });
-
-  // Stats
-  const totalPosts = posts.length;
-  const totalComments = comments.length;
-  const featuredPosts = posts.filter(p => p.featured).length;
-  const reportedPosts = posts.filter(p => p._count && p._count.reports > 0).length;
+  // Define columns for Reports DataTable
+  const reportColumns = useMemo<ColumnDef<ExtendedReport>[]>(
+    () => [
+      {
+        accessorKey: 'report_id',
+        header: 'ID',
+        cell: ({ row }) => (
+          <span className="font-semibold text-[#2B4A2F] font-poppins">
+            #{row.original.report_id}
+          </span>
+        ),
+        size: 60,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const status = row.original.status;
+          return (
+            <Badge
+              className={`font-poppins border-0 ${
+                status === 'pending' 
+                  ? 'bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700' 
+                  : status === 'in_review' 
+                  ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700'
+                  : 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+              }`}
+            >
+              {status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+              {status === 'in_review' && <Eye className="w-3 h-3 mr-1" />}
+              {status === 'resolved' && <CheckCircle className="w-3 h-3 mr-1" />}
+              {status.replace('_', ' ')}
+            </Badge>
+          );
+        },
+        size: 120,
+      },
+      {
+        accessorKey: 'reason',
+        header: 'Reason',
+        cell: ({ row }) => (
+          <p className="text-sm text-gray-600 font-nunito line-clamp-2">
+            {row.original.reason}
+          </p>
+        ),
+        size: 200,
+      },
+      {
+        accessorKey: 'reporter',
+        header: 'Reporter',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 text-sm text-[#2B4A2F] font-poppins">
+            <User className="w-4 h-4" />
+            {row.original.reporter?.username || 'Unknown'}
+          </div>
+        ),
+        size: 120,
+      },
+      {
+        accessorKey: 'created_at',
+        header: 'Date',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2 text-xs text-gray-500 font-nunito">
+            <Calendar className="w-3 h-3" />
+            {new Date(row.original.created_at).toLocaleDateString()}
+          </div>
+        ),
+        size: 120,
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => {
+          const report = row.original;
+          return (
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                onClick={() => handleUpdateReportStatus(report.report_id, 'in_review')}
+                disabled={isUpdatingReport || report.status === 'in_review' || report.status === 'resolved'}
+                className="h-8 px-2 text-xs border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                Review
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleOpenResolveReport(report)}
+                disabled={isUpdatingReport || report.status === 'resolved'}
+                className="h-8 px-2 text-xs bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+              >
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Resolve
+              </Button>
+            </div>
+          );
+        },
+        size: 180,
+      },
+    ],
+    [isUpdatingReport]
+  );
 
   // Handlers
   const handleOpenDeletePost = (post: Post) => {
@@ -438,99 +573,108 @@ export default function AdminPosts() {
     }
   };
 
+  // Report filter options
+  const reportFilters: FilterOption[] = [
+    {
+      label: 'Status',
+      value: reportParams.status || 'all',
+      options: [
+        { label: 'All Status', value: 'all' },
+        { label: 'Pending', value: 'pending' },
+        { label: 'In Review', value: 'in_review' },
+        { label: 'Resolved', value: 'resolved' },
+      ],
+      onChange: (value) => setReportParams({ 
+        ...reportParams, 
+        status: value === 'all' ? undefined : value, 
+        page: 1 
+      }),
+    },
+  ];
+
+  // Detail sections for post modal
+  const getPostDetailSections = (post: Post): DetailSection[] => [
+    {
+      title: 'Post Information',
+      items: [
+        {
+          label: 'Author',
+          value: post.user.username,
+          icon: <User className="w-4 h-4" />,
+        },
+        {
+          label: 'Category',
+          value: <Badge className="capitalize bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0">
+            {post.category}
+          </Badge>,
+        },
+        {
+          label: 'Created',
+          value: new Date(post.created_at).toLocaleString(),
+          icon: <Calendar className="w-4 h-4" />,
+        },
+        {
+          label: 'Updated',
+          value: new Date(post.updated_at).toLocaleString(),
+          icon: <Clock className="w-4 h-4" />,
+        },
+        {
+          label: 'Content',
+          value: <p className="whitespace-pre-wrap text-sm">{post.content}</p>,
+          fullWidth: true,
+        },
+        ...(post.tags && post.tags.length > 0 ? [{
+          label: 'Tags',
+          value: (
+            <div className="flex flex-wrap gap-1">
+              {post.tags.map((tag, i) => (
+                <Badge key={i} className="text-xs bg-white border border-[#6CAC73]/20 text-[#2B4A2F]">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          ),
+          fullWidth: true,
+        }] : []),
+      ],
+    },
+  ];
+
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73]" />
-          <p className="text-[#2B4A2F] font-poppins">Loading content...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState message="Loading content..." />;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
-              style={{
-                left: `${15 + i * 30}%`,
-                top: `${20 + (i % 2) * 25}%`,
-                animationDelay: `${i * 1.5}s`,
-                animationDuration: '4s'
-              }}
-            />
-          ))}
-        </div>
-        
-        <div className="max-w-7xl mx-auto relative z-10">
-          <Alert className="border-rose-200 bg-rose-50/80 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-rose-900 font-poppins mb-1">Error loading content</p>
-                  <p className="text-rose-700 text-sm font-nunito">{(error as Error).message}</p>
-                </div>
-                <Button 
-                  size="sm" 
-                  onClick={() => refetch()} 
-                  className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" /> Retry
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
+      <PageContainer>
+        <ErrorState 
+          error={error as Error} 
+          title="Error loading content"
+          onRetry={refetch}
+        />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-      {/* Background Floating Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
-            style={{
-              left: `${10 + i * 25}%`,
-              top: `${15 + (i % 3) * 20}%`,
-              animationDelay: `${i * 1.2}s`,
-              animationDuration: '4s'
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="w-full max-w-7xl mx-auto relative z-10 flex flex-col gap-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-2">
-                Content Moderation
-                {isConnected && (
-                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    Live
-                  </Badge>
-                )}
-              </h1>
-              <p className="text-gray-600 text-sm font-nunito">Manage and moderate platform content in real-time</p>
-            </div>
+    <PageContainer>
+      {/* Page Header */}
+      <PageHeader
+        title={
+          <div className="flex items-center gap-2">
+            Content Moderation
+            {isConnected && (
+              <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
+                <Wifi className="w-3 h-3 mr-1" />
+                Live
+              </Badge>
+            )}
           </div>
-
-          <div className="flex items-center gap-3">
+        }
+        description="Manage and moderate platform content in real-time"
+        icon={<FileText className="w-6 h-6 text-white" />}
+        actions={
+          <>
             {selectedPosts.length > 0 && (
               <Button
                 size="sm"
@@ -563,502 +707,114 @@ export default function AdminPosts() {
             >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
-          </div>
+          </>
+        }
+      />
+
+      {/* Stats Grid */}
+      <StatsGrid stats={statsConfig} columns={{ base: 2, lg: 5 }} />
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2 w-full lg:w-auto">
+            <TabsTrigger 
+              value="posts" 
+              className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+            >
+              <FileText className="w-4 h-4" /> Posts ({totalPosts})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="comments" 
+              className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+            >
+              <MessageCircle className="w-4 h-4" /> Comments ({totalComments})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="reports" 
+              className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
+            >
+              <Flag className="w-4 h-4" /> Reports ({reports?.length || 0})
+            </TabsTrigger>
+          </TabsList>
+
+          {activeTab === 'posts' && posts.length > 0 && (
+            <Button
+              size="sm"
+              onClick={selectAllPosts}
+              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F] text-sm font-poppins"
+            >
+              <CheckSquare className="w-4 h-4 mr-2" />
+              {selectedPosts.length === posts.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[
-            { label: 'Total Posts', value: totalPosts, icon: FileText, color: 'text-[#2B4A2F]' },
-            { label: 'Total Comments', value: totalComments, icon: MessageCircle, color: 'text-[#2B4A2F]' },
-            { label: 'Featured', value: featuredPosts, icon: Star, color: 'text-yellow-600' },
-            { label: 'Reported', value: reportedPosts, icon: AlertCircle, color: 'text-rose-600' },
-            { label: 'Pending Reports', value: reportStats?.pending || 0, icon: Flag, color: 'text-orange-600' },
-          ].map((stat, i) => (
-            <Card key={i} className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-gray-600 font-nunito">{stat.label}</p>
-                    <p className={`text-3xl font-bold font-poppins ${stat.color}`}>{stat.value}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl flex items-center justify-center border border-[#6CAC73]/10 shadow-sm">
-                    <stat.icon className="w-6 h-6 text-[#6CAC73]" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Posts Tab */}
+        <TabsContent value="posts">
+          <DataTable
+            data={posts}
+            columns={postColumns}
+            title="All Posts"
+            searchPlaceholder="Search posts..."
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            showPagination={true}
+            defaultPageSize={10}
+            pageSizeOptions={[5, 10, 20, 50]}
+            emptyState={{
+              icon: <FileText className="w-12 h-12 text-gray-300" />,
+              title: 'No posts found',
+              description: 'Posts will appear here once created',
+            }}
+          />
+        </TabsContent>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2 w-full lg:w-auto">
-              <TabsTrigger 
-                value="posts" 
-                className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
-              >
-                <FileText className="w-4 h-4" /> Posts ({totalPosts})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="comments" 
-                className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
-              >
-                <MessageCircle className="w-4 h-4" /> Comments ({totalComments})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="reports" 
-                className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
-              >
-                <Flag className="w-4 h-4" /> Reports ({reports?.length || 0})
-              </TabsTrigger>
-            </TabsList>
+        {/* Comments Tab */}
+        <TabsContent value="comments">
+          <DataTable
+            data={comments}
+            columns={commentColumns}
+            title="All Comments"
+            searchPlaceholder="Search comments..."
+            showPagination={true}
+            defaultPageSize={10}
+            emptyState={{
+              icon: <MessageCircle className="w-12 h-12 text-gray-300" />,
+              title: 'No comments found',
+              description: 'Comments will appear here',
+            }}
+          />
+        </TabsContent>
 
-            {activeTab === 'posts' && posts.length > 0 && (
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search posts..."
-                    value={globalFilter}
-                    onChange={(e) => setGlobalFilter(e.target.value)}
-                    className="pl-10 border-[#6CAC73]/20 focus:border-[#6CAC73] w-64"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  onClick={selectAllPosts}
-                  className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F] text-sm font-poppins"
-                >
-                  <CheckSquare className="w-4 h-4 mr-2" />
-                  {selectedPosts.length === posts.length ? 'Deselect All' : 'Select All'}
-                </Button>
-              </div>
-            )}
-          </div>
+        {/* Reports Tab */}
+        <TabsContent value="reports">
+          <DataTable
+            data={reports || []}
+            columns={reportColumns}
+            title="All Reports"
+            searchPlaceholder="Search reports..."
+            filters={reportFilters}
+            showPagination={true}
+            defaultPageSize={10}
+            emptyState={{
+              icon: <Flag className="w-12 h-12 text-gray-300" />,
+              title: 'No reports found',
+              description: reportParams.status ? 'Try changing the filter' : 'No reports have been filed yet',
+            }}
+          />
+        </TabsContent>
+      </Tabs>
 
-          {/* Posts Tab with TanStack Table */}
-          <TabsContent value="posts">
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="p-6 pb-4">
-                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Posts</CardTitle>
-                <CardDescription className="text-gray-600 font-nunito">
-                  Manage all platform posts with real-time updates
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 flex flex-col gap-4">
-                {posts.length === 0 ? (
-                  <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <FileText className="w-12 h-12 text-gray-300" />
-                    <p className="text-gray-500 font-medium font-poppins">No posts found</p>
-                    <p className="text-sm text-gray-400 font-nunito">Posts will appear here once created</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="rounded-lg border border-[#6CAC73]/20 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          {table.getHeaderGroups().map(headerGroup => (
-                            <tr key={headerGroup.id} className="border-b border-[#6CAC73]/20 bg-gray-50/50">
-                              {headerGroup.headers.map(header => (
-                                <th 
-                                  key={header.id} 
-                                  className="text-left p-4 font-semibold text-[#2B4A2F] font-poppins"
-                                  style={{ width: header.getSize() }}
-                                >
-                                  {flexRender(header.column.columnDef.header, header.getContext())}
-                                </th>
-                              ))}
-                            </tr>
-                          ))}
-                        </thead>
-                        <tbody>
-                          {table.getRowModel().rows.length === 0 ? (
-                            <tr>
-                              <td colSpan={postColumns.length} className="p-8 text-center">
-                                <div className="flex flex-col items-center gap-3">
-                                  <FileText className="w-12 h-12 text-gray-300" />
-                                  <p className="text-gray-500 font-medium font-poppins">No posts found</p>
-                                  <p className="text-gray-400 text-sm font-nunito">Try adjusting your search</p>
-                                </div>
-                              </td>
-                            </tr>
-                          ) : (
-                            table.getRowModel().rows.map(row => (
-                              <tr 
-                                key={row.id} 
-                                className={`border-b border-[#6CAC73]/10 transition-colors last:border-0 ${
-                                  selectedPosts.includes(row.original.post_id)
-                                    ? 'bg-blue-50/70 border-blue-200'
-                                    : 'hover:bg-gray-50/50'
-                                }`}
-                              >
-                                {row.getVisibleCells().map(cell => (
-                                  <td key={cell.id} className="p-4">
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#6CAC73]/20">
-                      <div className="text-sm text-gray-500 font-nunito">
-                        Showing{' '}
-                        <span className="font-semibold text-[#2B4A2F]">
-                          {table.getRowModel().rows.length > 0 
-                            ? (table.getState().pagination.pageIndex * table.getState().pagination.pageSize) + 1 
-                            : 0
-                          }
-                        </span>{' '}
-                        to{' '}
-                        <span className="font-semibold text-[#2B4A2F]">
-                          {Math.min(
-                            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                            posts.length
-                          )}
-                        </span>{' '}
-                        of <span className="font-semibold text-[#2B4A2F]">{posts.length}</span> posts
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-500 font-nunito hidden sm:block">
-                          Page <span className="font-semibold text-[#2B4A2F]">{table.getState().pagination.pageIndex + 1}</span>{' '}
-                          of <span className="font-semibold text-[#2B4A2F]">{table.getPageCount()}</span>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}
-                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
-                          >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            Previous
-                          </Button>
-                          
-                          <div className="flex gap-1">
-                            {Array.from({ length: Math.min(5, table.getPageCount()) }, (_, i) => {
-                              let pageIndex;
-                              if (table.getPageCount() <= 5) {
-                                pageIndex = i;
-                              } else {
-                                const startPage = Math.max(0, Math.min(table.getPageCount() - 5, table.getState().pagination.pageIndex - 2));
-                                pageIndex = startPage + i;
-                              }
-                              
-                              return (
-                                <Button
-                                  key={pageIndex}
-                                  variant={table.getState().pagination.pageIndex === pageIndex ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => table.setPageIndex(pageIndex)}
-                                  className={`min-w-9 h-9 p-0 ${
-                                    table.getState().pagination.pageIndex === pageIndex
-                                      ? 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white border-0'
-                                      : 'border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10'
-                                  }`}
-                                >
-                                  {pageIndex + 1}
-                                </Button>
-                              );
-                            })}
-                          </div>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}
-                            className="border-[#6CAC73]/20 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
-                          >
-                            Next
-                            <ChevronRight className="w-4 h-4 ml-1" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Comments Tab - Simple List without Pagination */}
-          <TabsContent value="comments">
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="p-6 pb-4">
-                <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">All Comments ({totalComments})</CardTitle>
-                <CardDescription className="text-gray-600 font-nunito">Manage platform comments</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {comments.length === 0 ? (
-                  <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <MessageCircle className="w-12 h-12 text-gray-300" />
-                    <p className="text-gray-500 font-medium font-poppins">No comments found</p>
-                    <p className="text-sm text-gray-400 font-nunito">Comments will appear here</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {comments.map((comment: Comment) => (
-                      <div key={comment.comment_id} className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 transition-colors flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                        <div className="flex-1 flex flex-col gap-2">
-                          <p className="text-sm text-[#2B4A2F] font-nunito">{comment.content}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 font-nunito">
-                            <span className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {comment.user.username}
-                            </span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(comment.created_at).toLocaleDateString()}
-                            </span>
-                            {comment.post && (
-                              <>
-                                <span>•</span>
-                                <span className="text-blue-600">On: {comment.post.title}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenDeleteComment(comment)}
-                          disabled={isDeleting}
-                          className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600 flex-shrink-0"
-                          title="Delete Comment"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Reports Tab - Simple List without Pagination */}
-          <TabsContent value="reports">
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader className="p-6 pb-4">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-lg font-semibold text-[#2B4A2F] font-poppins">
-                      All Reports ({reports?.length || 0})
-                    </CardTitle>
-                    <CardDescription className="text-gray-600 font-nunito">
-                      Review and manage content reports
-                    </CardDescription>
-                  </div>
-                  <Select 
-                    value={reportParams.status || 'all'}
-                    onValueChange={(status) =>
-                      setReportParams({ ...reportParams, status: status === 'all' ? undefined : status, page: 1 })
-                    }
-                  >
-                    <SelectTrigger className="w-full lg:w-48 border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10 bg-white/50">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_review">In Review</SelectItem>
-                      <SelectItem value="resolved">Resolved</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                {isLoadingReports ? (
-                  <div className="text-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#6CAC73] mx-auto mb-4" />
-                    <p className="text-gray-500 font-poppins">Loading reports...</p>
-                  </div>
-                ) : !reports || reports.length === 0 ? (
-                  <div className="text-center py-12 flex flex-col items-center gap-2">
-                    <Flag className="w-12 h-12 text-gray-300" />
-                    <p className="text-gray-500 font-medium font-poppins">No reports found</p>
-                    <p className="text-sm text-gray-400 font-nunito">
-                      {reportParams.status ? 'Try changing the filter' : 'No reports have been filed yet'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {reports.map((report) => (
-                      <div 
-                        key={report.report_id} 
-                        className="p-4 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/80 hover:shadow-md transition-all duration-300"
-                      >
-                        <div className="flex flex-col gap-3">
-                          {/* Report Header */}
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <p className="font-semibold text-[#2B4A2F] font-poppins">Report #{report.report_id}</p>
-                              <Badge
-                                className={`font-poppins border-0 ${
-                                  report.status === 'pending' 
-                                    ? 'bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700' 
-                                    : report.status === 'in_review' 
-                                    ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700'
-                                    : 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                }`}
-                              >
-                                {report.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
-                                {report.status === 'in_review' && <Eye className="w-3 h-3 mr-1" />}
-                                {report.status === 'resolved' && <CheckCircle className="w-3 h-3 mr-1" />}
-                                {report.status.replace('_', ' ')}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          {/* Report Details */}
-                          <div className="flex flex-col gap-2">
-                            <p className="text-sm text-gray-600 font-nunito">
-                              <span className="font-medium text-[#2B4A2F]">Reason:</span> {report.reason}
-                            </p>
-                            
-                            <div className="text-xs text-gray-500 font-nunito">
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                Reported by: {report.reporter?.username || 'Unknown'}
-                              </span>
-                              <span className="flex items-center gap-1 mt-1">
-                                <Calendar className="w-3 h-3" />
-                                {new Date(report.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Reported Content */}
-                          {report.reported_post && (
-                            <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
-                              <div className="flex items-start gap-3">
-                                {report.reported_post.post_id && posts.find(p => p.post_id === report.reported_post?.post_id)?.image_url && (
-                                  <div className="w-16 h-16 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
-                                    <img 
-                                      src={posts.find(p => p.post_id === report.reported_post?.post_id)?.image_url} 
-                                      alt="Post"
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                )}
-                                <div className="flex-1">
-                                  <span className="font-medium text-[#2B4A2F] font-poppins text-sm">Reported Post</span>
-                                  <p className="text-gray-600 mt-1 line-clamp-2 text-sm font-nunito">
-                                    {report.reported_post.title || report.reported_post.content}
-                                  </p>
-                                  {report.reported_post.post_id && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        const post = posts.find(p => p.post_id === report.reported_post?.post_id);
-                                        if (post) handleViewPost(post);
-                                      }}
-                                      className="mt-2 h-7 text-xs border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                                    >
-                                      <Eye className="w-3 h-3 mr-1" />
-                                      View Full Post
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {report.reported_comment && (
-                            <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
-                              <span className="font-medium text-[#2B4A2F] font-poppins text-sm">Reported Comment</span>
-                              <p className="text-gray-600 mt-1 text-sm font-nunito">
-                                {report.reported_comment.content}
-                              </p>
-                            </div>
-                          )}
-
-                          {report.moderator_notes && (
-                            <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg border border-blue-200">
-                              <span className="font-medium text-blue-900 font-poppins text-sm">Moderator Notes</span>
-                              <p className="text-blue-700 mt-1 text-sm font-nunito">
-                                {report.moderator_notes}
-                              </p>
-                            </div>
-                          )}
-
-                          {report.resolved_at && (
-                            <div className="text-xs text-[#6CAC73] font-nunito flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              Resolved on {new Date(report.resolved_at).toLocaleString()}
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="flex gap-2 pt-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleUpdateReportStatus(report.report_id, 'in_review')}
-                              disabled={isUpdatingReport || report.status === 'in_review' || report.status === 'resolved'}
-                              className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                            >
-                              {isUpdatingReport ? (
-                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                              ) : (
-                                <Eye className="w-4 h-4 mr-1" />
-                              )}
-                              Review
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenResolveReport(report)}
-                              disabled={isUpdatingReport || report.status === 'resolved'}
-                              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
-                            >
-                              {isUpdatingReport ? (
-                                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                              )}
-                              Resolve
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Dialogs remain the same */}
-      {/* View Post Dialog */}
-      <Dialog open={viewPostModal} onOpenChange={setViewPostModal}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-          <DialogHeader>
-            <DialogTitle className="text-[#2B4A2F] font-poppins flex items-center justify-between">
-              <span>Post Details</span>
-              <Button
-                size="sm"
-                onClick={() => setViewPostModal(false)}
-                className="h-8 w-8 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedPost && (
-            <div className="flex flex-col gap-4 py-4">
-              {/* Post Header */}
+      {/* View Post Detail Modal */}
+      {selectedPost && (
+        <DetailModal
+          open={viewPostModal}
+          onOpenChange={setViewPostModal}
+          title="Post Details"
+          icon={<FileText className="w-5 h-5" />}
+          header={
+            <>
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-2xl font-bold text-[#2B4A2F] font-poppins">{selectedPost.title}</h2>
@@ -1073,24 +829,8 @@ export default function AdminPosts() {
                     </Badge>
                   )}
                 </div>
-
-                {/* Meta Info */}
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 font-nunito">
-                  <span className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    {selectedPost.user.username}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(selectedPost.created_at).toLocaleString()}
-                  </span>
-                  <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                    {selectedPost.category}
-                  </Badge>
-                </div>
               </div>
 
-              {/* Post Image */}
               {selectedPost.image_url && (
                 <div className="rounded-xl overflow-hidden border border-[#6CAC73]/20">
                   <img 
@@ -1101,241 +841,146 @@ export default function AdminPosts() {
                 </div>
               )}
 
-              {/* Post Content */}
-              <div className="p-4 bg-gradient-to-br from-[#FFF9F0] to-white rounded-xl border border-[#6CAC73]/10">
-                <p className="text-[#2B4A2F] font-nunito whitespace-pre-wrap">{selectedPost.content}</p>
-              </div>
-
-              {/* Tags */}
-              {selectedPost.tags?.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedPost.tags.map((tag, i) => (
-                    <Badge key={i} className="text-xs bg-white border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10 text-center">
-                  <p className="text-2xl font-bold text-[#2B4A2F] font-poppins">{selectedPost._count?.likes || 0}</p>
-                  <p className="text-xs text-gray-600 font-nunito">Likes</p>
-                </div>
-                <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10 text-center">
-                  <p className="text-2xl font-bold text-[#2B4A2F] font-poppins">{selectedPost._count?.comments || 0}</p>
-                  <p className="text-xs text-gray-600 font-nunito">Comments</p>
-                </div>
-                <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10 text-center">
-                  <p className="text-2xl font-bold text-rose-600 font-poppins">{selectedPost._count?.reports || 0}</p>
-                  <p className="text-xs text-gray-600 font-nunito">Reports</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t border-[#6CAC73]/20">
-                <Button
-                  onClick={() => handleFeaturePost(selectedPost.post_id)}
-                  disabled={isFeaturing}
-                  className="flex-1 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                >
-                  <Star className={`w-4 h-4 mr-2 ${selectedPost.featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-                  {selectedPost.featured ? 'Unfeature' : 'Feature'} Post
-                </Button>
-                <Button
-                  onClick={() => handleOpenDeletePost(selectedPost)}
-                  disabled={isDeleting}
-                  className="flex-1 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-                >
-                  {isDeleting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 mr-2" />
-                  )}
-                  Delete Post
-                </Button>
-              </div>
+              <DetailStatGrid
+                stats={[
+                  {
+                    icon: <ThumbsUp className="w-5 h-5" />,
+                    label: 'Likes',
+                    value: selectedPost._count?.likes || 0,
+                  },
+                  {
+                    icon: <MessageCircle className="w-5 h-5" />,
+                    label: 'Comments',
+                    value: selectedPost._count?.comments || 0,
+                  },
+                  {
+                    icon: <AlertCircle className="w-5 h-5" />,
+                    label: 'Reports',
+                    value: selectedPost._count?.reports || 0,
+                    color: 'text-rose-600',
+                  },
+                ]}
+                columns={3}
+              />
+            </>
+          }
+          sections={getPostDetailSections(selectedPost)}
+          footer={
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleFeaturePost(selectedPost.post_id)}
+                disabled={isFeaturing}
+                className="flex-1 border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+              >
+                <Star className={`w-4 h-4 mr-2 ${selectedPost.featured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                {selectedPost.featured ? 'Unfeature' : 'Feature'} Post
+              </Button>
+              <Button
+                onClick={() => handleOpenDeletePost(selectedPost)}
+                disabled={isDeleting}
+                className="flex-1 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Delete Post
+              </Button>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          }
+        />
+      )}
 
-      {/* Delete Post AlertDialog */}
-      <AlertDialog open={deletePostDialog} onOpenChange={setDeletePostDialog}>
-        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-rose-600 font-poppins">
-              <Trash2 className="w-5 h-5 inline mr-2" />
-              Delete Post?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="font-nunito">
-              This action cannot be undone. This will permanently delete the post and all its comments.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {selectedPost && (
-            <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
-              <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
-              <AlertDescription className="font-nunito">
-                <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
-                <p className="font-bold text-[#2B4A2F]">"{selectedPost.title}"</p>
-              </AlertDescription>
-            </Alert>
-          )}
+      {/* Delete Post Confirmation Dialog */}
+      <ConfirmDialog
+        open={deletePostDialog}
+        onOpenChange={setDeletePostDialog}
+        onConfirm={handleConfirmDeletePost}
+        title="Delete Post?"
+        description="This action cannot be undone. This will permanently delete the post and all its comments."
+        confirmText="Delete Post"
+        cancelText="Cancel"
+        loading={isDeleting}
+        variant="danger"
+        icon={<Trash2 className="w-5 h-5" />}
+        alertMessage={
+          selectedPost && (
+            <>
+              <p className="font-medium mb-2">You are about to delete:</p>
+              <p className="font-bold">"{selectedPost.title}"</p>
+            </>
+          )
+        }
+      />
 
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setDeletePostDialog(false);
-                setSelectedPost(null);
-              }}
-              className="border-[#6CAC73]/20"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDeletePost}
-              disabled={isDeleting}
-              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Post
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Delete Comment Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteCommentDialog}
+        onOpenChange={setDeleteCommentDialog}
+        onConfirm={handleConfirmDeleteComment}
+        title="Delete Comment?"
+        description="This action cannot be undone. This will permanently delete the comment."
+        confirmText="Delete Comment"
+        cancelText="Cancel"
+        loading={isDeleting}
+        variant="danger"
+        icon={<Trash2 className="w-5 h-5" />}
+        alertMessage={
+          selectedComment && (
+            <>
+              <p className="font-medium mb-2">You are about to delete this comment:</p>
+              <p className="italic">"{selectedComment.content}"</p>
+            </>
+          )
+        }
+      />
 
-      {/* Delete Comment AlertDialog */}
-      <AlertDialog open={deleteCommentDialog} onOpenChange={setDeleteCommentDialog}>
-        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-rose-600 font-poppins">
-              <Trash2 className="w-5 h-5 inline mr-2" />
-              Delete Comment?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="font-nunito">
-              This action cannot be undone. This will permanently delete the comment.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          {selectedComment && (
-            <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
-              <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
-              <AlertDescription className="font-nunito">
-                <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete this comment:</p>
-                <p className="text-[#2B4A2F] italic">"{selectedComment.content}"</p>
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setDeleteCommentDialog(false);
-                setSelectedComment(null);
-              }}
-              className="border-[#6CAC73]/20"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDeleteComment}
-              disabled={isDeleting}
-              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Comment
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Bulk Delete AlertDialog */}
-      <AlertDialog open={bulkDeleteDialog} onOpenChange={setBulkDeleteDialog}>
-        <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-rose-600 font-poppins">
-              <Trash2 className="w-5 h-5 inline mr-2" />
-              Delete {selectedPosts.length} Posts?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="font-nunito">
-              This action cannot be undone. This will permanently delete all selected posts and their comments.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <Alert className="bg-gradient-to-br from-rose-50 to-white border-rose-200">
-            <AlertCircle className="h-4 w-4 text-rose-600" />
-            <AlertDescription className="font-nunito">
-              <p className="font-medium mb-2 text-rose-900">You are about to delete:</p>
-              <p className="font-bold text-rose-900">{selectedPosts.length} posts and all their associated content</p>
-            </AlertDescription>
-          </Alert>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setBulkDeleteDialog(false)}
-              className="border-[#6CAC73]/20"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmBulkDelete}
-              disabled={isBulkDeleting}
-              className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-            >
-              {isBulkDeleting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete {selectedPosts.length} Posts
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkDeleteDialog}
+        onOpenChange={setBulkDeleteDialog}
+        onConfirm={handleConfirmBulkDelete}
+        title={`Delete ${selectedPosts.length} Posts?`}
+        description="This action cannot be undone. This will permanently delete all selected posts and their comments."
+        confirmText={`Delete ${selectedPosts.length} Posts`}
+        cancelText="Cancel"
+        loading={isBulkDeleting}
+        variant="danger"
+        icon={<Trash2 className="w-5 h-5" />}
+        alertMessage={
+          <>
+            <p className="font-medium mb-2">You are about to delete:</p>
+            <p className="font-bold">{selectedPosts.length} posts and all their associated content</p>
+          </>
+        }
+      />
 
       {/* Resolve Report Dialog */}
-      <Dialog open={resolveReportModal} onOpenChange={setResolveReportModal}>
-        <DialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-          <DialogHeader>
-            <DialogTitle className="text-[#2B4A2F] font-poppins">Resolve Report</DialogTitle>
-            <DialogDescription className="font-nunito">
-              Add moderator notes and resolve this report
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-4">
-            {selectedReport && (
-              <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
-                <p className="text-sm font-medium text-[#2B4A2F] font-poppins mb-1">Report #{selectedReport.report_id}</p>
-                <p className="text-sm text-gray-600 font-nunito">{selectedReport.reason}</p>
-              </div>
-            )}
+      <ConfirmDialog
+        open={resolveReportModal}
+        onOpenChange={setResolveReportModal}
+        onConfirm={handleResolveReport}
+        title="Resolve Report"
+        description="Add moderator notes and resolve this report"
+        confirmText="Resolve Report"
+        cancelText="Cancel"
+        loading={isUpdatingReport}
+        variant="success"
+        icon={<CheckCircle className="w-5 h-5" />}
+      >
+        {selectedReport && (
+          <>
+            <div className="p-3 bg-gradient-to-br from-[#FFF9F0] to-white rounded-lg border border-[#6CAC73]/10">
+              <p className="text-sm font-medium text-[#2B4A2F] font-poppins mb-1">
+                Report #{selectedReport.report_id}
+              </p>
+              <p className="text-sm text-gray-600 font-nunito">{selectedReport.reason}</p>
+            </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="notes" className="text-[#2B4A2F] font-poppins">Moderator Notes</Label>
+              <Label htmlFor="notes" className="text-[#2B4A2F] font-poppins">
+                Moderator Notes
+              </Label>
               <Textarea
                 id="notes"
                 value={moderatorNotes}
@@ -1345,36 +990,9 @@ export default function AdminPosts() {
                 className="border-[#6CAC73]/20 focus:border-[#6CAC73] focus:ring-[#6CAC73]/10"
               />
             </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button 
-              onClick={() => setResolveReportModal(false)}
-              disabled={isUpdatingReport}
-              className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleResolveReport}
-              disabled={isUpdatingReport}
-              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
-            >
-              {isUpdatingReport ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Resolving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Resolve Report
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </>
+        )}
+      </ConfirmDialog>
+    </PageContainer>
   );
 }
