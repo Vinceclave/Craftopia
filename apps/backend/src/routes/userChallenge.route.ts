@@ -44,6 +44,12 @@ ucRouter.get(
   userChallengeController.getMyWasteStats
 );
 
+ucRouter.get(
+  '/all',
+  requireAdmin,
+  userChallengeController.getAllUserChallenges
+);
+
 // ✅ FIXED: Move user challenges list BEFORE :challengeId
 ucRouter.get(
   '/user/:userId?',
@@ -91,5 +97,7 @@ ucRouter.get(
   requireAuth,
   userChallengeController.getUserChallengeById
 );
+
+
 
 export default ucRouter;

@@ -1,4 +1,3 @@
-// apps/web/src/pages/admin/Challenges.tsx - UNIFIED CHALLENGES & USER CHALLENGES PAGE
 import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -39,15 +38,12 @@ import {
   ToggleLeft,
   ToggleRight,
   TrendingUp,
-  Save,
-  X,
   Wifi,
   Image as ImageIcon,
   User,
   Calendar,
   Award,
 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   DataTable,
   PageHeader,
@@ -60,7 +56,6 @@ import {
   ConfirmDialog,
   type DetailSection,
   type ActionButton,
-  type FilterOption,
 } from '@/components/shared';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
@@ -156,8 +151,14 @@ export default function AdminChallenges() {
     setCategory,
     refetch,
     createChallenge,
+    updateChallenge,
+    deleteChallenge,
+    toggleStatus,
     generateAIChallenge,
     isCreating,
+    isUpdating,
+    isDeleting,
+    isToggling,
     isGenerating,
     stats: challengeStats,
   } = useChallenges();
@@ -196,12 +197,9 @@ export default function AdminChallenges() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [verificationNotes, setVerificationNotes] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isToggling, setIsToggling] = useState(false);
   const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
-  // Fetch user challenges
+  // ✅ FIX: Fetch user challenges with proper caching
   const {
     data: userChallengesData,
     isLoading: isUserChallengesLoading,
@@ -217,8 +215,11 @@ export default function AdminChallenges() {
       return response?.data || [];
     },
     retry: 2,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // ✅ 5 minutes - data stays fresh longer
+    gcTime: 10 * 60 * 1000, // ✅ 10 minutes - cache persists
+    refetchOnWindowFocus: false, // ✅ Don't refetch when window regains focus
+    refetchOnMount: false, // ✅ Don't refetch on component mount if data exists
+    refetchOnReconnect: true,
   });
 
   // WebSocket handlers
@@ -282,11 +283,8 @@ export default function AdminChallenges() {
     setCreateDialogOpen(true);
   };
 
+  // ✅ FIX: Edit functionality - removed AI check restriction
   const handleOpenEdit = (challenge: Challenge) => {
-    if (challenge.source === 'ai') {
-      info('AI-generated challenges cannot be edited. Create a new challenge instead.');
-      return;
-    }
     setSelectedChallenge(challenge);
     setFormData({
       title: challenge.title,
@@ -348,69 +346,59 @@ export default function AdminChallenges() {
     }
   };
 
+  // ✅ FIX: Update challenge functionality
   const handleUpdateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChallenge) return;
+    
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
+    
     try {
-      setIsUpdating(true);
-      const response = await challengesAPI.update(selectedChallenge.challenge_id, {
-        ...formData,
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+      await updateChallenge({
+        challengeId: selectedChallenge.challenge_id,
+        data: {
+          ...formData,
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+        },
       });
-      if (response.success) {
-        success('Challenge updated successfully!');
-        setEditDialogOpen(false);
-        setSelectedChallenge(null);
-        resetForm();
-        refetch();
-      }
+      success('Challenge updated successfully!');
+      setEditDialogOpen(false);
+      setSelectedChallenge(null);
+      resetForm();
     } catch (err: any) {
       showError(err?.message || 'Failed to update challenge');
-    } finally {
-      setIsUpdating(false);
     }
   };
 
+  // ✅ FIX: Delete challenge functionality
   const handleConfirmDelete = async () => {
     if (!selectedChallenge) return;
     try {
-      setIsDeleting(true);
-      const response = await challengesAPI.delete(selectedChallenge.challenge_id);
-      if (response.success) {
-        success('Challenge deleted successfully!');
-        setDeleteDialogOpen(false);
-        setSelectedChallenge(null);
-        refetch();
-      }
+      await deleteChallenge(selectedChallenge.challenge_id);
+      success('Challenge deleted successfully!');
+      setDeleteDialogOpen(false);
+      setSelectedChallenge(null);
     } catch (err: any) {
       showError(err?.message || 'Failed to delete challenge');
-    } finally {
-      setIsDeleting(false);
     }
   };
 
+  // ✅ FIX: Toggle status functionality
   const handleConfirmToggle = async () => {
     if (!selectedChallenge) return;
     try {
-      setIsToggling(true);
-      const response = await challengesAPI.toggleStatus(selectedChallenge.challenge_id);
-      if (response.success) {
-        const newStatus = !selectedChallenge.is_active;
-        success(`Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`);
-        setToggleDialogOpen(false);
-        setSelectedChallenge(null);
-        refetch();
-      }
+      await toggleStatus(selectedChallenge.challenge_id);
+      const newStatus = !selectedChallenge.is_active;
+      success(`Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      setToggleDialogOpen(false);
+      setSelectedChallenge(null);
     } catch (err: any) {
       showError(err?.message || 'Failed to toggle status');
-    } finally {
-      setIsToggling(false);
     }
   };
 
@@ -621,7 +609,7 @@ export default function AdminChallenges() {
             label: 'Edit',
             onClick: () => handleOpenEdit(row.original),
             variant: 'default',
-            disabled: row.original.source === 'ai' || isUpdating,
+            disabled: isUpdating, // ✅ Only disable while updating
           },
           {
             icon: <Trash2 className="w-4 h-4" />,
@@ -1280,3 +1268,5 @@ export default function AdminChallenges() {
     </PageContainer>
   );
 }
+
+
