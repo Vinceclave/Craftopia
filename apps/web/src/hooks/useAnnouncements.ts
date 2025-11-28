@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useAnnouncements.ts
+// apps/web/src/hooks/useAnnouncements.COMPLETE_FIX.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsAPI } from '../lib/api';
 import { useState, useCallback, useEffect } from 'react';
@@ -14,15 +14,30 @@ interface AnnouncementFilters {
 export const useAnnouncements = () => {
   const [params, setParams] = useState<AnnouncementFilters>({
     page: 1,
-    limit: 10,
-    includeExpired: false,
+    limit: 20,
+    includeExpired: true, // ✅ Show all by default
   });
 
   const queryClient = useQueryClient();
   const { subscribe } = useWebSocket();
   const { success, info } = useToast();
 
-  // Fetch all announcements
+  // ✅ NEW: Fetch ALL announcements for accurate stats (always includeExpired=true)
+  const {
+    data: allAnnouncementsData,
+  } = useQuery({
+    queryKey: ['announcements-all'], // Separate query for stats
+    queryFn: async () => {
+      console.log('📊 Fetching ALL announcements for stats');
+      const response: any = await announcementsAPI.getAll(1, 1000, true); // Get all (high limit)
+      console.log('📊 All announcements count:', response?.data?.length || 0);
+      return response?.data ?? [];
+    },
+    staleTime: 60_000, // Cache for 1 minute
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch filtered announcements for display (respects includeExpired filter)
   const {
     data,
     isLoading,
@@ -31,10 +46,10 @@ export const useAnnouncements = () => {
   } = useQuery({
     queryKey: ['announcements', params],
     queryFn: async () => {
+      console.log('🔍 Fetching announcements with params:', params);
       const response: any = await announcementsAPI.getAll(params.page, params.limit, params.includeExpired);
+      console.log('📦 API Response:', response);
       
-      // Backend returns: { success: true, data: [...], meta: {...} }
-      // NOT nested as { success: true, data: { data: [...], meta: {...} } }
       return {
         data: response?.data ?? [],
         meta: response?.meta ?? {},
@@ -52,7 +67,6 @@ export const useAnnouncements = () => {
     queryKey: ['active-announcements'],
     queryFn: async () => {
       const response: any = await announcementsAPI.getActive(5);
-      // Backend returns: { success: true, data: [...] }
       return response?.data ?? [];
     },
     staleTime: 60_000,
@@ -70,6 +84,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement created successfully!');
     },
@@ -94,6 +109,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement updated successfully!');
     },
@@ -106,6 +122,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement deleted successfully!');
     },
@@ -119,6 +136,7 @@ export const useAnnouncements = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcements-all'] }); // ✅ Invalidate stats query
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
       success('Announcement status updated!');
     },
@@ -128,18 +146,21 @@ export const useAnnouncements = () => {
   const handleAnnouncementCreated = useCallback((data: any) => {
     info(data.message || 'New announcement created!');
     queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
     queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
   }, [queryClient, info]);
 
   const handleAnnouncementUpdated = useCallback((data: any) => {
     info(data.message || 'Announcement updated!');
     queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
     queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
   }, [queryClient, info]);
 
   const handleAnnouncementDeleted = useCallback((data: any) => {
     info(data.message || 'Announcement deleted!');
     queryClient.invalidateQueries({ queryKey: ['announcements'] });
+    queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
     queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
   }, [queryClient, info]);
 
@@ -177,9 +198,14 @@ export const useAnnouncements = () => {
     setParams(prev => ({ ...prev, limit, page: 1 }));
   }, []);
 
+  const toggleIncludeExpired = useCallback(() => {
+    setParams(prev => ({ ...prev, includeExpired: !prev.includeExpired, page: 1 }));
+  }, []);
+
   return {
     // Data
     announcements: data?.data || [],
+    allAnnouncements: allAnnouncementsData || [], // ✅ NEW: All announcements for stats
     activeAnnouncements: activeData || [],
     meta: data?.meta,
     isLoading,
@@ -199,6 +225,7 @@ export const useAnnouncements = () => {
     nextPage,
     prevPage,
     setLimit,
+    toggleIncludeExpired,
     
     // Loading states
     isCreating: createMutation.isPending,
