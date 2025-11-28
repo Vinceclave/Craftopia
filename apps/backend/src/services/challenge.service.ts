@@ -101,41 +101,55 @@ class ChallengeService extends BaseService {
   }
 
   // Get all challenges with filtering
-  async getAllChallenges(category?: string) {
-    logger.debug('Fetching all challenges', { category });
+async getAllChallenges(options: {
+  category?: string;
+  includeInactive?: boolean;
+}) {
+  const { category, includeInactive = true } = options; // DEFAULT: show all
 
-    // Mark expired challenges as inactive
-    await this.markExpiredChallengesInactive();
+  logger.debug('Fetching all challenges', { category, includeInactive });
 
-    const where: any = { 
-      deleted_at: null, 
-      is_active: true 
-    };
+  // ✅ CRITICAL: Only filter by deleted_at
+  const where: any = { 
+    deleted_at: null
+    // DO NOT add: is_active: true (this hides inactive challenges!)
+  };
 
-    if (category && category !== 'all') {
-      this.validateEnum(category, ChallengeCategory, 'category');
-      where.category = category;
-    }
-
-    const data = await prisma.ecoChallenge.findMany({
-      where,
-      orderBy: { created_at: 'desc' },
-      include: {
-        created_by_admin: { 
-          select: { user_id: true, username: true } 
-        },
-        _count: { 
-          select: { 
-            participants: { where: { deleted_at: null } } 
-          } 
-        },
-      }
-    });
-
-    logger.info('Challenges fetched', { count: data.length, category });
-
-    return { data, total: data.length };
+  // Optionally filter by category
+  if (category?.trim()) {
+    where.category = category.trim();
   }
+
+  // Only filter by active status if explicitly requested
+  if (!includeInactive) {
+    where.is_active = true;
+  }
+
+  const challenges = await prisma.ecoChallenge.findMany({
+    where,
+    include: {
+      created_by_admin: {
+        select: {
+          user_id: true,
+          username: true
+        }
+      },
+      _count: {
+        select: {
+          participants: {
+            where: {
+              deleted_at: null // Only count non-deleted participants
+            }
+          }
+        }
+      }
+    },
+    orderBy: { created_at: 'desc' }
+  });
+
+  return challenges;
+}
+
 
   // Get challenge by ID
   async getChallengeById(challengeId: number, userId?: number) {

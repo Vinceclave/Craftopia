@@ -1,5 +1,7 @@
-// apps/web/src/pages/admin/Challenges.tsx - FULLY SYNCED DESIGN
+// apps/web/src/pages/admin/Challenges.tsx - UNIFIED CHALLENGES & USER CHALLENGES PAGE
 import { useState, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ColumnDef } from '@tanstack/react-table';
 import {
   Card,
   CardContent,
@@ -16,24 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,8 +34,6 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  ChevronLeft,
-  ChevronRight,
   Edit2,
   Trash2,
   ToggleLeft,
@@ -61,14 +43,33 @@ import {
   X,
   Wifi,
   Image as ImageIcon,
+  User,
+  Calendar,
+  Award,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  DataTable,
+  PageHeader,
+  StatsGrid,
+  PageContainer,
+  LoadingState,
+  ErrorState,
+  ActionButtons,
+  DetailModal,
+  ConfirmDialog,
+  type DetailSection,
+  type ActionButton,
+  type FilterOption,
+} from '@/components/shared';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { challengesAPI } from '@/lib/api';
+import { challengesAPI, type Challenge, type UserChallenge } from '@/lib/api';
 
 type ChallengeCategory = 'daily' | 'weekly' | 'monthly';
+type ChallengeStatusFilter = 'all' | 'active' | 'inactive';
+type UserChallengeStatusFilter = 'all' | 'in_progress' | 'pending_verification' | 'completed' | 'rejected';
 
 // Helper function to get full image URL
 const getImageUrl = (path: string) => {
@@ -79,10 +80,48 @@ const getImageUrl = (path: string) => {
   return `${backendUrl}/${cleanPath}`;
 };
 
+// Status badge helper for user challenges
+const UserChallengeStatusBadge = ({ status }: { status: string }) => {
+  const config = {
+    in_progress: {
+      icon: Clock,
+      label: 'In Progress',
+      className: 'bg-blue-100 text-blue-700 border-blue-200',
+    },
+    pending_verification: {
+      icon: AlertCircle,
+      label: 'Pending',
+      className: 'bg-orange-100 text-orange-700 border-orange-200',
+    },
+    completed: {
+      icon: CheckCircle,
+      label: 'Completed',
+      className: 'bg-green-100 text-green-700 border-green-200',
+    },
+    rejected: {
+      icon: XCircle,
+      label: 'Rejected',
+      className: 'bg-red-100 text-red-700 border-red-200',
+    },
+  }[status] || {
+    icon: AlertCircle,
+    label: status,
+    className: 'bg-gray-100 text-gray-700 border-gray-200',
+  };
+
+  const Icon = config.icon;
+
+  return (
+    <Badge className={`${config.className} border font-nunito`}>
+      <Icon className="w-3 h-3 mr-1" />
+      {config.label}
+    </Badge>
+  );
+};
+
 // Validation helper
 const validateChallengeForm = (data: any) => {
   const errors: Record<string, string> = {};
-
   if (!data.title?.trim()) {
     errors.title = 'Title is required';
   } else if (data.title.length < 5) {
@@ -90,7 +129,6 @@ const validateChallengeForm = (data: any) => {
   } else if (data.title.length > 100) {
     errors.title = 'Title must be less than 100 characters';
   }
-
   if (!data.description?.trim()) {
     errors.description = 'Description is required';
   } else if (data.description.length < 10) {
@@ -98,17 +136,14 @@ const validateChallengeForm = (data: any) => {
   } else if (data.description.length > 500) {
     errors.description = 'Description must be less than 500 characters';
   }
-
   if (!data.points_reward || data.points_reward < 5) {
     errors.points_reward = 'Points must be at least 5';
   } else if (data.points_reward > 100) {
     errors.points_reward = 'Points cannot exceed 100';
   }
-
   if (data.waste_kg && (data.waste_kg < 0 || data.waste_kg > 50)) {
     errors.waste_kg = 'Waste must be between 0 and 50 kg';
   }
-
   return errors;
 };
 
@@ -124,30 +159,31 @@ export default function AdminChallenges() {
     generateAIChallenge,
     isCreating,
     isGenerating,
-    pendingVerifications,
-    isPendingLoading,
-    refetchPending,
+    stats: challengeStats,
   } = useChallenges();
 
-  const { success, error: showError, info, warning } = useToast();
+  const { success, error: showError, info } = useToast();
 
-  // State management
-  const [challengesPage, setChallengesPage] = useState(1);
-  const [pendingPage, setPendingPage] = useState(1);
-  const itemsPerPage = 10;
+  // Separate filters for each tab
+  const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('all');
+  const [userChallengeStatusFilter, setUserChallengeStatusFilter] = useState<UserChallengeStatusFilter>('pending_verification');
+  const [challengeSearchQuery, setChallengeSearchQuery] = useState('');
+  const [userChallengeSearchQuery, setUserChallengeSearchQuery] = useState('');
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [challengeDetailsOpen, setChallengeDetailsOpen] = useState(false);
+  const [userChallengeDetailsOpen, setUserChallengeDetailsOpen] = useState(false);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toggleDialogOpen, setToggleDialogOpen] = useState(false);
   const [aiConfirmDialogOpen, setAiConfirmDialogOpen] = useState(false);
-  
+
   // Selected items
-  const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
-  const [selectedVerification, setSelectedVerification] = useState<any>(null);
-  
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [selectedUserChallenge, setSelectedUserChallenge] = useState<UserChallenge | null>(null);
+
   // Form states
   const [formData, setFormData] = useState({
     title: '',
@@ -157,67 +193,68 @@ export default function AdminChallenges() {
     material_type: 'plastic',
     category: 'daily',
   });
-  
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [verificationNotes, setVerificationNotes] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
-  // AI Generation state
-const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
-
-  // Toast notifications
-  const notify = (
-    title: string,
-    message: string,
-    type: 'success' | 'error' | 'info' | 'warning' = 'info'
-  ) => {
-    if (type === 'success') success(`${title}: ${message}`);
-    else if (type === 'error') showError(`${title}: ${message}`);
-    else if (type === 'warning') warning(`${title}: ${message}`);
-    else info(`${title}: ${message}`);
-  };
-
-  const handleAiCategoryChange = (value: string) => {
-  setAiCategory(value as ChallengeCategory);
-};
+  // Fetch user challenges
+  const {
+    data: userChallengesData,
+    isLoading: isUserChallengesLoading,
+    refetch: refetchUserChallenges,
+  } = useQuery({
+    queryKey: ['admin-user-challenges', userChallengeStatusFilter],
+    queryFn: async () => {
+      const filters: any = {};
+      if (userChallengeStatusFilter !== 'all') {
+        filters.status = userChallengeStatusFilter;
+      }
+      const response = await challengesAPI.getAllUserChallenges(1, 100, filters);
+      return response?.data || [];
+    },
+    retry: 2,
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  });
 
   // WebSocket handlers
   const handleChallengeCreated = useCallback(
     (data: any) => {
-      notify('New Challenge', data?.message || 'New challenge available!', 'info');
+      info(data?.message || 'New challenge available!');
       refetch();
     },
-    [refetch]
+    [refetch, info]
   );
 
   const handleChallengeUpdated = useCallback(
     (data: any) => {
-      notify('Challenge Updated', data?.message || 'A challenge was updated', 'info');
+      info(data?.message || 'A challenge was updated');
       refetch();
     },
-    [refetch]
+    [refetch, info]
   );
 
   const handleChallengeDeleted = useCallback(
     (data: any) => {
-      notify('Challenge Deleted', data?.message || 'A challenge was removed', 'warning');
+      info(data?.message || 'A challenge was removed');
       refetch();
     },
-    [refetch]
+    [refetch, info]
   );
 
   const handleChallengeCompleted = useCallback(() => {
-    notify('New Submission', 'A challenge submission needs verification!', 'info');
-    refetchPending();
-  }, [refetchPending]);
+    info('New submission needs verification!');
+    refetchUserChallenges();
+  }, [refetchUserChallenges, info]);
 
   const handleChallengeVerified = useCallback(() => {
-    notify('Verified', 'A challenge has been verified!', 'success');
-    refetchPending();
-  }, [refetchPending]);
+    success('A challenge has been verified!');
+    refetchUserChallenges();
+  }, [refetchUserChallenges, success]);
 
   useWebSocketChallenges({
     onCreated: handleChallengeCreated,
@@ -245,16 +282,11 @@ const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
     setCreateDialogOpen(true);
   };
 
-  const handleOpenEdit = (challenge: any) => {
+  const handleOpenEdit = (challenge: Challenge) => {
     if (challenge.source === 'ai') {
-      notify(
-        'Cannot Edit AI Challenge',
-        'AI-generated challenges cannot be edited. Create a new challenge instead.',
-        'warning'
-      );
+      info('AI-generated challenges cannot be edited. Create a new challenge instead.');
       return;
     }
-
     setSelectedChallenge(challenge);
     setFormData({
       title: challenge.title,
@@ -268,51 +300,62 @@ const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
     setEditDialogOpen(true);
   };
 
-  const handleOpenDelete = (challenge: any) => {
+  const handleOpenDelete = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setDeleteDialogOpen(true);
   };
 
-  const handleOpenToggle = (challenge: any) => {
+  const handleOpenToggle = (challenge: Challenge) => {
     setSelectedChallenge(challenge);
     setToggleDialogOpen(true);
+  };
+
+  const handleViewChallengeDetails = (challenge: Challenge) => {
+    setSelectedChallenge(challenge);
+    setChallengeDetailsOpen(true);
+  };
+
+  const handleViewUserChallengeDetails = (userChallenge: UserChallenge) => {
+    setSelectedUserChallenge(userChallenge);
+    setUserChallengeDetailsOpen(true);
+  };
+
+  const handleOpenVerify = (userChallenge: UserChallenge) => {
+    setSelectedUserChallenge(userChallenge);
+    setVerificationNotes('');
+    setVerifyDialogOpen(true);
   };
 
   // CRUD operations
   const handleCreateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-
     try {
       await createChallenge({
         ...formData,
         title: formData.title.trim(),
         description: formData.description.trim(),
       });
-      notify('Success', 'Challenge created successfully!', 'success');
+      success('Challenge created successfully!');
       setCreateDialogOpen(false);
       resetForm();
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to create challenge', 'error');
+      showError(err?.message || 'Failed to create challenge');
     }
   };
 
   const handleUpdateChallenge = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!selectedChallenge) return;
-
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-
     try {
       setIsUpdating(true);
       const response = await challengesAPI.update(selectedChallenge.challenge_id, {
@@ -320,16 +363,15 @@ const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
         title: formData.title.trim(),
         description: formData.description.trim(),
       });
-
       if (response.success) {
-        notify('Success', 'Challenge updated successfully!', 'success');
+        success('Challenge updated successfully!');
         setEditDialogOpen(false);
         setSelectedChallenge(null);
         resetForm();
         refetch();
       }
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to update challenge', 'error');
+      showError(err?.message || 'Failed to update challenge');
     } finally {
       setIsUpdating(false);
     }
@@ -337,19 +379,17 @@ const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
   const handleConfirmDelete = async () => {
     if (!selectedChallenge) return;
-
     try {
       setIsDeleting(true);
       const response = await challengesAPI.delete(selectedChallenge.challenge_id);
-
       if (response.success) {
-        notify('Success', 'Challenge deleted successfully!', 'success');
+        success('Challenge deleted successfully!');
         setDeleteDialogOpen(false);
         setSelectedChallenge(null);
         refetch();
       }
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to delete challenge', 'error');
+      showError(err?.message || 'Failed to delete challenge');
     } finally {
       setIsDeleting(false);
     }
@@ -357,1230 +397,886 @@ const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
   const handleConfirmToggle = async () => {
     if (!selectedChallenge) return;
-
     try {
       setIsToggling(true);
       const response = await challengesAPI.toggleStatus(selectedChallenge.challenge_id);
-
       if (response.success) {
         const newStatus = !selectedChallenge.is_active;
-        notify(
-          'Status Updated',
-          `Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`,
-          'success'
-        );
+        success(`Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`);
         setToggleDialogOpen(false);
         setSelectedChallenge(null);
         refetch();
       }
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to toggle status', 'error');
+      showError(err?.message || 'Failed to toggle status');
     } finally {
       setIsToggling(false);
     }
   };
 
-  // AI Generation
   const handleGenerateAI = async () => {
     try {
       await generateAIChallenge(aiCategory);
-      notify('Success', `AI challenge for ${aiCategory} category generated!`, 'success');
+      success(`AI challenge for ${aiCategory} category generated!`);
       setAiConfirmDialogOpen(false);
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to generate AI challenge', 'error');
+      showError(err?.message || 'Failed to generate AI challenge');
     }
   };
 
-  // Manual verification
   const handleManualVerify = async (approved: boolean) => {
-    if (!selectedVerification) return;
-
+    if (!selectedUserChallenge) return;
     try {
       setIsVerifying(true);
       const response = await challengesAPI.manualVerify(
-        selectedVerification.user_challenge_id,
+        selectedUserChallenge.user_challenge_id,
         approved,
         verificationNotes.trim() || undefined
       );
-
       if (response.success) {
-        notify(
-          'Success',
-          approved ? 'Challenge approved!' : 'Challenge rejected',
-          approved ? 'success' : 'warning'
-        );
+        success(approved ? 'Challenge approved!' : 'Challenge rejected');
         setVerifyDialogOpen(false);
-        setSelectedVerification(null);
+        setSelectedUserChallenge(null);
         setVerificationNotes('');
-        refetchPending();
+        refetchUserChallenges();
       }
     } catch (err: any) {
-      notify('Error', err?.message || 'Failed to verify challenge', 'error');
+      showError(err?.message || 'Failed to verify challenge');
     } finally {
       setIsVerifying(false);
     }
   };
 
-  const openVerifyDialog = (verification: any) => {
-    setSelectedVerification(verification);
-    setVerificationNotes('');
-    setVerifyDialogOpen(true);
-  };
-
   // Data normalization
   const challengeList = useMemo(() => {
-    // Handle different possible response structures
-    if (Array.isArray(challenges)) {
-      return challenges;
-    } else if (challenges && typeof challenges === 'object' && 'data' in challenges) {
+    if (Array.isArray(challenges)) return challenges;
+    if (challenges && typeof challenges === 'object' && 'data' in challenges) {
       return (challenges as any).data ?? [];
     }
     return [];
   }, [challenges]);
 
-
-  const pendingList = useMemo(() => {
-    // Handle different possible response structures
-    if (Array.isArray(pendingVerifications)) {
-      return pendingVerifications;
-    } else if (pendingVerifications && typeof pendingVerifications === 'object' && 'data' in pendingVerifications) {
-      return (pendingVerifications as any).data ?? [];
+  const userChallengeList = useMemo(() => {
+    if (Array.isArray(userChallengesData)) return userChallengesData;
+    if (userChallengesData && typeof userChallengesData === 'object' && 'data' in userChallengesData) {
+      return (userChallengesData as any).data ?? [];
     }
     return [];
-  }, [pendingVerifications]);
-  // Statistics
-  const stats = useMemo(() => {
+  }, [userChallengesData]);
+
+  // Filtered challenges
+  const filteredChallenges = useMemo(() => {
+    let filtered = challengeList;
+
+    // Status filter
+    if (challengeStatusFilter === 'active') {
+      filtered = filtered.filter((c: Challenge) => c.is_active);
+    } else if (challengeStatusFilter === 'inactive') {
+      filtered = filtered.filter((c: Challenge) => !c.is_active);
+    }
+
+    // Search filter
+    if (challengeSearchQuery.trim()) {
+      const query = challengeSearchQuery.toLowerCase();
+      filtered = filtered.filter((c: Challenge) =>
+        c.title.toLowerCase().includes(query) ||
+        c.description.toLowerCase().includes(query) ||
+        c.material_type.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [challengeList, challengeStatusFilter, challengeSearchQuery]);
+
+  // Filtered user challenges
+  const filteredUserChallenges = useMemo(() => {
+    if (!userChallengeSearchQuery.trim()) return userChallengeList;
+    const query = userChallengeSearchQuery.toLowerCase();
+    return userChallengeList.filter((uc: UserChallenge) =>
+      uc.challenge?.title?.toLowerCase().includes(query) ||
+      uc.user?.username?.toLowerCase().includes(query) ||
+      uc.user?.email?.toLowerCase().includes(query)
+    );
+  }, [userChallengeList, userChallengeSearchQuery]);
+
+  // User challenge stats
+  const userChallengeStats = useMemo(() => {
     return {
-      total: challengeList.length,
-      active: challengeList.filter((c: any) => c.is_active).length,
-      aiGenerated: challengeList.filter((c: any) => c.source === 'ai').length,
-      adminCreated: challengeList.filter((c: any) => c.source === 'admin').length,
-      pending: pendingList.length,
+      total: userChallengeList.length,
+      inProgress: userChallengeList.filter((uc: UserChallenge) => uc.status === 'in_progress').length,
+      pending: userChallengeList.filter((uc: UserChallenge) => uc.status === 'pending_verification').length,
+      completed: userChallengeList.filter((uc: UserChallenge) => uc.status === 'completed').length,
+      rejected: userChallengeList.filter((uc: UserChallenge) => uc.status === 'rejected').length,
     };
-  }, [challengeList, pendingList]);
+  }, [userChallengeList]);
 
-  // Pagination
-  const totalChallengesPages = Math.ceil(challengeList.length / itemsPerPage);
-  const totalPendingPages = Math.ceil(pendingList.length / itemsPerPage);
+  // Challenge table columns
+  const challengeColumns: ColumnDef<Challenge>[] = [
+    {
+      accessorKey: 'title',
+      header: 'Challenge',
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-[#2B4A2F] font-poppins">{row.original.title}</span>
+            {row.original.source === 'ai' && (
+              <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
+                <Sparkles className="w-3 h-3 mr-1" />
+                AI
+              </Badge>
+            )}
+            {row.original.source === 'admin' && (
+              <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
+                <Users className="w-3 h-3 mr-1" />
+                Admin
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+              <TrendingUp className="w-3 h-3 mr-1" />
+              {row.original.category}
+            </Badge>
+            <Badge className="capitalize text-xs border-0 bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+              {row.original.material_type}
+            </Badge>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'is_active',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge
+          className={`font-poppins border-0 ${
+            row.original.is_active
+              ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+              : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+          }`}
+        >
+          {row.original.is_active ? (
+            <>
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Active
+            </>
+          ) : (
+            <>
+              <XCircle className="w-3 h-3 mr-1" />
+              Inactive
+            </>
+          )}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'points_reward',
+      header: 'Points',
+      cell: ({ row }) => (
+        <Badge className="text-xs bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
+          <Trophy className="w-3 h-3 mr-1" />
+          {row.original.points_reward}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: 'waste_kg',
+      header: 'Waste (kg)',
+      cell: ({ row }) => (
+        <span className="text-[#2B4A2F] font-nunito">
+          {row.original.waste_kg > 0 ? `${row.original.waste_kg} kg` : '—'}
+        </span>
+      ),
+    },
+    {
+      accessorKey: '_count.participants',
+      header: 'Participants',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <Users className="w-4 h-4 text-[#6CAC73]" />
+          <span className="text-[#2B4A2F] font-nunito">{row.original._count?.participants || 0}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const actions: ActionButton[] = [
+          {
+            icon: <Eye className="w-4 h-4" />,
+            label: 'View Details',
+            onClick: () => handleViewChallengeDetails(row.original),
+            variant: 'info',
+          },
+          {
+            icon: row.original.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />,
+            label: row.original.is_active ? 'Deactivate' : 'Activate',
+            onClick: () => handleOpenToggle(row.original),
+            variant: row.original.is_active ? 'warning' : 'success',
+            disabled: isToggling,
+          },
+          {
+            icon: <Edit2 className="w-4 h-4" />,
+            label: 'Edit',
+            onClick: () => handleOpenEdit(row.original),
+            variant: 'default',
+            disabled: row.original.source === 'ai' || isUpdating,
+          },
+          {
+            icon: <Trash2 className="w-4 h-4" />,
+            label: 'Delete',
+            onClick: () => handleOpenDelete(row.original),
+            variant: 'danger',
+            disabled: isDeleting,
+          },
+        ];
+        return <ActionButtons actions={actions} />;
+      },
+    },
+  ];
 
-  const paginatedChallenges = useMemo(() => {
-    return challengeList.slice(
-      (challengesPage - 1) * itemsPerPage,
-      challengesPage * itemsPerPage
-    );
-  }, [challengeList, challengesPage, itemsPerPage]);
+  // User challenge table columns
+  const userChallengeColumns: ColumnDef<UserChallenge>[] = [
+    {
+      accessorKey: 'user',
+      header: 'User',
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-[#6CAC73]" />
+            <span className="font-semibold text-[#2B4A2F] font-poppins">
+              {row.original.user?.username || 'Unknown'}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 font-nunito">{row.original.user?.email}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'challenge',
+      header: 'Challenge',
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-[#2B4A2F] font-poppins">
+            {row.original.challenge?.title || 'N/A'}
+          </span>
+          <div className="flex gap-2 flex-wrap">
+            <Badge className="text-xs capitalize bg-white border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+              {row.original.challenge?.category}
+            </Badge>
+            <Badge className="text-xs bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-nunito">
+              {row.original.challenge?.material_type}
+            </Badge>
+          </div>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <UserChallengeStatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: 'points_awarded',
+      header: 'Points',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-[#6CAC73]" />
+          <span className="font-semibold text-[#2B4A2F] font-poppins">
+            {row.original.points_awarded || 0}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'waste_kg_saved',
+      header: 'Waste Saved',
+      cell: ({ row }) => (
+        <span className="text-[#2B4A2F] font-nunito">
+          {row.original.waste_kg_saved ? `${row.original.waste_kg_saved} kg` : '—'}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'created_at',
+      header: 'Started',
+      cell: ({ row }) => (
+        <span className="text-sm text-gray-600 font-nunito">
+          {new Date(row.original.created_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const actions: ActionButton[] = [
+          {
+            icon: <Eye className="w-4 h-4" />,
+            label: 'View Details',
+            onClick: () => handleViewUserChallengeDetails(row.original),
+            variant: 'info',
+          },
+        ];
+        if (row.original.status === 'pending_verification') {
+          actions.push({
+            icon: <CheckCircle className="w-4 h-4" />,
+            label: 'Verify',
+            onClick: () => handleOpenVerify(row.original),
+            variant: 'success',
+          });
+        }
+        return <ActionButtons actions={actions} />;
+      },
+    },
+  ];
 
-  const paginatedPending = useMemo(() => {
-    return pendingList.slice(
-      (pendingPage - 1) * itemsPerPage,
-      pendingPage * itemsPerPage
-    );
-  }, [pendingList, pendingPage, itemsPerPage]);
+  // Challenge detail sections
+  const challengeDetailSections: DetailSection[] = useMemo(() => {
+    if (!selectedChallenge) return [];
+    return [
+      {
+        title: 'Challenge Information',
+        items: [
+          { label: 'Title', value: selectedChallenge.title, fullWidth: true },
+          { label: 'Description', value: selectedChallenge.description, fullWidth: true },
+          { label: 'Category', value: <Badge className="capitalize">{selectedChallenge.category}</Badge> },
+          { label: 'Material Type', value: <Badge className="capitalize">{selectedChallenge.material_type}</Badge> },
+          { label: 'Points Reward', value: `${selectedChallenge.points_reward} points`, icon: <Trophy className="w-4 h-4" /> },
+          { label: 'Waste to Save', value: `${selectedChallenge.waste_kg} kg` },
+          { label: 'Source', value: <Badge className="capitalize">{selectedChallenge.source}</Badge> },
+          { label: 'Status', value: selectedChallenge.is_active ? 'Active' : 'Inactive' },
+          { label: 'Participants', value: selectedChallenge._count?.participants || 0, icon: <Users className="w-4 h-4" /> },
+          { label: 'Created', value: new Date(selectedChallenge.created_at).toLocaleString(), icon: <Calendar className="w-4 h-4" /> },
+          ...(selectedChallenge.created_by_admin ? [{ label: 'Created By', value: selectedChallenge.created_by_admin.username }] : []),
+        ],
+      },
+    ];
+  }, [selectedChallenge]);
+
+  // User challenge detail sections
+  const userChallengeDetailSections: DetailSection[] = useMemo(() => {
+    if (!selectedUserChallenge) return [];
+    return [
+      {
+        title: 'User Information',
+        items: [
+          { label: 'Username', value: selectedUserChallenge.user?.username || 'N/A', icon: <User className="w-4 h-4" /> },
+          { label: 'Email', value: selectedUserChallenge.user?.email || 'N/A' },
+          { label: 'User Points', value: selectedUserChallenge.user?.profile?.points || 0, icon: <Trophy className="w-4 h-4" /> },
+        ],
+      },
+      {
+        title: 'Challenge Information',
+        items: [
+          { label: 'Title', value: selectedUserChallenge.challenge?.title || 'N/A', fullWidth: true },
+          { label: 'Description', value: selectedUserChallenge.challenge?.description || 'N/A', fullWidth: true },
+          { label: 'Category', value: <Badge className="capitalize">{selectedUserChallenge.challenge?.category}</Badge> },
+          { label: 'Material Type', value: <Badge className="capitalize">{selectedUserChallenge.challenge?.material_type}</Badge> },
+          { label: 'Points Reward', value: `${selectedUserChallenge.challenge?.points_reward || 0} points`, icon: <Trophy className="w-4 h-4" /> },
+          { label: 'Waste to Save', value: `${selectedUserChallenge.challenge?.waste_kg || 0} kg` },
+        ],
+      },
+      {
+        title: 'Submission Details',
+        items: [
+          { label: 'Status', value: <UserChallengeStatusBadge status={selectedUserChallenge.status} /> },
+          { label: 'Started', value: new Date(selectedUserChallenge.created_at).toLocaleString(), icon: <Calendar className="w-4 h-4" /> },
+          { label: 'Completed', value: selectedUserChallenge.completed_at ? new Date(selectedUserChallenge.completed_at).toLocaleString() : 'Not completed', icon: <Clock className="w-4 h-4" /> },
+          { label: 'Verified', value: selectedUserChallenge.verified_at ? new Date(selectedUserChallenge.verified_at).toLocaleString() : 'Not verified', icon: <CheckCircle className="w-4 h-4" /> },
+          { label: 'Points Awarded', value: selectedUserChallenge.points_awarded || 0, icon: <Award className="w-4 h-4" /> },
+          { label: 'Waste Saved', value: `${selectedUserChallenge.waste_kg_saved || 0} kg` },
+          ...(selectedUserChallenge.verification_type ? [{ label: 'Verification Type', value: <Badge className="capitalize">{selectedUserChallenge.verification_type}</Badge> }] : []),
+          ...(selectedUserChallenge.ai_confidence_score ? [{ label: 'AI Confidence', value: `${(selectedUserChallenge.ai_confidence_score * 100).toFixed(1)}%` }] : []),
+          ...(selectedUserChallenge.verified_by ? [{ label: 'Verified By', value: selectedUserChallenge.verified_by.username }] : []),
+          ...(selectedUserChallenge.admin_notes ? [{ label: 'Admin Notes', value: selectedUserChallenge.admin_notes, fullWidth: true }] : []),
+        ],
+      },
+    ];
+  }, [selectedUserChallenge]);
 
   // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9F0] to-white">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[#6CAC73] mx-auto mb-4" />
-          <p className="text-[#2B4A2F] font-poppins text-lg">Loading challenges...</p>
-          <p className="text-gray-500 font-nunito text-sm mt-2">Please wait a moment</p>
-        </div>
-      </div>
-    );
+  if (isLoading || isUserChallengesLoading) {
+    return <LoadingState message="Loading challenges..." />;
   }
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
-              style={{
-                left: `${20 + i * 25}%`,
-                top: `${15 + (i % 2) * 30}%`,
-                animationDelay: `${i * 1.5}s`,
-                animationDuration: '4s'
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <Alert className="border-rose-200 bg-rose-50/80 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 text-rose-600" />
-            <AlertDescription>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-rose-900 font-poppins mb-1">Failed to Load Challenges</p>
-                  <p className="text-rose-700 font-nunito text-sm">{error?.message || 'An unexpected error occurred'}</p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={refetch}
-                  className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Retry
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </div>
+      <PageContainer>
+        <ErrorState error={error as Error} title="Failed to Load Challenges" />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF9F0] to-white p-6 relative">
-      {/* Background Elements */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(5)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-[#6CAC73] rounded-full opacity-20 animate-float"
-            style={{
-              left: `${10 + i * 18}%`,
-              top: `${8 + (i % 3) * 20}%`,
-              animationDelay: `${i * 1.2}s`,
-              animationDuration: '5s',
+    <PageContainer>
+      {/* Header */}
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            Challenges Management
+            <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
+              <Wifi className="w-3 h-3 mr-1" />
+              Live
+            </Badge>
+          </span>
+        }
+        description="Create, manage challenges and verify user submissions with real-time updates"
+        icon={<Trophy className="w-6 h-6 text-white" />}
+        actions={
+          <>
+            <Button
+              size="sm"
+              onClick={() => {
+                refetch();
+                refetchUserChallenges();
+              }}
+              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleOpenCreate}
+              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Challenge
+            </Button>
+          </>
+        }
+      />
+
+      {/* AI Generator Card */}
+      <Card className="border border-purple-200 bg-gradient-to-br from-purple-50/80 to-white/80 backdrop-blur-sm shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-[#2B4A2F] font-poppins">
+            <Sparkles className="w-5 h-5 text-purple-600" />
+            AI Challenge Generator
+          </CardTitle>
+          <CardDescription className="font-nunito">
+            Automatically create challenges powered by AI. Select a category and generate!
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={aiCategory} onValueChange={(value) => setAiCategory(value as ChallengeCategory)}>
+              <SelectTrigger className="w-48 border-purple-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily Challenge</SelectItem>
+                <SelectItem value="weekly">Weekly Challenge</SelectItem>
+                <SelectItem value="monthly">Monthly Challenge</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => setAiConfirmDialogOpen(true)}
+              disabled={isGenerating}
+              className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate {aiCategory.charAt(0).toUpperCase() + aiCategory.slice(1)}
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Tabs */}
+      <Tabs defaultValue="challenges" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
+          <TabsTrigger
+            value="challenges"
+            className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
+          >
+            <Trophy className="w-4 h-4 mr-2" />
+            Challenges ({challengeStats.total})
+          </TabsTrigger>
+          <TabsTrigger
+            value="submissions"
+            className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-poppins"
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Submissions ({userChallengeStats.pending} Pending)
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Challenges Tab */}
+        <TabsContent value="challenges">
+          <StatsGrid
+            stats={[
+              { label: 'Total', value: challengeStats.total, icon: <Trophy className="w-6 h-6" />, color: 'text-[#2B4A2F]' },
+              { label: 'Active', value: challengeStats.active, icon: <CheckCircle className="w-6 h-6" />, color: 'text-[#6CAC73]' },
+              { label: 'Admin Created', value: challengeStats.adminCreated, icon: <Users className="w-6 h-6" />, color: 'text-blue-600' },
+              { label: 'AI Generated', value: challengeStats.aiGenerated, icon: <Sparkles className="w-6 h-6" />, color: 'text-purple-600' },
+              { label: 'Pending Review', value: challengeStats.pending, icon: <Clock className="w-6 h-6" />, color: 'text-orange-600' },
+            ]}
+          />
+
+          <DataTable
+            data={filteredChallenges}
+            columns={challengeColumns}
+            searchPlaceholder="Search challenges..."
+            searchValue={challengeSearchQuery}
+            onSearchChange={setChallengeSearchQuery}
+            filters={[
+              {
+                label: 'Category',
+                value: category || 'all',
+                options: [
+                  { label: 'All Categories', value: 'all' },
+                  { label: 'Daily', value: 'daily' },
+                  { label: 'Weekly', value: 'weekly' },
+                  { label: 'Monthly', value: 'monthly' },
+                ],
+                onChange: (value) => setCategory(value === 'all' ? '' : value),
+              },
+              {
+                label: 'Status',
+                value: challengeStatusFilter,
+                options: [
+                  { label: 'All Status', value: 'all' },
+                  { label: 'Active', value: 'active' },
+                  { label: 'Inactive', value: 'inactive' },
+                ],
+                onChange: (value) => setChallengeStatusFilter(value as ChallengeStatusFilter),
+              },
+            ]}
+            emptyState={{
+              icon: <Trophy className="w-16 h-16 text-gray-400" />,
+              title: 'No Challenges Found',
+              description: 'Create one manually or generate using AI',
             }}
           />
-        ))}
-      </div>
+        </TabsContent>
 
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg">
-                <Trophy className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-[#2B4A2F] font-poppins flex items-center gap-3">
-                  Challenges Management
-                  <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    Live
-                  </Badge>
-                </h1>
-                <p className="text-gray-600 mt-1 font-nunito">
-                  Create, manage, and verify eco-challenges with real-time updates
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => {
-                  refetch();
-                  refetchPending();
+        {/* Submissions Tab */}
+        <TabsContent value="submissions">
+          <StatsGrid
+            stats={[
+              { label: 'Total', value: userChallengeStats.total, icon: <Trophy className="w-6 h-6" />, color: 'text-[#2B4A2F]' },
+              { label: 'In Progress', value: userChallengeStats.inProgress, icon: <Clock className="w-6 h-6" />, color: 'text-blue-600' },
+              { label: 'Pending', value: userChallengeStats.pending, icon: <AlertCircle className="w-6 h-6" />, color: 'text-orange-600' },
+              { label: 'Completed', value: userChallengeStats.completed, icon: <CheckCircle className="w-6 h-6" />, color: 'text-green-600' },
+              { label: 'Rejected', value: userChallengeStats.rejected, icon: <XCircle className="w-6 h-6" />, color: 'text-red-600' },
+            ]}
+          />
+
+          <DataTable
+            data={filteredUserChallenges}
+            columns={userChallengeColumns}
+            searchPlaceholder="Search by user or challenge..."
+            searchValue={userChallengeSearchQuery}
+            onSearchChange={setUserChallengeSearchQuery}
+            filters={[
+              {
+                label: 'Status',
+                value: userChallengeStatusFilter,
+                options: [
+                  { label: 'All Status', value: 'all' },
+                  { label: 'In Progress', value: 'in_progress' },
+                  { label: 'Pending Verification', value: 'pending_verification' },
+                  { label: 'Completed', value: 'completed' },
+                  { label: 'Rejected', value: 'rejected' },
+                ],
+                onChange: (value) => setUserChallengeStatusFilter(value as UserChallengeStatusFilter),
+              },
+            ]}
+            emptyState={{
+              icon: <CheckCircle className="w-16 h-16 text-gray-400" />,
+              title: 'No Submissions Found',
+              description: 'No challenges match your current filters',
+            }}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Create/Edit Dialog */}
+      <ConfirmDialog
+        open={createDialogOpen || editDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateDialogOpen(false);
+            setEditDialogOpen(false);
+            setSelectedChallenge(null);
+            resetForm();
+          }
+        }}
+        onConfirm={editDialogOpen ? handleUpdateChallenge : handleCreateChallenge}
+        title={editDialogOpen ? 'Edit Challenge' : 'Create New Challenge'}
+        description={editDialogOpen ? 'Update challenge details' : 'Create a new eco-challenge'}
+        confirmText={editDialogOpen ? 'Update' : 'Create'}
+        loading={isCreating || isUpdating}
+        variant="default"
+        icon={<Trophy className="w-5 h-5" />}
+      >
+        <form onSubmit={editDialogOpen ? handleUpdateChallenge : handleCreateChallenge} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                if (formErrors.title) setFormErrors({ ...formErrors, title: '' });
+              }}
+              placeholder="e.g., Plastic Bottle Upcycling Challenge"
+              className={formErrors.title ? 'border-red-300' : ''}
+            />
+            {formErrors.title && <p className="text-xs text-red-600">{formErrors.title}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => {
+                setFormData({ ...formData, description: e.target.value });
+                if (formErrors.description) setFormErrors({ ...formErrors, description: '' });
+              }}
+              placeholder="Describe the challenge..."
+              rows={4}
+              className={formErrors.description ? 'border-red-300' : ''}
+            />
+            {formErrors.description && <p className="text-xs text-red-600">{formErrors.description}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="points">Points Reward *</Label>
+              <Input
+                id="points"
+                type="number"
+                min="5"
+                max="100"
+                value={formData.points_reward}
+                onChange={(e) => {
+                  setFormData({ ...formData, points_reward: parseInt(e.target.value) || 0 });
+                  if (formErrors.points_reward) setFormErrors({ ...formErrors, points_reward: '' });
                 }}
-                className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleOpenCreate}
-                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0 shadow-lg"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Challenge
-              </Button>
+                className={formErrors.points_reward ? 'border-red-300' : ''}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="waste">Waste Saved (kg)</Label>
+              <Input
+                id="waste"
+                type="number"
+                min="0"
+                max="50"
+                step="0.1"
+                value={formData.waste_kg}
+                onChange={(e) => setFormData({ ...formData, waste_kg: parseFloat(e.target.value) || 0 })}
+              />
             </div>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {[
-            { label: 'Total', value: stats.total, icon: Trophy, color: 'text-[#2B4A2F]' },
-            { label: 'Active', value: stats.active, icon: CheckCircle, color: 'text-[#6CAC73]' },
-            { label: 'Admin Created', value: stats.adminCreated, icon: Users, color: 'text-blue-600' },
-            { label: 'AI Generated', value: stats.aiGenerated, icon: Sparkles, color: 'text-purple-600' },
-            { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-orange-600' },
-          ].map((stat, i) => (
-            <Card
-              key={i}
-              className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow"
-            >
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-[#6CAC73]/10 to-[#2B4A2F]/5 flex items-center justify-center mb-3">
-                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                  </div>
-                  <p className="text-sm text-gray-600 mb-2 font-nunito">{stat.label}</p>
-                  <p className={`text-4xl font-bold font-poppins ${stat.color}`}>{stat.value}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          <div className="space-y-2">
+            <Label>Material Type</Label>
+            <Select value={formData.material_type} onValueChange={(value) => setFormData({ ...formData, material_type: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="plastic">Plastic</SelectItem>
+                <SelectItem value="paper">Paper</SelectItem>
+                <SelectItem value="glass">Glass</SelectItem>
+                <SelectItem value="metal">Metal</SelectItem>
+                <SelectItem value="electronics">Electronics</SelectItem>
+                <SelectItem value="organic">Organic</SelectItem>
+                <SelectItem value="textile">Textile</SelectItem>
+                <SelectItem value="mixed">Mixed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* AI Generator Card */}
-        <Card className="mb-6 border border-purple-200 bg-gradient-to-br from-purple-50/80 to-white/80 backdrop-blur-sm shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-[#2B4A2F] font-poppins">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              AI Challenge Generator
-            </CardTitle>
-            <CardDescription className="font-nunito">
-              Automatically create challenges powered by AI. Select a category and generate!
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap items-center gap-3">
-            <Select value={aiCategory} onValueChange={handleAiCategoryChange}>  
-                <SelectTrigger className="w-48 border-purple-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily Challenge</SelectItem>
-                  <SelectItem value="weekly">Weekly Challenge</SelectItem>
-                  <SelectItem value="monthly">Monthly Challenge</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => setAiConfirmDialogOpen(true)}
-                disabled={isGenerating}
-                className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0 shadow-lg"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate {aiCategory.charAt(0).toUpperCase() + aiCategory.slice(1)}
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </form>
+      </ConfirmDialog>
 
-        {/* Main Tabs */}
-        <Tabs defaultValue="challenges" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
-            <TabsTrigger
-              value="challenges"
-              className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
-            >
-              <Trophy className="w-4 h-4 mr-2" />
-              All Challenges ({stats.total})
-            </TabsTrigger>
-            <TabsTrigger
-              value="pending"
-              className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-poppins"
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              Pending ({stats.pending})
-            </TabsTrigger>
-          </TabsList>
+      {/* Delete Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Delete Challenge?"
+        description="This action cannot be undone"
+        confirmText="Delete"
+        loading={isDeleting}
+        variant="danger"
+        icon={<Trash2 className="w-5 h-5" />}
+        alertMessage={selectedChallenge && `You are about to delete: "${selectedChallenge.title}"`}
+      />
 
-          {/* Challenges Tab */}
-          <TabsContent value="challenges">
-            <Card className="border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <CardTitle className="text-[#2B4A2F] font-poppins">All Challenges</CardTitle>
-                    <CardDescription className="font-nunito">
-                      Manage admin-created and AI-generated challenges
-                    </CardDescription>
-                  </div>
-                  <Select
-                    value={category || 'all'}
-                    onValueChange={(value) => {
-                      setCategory(value === 'all' ? '' : value);
-                      setChallengesPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-48 border-[#6CAC73]/20">
-                      <SelectValue placeholder="All Categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {paginatedChallenges.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-poppins text-lg mb-2">No challenges found</p>
-                    <p className="text-sm text-gray-400 font-nunito">
-                      Create one manually or generate using AI
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-4">
-                      {paginatedChallenges.map((challenge: any) => (
-                        <div
-                          key={challenge.challenge_id}
-                          className="p-5 border border-[#6CAC73]/20 rounded-xl bg-white/60 backdrop-blur-sm hover:bg-white/90 hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins text-lg">
-                                  {challenge.title}
-                                </h3>
-                                {challenge.source === 'ai' && (
-                                  <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
-                                    <Sparkles className="w-3 h-3 mr-1" />
-                                    AI Generated
-                                  </Badge>
-                                )}
-                                {challenge.source === 'admin' && (
-                                  <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
-                                    <Users className="w-3 h-3 mr-1" />
-                                    Admin
-                                  </Badge>
-                                )}
-                                <Badge
-                                  className={`font-poppins border-0 ${
-                                    challenge.is_active
-                                      ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                                      : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-                                  }`}
-                                >
-                                  {challenge.is_active ? (
-                                    <>
-                                      <CheckCircle className="w-3 h-3 mr-1" />
-                                      Active
-                                    </>
-                                  ) : (
-                                    <>
-                                      <XCircle className="w-3 h-3 mr-1" />
-                                      Inactive
-                                    </>
-                                  )}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-gray-600 font-nunito mb-3 line-clamp-2">
-                                {challenge.description}
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-                                  <TrendingUp className="w-3 h-3 mr-1" />
-                                  {challenge.category}
-                                </Badge>
-                                <Badge className="capitalize text-xs border-0 bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                  {challenge.material_type}
-                                </Badge>
-                                <Badge className="text-xs bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0 font-poppins">
-                                  <Trophy className="w-3 h-3 mr-1" />
-                                  {challenge.points_reward} pts
-                                </Badge>
-                                {(challenge.waste_kg ?? 0) > 0 && (
-                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                    ♻️ {challenge.waste_kg} kg
-                                  </Badge>
-                                )}
-                                {challenge._count?.participants > 0 && (
-                                  <Badge className="text-xs bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-                                    <Users className="w-3 h-3 mr-1" />
-                                    {challenge._count.participants}
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 font-nunito">
-                                <span>
-                                  Created {new Date(challenge.created_at).toLocaleDateString()}
-                                </span>
-                                {challenge.created_by_admin && (
-                                  <span className="flex items-center gap-1">
-                                    <span>•</span>
-                                    <span>By {challenge.created_by_admin.username}</span>
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex gap-2 shrink-0">
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenToggle(challenge)}
-                                disabled={isToggling}
-                                className={`h-9 w-9 p-0 transition-all ${
-                                  challenge.is_active
-                                    ? 'border-orange-200 bg-white/80 hover:bg-orange-50 text-orange-600'
-                                    : 'border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#6CAC73]'
-                                }`}
-                                title={challenge.is_active ? 'Deactivate' : 'Activate'}
-                              >
-                                {isToggling ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : challenge.is_active ? (
-                                  <ToggleRight className="w-4 h-4" />
-                                ) : (
-                                  <ToggleLeft className="w-4 h-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenEdit(challenge)}
-                                disabled={challenge.source === 'ai' || isUpdating}
-                                className="h-9 w-9 p-0 border-[#6CAC73]/20 bg-white/80 hover:bg-blue-50 text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={
-                                  challenge.source === 'ai'
-                                    ? 'Cannot edit AI-generated challenges'
-                                    : 'Edit challenge'
-                                }
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleOpenDelete(challenge)}
-                                disabled={isDeleting}
-                                className="h-9 w-9 p-0 border-rose-200 bg-white/80 hover:bg-rose-50 text-rose-600"
-                                title="Delete challenge"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+      {/* Toggle Dialog */}
+      <ConfirmDialog
+        open={toggleDialogOpen}
+        onOpenChange={setToggleDialogOpen}
+        onConfirm={handleConfirmToggle}
+        title={selectedChallenge?.is_active ? 'Deactivate Challenge?' : 'Activate Challenge?'}
+        description={selectedChallenge?.is_active ? 'Hide challenge from users' : 'Make challenge visible'}
+        confirmText={selectedChallenge?.is_active ? 'Deactivate' : 'Activate'}
+        loading={isToggling}
+        variant={selectedChallenge?.is_active ? 'warning' : 'success'}
+        icon={selectedChallenge?.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+        alertMessage={selectedChallenge && `"${selectedChallenge.title}"`}
+      />
 
-                    {/* Synced Pagination */}
-                    {totalChallengesPages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#6CAC73]/20">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Showing {(challengesPage - 1) * itemsPerPage + 1} to{' '}
-                          {Math.min(challengesPage * itemsPerPage, challengeList.length)} of{' '}
-                          {challengeList.length}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => setChallengesPage((p) => Math.max(1, p - 1))}
-                            disabled={challengesPage === 1}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
-                            Page {challengesPage} of {totalChallengesPages}
-                          </span>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              setChallengesPage((p) => Math.min(totalChallengesPages, p + 1))
-                            }
-                            disabled={challengesPage === totalChallengesPages}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+      {/* AI Confirm Dialog */}
+      <ConfirmDialog
+        open={aiConfirmDialogOpen}
+        onOpenChange={setAiConfirmDialogOpen}
+        onConfirm={handleGenerateAI}
+        title="Generate AI Challenge?"
+        description={`Create a new ${aiCategory} challenge using AI`}
+        confirmText="Generate"
+        loading={isGenerating}
+        variant="info"
+        icon={<Sparkles className="w-5 h-5" />}
+      />
 
-          {/* Pending Verifications Tab */}
-          <TabsContent value="pending">
-            <Card className="border border-orange-300/40 bg-white/80 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <CardTitle className="text-[#2B4A2F] font-poppins flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-orange-600" />
-                      Pending Verifications
-                    </CardTitle>
-                    <CardDescription className="font-nunito">
-                      User submissions awaiting admin review
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isPendingLoading ? (
-                  <div className="text-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto text-orange-600 mb-4" />
-                    <p className="text-gray-600 font-nunito">Loading...</p>
-                  </div>
-                ) : paginatedPending.length === 0 ? (
-                  <div className="text-center py-16">
-                    <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 font-poppins text-lg mb-2">All caught up!</p>
-                    <p className="text-sm text-gray-400 font-nunito">
-                      No pending verifications at the moment
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-4">
-                      {paginatedPending.map((verification: any) => (
-                        <div
-                          key={verification.user_challenge_id}
-                          className="p-4 border border-orange-300 rounded-xl bg-orange-50/80 backdrop-blur-sm hover:bg-orange-50 transition-all"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-semibold text-[#2B4A2F] font-poppins">
-                                  {verification.challenge?.title || 'Challenge'}
-                                </h3>
-                                <Badge className="bg-orange-200 text-orange-700 border-0">
-                                  Pending
-                                </Badge>
-                              </div>
-                              <div className="space-y-1 text-sm font-nunito text-gray-600">
-                                <div className="flex items-center gap-2">
-                                  <Users className="w-4 h-4" />
-                                  <span>{verification.user?.username || 'Unknown'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4" />
-                                  <span>
-                                    {verification.completed_at
-                                      ? new Date(verification.completed_at).toLocaleString()
-                                      : 'N/A'}
-                                  </span>
-                                </div>
-                                {verification.challenge?.points_reward && (
-                                  <div className="flex items-center gap-2">
-                                    <Trophy className="w-4 h-4" />
-                                    <span>{verification.challenge.points_reward} points</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => openVerifyDialog(verification)}
-                              className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90"
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Review
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+      {/* Challenge Details Modal */}
+      {selectedChallenge && (
+        <DetailModal
+          open={challengeDetailsOpen}
+          onOpenChange={setChallengeDetailsOpen}
+          title="Challenge Details"
+          description="Complete challenge information"
+          icon={<Trophy className="w-5 h-5 text-[#6CAC73]" />}
+          sections={challengeDetailSections}
+        />
+      )}
 
-                    {/* Synced Pagination for Pending */}
-                    {totalPendingPages > 1 && (
-                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-orange-300/40">
-                        <p className="text-sm text-gray-600 font-nunito">
-                          Showing {(pendingPage - 1) * itemsPerPage + 1} to{' '}
-                          {Math.min(pendingPage * itemsPerPage, pendingList.length)} of{' '}
-                          {pendingList.length}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => setPendingPage((p) => Math.max(1, p - 1))}
-                            disabled={pendingPage === 1}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <span className="text-sm text-[#2B4A2F] font-poppins min-w-[100px] text-center flex items-center">
-                            Page {pendingPage} of {totalPendingPages}
-                          </span>
-                          <Button
-                            size="sm"
-                            onClick={() => setPendingPage((p) => Math.min(totalPendingPages, p + 1))}
-                            disabled={pendingPage === totalPendingPages}
-                            className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Create/Edit Dialog */}
-        <Dialog
-          open={createDialogOpen || editDialogOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              setCreateDialogOpen(false);
-              setEditDialogOpen(false);
-              setSelectedChallenge(null);
-              resetForm();
-            }
-          }}
-        >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-            <DialogHeader>
-              <DialogTitle className="text-[#2B4A2F] font-poppins text-xl">
-                {editDialogOpen ? 'Edit Challenge' : 'Create New Challenge'}
-              </DialogTitle>
-              <DialogDescription className="font-nunito">
-                {editDialogOpen
-                  ? 'Update challenge details. Changes will be reflected immediately.'
-                  : 'Create a new eco-challenge for users to complete.'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={editDialogOpen ? handleUpdateChallenge : handleCreateChallenge}>
-              <div className="space-y-5 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title" className="text-[#2B4A2F] font-poppins">
-                    Title <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => {
-                      setFormData({ ...formData, title: e.target.value });
-                      if (formErrors.title) {
-                        setFormErrors({ ...formErrors, title: '' });
-                      }
-                    }}
-                    placeholder="e.g., Plastic Bottle Upcycling Challenge"
-                    className={`border-[#6CAC73]/20 ${
-                      formErrors.title ? 'border-red-300 focus:border-red-500' : ''
-                    }`}
+      {/* User Challenge Details Modal */}
+      {selectedUserChallenge && (
+        <DetailModal
+          open={userChallengeDetailsOpen}
+          onOpenChange={setUserChallengeDetailsOpen}
+          title="Submission Details"
+          description="Complete submission information"
+          icon={<Trophy className="w-5 h-5 text-[#6CAC73]" />}
+          header={
+            selectedUserChallenge.proof_url && (
+              <div className="p-4 bg-gray-50/80 rounded-lg border border-gray-200/40">
+                <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5" />
+                  Proof of Completion
+                </h4>
+                <a
+                  href={getImageUrl(selectedUserChallenge.proof_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#6CAC73] hover:underline flex items-center gap-2 mb-3 text-sm"
+                >
+                  <Eye className="w-4 h-4" />
+                  View full-size image
+                </a>
+                <div className="border border-[#6CAC73]/20 rounded-lg overflow-hidden">
+                  <img
+                    src={getImageUrl(selectedUserChallenge.proof_url)}
+                    alt="Proof"
+                    className="w-full h-auto max-h-96 object-contain bg-white"
                   />
-                  {formErrors.title && (
-                    <p className="text-xs text-red-600 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" />
-                      {formErrors.title}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500">{formData.title.length}/100 characters</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description" className="text-[#2B4A2F] font-poppins">
-                    Description <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => {
-                      setFormData({ ...formData, description: e.target.value });
-                      if (formErrors.description) {
-                        setFormErrors({ ...formErrors, description: '' });
-                      }
-                    }}
-                    placeholder="Describe the challenge in detail..."
-                    rows={4}
-                    className={`border-[#6CAC73]/20 resize-none ${
-                      formErrors.description ? 'border-red-300 focus:border-red-500' : ''
-                    }`}
-                  />
-                  {formErrors.description && (
-                    <p className="text-xs text-red-600 flex items-center gap-1">
-                      <XCircle className="w-3 h-3" />
-                      {formErrors.description}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    {formData.description.length}/500 characters
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="points" className="text-[#2B4A2F] font-poppins">
-                      Points Reward <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="points"
-                      type="number"
-                      min="5"
-                      max="100"
-                      value={formData.points_reward}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          points_reward: parseInt(e.target.value) || 0,
-                        });
-                        if (formErrors.points_reward) {
-                          setFormErrors({ ...formErrors, points_reward: '' });
-                        }
-                      }}
-                      className={`border-[#6CAC73]/20 ${
-                        formErrors.points_reward ? 'border-red-300' : ''
-                      }`}
-                    />
-                    {formErrors.points_reward && (
-                      <p className="text-xs text-red-600">{formErrors.points_reward}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="waste" className="text-[#2B4A2F] font-poppins">
-                      Waste Saved (kg)
-                    </Label>
-                    <Input
-                      id="waste"
-                      type="number"
-                      min="0"
-                      max="50"
-                      step="0.1"
-                      value={formData.waste_kg}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          waste_kg: parseFloat(e.target.value) || 0,
-                        });
-                        if (formErrors.waste_kg) {
-                          setFormErrors({ ...formErrors, waste_kg: '' });
-                        }
-                      }}
-                      className={`border-[#6CAC73]/20 ${formErrors.waste_kg ? 'border-red-300' : ''}`}
-                    />
-                    {formErrors.waste_kg && (
-                      <p className="text-xs text-red-600">{formErrors.waste_kg}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[#2B4A2F] font-poppins">Material Type</Label>
-                  <Select
-                    value={formData.material_type}
-                    onValueChange={(value) => setFormData({ ...formData, material_type: value })}
-                  >
-                    <SelectTrigger className="border-[#6CAC73]/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="plastic">Plastic</SelectItem>
-                      <SelectItem value="paper">Paper</SelectItem>
-                      <SelectItem value="glass">Glass</SelectItem>
-                      <SelectItem value="metal">Metal</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="organic">Organic</SelectItem>
-                      <SelectItem value="textile">Textile</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[#2B4A2F] font-poppins">Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger className="border-[#6CAC73]/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
-
-              <DialogFooter className="gap-2">
+            )
+          }
+          sections={userChallengeDetailSections}
+          footer={
+            selectedUserChallenge.status === 'pending_verification' && (
+              <div className="flex justify-end gap-2">
                 <Button
-                  type="button"
                   onClick={() => {
-                    setCreateDialogOpen(false);
-                    setEditDialogOpen(false);
-                    setSelectedChallenge(null);
-                    resetForm();
+                    setUserChallengeDetailsOpen(false);
+                    handleOpenVerify(selectedUserChallenge);
                   }}
-                  disabled={isCreating || isUpdating}
-                  className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
+                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white"
                 >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Verify Challenge
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isCreating || isUpdating}
-                  className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
-                >
-                  {isCreating || isUpdating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {editDialogOpen ? 'Updating...' : 'Creating...'}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      {editDialogOpen ? 'Update Challenge' : 'Create Challenge'}
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </div>
+            )
+          }
+        />
+      )}
 
-        {/* Delete Confirmation AlertDialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-rose-600 font-poppins">
-                <Trash2 className="w-5 h-5 inline mr-2" />
-                Delete Challenge?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="font-nunito">
-                This action cannot be undone and will affect all participants.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            
-            {selectedChallenge && (
-              <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
-                <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
-                <AlertDescription className="font-nunito">
-                  <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
-                  <p className="font-bold text-[#2B4A2F]">"{selectedChallenge.title}"</p>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={() => {
-                  setDeleteDialogOpen(false);
-                  setSelectedChallenge(null);
-                }}
-                className="border-[#6CAC73]/20"
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="bg-gradient-to-br from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white border-0"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Challenge
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Toggle Status AlertDialog */}
-        <AlertDialog open={toggleDialogOpen} onOpenChange={setToggleDialogOpen}>
-          <AlertDialogContent className="border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle className={`font-poppins ${
-                selectedChallenge?.is_active ? 'text-orange-600' : 'text-[#6CAC73]'
-              }`}>
-                {selectedChallenge?.is_active ? (
-                  <>
-                    <ToggleRight className="w-5 h-5 inline mr-2" />
-                    Deactivate Challenge?
-                  </>
-                ) : (
-                  <>
-                    <ToggleLeft className="w-5 h-5 inline mr-2" />
-                    Activate Challenge?
-                  </>
-                )}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="font-nunito">
-                {selectedChallenge?.is_active
-                  ? 'This will hide the challenge from users and prevent new participations.'
-                  : 'This will make the challenge visible to users and allow participations.'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            
-            {selectedChallenge && (
-              <Alert className="bg-gradient-to-br from-[#FFF9F0] to-white border-[#6CAC73]/20">
-                <AlertCircle className="h-4 w-4 text-[#6CAC73]" />
-                <AlertDescription className="font-nunito">
-                  <p className="font-medium mb-2 text-[#2B4A2F]">
-                    {selectedChallenge.is_active ? 'Deactivating:' : 'Activating:'}
-                  </p>
-                  <p className="font-bold text-[#2B4A2F]">"{selectedChallenge.title}"</p>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={() => {
-                  setToggleDialogOpen(false);
-                  setSelectedChallenge(null);
-                }}
-                className="border-[#6CAC73]/20"
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmToggle}
-                disabled={isToggling}
-                className={`border-0 ${
-                  selectedChallenge?.is_active
-                    ? 'bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800'
-                    : 'bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90'
-                } text-white`}
-              >
-                {isToggling ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : selectedChallenge?.is_active ? (
-                  <>
-                    <ToggleRight className="w-4 h-4 mr-2" />
-                    Deactivate
-                  </>
-                ) : (
-                  <>
-                    <ToggleLeft className="w-4 h-4 mr-2" />
-                    Activate
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* AI Generation Confirmation AlertDialog */}
-        <AlertDialog open={aiConfirmDialogOpen} onOpenChange={setAiConfirmDialogOpen}>
-          <AlertDialogContent className="border-purple-200 bg-white/95 backdrop-blur-sm">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-purple-600 font-poppins flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Generate AI Challenge?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="font-nunito">
-                This will create a new <strong>{aiCategory}</strong> challenge using AI. The
-                challenge will be automatically activated and available to users.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            
-            <Alert className="bg-gradient-to-br from-purple-50 to-white border-purple-200">
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              <AlertDescription className="font-nunito">
-                <p className="font-medium text-purple-900 mb-2">AI will generate:</p>
-                <ul className="list-disc list-inside text-sm text-purple-800 space-y-1">
-                  <li>Creative challenge title</li>
-                  <li>Detailed description</li>
-                  <li>Appropriate points reward</li>
-                  <li>Relevant material type</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={() => setAiConfirmDialogOpen(false)}
-                className="border-[#6CAC73]/20"
-              >
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleGenerateAI}
-                disabled={isGenerating}
-                className="bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white border-0"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Challenge
-                  </>
-                )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Verification Dialog */}
-        <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-[#6CAC73]/20 bg-white/95 backdrop-blur-sm">
-            <DialogHeader>
-              <DialogTitle className="text-[#2B4A2F] font-poppins text-xl">
-                Review Submission
-              </DialogTitle>
-              <DialogDescription className="font-nunito">
-                Verify the user's challenge completion and provide feedback
-              </DialogDescription>
-            </DialogHeader>
-
-            {selectedVerification && (
-              <div className="space-y-4 py-4">
-                {/* Challenge Info */}
-                <div className="p-4 bg-gradient-to-r from-[#6CAC73]/10 to-[#2B4A2F]/5 rounded-lg border border-[#6CAC73]/20">
-                  <h4 className="font-semibold text-[#2B4A2F] mb-2 font-poppins flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-[#6CAC73]" />
-                    Challenge Details
-                  </h4>
-                  <p className="font-semibold text-lg text-[#2B4A2F]">
-                    {selectedVerification.challenge?.title || 'N/A'}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {selectedVerification.challenge?.description || 'No description'}
-                  </p>
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border-0">
-                      {selectedVerification.challenge?.points_reward || 0} points
-                    </Badge>
-                    {selectedVerification.challenge?.waste_kg > 0 && (
-                      <Badge className="bg-white border border-[#6CAC73]/20 text-[#2B4A2F]">
-                        {selectedVerification.challenge?.waste_kg} kg waste
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* User Info */}
-                <div className="p-4 bg-blue-50/80 rounded-lg border border-blue-200/40">
-                  <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    Submitted By
-                  </h4>
-                  <div className="space-y-2 text-sm font-nunito">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-semibold min-w-[80px]">User:</span>
-                      <span className="text-[#2B4A2F] font-semibold">
-                        {selectedVerification.user?.username || 'Unknown'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-semibold min-w-[80px]">Email:</span>
-                      <span className="text-[#2B4A2F]">
-                        {selectedVerification.user?.email || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600 font-semibold min-w-[80px]">Submitted:</span>
-                      <span className="text-[#2B4A2F]">
-                        {selectedVerification.completed_at
-                          ? new Date(selectedVerification.completed_at).toLocaleString()
-                          : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proof Image */}
-                {selectedVerification.proof_url && (
-                  <div className="p-4 bg-gray-50/80 rounded-lg border border-gray-200/40">
-                    <h4 className="font-semibold text-[#2B4A2F] mb-3 font-poppins flex items-center gap-2">
-                      <ImageIcon className="w-5 h-5" />
-                      Proof of Completion
-                    </h4>
-                    <a
-                      href={getImageUrl(selectedVerification.proof_url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#6CAC73] hover:underline flex items-center gap-2 mb-3 text-sm"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View full-size image
-                    </a>
-                    <div className="border border-[#6CAC73]/20 rounded-lg overflow-hidden">
-                      <img
-                        src={getImageUrl(selectedVerification.proof_url)}
-                        alt="Proof"
-                        className="w-full h-auto max-h-96 object-contain bg-white"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Admin Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-[#2B4A2F] font-poppins">
-                    Admin Notes (Optional)
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={verificationNotes}
-                    onChange={(e) => setVerificationNotes(e.target.value)}
-                    placeholder="Provide feedback..."
-                    rows={4}
-                    className="border-[#6CAC73]/20"
-                  />
-                </div>
+      {/* Verification Dialog */}
+      {selectedUserChallenge && (
+        <ConfirmDialog
+          open={verifyDialogOpen}
+          onOpenChange={setVerifyDialogOpen}
+          onConfirm={() => {}}
+          title="Review Submission"
+          description="Verify completion and provide feedback"
+          variant="info"
+          icon={<CheckCircle className="w-5 h-5" />}
+          alertMessage={
+            <div className="space-y-2">
+              <p className="font-semibold text-[#2B4A2F]">Challenge: {selectedUserChallenge.challenge?.title}</p>
+              <p className="text-sm">User: <span className="font-semibold">{selectedUserChallenge.user?.username}</span></p>
+              <p className="text-sm">Points: <span className="font-semibold">{selectedUserChallenge.challenge?.points_reward}</span></p>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            {selectedUserChallenge.proof_url && (
+              <div className="border border-[#6CAC73]/20 rounded-lg overflow-hidden">
+                <img src={getImageUrl(selectedUserChallenge.proof_url)} alt="Proof" className="w-full h-auto max-h-64 object-contain bg-white" />
               </div>
             )}
-
-            <DialogFooter className="gap-2">
-              <Button
-                onClick={() => {
-                  setVerifyDialogOpen(false);
-                  setSelectedVerification(null);
-                  setVerificationNotes('');
-                }}
-                disabled={isVerifying}
-                className="border-[#6CAC73]/20 bg-white/80 hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
+            <div className="space-y-2">
+              <Label htmlFor="verify-notes">Admin Notes (Optional)</Label>
+              <Textarea
+                id="verify-notes"
+                value={verificationNotes}
+                onChange={(e) => setVerificationNotes(e.target.value)}
+                placeholder="Provide feedback..."
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-4 border-t">
               <Button
                 onClick={() => handleManualVerify(false)}
                 disabled={isVerifying}
-                className="bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white border-0"
+                className="bg-gradient-to-br from-rose-500 to-rose-600 text-white"
               >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Reject
-                  </>
-                )}
+                {isVerifying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                Reject
               </Button>
               <Button
                 onClick={() => handleManualVerify(true)}
                 disabled={isVerifying}
-                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
+                className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] text-white"
               >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Approve
-                  </>
-                )}
+                {isVerifying ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                Approve
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+            </div>
+          </div>
+        </ConfirmDialog>
+      )}
+    </PageContainer>
   );
 }

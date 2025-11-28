@@ -396,6 +396,96 @@ class UserChallengeService extends BaseService {
     return userChallenge;
   }
 
+  /**
+   * Get all user challenges with filtering (Admin only)
+   */
+async getAllUserChallenges(options: {
+  page?: number;
+  limit?: number;
+  status?: ChallengeStatus;
+  userId?: number;
+}) {
+  const { page = 1, limit = 100, status, userId } = options;
+
+  logger.debug('Fetching all user challenges', { page, limit, status, userId });
+
+  // ✅ CRITICAL: Only filter by deleted_at, nothing else!
+  const where: any = { 
+    deleted_at: null
+    // DO NOT add: skipped_at: null
+    // DO NOT add: challenge.is_active: true
+    // DO NOT add: status filters (unless explicitly requested below)
+  };
+
+  // Only filter by status if explicitly requested
+  if (status) {
+    this.validateEnum(status, ChallengeStatus, 'status');
+    where.status = status;
+  }
+
+  // Only filter by user if explicitly requested
+  if (userId) {
+    this.validateId(userId, 'User ID');
+    where.user_id = userId;
+  }
+
+  // ✅ CRITICAL: Do NOT filter the challenge relation
+  // Include ALL challenges (active and inactive)
+  return this.paginate(prisma.userChallenge, {
+    page,
+    limit,
+    where,
+    include: {
+      user: {
+        select: {
+          user_id: true,
+          username: true,
+          email: true,
+          created_at: true,
+          profile: {
+            select: {
+              profile_picture_url: true,
+              points: true,
+              full_name: true
+            }
+          }
+        }
+      },
+      challenge: {
+        // ✅ Do NOT add where clause here!
+        select: {
+          challenge_id: true,
+          title: true,
+          description: true,
+          points_reward: true,
+          waste_kg: true,
+          material_type: true,
+          category: true,
+          is_active: true, // Include status to show in UI
+          source: true,
+          expires_at: true,
+          start_at: true,
+          created_by_admin: {
+            select: {
+              user_id: true,
+              username: true
+            }
+          }
+        }
+      },
+      verified_by: {
+        select: {
+          user_id: true,
+          username: true
+        }
+      }
+    },
+    orderBy: [
+      { status: 'asc' }, // pending_verification first
+      { created_at: 'desc' }
+    ]
+  });
+}
   // Get challenge leaderboard
   async getChallengeLeaderboard(challengeId?: number, limit: number = 10) {
     if (limit < 1 || limit > 100) {
@@ -808,22 +898,6 @@ class UserChallengeService extends BaseService {
   };
 }
 
-
-
-
-  /**
-   * Calculate real-world impact equivalents
-   */
-  private calculateImpactEquivalents(wasteKg: number) {
-    return {
-      plastic_bottles: Math.floor(wasteKg / 0.03), // 30g per bottle
-      coffee_cups: Math.floor(wasteKg / 0.05), // 50g per cup
-      cardboard_boxes: Math.floor(wasteKg / 0.2), // 200g per box
-      glass_jars: Math.floor(wasteKg / 0.3), // 300g per jar
-      aluminum_cans: Math.floor(wasteKg / 0.015), // 15g per can
-      trees_equivalent: (wasteKg * 0.05).toFixed(1) // Rough estimate
-    };
-  }
 }
 
 // Export singleton instance
@@ -833,6 +907,7 @@ export const userChallengeService = new UserChallengeService();
 export const joinChallenge = userChallengeService.joinChallenge.bind(userChallengeService);
 export const completeChallenge = userChallengeService.completeChallenge.bind(userChallengeService);
 export const verifyChallenge = userChallengeService.verifyChallenge.bind(userChallengeService);
+export const getAllUserChallenges = userChallengeService.getAllUserChallenges.bind(userChallengeService);
 export const getUserChallenges = userChallengeService.getUserChallenges.bind(userChallengeService);
 export const getUserChallengeById = userChallengeService.getUserChallengeById.bind(userChallengeService);
 export const getChallengeLeaderboard = userChallengeService.getChallengeLeaderboard.bind(userChallengeService);

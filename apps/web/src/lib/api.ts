@@ -606,6 +606,16 @@ export const challengesAPI = {
   ): Promise<ApiResponse<PaginatedResponse<UserChallenge>>> =>
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
 
+   getAllUserChallenges: (
+    page = 1,
+    limit = 20,
+    filters?: {
+      status?: 'in_progress' | 'pending_verification' | 'completed' | 'rejected';
+      userId?: number;
+    }
+  ): Promise<ApiResponse<PaginatedResponse<UserChallenge>>> =>
+    api.get(`/user-challenges/all`, { params: { page, limit, ...filters } }),
+
   manualVerify: (
     userChallengeId: number,
     approved: boolean,

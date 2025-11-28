@@ -118,3 +118,19 @@ export const getMyWasteStats = asyncHandler(async (req: AuthRequest, res: Respon
   
   sendSuccess(res, stats, 'Your waste statistics retrieved successfully');
 });
+
+export const getAllUserChallenges = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+  const status = req.query.status as any;
+  const userId = req.query.userId ? Number(req.query.userId) : undefined;
+
+  const result = await userChallengeService.getAllUserChallenges({
+    page,
+    limit,
+    status,
+    userId
+  });
+  
+  sendPaginatedSuccess(res, result.data, result.meta, 'User challenges retrieved successfully');
+});

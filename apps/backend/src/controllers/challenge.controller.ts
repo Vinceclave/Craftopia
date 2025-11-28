@@ -24,11 +24,17 @@ export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Resp
   sendSuccess(res, challenge, 'Challenge generated successfully', 201);
 });
 
-export const getAllChallenges = asyncHandler(async (req: Request, res: Response) => {
-  const category = req.query.category as string | undefined;
-  const result = await challengeService.getAllChallenges(category);
+export const getAllChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const category = req.query.category as string;
+  // ✅ Always include inactive challenges for admin
+  const includeInactive = req.query.includeInactive !== 'false'; // Default true
+
+  const challenges = await challengeService.getAllChallenges({
+    category,
+    includeInactive
+  });
   
-  sendSuccess(res, result.data, 'Challenges retrieved successfully');
+  sendSuccess(res, challenges, 'Challenges retrieved successfully');
 });
 
 export const getChallengeById = asyncHandler(async (req: AuthRequest, res: Response) => {
