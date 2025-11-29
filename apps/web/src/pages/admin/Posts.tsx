@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/Posts.tsx - REFACTORED WITH SHARED COMPONENTS
+// apps/web/src/pages/admin/Posts.tsx - REFACTORED WITH SHARED COMPONENTS AND EXPORT
 import { useState, useCallback, useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,10 @@ import {
   DetailStatGrid,
   type DetailSection,
   type FilterOption,
+  ExportButtons
 } from '@/components/shared';
+import { generateGenericPDF, type ExportConfig } from '@/utils/exportToPDF';
+import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExcel';
 
 export default function AdminPosts() {
   const {
@@ -458,6 +461,201 @@ export default function AdminPosts() {
     [isUpdatingReport]
   );
 
+  // Export handlers
+  const handleExportPDF = () => {
+    let config: ExportConfig;
+
+    if (activeTab === 'posts') {
+      config = {
+        title: 'Posts Report',
+        subtitle: 'List of all platform posts',
+        stats: [
+          { label: 'Total Posts', value: totalPosts },
+          { label: 'Featured Posts', value: featuredPosts },
+          { label: 'Reported Posts', value: reportedPosts },
+          { label: 'Total Comments', value: totalComments },
+        ],
+        columns: [
+          { header: 'Title', dataKey: 'title' },
+          { header: 'Content', dataKey: 'content', formatter: (val) => val?.substring(0, 100) + '...' },
+          { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown' },
+          { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+          { header: 'Featured', dataKey: 'featured', formatter: (val) => val ? 'Yes' : 'No' },
+          { header: 'Likes', dataKey: '_count.likes', formatter: (val) => val || 0 },
+          { header: 'Comments', dataKey: '_count.comments', formatter: (val) => val || 0 },
+          { header: 'Reports', dataKey: '_count.reports', formatter: (val) => val || 0 },
+          { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
+        ],
+        data: posts,
+        filename: 'posts-report',
+      };
+    } else if (activeTab === 'comments') {
+      config = {
+        title: 'Comments Report',
+        subtitle: 'List of all platform comments',
+        stats: [
+          { label: 'Total Comments', value: totalComments },
+          { label: 'Posts with Comments', value: new Set(comments.map(c => c.post_id)).size },
+        ],
+        columns: [
+          { header: 'Content', dataKey: 'content', formatter: (val) => val?.substring(0, 100) + '...' },
+          { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown' },
+          { header: 'Post Title', dataKey: 'post', formatter: (val) => val?.title || 'N/A' },
+          { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
+        ],
+        data: comments,
+        filename: 'comments-report',
+      };
+    } else if (activeTab === 'reports') {
+      config = {
+        title: 'Reports Summary',
+        subtitle: 'Platform content moderation reports',
+        stats: [
+          { label: 'Total Reports', value: reports?.length || 0 },
+          { label: 'Pending Reports', value: reportStats?.pending || 0 },
+          { label: 'In Review', value: reportStats?.in_review || 0 },
+          { label: 'Resolved', value: reportStats?.resolved || 0 },
+        ],
+        columns: [
+          { header: 'Report ID', dataKey: 'report_id' },
+          { header: 'Reason', dataKey: 'reason' },
+          { header: 'Status', dataKey: 'status', formatter: (val) => val.replace('_', ' ') },
+          { header: 'Reporter', dataKey: 'reporter', formatter: (val) => val?.username || 'Unknown' },
+          { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
+        ],
+        data: reports || [],
+        filename: 'reports-summary',
+      };
+    } else {
+      // Default fallback - overview
+      config = {
+        title: 'Content Moderation Overview',
+        subtitle: 'Complete platform content overview',
+        stats: [
+          { label: 'Total Posts', value: totalPosts },
+          { label: 'Total Comments', value: totalComments },
+          { label: 'Featured Posts', value: featuredPosts },
+          { label: 'Reported Posts', value: reportedPosts },
+          { label: 'Pending Reports', value: reportStats?.pending || 0 },
+        ],
+        columns: [
+          { header: 'Metric', dataKey: 'metric' },
+          { header: 'Value', dataKey: 'value' },
+        ],
+        data: [
+          { metric: 'Total Posts', value: totalPosts },
+          { metric: 'Total Comments', value: totalComments },
+          { metric: 'Featured Posts', value: featuredPosts },
+          { metric: 'Reported Posts', value: reportedPosts },
+          { metric: 'Pending Reports', value: reportStats?.pending || 0 },
+          { metric: 'In Review Reports', value: reportStats?.in_review || 0 },
+          { metric: 'Resolved Reports', value: reportStats?.resolved || 0 },
+        ],
+        filename: 'content-moderation-overview',
+      };
+    }
+
+    generateGenericPDF(config);
+  };
+
+  const handleExportExcel = () => {
+    let sheets: ExcelSheetConfig[];
+
+    if (activeTab === 'posts') {
+      sheets = [
+        {
+          sheetName: 'Posts',
+          columns: [
+            { header: 'Title', dataKey: 'title', width: 30 },
+            { header: 'Content', dataKey: 'content', width: 50, formatter: (val) => val?.substring(0, 100) + '...' },
+            { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Featured', dataKey: 'featured', formatter: (val) => val ? 'Yes' : 'No', width: 10 },
+            { header: 'Likes', dataKey: '_count.likes', formatter: (val) => val || 0, width: 10 },
+            { header: 'Comments', dataKey: '_count.comments', formatter: (val) => val || 0, width: 10 },
+            { header: 'Reports', dataKey: '_count.reports', formatter: (val) => val || 0, width: 10 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: posts,
+        }
+      ];
+    } else if (activeTab === 'comments') {
+      sheets = [
+        {
+          sheetName: 'Comments',
+          columns: [
+            { header: 'Content', dataKey: 'content', width: 50, formatter: (val) => val?.substring(0, 100) + '...' },
+            { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Post Title', dataKey: 'post', formatter: (val) => val?.title || 'N/A', width: 30 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: comments,
+        }
+      ];
+    } else if (activeTab === 'reports') {
+      sheets = [
+        {
+          sheetName: 'Reports',
+          columns: [
+            { header: 'Report ID', dataKey: 'report_id', width: 15 },
+            { header: 'Reason', dataKey: 'reason', width: 40 },
+            { header: 'Status', dataKey: 'status', formatter: (val) => val.replace('_', ' '), width: 15 },
+            { header: 'Reporter', dataKey: 'reporter', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: reports || [],
+        }
+      ];
+    } else {
+      sheets = [
+        {
+          sheetName: 'Posts',
+          columns: [
+            { header: 'Title', dataKey: 'title', width: 30 },
+            { header: 'Content', dataKey: 'content', width: 50, formatter: (val) => val?.substring(0, 100) + '...' },
+            { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Featured', dataKey: 'featured', formatter: (val) => val ? 'Yes' : 'No', width: 10 },
+            { header: 'Likes', dataKey: '_count.likes', formatter: (val) => val || 0, width: 10 },
+            { header: 'Comments', dataKey: '_count.comments', formatter: (val) => val || 0, width: 10 },
+            { header: 'Reports', dataKey: '_count.reports', formatter: (val) => val || 0, width: 10 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: posts,
+        },
+        {
+          sheetName: 'Comments',
+          columns: [
+            { header: 'Content', dataKey: 'content', width: 50, formatter: (val) => val?.substring(0, 100) + '...' },
+            { header: 'Author', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Post Title', dataKey: 'post', formatter: (val) => val?.title || 'N/A', width: 30 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: comments,
+        },
+        {
+          sheetName: 'Reports',
+          columns: [
+            { header: 'Report ID', dataKey: 'report_id', width: 15 },
+            { header: 'Reason', dataKey: 'reason', width: 40 },
+            { header: 'Status', dataKey: 'status', formatter: (val) => val.replace('_', ' '), width: 15 },
+            { header: 'Reporter', dataKey: 'reporter', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 15 },
+          ],
+          data: reports || [],
+        }
+      ];
+    }
+
+    generateGenericExcel({ 
+      sheets, 
+      filename: activeTab === 'posts' ? 'posts-report' : 
+                activeTab === 'comments' ? 'comments-report' : 
+                activeTab === 'reports' ? 'reports-summary' : 
+                'content-moderation-comprehensive' 
+    });
+  };
+
   // Handlers
   const handleOpenDeletePost = (post: Post) => {
     setSelectedPost(post);
@@ -674,7 +872,9 @@ export default function AdminPosts() {
         description="Manage and moderate platform content in real-time"
         icon={<FileText className="w-6 h-6 text-white" />}
         actions={
-          <>
+          <div className="flex gap-2">
+            <ExportButtons onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} />
+            
             {selectedPosts.length > 0 && (
               <Button
                 size="sm"
@@ -690,7 +890,7 @@ export default function AdminPosts() {
                 <span className="ml-2">Delete {selectedPosts.length}</span>
               </Button>
             )}
-          </>
+          </div>
         }
       />
 

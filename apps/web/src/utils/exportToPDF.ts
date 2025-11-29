@@ -1,13 +1,9 @@
-// apps/web/src/utils/exportToPDF.ts - FIXED
+// apps/web/src/utils/exportToPDF.ts - REFACTORED FOR DYNAMIC EXPORTS
+
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-interface ExportOptions {
-  title?: string;
-  filename?: string;
-}
-
-// Define colors as RGB tuples to ensure they have exactly 3 numbers
+// Define colors as RGB tuples
 const COLORS = {
   primary: [43, 74, 47] as [number, number, number],    // #2B4A2F
   secondary: [108, 172, 115] as [number, number, number], // #6CAC73
@@ -19,59 +15,124 @@ const COLORS = {
   }
 };
 
-export const exportToPDF = (data: any[], filename: string = 'users-report', options: ExportOptions = {}) => {
+// Generic table configuration interface
+export interface TableColumn {
+  header: string;
+  dataKey: string;
+  formatter?: (value: any, row: any) => string;
+  width?: number;
+}
+
+export interface ExportStats {
+  label: string;
+  value: string | number;
+}
+
+export interface ExportConfig {
+  title: string;
+  subtitle?: string;
+  stats?: ExportStats[];
+  columns: TableColumn[];
+  data: any[];
+  filename?: string;
+}
+
+/**
+ * Generic PDF export function that works with any table configuration
+ */
+export const generateGenericPDF = (config: ExportConfig) => {
   try {
-    const { 
-      title = 'Users Report'
-    } = options;
-    
+    const { title, subtitle, stats, columns, data, filename = 'report' } = config;
+
     // Create PDF document
     const doc = new jsPDF();
-    
-    // Add simple header
+    const pageWidth = doc.internal.pageSize.width;
+    let currentY = 0;
+
+    // Add header with gradient effect
     doc.setFillColor(...COLORS.primary);
-    doc.rect(0, 0, doc.internal.pageSize.width, 15, 'F');
-    
+    doc.rect(0, 0, pageWidth, 20, 'F');
+
     // Title
-    doc.setFontSize(16);
+    doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.text(title, 14, 10);
+    doc.text(title, 14, 12);
+    currentY = 25;
+
+    // Subtitle
+    if (subtitle) {
+      doc.setFontSize(10);
+      doc.setTextColor(...COLORS.text.secondary);
+      doc.setFont('helvetica', 'normal');
+      doc.text(subtitle, 14, currentY);
+      currentY += 7;
+    }
 
     // Report info
     doc.setFontSize(9);
     doc.setTextColor(...COLORS.text.secondary);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString()} | Total Users: ${data.length}`, 14, 20);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 14, currentY);
+    currentY += 5;
+    doc.text(`Total Records: ${data.length}`, 14, currentY);
+    currentY += 10;
+
+    // Stats section if provided
+    if (stats && stats.length > 0) {
+      doc.setFillColor(...COLORS.lightGreen);
+      doc.roundedRect(14, currentY, pageWidth - 28, 8 + (Math.ceil(stats.length / 3) * 8), 2, 2, 'F');
+
+      currentY += 5;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...COLORS.primary);
+
+      const statsPerRow = 3;
+      const statWidth = (pageWidth - 28) / statsPerRow;
+
+      stats.forEach((stat, index) => {
+        const col = index % statsPerRow;
+        const row = Math.floor(index / statsPerRow);
+        const x = 14 + (col * statWidth) + 5;
+        const y = currentY + (row * 8);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...COLORS.text.secondary);
+        doc.text(stat.label, x, y);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(...COLORS.primary);
+        doc.text(String(stat.value), x, y + 4);
+      });
+
+      currentY += Math.ceil(stats.length / statsPerRow) * 8 + 5;
+    }
 
     // If no data
     if (data.length === 0) {
       doc.setFontSize(12);
       doc.setTextColor(...COLORS.text.secondary);
-      doc.text('No user data available', 14, 40);
-      doc.save(`${filename}.pdf`);
+      doc.text('No data available', 14, currentY + 10);
+      doc.save(`${filename}-${new Date().getTime()}.pdf`);
       return;
     }
 
-    // Prepare table data - focus on essential user information
-    const tableHeaders = ['Username', 'Email', 'Role', 'Status', 'Joined', 'Posts', 'Comments', 'Points'];
-    
-    const tableData = data.map(user => [
-      user.username || '',
-      user.email || '',
-      user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '',
-      user.is_active ? 'Active' : 'Banned',
-      user.created_at ? new Date(user.created_at).toLocaleDateString() : '',
-      user._count?.posts?.toString() || '0',
-      user._count?.comments?.toString() || '0',
-      user.profile?.points?.toString() || '0'
-    ]);
+    // Prepare table data
+    const tableHeaders = columns.map(col => col.header);
+    const tableData = data.map(row =>
+      columns.map(col => {
+        const value = row[col.dataKey];
+        return col.formatter ? col.formatter(value, row) : String(value ?? '');
+      })
+    );
 
     // Create the main table
     autoTable(doc, {
       head: [tableHeaders],
       body: tableData,
-      startY: 25,
+      startY: currentY,
       styles: {
         fontSize: 8,
         cellPadding: 3,
@@ -96,16 +157,29 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
         fillColor: COLORS.lightGreen,
         lineColor: COLORS.border,
       },
-      margin: { top: 25 },
+      columnStyles: columns.reduce((acc, col, index) => {
+        if (col.width) {
+          acc[index] = { cellWidth: col.width };
+        }
+        return acc;
+      }, {} as any),
+      margin: { top: currentY },
       theme: 'grid',
-      // Removed invalid 'tableLine' property
       didDrawPage: (data) => {
         // Page footer
         doc.setFontSize(8);
         doc.setTextColor(...COLORS.text.secondary);
         doc.text(
           `Page ${data.pageNumber}`,
-          doc.internal.pageSize.width - 20,
+          pageWidth - 20,
+          doc.internal.pageSize.height - 10
+        );
+
+        // Add watermark
+        doc.setFontSize(6);
+        doc.text(
+          'Craftopia Admin Report',
+          14,
           doc.internal.pageSize.height - 10
         );
       },
@@ -113,13 +187,41 @@ export const exportToPDF = (data: any[], filename: string = 'users-report', opti
 
     // Save PDF
     doc.save(`${filename}-${new Date().getTime()}.pdf`);
-    
+
   } catch (error) {
     throw new Error('Failed to generate PDF: ' + (error as Error).message);
   }
 };
 
-// Simple user list export
+/**
+ * Legacy function for backward compatibility - Users page
+ */
+export const exportToPDF = (data: any[], filename: string = 'users-report', options: { title?: string } = {}) => {
+  const { title = 'Users Report' } = options;
+
+  const config: ExportConfig = {
+    title,
+    subtitle: 'User Management Report',
+    columns: [
+      { header: 'Username', dataKey: 'username' },
+      { header: 'Email', dataKey: 'email' },
+      { header: 'Role', dataKey: 'role', formatter: (val) => val ? val.charAt(0).toUpperCase() + val.slice(1) : '' },
+      { header: 'Status', dataKey: 'is_active', formatter: (val) => val ? 'Active' : 'Banned' },
+      { header: 'Joined', dataKey: 'created_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : '' },
+      { header: 'Posts', dataKey: '_count', formatter: (val) => val?.posts?.toString() || '0' },
+      { header: 'Comments', dataKey: '_count', formatter: (val) => val?.comments?.toString() || '0' },
+      { header: 'Points', dataKey: 'profile', formatter: (val) => val?.points?.toString() || '0' },
+    ],
+    data,
+    filename,
+  };
+
+  return generateGenericPDF(config);
+};
+
+/**
+ * Simple user list export
+ */
 export const exportSimpleUserList = (data: any[], filename: string = 'user-list') => {
   const simpleData = data.map(user => ({
     username: user.username,

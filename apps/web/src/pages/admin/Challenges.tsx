@@ -25,7 +25,6 @@ import {
   Trophy,
   Plus,
   Loader2,
-  RefreshCw,
   Sparkles,
   Clock,
   Users,
@@ -38,7 +37,6 @@ import {
   ToggleLeft,
   ToggleRight,
   TrendingUp,
-  Wifi,
   Image as ImageIcon,
   User,
   Calendar,
@@ -56,7 +54,10 @@ import {
   ConfirmDialog,
   type DetailSection,
   type ActionButton,
+  ExportButtons
 } from '@/components/shared';
+import { generateGenericPDF, type ExportConfig } from '@/utils/exportToPDF';
+import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExcel';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/hooks/useToast';
@@ -164,7 +165,7 @@ export default function AdminChallenges() {
   } = useChallenges();
 
   const { success, error: showError, info } = useToast();
-
+const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challenges');
   // ✅ FIX: Set default filters - active challenges and pending user challenges
   const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('active');
   const [userChallengeStatusFilter, setUserChallengeStatusFilter] = useState<UserChallengeStatusFilter>('pending_verification');
@@ -794,6 +795,199 @@ export default function AdminChallenges() {
     ];
   }, [selectedUserChallenge]);
 
+  // Export handlers for challenges
+  const handleExportPDF = () => {
+    let config: ExportConfig;
+
+    if (activeTab === 'challenges') {
+      config = {
+        title: 'Challenges Report',
+        subtitle: 'List of all eco-challenges',
+        stats: [
+          { label: 'Total Challenges', value: challengeStats.total },
+          { label: 'Active Challenges', value: challengeStats.active },
+          { label: 'AI Generated', value: challengeStats.aiGenerated },
+          { label: 'Admin Created', value: challengeStats.adminCreated },
+        ],
+        columns: [
+          { header: 'Title', dataKey: 'title' },
+          { header: 'Description', dataKey: 'description' },
+          { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+          { header: 'Material Type', dataKey: 'material_type', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1) },
+          { header: 'Points Reward', dataKey: 'points_reward' },
+          { header: 'Waste (kg)', dataKey: 'waste_kg', formatter: (val) => val > 0 ? `${val} kg` : '—' },
+          { header: 'Source', dataKey: 'source', formatter: (val) => val === 'ai' ? 'AI Generated' : 'Admin Created' },
+          { header: 'Status', dataKey: 'is_active', formatter: (val) => val ? 'Active' : 'Inactive' },
+          { header: 'Participants', dataKey: '_count.participants', formatter: (val) => val || 0 },
+          { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
+        ],
+        data: filteredChallenges,
+        filename: 'challenges-report',
+      };
+    } else if (activeTab === 'submissions') {
+      config = {
+        title: 'User Submissions Report',
+        subtitle: 'List of all user challenge submissions',
+        stats: [
+          { label: 'Total Submissions', value: userChallengeStats.total },
+          { label: 'Pending Verification', value: userChallengeStats.pending },
+          { label: 'Completed', value: userChallengeStats.completed },
+          { label: 'In Progress', value: userChallengeStats.inProgress },
+        ],
+        columns: [
+          { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown' },
+          { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A' },
+          { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A' },
+          { header: 'Status', dataKey: 'status', formatter: (val) => {
+            const statusMap: Record<string, string> = {
+              in_progress: 'In Progress',
+              pending_verification: 'Pending Verification',
+              completed: 'Completed',
+              rejected: 'Rejected'
+            };
+            return statusMap[val] || val;
+          }},
+          { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0 },
+          { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—' },
+          { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
+          { header: 'Completed', dataKey: 'completed_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not completed' },
+          { header: 'Verified', dataKey: 'verified_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not verified' },
+        ],
+        data: filteredUserChallenges,
+        filename: 'user-submissions-report',
+      };
+    } else {
+      // Default fallback
+      config = {
+        title: 'Challenges Overview',
+        subtitle: 'Complete challenges and submissions overview',
+        stats: [
+          { label: 'Total Challenges', value: challengeStats.total },
+          { label: 'Active Challenges', value: challengeStats.active },
+          { label: 'Total Submissions', value: userChallengeStats.total },
+          { label: 'Pending Verification', value: userChallengeStats.pending },
+        ],
+        columns: [
+          { header: 'Metric', dataKey: 'metric' },
+          { header: 'Value', dataKey: 'value' },
+        ],
+        data: [
+          { metric: 'Total Challenges', value: challengeStats.total },
+          { metric: 'Active Challenges', value: challengeStats.active },
+          { metric: 'AI Generated', value: challengeStats.aiGenerated },
+          { metric: 'Admin Created', value: challengeStats.adminCreated },
+          { metric: 'Total Submissions', value: userChallengeStats.total },
+          { metric: 'Pending Verification', value: userChallengeStats.pending },
+          { metric: 'Completed', value: userChallengeStats.completed },
+          { metric: 'In Progress', value: userChallengeStats.inProgress },
+        ],
+        filename: 'challenges-overview-report',
+      };
+    }
+
+    generateGenericPDF(config);
+  };
+
+  const handleExportExcel = () => {
+    let sheets: ExcelSheetConfig[];
+
+    if (activeTab === 'challenges') {
+      sheets = [
+        {
+          sheetName: 'Challenges',
+          columns: [
+            { header: 'Title', dataKey: 'title', width: 30 },
+            { header: 'Description', dataKey: 'description', width: 50 },
+            { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Material Type', dataKey: 'material_type', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Points Reward', dataKey: 'points_reward', width: 15 },
+            { header: 'Waste (kg)', dataKey: 'waste_kg', formatter: (val) => val > 0 ? `${val} kg` : '—', width: 15 },
+            { header: 'Source', dataKey: 'source', formatter: (val) => val === 'ai' ? 'AI Generated' : 'Admin Created', width: 15 },
+            { header: 'Status', dataKey: 'is_active', formatter: (val) => val ? 'Active' : 'Inactive', width: 15 },
+            { header: 'Participants', dataKey: '_count.participants', formatter: (val) => val || 0, width: 15 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
+          ],
+          data: filteredChallenges,
+        }
+      ];
+    } else if (activeTab === 'submissions') {
+      sheets = [
+        {
+          sheetName: 'User Submissions',
+          columns: [
+            { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A', width: 25 },
+            { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A', width: 30 },
+            { header: 'Status', dataKey: 'status', formatter: (val) => {
+              const statusMap: Record<string, string> = {
+                in_progress: 'In Progress',
+                pending_verification: 'Pending Verification',
+                completed: 'Completed',
+                rejected: 'Rejected'
+              };
+              return statusMap[val] || val;
+            }, width: 20 },
+            { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0, width: 15 },
+            { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—', width: 20 },
+            { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
+            { header: 'Completed', dataKey: 'completed_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not completed', width: 20 },
+            { header: 'Verified', dataKey: 'verified_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not verified', width: 20 },
+          ],
+          data: filteredUserChallenges,
+        }
+      ];
+    } else {
+      sheets = [
+        {
+          sheetName: 'Challenges',
+          columns: [
+            { header: 'Title', dataKey: 'title', width: 30 },
+            { header: 'Description', dataKey: 'description', width: 50 },
+            { header: 'Category', dataKey: 'category', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Material Type', dataKey: 'material_type', formatter: (val) => val.charAt(0).toUpperCase() + val.slice(1), width: 15 },
+            { header: 'Points Reward', dataKey: 'points_reward', width: 15 },
+            { header: 'Waste (kg)', dataKey: 'waste_kg', formatter: (val) => val > 0 ? `${val} kg` : '—', width: 15 },
+            { header: 'Source', dataKey: 'source', formatter: (val) => val === 'ai' ? 'AI Generated' : 'Admin Created', width: 15 },
+            { header: 'Status', dataKey: 'is_active', formatter: (val) => val ? 'Active' : 'Inactive', width: 15 },
+            { header: 'Participants', dataKey: '_count.participants', formatter: (val) => val || 0, width: 15 },
+            { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
+          ],
+          data: filteredChallenges,
+        },
+        {
+          sheetName: 'User Submissions',
+          columns: [
+            { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
+            { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A', width: 25 },
+            { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A', width: 30 },
+            { header: 'Status', dataKey: 'status', formatter: (val) => {
+              const statusMap: Record<string, string> = {
+                in_progress: 'In Progress',
+                pending_verification: 'Pending Verification',
+                completed: 'Completed',
+                rejected: 'Rejected'
+              };
+              return statusMap[val] || val;
+            }, width: 20 },
+            { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0, width: 15 },
+            { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—', width: 20 },
+            { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
+            { header: 'Completed', dataKey: 'completed_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not completed', width: 20 },
+            { header: 'Verified', dataKey: 'verified_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Not verified', width: 20 },
+          ],
+          data: filteredUserChallenges,
+        }
+      ];
+    }
+
+    generateGenericExcel({ 
+      sheets, 
+      filename: activeTab === 'challenges' ? 'challenges-report' : 
+                activeTab === 'submissions' ? 'user-submissions-report' : 
+                'challenges-comprehensive-report' 
+    });
+  };
+
   // Loading state
   if (isLoading || isUserChallengesLoading) {
     return <LoadingState message="Loading challenges..." />;
@@ -815,27 +1009,14 @@ export default function AdminChallenges() {
         title={
           <span className="flex items-center gap-3">
             Challenges Management
-            <Badge className="bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] border border-[#6CAC73]/30 font-poppins animate-pulse">
-              <Wifi className="w-3 h-3 mr-1" />
-              Live
-            </Badge>
           </span>
         }
         description="Create, manage challenges and verify user submissions with real-time updates"
         icon={<Trophy className="w-6 h-6 text-white" />}
         actions={
-          <>
-            <Button
-              size="sm"
-              onClick={() => {
-                refetch();
-                refetchUserChallenges();
-              }}
-              className="border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+          <div className="flex gap-2">
+            <ExportButtons onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} />
+            
             <Button
               size="sm"
               onClick={handleOpenCreate}
@@ -844,7 +1025,7 @@ export default function AdminChallenges() {
               <Plus className="w-4 h-4 mr-2" />
               Create Challenge
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -893,8 +1074,7 @@ export default function AdminChallenges() {
       </Card>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="challenges" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
+<Tabs defaultValue="challenges" className="w-full" onValueChange={(value) => setActiveTab(value as 'challenges' | 'submissions')}>        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
           <TabsTrigger
             value="challenges"
             className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
