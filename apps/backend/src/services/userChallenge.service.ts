@@ -195,40 +195,64 @@ class UserChallengeService extends BaseService {
   );
 
   const { 
-    status, 
-    points_awarded, 
-    ai_confidence_score, 
-    verification_type, 
-    admin_notes, 
-    completed_at, 
-    verified_at
-  } = aiVerification;
+  status, 
+  points_awarded, 
+  ai_confidence_score, 
+  verification_type, 
+  admin_notes, 
+  completed_at, 
+  verified_at
+} = aiVerification;
 
-  logger.info('AI verification completed', { 
-    userChallengeId,
-    status,
-    confidence: ai_confidence_score 
-  });
+// ✅ FIX: Ensure reasonable defaults if AI fails
+const safeStatus = status || ChallengeStatus.pending_verification;
+const safeScore = typeof ai_confidence_score === 'number' 
+  ? Math.max(0, Math.min(1, ai_confidence_score))
+  : 0.5; // Default to pending if score missing
 
-  // Calculate waste saved based on verification status
-  const wasteKgSaved = status === 'completed' ? challenge.waste_kg : 0;
+const safePointsAwarded = status === 'completed' 
+  ? (points_awarded || Math.floor(challenge.points_reward * 0.6))
+  : 0;
 
-  // Step 2: Update userChallenge
-  const verified = await prisma.userChallenge.update({
-    where: { user_challenge_id: userChallengeId },
-    data: {
-      status,
-      proof_url: imageUri,
-      verified_at,
-      points_awarded,
-      waste_kg_saved: wasteKgSaved, // ✅ NEW FIELD
-      ai_confidence_score,
-      verification_type,
-      admin_notes,
-      completed_at,
-      user_id: userId,
-      challenge_id: challengeId
-    },
+// ✅ FIX: Auto-approve high confidence, auto-reject very low, manual review middle
+let finalStatus = safeStatus;
+if (safeScore >= 0.70 && safeStatus !== 'rejected') {
+  finalStatus = ChallengeStatus.completed;
+} else if (safeScore < 0.30) {
+  finalStatus = ChallengeStatus.rejected;
+} else if (safeScore >= 0.30 && safeScore < 0.70) {
+  finalStatus = ChallengeStatus.pending_verification;
+}
+
+console.log('🔍 AI Verification Result:', {
+  originalStatus: status,
+  finalStatus,
+  score: safeScore,
+  points: safePointsAwarded,
+  notes: admin_notes,
+});
+
+// Calculate waste saved based on FINAL status (not original)
+const wasteKgSaved = finalStatus === ChallengeStatus.completed 
+  ? challenge.waste_kg 
+  : 0;
+
+// Step 2: Update userChallenge with FINAL status
+const verified = await prisma.userChallenge.update({
+  where: { user_challenge_id: userChallengeId },
+  data: {
+    status: finalStatus, // Use finalStatus instead of status
+    proof_url: imageUri,
+    verified_at: finalStatus === ChallengeStatus.completed ? new Date() : null,
+    points_awarded: safePointsAwarded,
+    waste_kg_saved: wasteKgSaved,
+    ai_confidence_score: safeScore,
+    verification_type,
+    admin_notes,
+    completed_at,
+    user_id: userId,
+    challenge_id: challengeId
+  },
     include: {
       challenge: true,
       user: {
