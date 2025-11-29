@@ -16,6 +16,7 @@ export const createChallengeSchema = Joi.object({
     .min(POINTS.CHALLENGE.MIN)
     .max(POINTS.CHALLENGE.MAX)
     .required(),
+  waste_kg: Joi.number().min(0).optional().default(0),
   material_type: commonSchemas.enum(Object.values(MaterialType)),
   category: commonSchemas.enum(Object.values(ChallengeCategory))
 });
@@ -27,6 +28,7 @@ export const updateChallengeSchema = Joi.object({
     .min(POINTS.CHALLENGE.MIN)
     .max(POINTS.CHALLENGE.MAX)
     .optional(),
+  waste_kg: Joi.number().min(0).optional(),
   material_type: commonSchemas.optionalEnum(Object.values(MaterialType)),
   category: commonSchemas.optionalEnum(Object.values(ChallengeCategory)),
   is_active: commonSchemas.optionalBoolean

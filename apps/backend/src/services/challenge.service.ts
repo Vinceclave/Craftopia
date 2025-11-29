@@ -5,12 +5,14 @@ import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError } from "../utils/error";
 import { VALIDATION_LIMITS, POINTS } from "../constats";
 import { logger } from "../utils/logger";
-import { WebSocketEmitter } from "../websocket/events"; // ADD THIS
+import { WebSocketEmitter } from "../websocket/events";
+import { generateChallenge } from "../ai/services/challenges.service"; // Import real AI service
 
 interface CreateChallengeData {
   title: string;
   description: string;
   points_reward: number;
+  waste_kg?: number; // Optional waste_kg
   material_type: string;
   created_by_admin_id: number | null;
   category: ChallengeCategory;
@@ -21,15 +23,15 @@ class ChallengeService extends BaseService {
   async createChallenge(data: CreateChallengeData) {
     // Validate inputs
     this.validateRequiredString(
-      data.title, 
-      'Challenge title', 
-      VALIDATION_LIMITS.CHALLENGE.TITLE_MIN, 
+      data.title,
+      'Challenge title',
+      VALIDATION_LIMITS.CHALLENGE.TITLE_MIN,
       VALIDATION_LIMITS.CHALLENGE.TITLE_MAX
     );
     this.validateRequiredString(
-      data.description, 
-      'Challenge description', 
-      VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MIN, 
+      data.description,
+      'Challenge description',
+      VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MIN,
       VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MAX
     );
 
@@ -42,10 +44,10 @@ class ChallengeService extends BaseService {
     this.validateEnum(data.material_type, MaterialType, 'material_type');
     this.validateEnum(data.category, ChallengeCategory, 'category');
 
-    logger.info('Creating challenge', { 
-      title: data.title, 
+    logger.info('Creating challenge', {
+      title: data.title,
       category: data.category,
-      adminId: data.created_by_admin_id 
+      adminId: data.created_by_admin_id
     });
 
     const challenge = await prisma.ecoChallenge.create({
@@ -53,6 +55,7 @@ class ChallengeService extends BaseService {
         title: data.title.trim(),
         description: data.description.trim(),
         points_reward: data.points_reward,
+        waste_kg: data.waste_kg || 0, // Save waste_kg
         material_type: data.material_type as MaterialType,
         category: data.category,
         source: data.created_by_admin_id ? ChallengeSource.admin : ChallengeSource.ai,
@@ -65,10 +68,10 @@ class ChallengeService extends BaseService {
       }
     });
 
-    logger.info('Challenge created successfully', { 
-      challengeId: challenge.challenge_id 
+    logger.info('Challenge created successfully', {
+      challengeId: challenge.challenge_id
     });
-     // 🔥 WEBSOCKET: Broadcast new challenge to all users
+    // 🔥 WEBSOCKET: Broadcast new challenge to all users
     WebSocketEmitter.challengeCreated({
       challenge_id: challenge.challenge_id,
       title: challenge.title,
@@ -87,68 +90,77 @@ class ChallengeService extends BaseService {
 
     logger.info('Generating AI challenge', { category, adminId });
 
-    // Simulate AI generation (replace with actual AI service call)
-    const aiChallenge = await this.simulateAIGeneration(category);
+    // Call real AI service
+    const aiChallenges = await generateChallenge(category);
 
-    return this.createChallenge({
-      title: aiChallenge.title,
-      description: aiChallenge.description,
-      points_reward: aiChallenge.points,
-      material_type: aiChallenge.materialType,
-      category,
-      created_by_admin_id: adminId || null,
-    });
+    // We'll save all of them and return the first one to the controller for response.
+    const savedChallenges = [];
+
+    for (const aiChallenge of aiChallenges) {
+      const saved = await this.createChallenge({
+        title: aiChallenge.title,
+        description: aiChallenge.description,
+        points_reward: aiChallenge.points_reward,
+        waste_kg: aiChallenge.waste_kg,
+        material_type: aiChallenge.material_type,
+        category: aiChallenge.category as ChallengeCategory,
+        created_by_admin_id: null, // AI generated
+      });
+      savedChallenges.push(saved);
+    }
+
+    return savedChallenges[0];
   }
 
   // Get all challenges with filtering
-async getAllChallenges(options: {
-  category?: string;
-  includeInactive?: boolean;
-}) {
-  const { category, includeInactive = true } = options; // DEFAULT: show all
+  async getAllChallenges(options: {
+    category?: string;
+    includeInactive?: boolean;
+  }) {
+    const { category, includeInactive = true } = options; // DEFAULT: show all
 
-  logger.debug('Fetching all challenges', { category, includeInactive });
+    logger.debug('Fetching all challenges', { category, includeInactive });
 
-  // ✅ CRITICAL: Only filter by deleted_at
-  const where: any = { 
-    deleted_at: null
-    // DO NOT add: is_active: true (this hides inactive challenges!)
-  };
+    // ✅ CRITICAL: Only filter by deleted_at
+    const where: any = {
+      deleted_at: null
+      // DO NOT add: is_active: true (this hides inactive challenges!)
+    };
 
-  // Optionally filter by category
-  if (category?.trim()) {
-    where.category = category.trim();
-  }
+    // Optionally filter by category
+    if (category?.trim()) {
+      where.category = category.trim();
+    }
 
-  // Only filter by active status if explicitly requested
-  if (!includeInactive) {
-    where.is_active = true;
-  }
+    // Only filter by active status if explicitly requested
+    if (!includeInactive) {
+      where.is_active = true;
+    }
 
-  const challenges = await prisma.ecoChallenge.findMany({
-    where,
-    include: {
-      created_by_admin: {
-        select: {
-          user_id: true,
-          username: true
-        }
-      },
-      _count: {
-        select: {
-          participants: {
-            where: {
-              deleted_at: null // Only count non-deleted participants
+    const challenges = await prisma.ecoChallenge.findMany({
+      where,
+      include: {
+        created_by_admin: {
+          select: {
+            user_id: true,
+            username: true
+          }
+        },
+        _count: {
+          select: {
+            participants: {
+              where: {
+                deleted_at: null // Only count non-deleted participants
+              }
             }
           }
         }
-      }
-    },
-    orderBy: { created_at: 'desc' }
-  });
+      },
+      orderBy: { created_at: 'desc' }
+    });
 
-  return challenges;
-}
+    return challenges;
+  }
 
 
   // Get challenge by ID
@@ -165,9 +177,9 @@ async getAllChallenges(options: {
 
     // Get participants
     const participants = await prisma.userChallenge.findMany({
-      where: { 
+      where: {
         challenge_id: challengeId,
-        deleted_at: null 
+        deleted_at: null
       },
       include: {
         user: {
@@ -180,9 +192,9 @@ async getAllChallenges(options: {
 
     // Count total participants
     const participantCount = await prisma.userChallenge.count({
-      where: { 
+      where: {
         challenge_id: challengeId,
-        deleted_at: null 
+        deleted_at: null
       }
     });
 
@@ -220,18 +232,18 @@ async getAllChallenges(options: {
     // Validate if updating specific fields
     if (data.title !== undefined) {
       this.validateRequiredString(
-        data.title, 
-        'Challenge title', 
-        VALIDATION_LIMITS.CHALLENGE.TITLE_MIN, 
+        data.title,
+        'Challenge title',
+        VALIDATION_LIMITS.CHALLENGE.TITLE_MIN,
         VALIDATION_LIMITS.CHALLENGE.TITLE_MAX
       );
     }
 
     if (data.description !== undefined) {
       this.validateRequiredString(
-        data.description, 
-        'Challenge description', 
-        VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MIN, 
+        data.description,
+        'Challenge description',
+        VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MIN,
         VALIDATION_LIMITS.CHALLENGE.DESCRIPTION_MAX
       );
     }
@@ -252,6 +264,7 @@ async getAllChallenges(options: {
         ...(data.title && { title: data.title.trim() }),
         ...(data.description && { description: data.description.trim() }),
         ...(data.points_reward && { points_reward: data.points_reward }),
+        ...(data.waste_kg !== undefined && { waste_kg: data.waste_kg }), // Update waste_kg
         ...(data.material_type && { material_type: data.material_type as MaterialType }),
         ...(data.category && { category: data.category }),
       },
@@ -306,9 +319,9 @@ async getAllChallenges(options: {
       'Challenge'
     );
 
-    logger.info('Toggling challenge status', { 
-      challengeId, 
-      currentStatus: challenge.is_active 
+    logger.info('Toggling challenge status', {
+      challengeId,
+      currentStatus: challenge.is_active
     });
 
     return prisma.ecoChallenge.update({
@@ -324,10 +337,10 @@ async getAllChallenges(options: {
     return this.paginate(prisma.ecoChallenge, {
       page,
       limit,
-      where: { 
-        category, 
+      where: {
+        category,
         is_active: true,
-        deleted_at: null 
+        deleted_at: null
       },
       orderBy: { created_at: 'desc' }
     });
@@ -350,7 +363,7 @@ async getAllChallenges(options: {
   // Private: Mark expired challenges as inactive
   private async markExpiredChallengesInactive() {
     const now = new Date();
-    
+
     const result = await prisma.ecoChallenge.updateMany({
       where: {
         expires_at: { lt: now },
@@ -367,50 +380,13 @@ async getAllChallenges(options: {
     return result;
   }
 
-  // Private: Simulate AI generation (replace with actual AI service)
-  private async simulateAIGeneration(category: ChallengeCategory): Promise<{
-    title: string;
-    description: string;
-    points: number;
-    materialType: MaterialType;
-  }> {
-    const materials = Object.values(MaterialType);
-    const randomMaterial = materials[Math.floor(Math.random() * materials.length)];
-
-    const challenges = [
-      {
-        title: `Transform ${randomMaterial} waste`,
-        description: `Collect and upcycle 5 pieces of ${randomMaterial} into something useful`,
-        points: Math.floor(Math.random() * 30) + 15,
-      },
-      {
-        title: `Creative ${randomMaterial} project`,
-        description: `Create an artistic piece using discarded ${randomMaterial}`,
-        points: Math.floor(Math.random() * 30) + 20,
-      },
-      {
-        title: `${randomMaterial} recycling challenge`,
-        description: `Properly sort and process ${randomMaterial} waste in your community`,
-        points: Math.floor(Math.random() * 20) + 15,
-      }
-    ];
-
-    const randomChallenge = challenges[Math.floor(Math.random() * challenges.length)];
-
-    return {
-      title: randomChallenge.title,
-      description: randomChallenge.description,
-      points: randomChallenge.points,
-      materialType: randomMaterial as MaterialType,
-    };
-  }
-   /**
-   * Get challenge options for user to choose from
-   * Returns challenges user hasn't joined yet
-   */
+  /**
+  * Get challenge options for user to choose from
+  * Returns challenges user hasn't joined yet
+  */
   async getChallengeOptions(
-    userId: number, 
-    category?: string, 
+    userId: number,
+    category?: string,
     limit: number = 5
   ) {
     this.validateId(userId, 'User ID');
@@ -423,7 +399,7 @@ async getAllChallenges(options: {
 
     // Get challenges user has already joined or skipped
     const userChallengeIds = await prisma.userChallenge.findMany({
-      where: { 
+      where: {
         user_id: userId,
         deleted_at: null
       },
@@ -461,62 +437,62 @@ async getAllChallenges(options: {
           select: { user_id: true, username: true }
         },
         _count: {
-          select: { 
-            participants: { 
-              where: { deleted_at: null } 
-            } 
+          select: {
+            participants: {
+              where: { deleted_at: null }
+            }
           }
         }
       }
     });
 
-    logger.info('Challenge options retrieved', { 
-      userId, 
+    logger.info('Challenge options retrieved', {
+      userId,
       category,
-      count: options.length 
+      count: options.length
     });
 
     return {
       options,
       total: options.length,
       category: category || 'all',
-      message: options.length === 0 
-        ? 'No new challenges available. Check back later!' 
+      message: options.length === 0
+        ? 'No new challenges available. Check back later!'
         : `Pick a challenge that fits your schedule!`
     };
   }
 
   async getChallengeStats() {
-  const [total, active, aiGenerated, adminCreated] = await Promise.all([
-    prisma.ecoChallenge.count({
-      where: { deleted_at: null }
-    }),
-    prisma.ecoChallenge.count({
-      where: { is_active: true, deleted_at: null }
-    }),
-    prisma.ecoChallenge.count({
-      where: { source: ChallengeSource.ai, deleted_at: null }
-    }),
-    prisma.ecoChallenge.count({
-      where: { source: ChallengeSource.admin, deleted_at: null }
-    })
-  ]);
+    const [total, active, aiGenerated, adminCreated] = await Promise.all([
+      prisma.ecoChallenge.count({
+        where: { deleted_at: null }
+      }),
+      prisma.ecoChallenge.count({
+        where: { is_active: true, deleted_at: null }
+      }),
+      prisma.ecoChallenge.count({
+        where: { source: ChallengeSource.ai, deleted_at: null }
+      }),
+      prisma.ecoChallenge.count({
+        where: { source: ChallengeSource.admin, deleted_at: null }
+      })
+    ]);
 
-  const pending = await prisma.userChallenge.count({
-    where: {
-      status: ChallengeStatus.pending_verification,
-      deleted_at: null
-    }
-  });
+    const pending = await prisma.userChallenge.count({
+      where: {
+        status: ChallengeStatus.pending_verification,
+        deleted_at: null
+      }
+    });
 
-  return {
-    total,
-    active,
-    aiGenerated,
-    adminCreated,
-    pending
-  };
-}
+    return {
+      total,
+      active,
+      aiGenerated,
+      adminCreated,
+      pending
+    };
+  }
 
   /**
    * Get personalized challenge recommendations based on user history
@@ -545,7 +521,7 @@ async getAllChallenges(options: {
     completedChallenges.forEach(uc => {
       const material = uc.challenge.material_type;
       const category = uc.challenge.category;
-      
+
       materialCounts[material] = (materialCounts[material] || 0) + 1;
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
     });
@@ -596,11 +572,11 @@ async getAllChallenges(options: {
         where: {
           is_active: true,
           deleted_at: null,
-          challenge_id: { 
+          challenge_id: {
             notIn: [
-              ...excludeIds, 
+              ...excludeIds,
               ...recommendations.map(r => r.challenge_id)
-            ] 
+            ]
           },
           OR: [
             { expires_at: null },
@@ -623,7 +599,7 @@ async getAllChallenges(options: {
 
     return {
       recommendations,
-      reason: topMaterial 
+      reason: topMaterial
         ? `Based on your ${topMaterial} challenge history`
         : 'Recommended for you',
       preferences: {
