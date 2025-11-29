@@ -1,7 +1,6 @@
 // QuestBanner.tsx - HomeStats structure with Quest content
 import React from 'react';
 import { Text, View } from 'react-native';
-import { Award, CheckCircle, Leaf } from 'lucide-react-native';
 
 interface QuestBannerProps {
   data?: {
@@ -13,10 +12,21 @@ interface QuestBannerProps {
 }
 
 export const QuestBanner: React.FC<QuestBannerProps> = ({ data, loading }) => {
+  const formatPoints = (points: number): string => {
+    if (points >= 1000000) {
+      return (points / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+    }
+    if (points >= 1000) {
+      return (points / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return points.toString();
+  };
+
   const stats = {
     wasteSaved: data?.total_waste_kg?.toFixed(1) || '0.0',
     points: data?.points || 0,
-    completed: data?.challenges_completed || 0
+    completed: data?.challenges_completed || 0,
+    formattedPoints: formatPoints(data?.points || 0)
   };
 
   if (loading) {
@@ -67,7 +77,7 @@ export const QuestBanner: React.FC<QuestBannerProps> = ({ data, loading }) => {
             <View className="items-center">
               <View className="w-8 h-8 rounded-full bg-craftopia-primary/10 items-center justify-center mb-1">
                 <Text className="text-base font-bold text-craftopia-primary font-poppinsBold">
-                  {stats.points}
+                  {stats.formattedPoints}
                 </Text>
               </View>
               <Text className="text-xs text-craftopia-textSecondary font-nunito">Points</Text>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Image as ImageIcon, Sparkles, ArrowLeft, Zap, CircleDot } from 'lucide-react-native';
@@ -43,9 +43,27 @@ export const CraftScanScreen = () => {
     ).start();
   }, []);
 
+  // Reset processing state when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      setIsProcessing(false);
+      console.log('🔄 CraftScan screen focused - reset processing state');
+      
+      return () => {
+        // Cleanup if needed
+        console.log('👋 CraftScan screen unfocused');
+      };
+    }, [])
+  );
+
   const handleBack = () => navigation.goBack();
 
   const pickImageFromCamera = async () => {
+    if (isProcessing) {
+      console.log('⚠️ Already processing, ignoring camera request');
+      return;
+    }
+
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permission Required', 'Camera permission is required to scan items.');
@@ -63,6 +81,11 @@ export const CraftScanScreen = () => {
   };
 
   const pickImageFromGallery = async () => {
+    if (isProcessing) {
+      console.log('⚠️ Already processing, ignoring gallery request');
+      return;
+    }
+
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permission Required', 'Gallery permission is required to upload photos.');
@@ -81,8 +104,13 @@ export const CraftScanScreen = () => {
   };
 
   const handleImageSelected = (uri: string) => {
+    console.log('📸 Image selected:', uri);
     setIsProcessing(true);
-    navigation.navigate('CraftProcessing', { imageUri: uri });
+    
+    // Small delay to show processing state
+    setTimeout(() => {
+      navigation.navigate('CraftProcessing', { imageUri: uri });
+    }, 300);
   };
 
   // Responsive size calculations
@@ -208,6 +236,7 @@ export const CraftScanScreen = () => {
                 shadowOffset: { width: 0, height: 8 },
                 shadowOpacity: 0.4,
                 shadowRadius: 16,
+                opacity: isProcessing ? 0.5 : 1,
               }}
             >
               <LinearGradient

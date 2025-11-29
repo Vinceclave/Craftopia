@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Activity, Award, MessageCircle, Heart, ChevronRight, Trophy, Sparkles, FileText, CheckCircle, Clock, Target } from 'lucide-react-native';
+import { Activity, Award, MessageCircle, Heart, ChevronRight, Sparkles, FileText, CheckCircle, Clock, Target } from 'lucide-react-native';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
 import { useQuery } from '@tanstack/react-query';
@@ -266,7 +266,7 @@ export const HomeActivity = () => {
         id: `points-rt-${Date.now()}`,
         type: 'points',
         title: 'Points Earned',
-        description: String(data.reason || 'You earned points!'),
+        description: String(data.reason || 'You earned points'),
         time: 'Just now',
         points: data.points || data.amount || 0,
         isNew: true,
@@ -335,7 +335,7 @@ export const HomeActivity = () => {
         <View className="bg-craftopia-surface rounded-xl p-6 items-center justify-center border border-craftopia-light min-h-24">
           <ActivityIndicator size="small" color="#3B6E4D" />
           <Text className="text-xs font-nunito text-craftopia-textSecondary mt-2">
-            Loading your activities...
+            Loading your activities
           </Text>
         </View>
       </View>
@@ -362,10 +362,10 @@ export const HomeActivity = () => {
             <Sparkles size={20} color="#3B6E4D" />
           </View>
           <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-2">
-            Start Your Journey!
+            Start Your Journey
           </Text>
           <Text className="text-sm font-nunito text-craftopia-textSecondary text-center">
-            Complete quests and create posts to see activity here.
+            Complete quests and create posts to see activity here
           </Text>
         </View>
       </View>
@@ -458,7 +458,7 @@ export const HomeActivity = () => {
         <View className="flex-row items-center justify-center">
           <Sparkles size={14} color="#3B6E4D" />
           <Text className="text-xs font-nunito text-craftopia-textPrimary text-center ml-2">
-            Every action creates positive change! 🌱
+            Every action creates positive change
           </Text>
         </View>
       </View>

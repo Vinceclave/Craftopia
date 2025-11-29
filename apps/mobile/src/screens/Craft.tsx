@@ -7,6 +7,7 @@ import {
   FlatList,
   ScrollView,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,6 +36,11 @@ const STORAGE_KEY = '@craftopia_saved_items_v1';
 export const CraftScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
   const [recentItems, setRecentItems] = useState<SavedItem[]>([]);
+  const { width: screenWidth } = useWindowDimensions();
+  
+  // Responsive breakpoints
+  const isSmallScreen = screenWidth < 375;
+  const isLargeScreen = screenWidth > 414;
 
   useEffect(() => {
     loadSavedItems();
@@ -70,7 +76,9 @@ export const CraftScreen: React.FC = () => {
 
   const renderSavedItem = ({ item }: { item: SavedItem }) => (
     <TouchableOpacity
-      className="w-32 mr-3 rounded-xl overflow-hidden bg-craftopia-surface border border-craftopia-light relative"
+      className={`mr-3 rounded-xl overflow-hidden bg-craftopia-surface border border-craftopia-light relative ${
+        isSmallScreen ? 'w-28' : isLargeScreen ? 'w-36' : 'w-32'
+      }`}
       onPress={() => {
         navigation.navigate('CraftDetails', {
           craftTitle: item.manualText || 'Your Craft',
@@ -81,29 +89,57 @@ export const CraftScreen: React.FC = () => {
       activeOpacity={0.7}
     >
       {item.uri ? (
-        <Image source={{ uri: item.uri }} className="w-full h-24" resizeMode="cover" />
+        <Image 
+          source={{ uri: item.uri }} 
+          className={`w-full ${
+            isSmallScreen ? 'h-20' : isLargeScreen ? 'h-28' : 'h-24'
+          }`}
+          resizeMode="cover" 
+        />
       ) : (
-        <View className="w-full h-24 bg-craftopia-light items-center justify-center">
-          <Sparkles size={24} color="#E6B655" />
+        <View className={`w-full ${
+          isSmallScreen ? 'h-20' : isLargeScreen ? 'h-28' : 'h-24'
+        } bg-craftopia-light items-center justify-center`}>
+          <Sparkles 
+            size={isSmallScreen ? 20 : isLargeScreen ? 28 : 24} 
+            color="#E6B655" 
+          />
         </View>
       )}
       
       <View className="p-2">
-        <Text className="text-xs text-craftopia-textPrimary font-semibold font-nunito" numberOfLines={2}>
+        <Text 
+          className={`text-craftopia-textPrimary font-semibold font-nunito ${
+            isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+          }`}
+          numberOfLines={2}
+        >
           {item.manualText || new Date(item.createdAt).toLocaleDateString()}
         </Text>
-        <Text className="text-xs text-craftopia-textSecondary mt-1 font-nunito">
-          {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        <Text 
+          className={`text-craftopia-textSecondary mt-1 font-nunito ${
+            isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+          }`}
+        >
+          {new Date(item.createdAt).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          })}
         </Text>
       </View>
 
       {/* Delete Button */}
       <TouchableOpacity
         onPress={() => deleteItem(item.id)}
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-craftopia-error/90 items-center justify-center"
+        className={`absolute top-2 right-2 rounded-full bg-craftopia-error/90 items-center justify-center ${
+          isSmallScreen ? 'w-5 h-5' : isLargeScreen ? 'w-7 h-7' : 'w-6 h-6'
+        }`}
         activeOpacity={0.7}
       >
-        <Trash2 size={12} color="#FFFFFF" />
+        <Trash2 
+          size={isSmallScreen ? 10 : isLargeScreen ? 14 : 12} 
+          color="#FFFFFF" 
+        />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -111,13 +147,23 @@ export const CraftScreen: React.FC = () => {
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
       {/* Header */}
-      <View className="px-4 pt-4 pb-4 bg-craftopia-surface border-b border-craftopia-light">
+      <View className={`bg-craftopia-surface border-b border-craftopia-light ${
+        isSmallScreen ? 'px-3 pt-3 pb-3' : isLargeScreen ? 'px-5 pt-5 pb-5' : 'px-4 pt-4 pb-4'
+      }`}>
         <View className="flex-row justify-between items-center mb-3">
           <View className="flex-1">
-            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-1 font-nunito">
+            <Text 
+              className={`text-craftopia-textSecondary uppercase tracking-wider mb-1 font-nunito ${
+                isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+              }`}
+            >
               Craft Hub
             </Text>
-            <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text 
+              className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
+                isSmallScreen ? 'text-lg' : isLargeScreen ? 'text-2xl' : 'text-xl'
+              }`}
+            >
               Create & Upcycle
             </Text>
           </View>
@@ -128,8 +174,15 @@ export const CraftScreen: React.FC = () => {
               className="flex-row items-center bg-craftopia-light rounded-full px-3 py-2"
               activeOpacity={0.7}
             >
-              <History size={14} color="#3B6E4D" />
-              <Text className="text-xs font-semibold text-craftopia-primary ml-1 font-nunito">
+              <History 
+                size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14} 
+                color="#3B6E4D" 
+              />
+              <Text 
+                className={`font-semibold text-craftopia-primary ml-1 font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 {recentItems.length}
               </Text>
             </TouchableOpacity>
@@ -137,16 +190,31 @@ export const CraftScreen: React.FC = () => {
         </View>
 
         {/* Info Card */}
-        <View className="bg-craftopia-light rounded-xl px-3 py-3 border border-craftopia-accent/20">
+        <View className="bg-craftopia-light rounded-xl p-3 border border-craftopia-accent/20">
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-full bg-craftopia-accent/20 items-center justify-center mr-2">
-              <Sparkles size={16} color="#E6B655" />
+            <View 
+              className={`rounded-full bg-craftopia-accent/20 items-center justify-center mr-2 ${
+                isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
+              }`}
+            >
+              <Sparkles 
+                size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16} 
+                color="#E6B655" 
+              />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-0.5 font-poppinsBold">
+              <Text 
+                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${
+                  isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                }`}
+              >
                 AI-Powered Craft Ideas
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Scan recyclables to discover creative projects
               </Text>
             </View>
@@ -154,25 +222,48 @@ export const CraftScreen: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ 
+          paddingBottom: isSmallScreen ? 16 : isLargeScreen ? 24 : 20 
+        }}
+      >
         {/* Main Scan CTA */}
-        <View className="mx-4 mt-6">
-          <View className="bg-gradient-to-br from-craftopia-primary to-craftopia-primaryLight rounded-2xl p-6 overflow-hidden">
+        <View className={`${
+          isSmallScreen ? 'mx-3 mt-4' : isLargeScreen ? 'mx-5 mt-6' : 'mx-4 mt-5'
+        }`}>
+          <View className="bg-craftopia-primary rounded-2xl p-4 overflow-hidden">
             {/* Background Pattern */}
-            <View className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10" />
-            <View className="absolute -left-4 -bottom-4 w-24 h-24 rounded-full bg-white/10" />
+            <View className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-craftopia-primaryLight opacity-20" />
+            <View className="absolute -left-3 -bottom-3 w-20 h-20 rounded-full bg-craftopia-primaryLight opacity-20" />
 
             {/* Content */}
             <View className="relative z-10">
               <View className="flex-row items-center mb-3">
-                <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mr-3">
-                  <Scan size={24} color="#FFFFFF" />
+                <View 
+                  className={`rounded-full bg-white/20 items-center justify-center mr-3 ${
+                    isSmallScreen ? 'w-10 h-10' : isLargeScreen ? 'w-12 h-12' : 'w-10 h-10'
+                  }`}
+                >
+                  <Scan 
+                    size={isSmallScreen ? 20 : isLargeScreen ? 24 : 20} 
+                    color="#FFFFFF" 
+                  />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-lg font-bold text-white font-poppinsBold">
+                  <Text 
+                    className={`font-bold text-white font-poppinsBold ${
+                      isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
+                    }`}
+                  >
                     Start Scanning
                   </Text>
-                  <Text className="text-sm text-white/90 font-nunito">
+                  <Text 
+                    className={`text-white/90 font-nunito ${
+                      isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                    }`}
+                  >
                     Turn waste into wonderful creations
                   </Text>
                 </View>
@@ -180,11 +271,18 @@ export const CraftScreen: React.FC = () => {
 
               <TouchableOpacity
                 onPress={handleStartScan}
-                className="bg-white rounded-full px-6 py-3 flex-row items-center justify-center"
+                className="bg-white rounded-full px-4 py-3 flex-row items-center justify-center"
                 activeOpacity={0.8}
               >
-                <Scan size={18} color="#3B6E4D" />
-                <Text className="text-base font-semibold text-craftopia-primary ml-2 font-nunito">
+                <Scan 
+                  size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16} 
+                  color="#3B6E4D" 
+                />
+                <Text 
+                  className={`font-semibold text-craftopia-primary ml-2 font-nunito ${
+                    isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                  }`}
+                >
                   Scan Items
                 </Text>
               </TouchableOpacity>
@@ -193,36 +291,74 @@ export const CraftScreen: React.FC = () => {
         </View>
 
         {/* Stats Cards */}
-        <View className="mx-4 mt-6">
+        <View className={`${
+          isSmallScreen ? 'mx-3 mt-4' : isLargeScreen ? 'mx-5 mt-6' : 'mx-4 mt-5'
+        }`}>
           <View className="flex-row gap-3">
             {/* Total Crafts */}
-            <View className="flex-1 bg-craftopia-surface rounded-xl p-4 border border-craftopia-light">
+            <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
               <View className="flex-row items-center justify-between mb-2">
-                <View className="w-10 h-10 rounded-full bg-craftopia-primary/10 items-center justify-center">
-                  <Target size={20} color="#3B6E4D" />
+                <View 
+                  className={`rounded-full bg-craftopia-primary/10 items-center justify-center ${
+                    isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
+                  }`}
+                >
+                  <Target 
+                    size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16} 
+                    color="#3B6E4D" 
+                  />
                 </View>
-                <TrendingUp size={16} color="#5BA776" />
+                <TrendingUp 
+                  size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14} 
+                  color="#5BA776" 
+                />
               </View>
-              <Text className="text-2xl font-bold text-craftopia-textPrimary font-poppinsBold">
+              <Text 
+                className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
+                  isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
+                }`}
+              >
                 {recentItems.length}
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Scanned Items
               </Text>
             </View>
 
             {/* Points Earned */}
-            <View className="flex-1 bg-craftopia-surface rounded-xl p-4 border border-craftopia-light">
+            <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
               <View className="flex-row items-center justify-between mb-2">
-                <View className="w-10 h-10 rounded-full bg-craftopia-accent/10 items-center justify-center">
-                  <Award size={20} color="#E6B655" />
+                <View 
+                  className={`rounded-full bg-craftopia-accent/10 items-center justify-center ${
+                    isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
+                  }`}
+                >
+                  <Award 
+                    size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16} 
+                    color="#E6B655" 
+                  />
                 </View>
-                <TrendingUp size={16} color="#5BA776" />
+                <TrendingUp 
+                  size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14} 
+                  color="#5BA776" 
+                />
               </View>
-              <Text className="text-2xl font-bold text-craftopia-textPrimary font-poppinsBold">
+              <Text 
+                className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
+                  isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
+                }`}
+              >
                 0
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Crafts Made
               </Text>
             </View>
@@ -231,14 +367,24 @@ export const CraftScreen: React.FC = () => {
 
         {/* Recent Scans */}
         {recentItems.length > 0 && (
-          <View className="mt-6">
-            <View className="px-4 mb-3">
+          <View className={`${isSmallScreen ? 'mt-4' : isLargeScreen ? 'mt-6' : 'mt-5'}`}>
+            <View className={`${
+              isSmallScreen ? 'px-3 mb-2' : isLargeScreen ? 'px-5 mb-3' : 'px-4 mb-3'
+            }`}>
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
+                  <Text 
+                    className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
+                      isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
+                    }`}
+                  >
                     Recent Scans
                   </Text>
-                  <Text className="text-sm text-craftopia-textSecondary font-nunito">
+                  <Text 
+                    className={`text-craftopia-textSecondary font-nunito ${
+                      isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                    }`}
+                  >
                     Your saved recyclables
                   </Text>
                 </View>
@@ -251,30 +397,53 @@ export const CraftScreen: React.FC = () => {
               horizontal
               showsHorizontalScrollIndicator={false}
               renderItem={renderSavedItem}
-              contentContainerStyle={{ paddingHorizontal: 16 }}
+              contentContainerStyle={{ 
+                paddingHorizontal: isSmallScreen ? 12 : isLargeScreen ? 20 : 16 
+              }}
             />
           </View>
         )}
 
         {/* Empty State */}
         {recentItems.length === 0 && (
-          <View className="mx-4 mt-8">
-            <View className="bg-craftopia-surface rounded-xl p-8 items-center border border-craftopia-light">
-              <View className="w-20 h-20 rounded-full bg-craftopia-light items-center justify-center mb-4">
-                <Scan size={32} color="#5F6F64" />
+          <View className={`${
+            isSmallScreen ? 'mx-3 mt-6' : isLargeScreen ? 'mx-5 mt-8' : 'mx-4 mt-6'
+          }`}>
+            <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light">
+              <View 
+                className={`rounded-full bg-craftopia-light items-center justify-center mb-4 ${
+                  isSmallScreen ? 'w-16 h-16' : isLargeScreen ? 'w-20 h-20' : 'w-16 h-16'
+                }`}
+              >
+                <Scan 
+                  size={isSmallScreen ? 24 : isLargeScreen ? 32 : 24} 
+                  color="#5F6F64" 
+                />
               </View>
-              <Text className="text-base font-semibold text-craftopia-textPrimary mb-2 font-poppinsBold text-center">
+              <Text 
+                className={`font-semibold text-craftopia-textPrimary mb-2 font-poppinsBold text-center ${
+                  isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
+                }`}
+              >
                 No Scans Yet
               </Text>
-              <Text className="text-sm text-craftopia-textSecondary text-center mb-4 font-nunito px-4">
+              <Text 
+                className={`text-craftopia-textSecondary text-center mb-4 font-nunito ${
+                  isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                }`}
+              >
                 Start by scanning your recyclable items to discover amazing craft ideas
               </Text>
               <TouchableOpacity
                 onPress={handleStartScan}
-                className="bg-craftopia-primary rounded-full px-6 py-3"
+                className="bg-craftopia-primary rounded-full px-4 py-3"
                 activeOpacity={0.7}
               >
-                <Text className="text-sm font-semibold text-white font-nunito">
+                <Text 
+                  className={`font-semibold text-white font-nunito ${
+                    isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                  }`}
+                >
                   Get Started
                 </Text>
               </TouchableOpacity>
@@ -283,38 +452,68 @@ export const CraftScreen: React.FC = () => {
         )}
 
         {/* Tips Section */}
-        <View className="mx-4 mt-6 mb-6">
-          <Text className="text-base font-bold text-craftopia-textPrimary mb-3 font-poppinsBold">
+        <View className={`${
+          isSmallScreen ? 'mx-3 mt-4 mb-4' : isLargeScreen ? 'mx-5 mt-6 mb-6' : 'mx-4 mt-5 mb-5'
+        }`}>
+          <Text 
+            className={`font-bold text-craftopia-textPrimary mb-3 font-poppinsBold ${
+              isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
+            }`}
+          >
             Crafting Tips
           </Text>
           
           <View className="space-y-2">
             {/* Tip 1 */}
-            <View className="bg-craftopia-surface rounded-xl p-4 border border-craftopia-light">
-              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
+              <Text 
+                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${
+                  isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                }`}
+              >
                 Clean Before Crafting
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Wash and dry recyclables thoroughly before starting your project
               </Text>
             </View>
 
             {/* Tip 2 */}
-            <View className="bg-craftopia-surface rounded-xl p-4 border border-craftopia-light">
-              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
+              <Text 
+                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${
+                  isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                }`}
+              >
                 Safety First
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Use proper tools and supervision when cutting or working with sharp materials
               </Text>
             </View>
 
             {/* Tip 3 */}
-            <View className="bg-craftopia-surface rounded-xl p-4 border border-craftopia-light">
-              <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
+              <Text 
+                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${
+                  isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
+                }`}
+              >
                 Get Creative
               </Text>
-              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+              <Text 
+                className={`text-craftopia-textSecondary font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+                }`}
+              >
                 Don't be afraid to modify designs and add your personal touch
               </Text>
             </View>

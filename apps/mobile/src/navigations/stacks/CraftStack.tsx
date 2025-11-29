@@ -11,16 +11,49 @@ const Stack = createNativeStackNavigator<CraftStackParamList>();
 
 export function CraftStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Craft" component={CraftScreen} />
-      <Stack.Screen name="CraftScan" component={CraftScanScreen} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+        animation: 'slide_from_right', // Smooth animations
+      }}
+    >
+      <Stack.Screen 
+        name="Craft" 
+        component={CraftScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="CraftScan" 
+        component={CraftScanScreen}
+        options={{
+          gestureEnabled: true,
+          animation: 'slide_from_bottom',
+        }}
+      />
       <Stack.Screen 
         name="CraftProcessing" 
         component={CraftProcessingScreen}
-        options={{ gestureEnabled: false }} // Prevent back gesture during processing
+        options={{ 
+          gestureEnabled: false, // Prevent accidental swipe during processing
+          animation: 'fade',
+        }}
       />
-      <Stack.Screen name="CraftResults" component={CraftResultsScreen} />
-      <Stack.Screen name="CraftDetails" component={CraftDetailsScreen} />
+      <Stack.Screen 
+        name="CraftResults" 
+        component={CraftResultsScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen 
+        name="CraftDetails" 
+        component={CraftDetailsScreen}
+        options={{
+          gestureEnabled: true,
+        }}
+      />
     </Stack.Navigator>
   );
 }

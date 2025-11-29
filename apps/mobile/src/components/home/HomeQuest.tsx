@@ -35,7 +35,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
   useEffect(() => {
     if (!isConnected) return;
 
-    const handleChallengeCreated = (data: any) => {
+    const handleChallengeCreated = () => {
       setNewChallengeAlert(true);
       setTimeout(() => setNewChallengeAlert(false), 3000);
       refetch?.();
@@ -122,10 +122,10 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
             <Target size={24} color="#3B6E4D" />
           </View>
           <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-2">
-            All Caught Up!
+            All Caught Up
           </Text>
           <Text className="text-sm font-nunito text-craftopia-textSecondary text-center mb-4">
-            New quests will appear tomorrow. Stay tuned for more adventures!
+            New quests will appear tomorrow. Stay tuned for more adventures
           </Text>
           <TouchableOpacity className="px-5 py-2.5 rounded-lg bg-craftopia-primary active:opacity-70">
             <Text className="text-sm font-poppinsBold text-white">Explore More</Text>
@@ -164,7 +164,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
       >
         {isUpdated && (
           <View className="absolute -top-1 -right-1 px-2 py-0.5 rounded bg-craftopia-primary">
-            <Text className="text-xs font-poppinsBold text-white">Updated!</Text>
+            <Text className="text-xs font-poppinsBold text-white">Updated</Text>
           </View>
         )}
 
@@ -220,7 +220,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
             ) : (
               <>
                 <CheckCircle size={12} color="#3B6E4D" />
-                <Text className="text-xs font-poppinsBold text-craftopia-textPrimary ml-1">Completed!</Text>
+                <Text className="text-xs font-poppinsBold text-craftopia-textPrimary ml-1">Completed</Text>
               </>
             )}
           </View>
@@ -244,7 +244,7 @@ export const HomeQuest: React.FC<HomeQuestProps> = ({ quests = [], loading, onSe
         <View className="mb-3 p-3 rounded-xl bg-craftopia-primary/10 border border-craftopia-primary/20 flex-row items-center">
           <Zap size={16} color="#3B6E4D" />
           <Text className="text-sm font-poppinsBold text-craftopia-textPrimary ml-2 flex-1">
-            New challenge available! 🎯
+            New challenge available
           </Text>
         </View>
       )}

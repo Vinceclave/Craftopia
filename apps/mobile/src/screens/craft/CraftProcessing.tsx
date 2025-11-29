@@ -1,6 +1,6 @@
 // apps/mobile/src/screens/craft/CraftProcessing.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
+  Modal,
+  TouchableOpacity,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Sparkles, CheckCircle, Zap, Scan, ImageIcon } from 'lucide-react-native';
+import { Sparkles, CheckCircle, Zap, Scan, ImageIcon, AlertCircle, X } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -30,6 +33,9 @@ export const CraftProcessingScreen = () => {
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [progressAnim] = useState(new Animated.Value(0));
   const [imageBase64, setImageBase64] = useState<string>('');
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(true);
+  const [processingError, setProcessingError] = useState<string | null>(null);
 
   const detectMaterialsMutation = useDetectMaterials();
   const generateCraftMutation = useGenerateCraft();
@@ -41,6 +47,23 @@ export const CraftProcessingScreen = () => {
     { icon: ImageIcon, label: 'Generating visualizations', color: '#E6B655' },
     { icon: CheckCircle, label: 'Creating craft ideas', color: '#5BA776' },
   ];
+
+  // Handle hardware back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (isProcessing) {
+          setShowExitModal(true);
+          return true; // Prevent default back behavior
+        }
+        return false; // Allow default back behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [isProcessing])
+  );
 
   useEffect(() => {
     console.log("\n🚀 ============================================");
@@ -76,6 +99,9 @@ export const CraftProcessingScreen = () => {
 
   const processImage = async () => {
     try {
+      setIsProcessing(true);
+      setProcessingError(null);
+
       // Step 1: Analyzing image (0.5s delay for UX)
       console.log("\n📊 Step 1: Analyzing image...");
       setProcessingStep(0);
@@ -191,6 +217,8 @@ export const CraftProcessingScreen = () => {
       console.log("  🖼️  Images Generated:", ideasWithImages);
       console.log("✅ ============================================\n");
 
+      setIsProcessing(false);
+
       // Navigate to results with the actual data including generated images
       console.log("🚀 Navigating to CraftResults...");
       navigation.replace('CraftResults', {
@@ -208,17 +236,41 @@ export const CraftProcessingScreen = () => {
       console.error("❌ Error Stack:", error.stack);
       console.error("❌ ============================================\n");
       
+      setIsProcessing(false);
+      setProcessingError(error.message || 'Unable to process the image. Please try again.');
+      
+      // Show error alert with option to retry or go back
       Alert.alert(
         'Processing Failed',
         error.message || 'Unable to process the image. Please try again.',
         [
           {
-            text: 'OK',
+            text: 'Go Back',
+            style: 'cancel',
             onPress: () => navigation.goBack(),
+          },
+          {
+            text: 'Retry',
+            onPress: () => {
+              setProcessingStep(0);
+              setProcessingError(null);
+              processImage();
+            },
           },
         ]
       );
     }
+  };
+
+  const handleExitConfirm = () => {
+    setShowExitModal(false);
+    console.log("🚫 User cancelled processing");
+    // Use goBack instead of navigate to prevent creating new screen instance
+    navigation.goBack();
+  };
+
+  const handleExitCancel = () => {
+    setShowExitModal(false);
   };
 
   const progressWidth = progressAnim.interpolate({
@@ -256,20 +308,22 @@ export const CraftProcessingScreen = () => {
               />
               
               {/* Scanning Effect */}
-              <View className="absolute inset-0 border-2 border-craftopia-primary/50">
-                <View className="absolute top-0 left-0 right-0 h-1 bg-craftopia-primary" />
-                <Animated.View 
-                  style={{
-                    transform: [{
-                      translateY: progressAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 256],
-                      })
-                    }]
-                  }}
-                  className="absolute left-0 right-0 h-0.5 bg-craftopia-primary/80 shadow-lg shadow-craftopia-primary/50"
-                />
-              </View>
+              {isProcessing && (
+                <View className="absolute inset-0 border-2 border-craftopia-primary/50">
+                  <View className="absolute top-0 left-0 right-0 h-1 bg-craftopia-primary" />
+                  <Animated.View 
+                    style={{
+                      transform: [{
+                        translateY: progressAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 256],
+                        })
+                      }]
+                    }}
+                    className="absolute left-0 right-0 h-0.5 bg-craftopia-primary/80 shadow-lg shadow-craftopia-primary/50"
+                  />
+                </View>
+              )}
 
               {/* Sparkle Badge */}
               <View className="absolute -top-3 -right-3">
@@ -293,33 +347,46 @@ export const CraftProcessingScreen = () => {
           {/* Current Status */}
           <View className="items-center mb-6">
             <Text className="text-2xl font-poppinsBold text-craftopia-textPrimary mb-2">
-              AI Processing
+              {processingError ? 'Processing Failed' : 'AI Processing'}
             </Text>
             <View className="flex-row items-center">
-              {React.createElement(processingSteps[processingStep].icon, {
-                size: 20,
-                color: processingSteps[processingStep].color,
-              })}
-              <Text className="text-base font-nunito text-craftopia-textSecondary ml-2">
-                {processingSteps[processingStep].label}
-              </Text>
+              {processingError ? (
+                <>
+                  <AlertCircle size={20} color="#E66555" />
+                  <Text className="text-base font-nunito text-craftopia-error ml-2">
+                    {processingError}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  {React.createElement(processingSteps[processingStep].icon, {
+                    size: 20,
+                    color: processingSteps[processingStep].color,
+                  })}
+                  <Text className="text-base font-nunito text-craftopia-textSecondary ml-2">
+                    {processingSteps[processingStep].label}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
           {/* Modern Progress Bar */}
-          <View className="w-full h-1.5 rounded-full bg-craftopia-light/50 mb-6 overflow-hidden">
-            <Animated.View 
-              style={{ width: progressWidth }}
-              className="h-full rounded-full"
-            >
-              <LinearGradient
-                colors={['#3B6E4D', '#5BA776']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                className="h-full"
-              />
-            </Animated.View>
-          </View>
+          {isProcessing && (
+            <View className="w-full h-1.5 rounded-full bg-craftopia-light/50 mb-6 overflow-hidden">
+              <Animated.View 
+                style={{ width: progressWidth }}
+                className="h-full rounded-full"
+              >
+                <LinearGradient
+                  colors={['#3B6E4D', '#5BA776']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="h-full"
+                />
+              </Animated.View>
+            </View>
+          )}
 
           {/* Modern Steps */}
           <View className="w-full bg-craftopia-surface/80 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20">
@@ -342,7 +409,7 @@ export const CraftProcessingScreen = () => {
                   >
                     {isComplete ? (
                       <CheckCircle size={20} color="#5BA776" />
-                    ) : isCurrent ? (
+                    ) : isCurrent && isProcessing ? (
                       <ActivityIndicator size="small" color={step.color} />
                     ) : (
                       <StepIcon size={20} color="#5F6F64" />
@@ -373,22 +440,81 @@ export const CraftProcessingScreen = () => {
         </View>
 
         {/* Bottom Info */}
-        <View className="bg-gradient-to-r from-craftopia-info/10 to-craftopia-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20 w-full max-w-sm">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 rounded-2xl bg-gradient-to-br from-craftopia-info/20 to-craftopia-primary/20 items-center justify-center mr-3">
-              <Zap size={18} color="#5C89B5" />
+        {isProcessing && (
+          <View className="bg-gradient-to-r from-craftopia-info/10 to-craftopia-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20 w-full max-w-sm">
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 rounded-2xl bg-gradient-to-br from-craftopia-info/20 to-craftopia-primary/20 items-center justify-center mr-3">
+                <Zap size={18} color="#5C89B5" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
+                  Vision AI at Work
+                </Text>
+                <Text className="text-xs font-nunito text-craftopia-textSecondary">
+                  Analyzing materials & generating visuals
+                </Text>
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
-                Vision AI at Work
+          </View>
+        )}
+      </View>
+
+      {/* Exit Confirmation Modal */}
+      <Modal
+        visible={showExitModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleExitCancel}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center px-4">
+          <View className="bg-craftopia-surface rounded-3xl p-6 w-full max-w-sm border-2 border-craftopia-secondary/20"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.3,
+              shadowRadius: 16,
+            }}
+          >
+            {/* Icon */}
+            <View className="items-center mb-4">
+              <View className="w-16 h-16 rounded-full bg-craftopia-warning/20 items-center justify-center mb-3">
+                <AlertCircle size={32} color="#E6B655" />
+              </View>
+              <Text className="text-xl font-poppinsBold text-craftopia-textPrimary text-center">
+                Cancel Processing?
               </Text>
-              <Text className="text-xs font-nunito text-craftopia-textSecondary">
-                Analyzing materials & generating visuals
-              </Text>
+            </View>
+
+            {/* Message */}
+            <Text className="text-base font-nunito text-craftopia-textSecondary text-center mb-6">
+              Your scan is being processed. Are you sure you want to cancel and go back?
+            </Text>
+
+            {/* Buttons */}
+            <View className="gap-3">
+              <TouchableOpacity
+                onPress={handleExitConfirm}
+                className="bg-craftopia-error rounded-2xl py-4 items-center"
+                activeOpacity={0.8}
+              >
+                <Text className="text-base font-poppinsBold text-white">
+                  Yes, Cancel Processing
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleExitCancel}
+                className="bg-craftopia-light rounded-2xl py-4 items-center"
+                activeOpacity={0.8}
+              >
+                <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
+                  Continue Processing
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
-      </View>
+      </Modal>
     </SafeAreaView>
   );
 };

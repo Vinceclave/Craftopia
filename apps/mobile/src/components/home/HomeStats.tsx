@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity } from 'react-native';
-import { Leaf, Award, ChevronRight, Sparkles, Palette, Trophy } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import { Leaf, Award, Sparkles, Palette, Trophy } from 'lucide-react-native';
 import { useUserStats } from '~/hooks/useUserStats';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
@@ -12,31 +12,44 @@ export const HomeStats = () => {
   const [animatePoints, setAnimatePoints] = useState(false);
   const [animateWaste, setAnimateWaste] = useState(false);
 
+  const { data: wasteStats } = useUserWasteStats();
+
+  // Format numbers for display
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'm';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return num.toString();
+  };
+
   const stats = {
-    wasteSaved: ((userStats?.points || 0) * 0.1).toFixed(1),
+    // Use actual waste data from wasteStats instead of calculating from points
+    wasteSaved: wasteStats?.total_waste_kg?.toFixed(1) || '0.0',
     points: userStats?.points || 0,
+    formattedPoints: formatNumber(userStats?.points || 0),
     crafts: userStats?.crafts_created || 0,
     challenges: userStats?.challenges_completed || 0,
   };
 
-  const { data: wasteStats } = useUserWasteStats();
-
   useEffect(() => {
     if (!isConnected) return;
 
-    const handlePointsAwarded = (data: any) => {
+    const handlePointsAwarded = () => {
       setAnimatePoints(true);
       setTimeout(() => setAnimatePoints(false), 1000);
       refetch();
     };
 
-    const handlePointsUpdated = (data: any) => {
+    const handlePointsUpdated = () => {
       setAnimatePoints(true);
       setTimeout(() => setAnimatePoints(false), 1000);
       refetch();
     };
 
-    const handleChallengeVerified = (data: any) => {
+    const handleChallengeVerified = () => {
       setAnimateWaste(true);
       setAnimatePoints(true);
       setTimeout(() => {
@@ -68,17 +81,9 @@ export const HomeStats = () => {
               Your Impact
             </Text>
             <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
-              Making a Difference 🌍
+              Making a Difference
             </Text>
           </View>
-          <TouchableOpacity 
-            className="flex-row items-center px-3 py-1.5 rounded-lg bg-craftopia-primary/10 active:opacity-70"
-          >
-            <Text className="text-xs font-poppinsBold mr-1 text-craftopia-textPrimary">
-              Insights
-            </Text>
-            <ChevronRight size={12} color="#3B6E4D" />
-          </TouchableOpacity>
         </View>
 
         {/* Primary Stat - Waste Saved */}
@@ -108,7 +113,7 @@ export const HomeStats = () => {
               <View className="flex-row items-center mt-1">
                 <Sparkles size={12} color="#3B6E4D" />
                 <Text className="text-xs font-nunito ml-1.5 text-craftopia-textPrimary">
-                  {animateWaste ? 'Impact updated! ✨' : 'Creating positive change'}
+                  {animateWaste ? 'Impact updated' : 'Creating positive change'}
                 </Text>
               </View>
             </View>
@@ -134,10 +139,10 @@ export const HomeStats = () => {
               </Text>
             </View>
             <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-0.5">
-              {stats.points}
+              {stats.formattedPoints}
             </Text>
             <Text className="text-xs font-nunito text-craftopia-textSecondary">
-              +{Math.floor(stats.points * 0.1)} today
+              +{Math.floor((userStats?.points || 0) * 0.1)} today
             </Text>
           </View>
 

@@ -31,7 +31,7 @@ export const HomeHeader = () => {
         <View className="flex-row justify-between items-center mb-3">
           <View className="flex-1">
             <Text className="text-xs font-nunito text-craftopia-textSecondary mb-1">
-              {`Good ${greeting} 🌱`}
+              {`Good ${greeting}`}
             </Text>
             <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
               {user?.username || 'Crafter'}

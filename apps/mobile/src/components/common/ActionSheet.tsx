@@ -89,6 +89,8 @@ export const ActionSheet: React.FC<EnhancedActionSheetProps> = ({
     }).start(onClose);
   };
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+
   // Separate cancel option from other options
   const cancelOption = options.find(opt => opt.style === 'cancel');
   const otherOptions = options.filter(opt => opt.style !== 'cancel');
@@ -97,9 +99,9 @@ export const ActionSheet: React.FC<EnhancedActionSheetProps> = ({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="fade"
+      animationType="slide"
       onRequestClose={handleClose}
-      statusBarTranslucent
+      statusBarTranslucent={true}
     >
       <View 
         className="flex-1 justify-end" 
@@ -116,16 +118,20 @@ export const ActionSheet: React.FC<EnhancedActionSheetProps> = ({
         
         <Animated.View 
           className="bg-white rounded-t-3xl overflow-hidden"
-          style={{ 
+           style={{
+            backgroundColor: '#FFFFFF',
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
+            maxHeight: SCREEN_HEIGHT * 0.85,
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 8,
-            transform: [{ translateY: slideAnim }],
-            maxHeight: screenHeight * 0.8,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 8,
+            elevation: 5,
           }}
         >
           {/* Handle Bar */}
