@@ -7,8 +7,6 @@ import { OnboardingScreen } from '~/screens/Onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDeepLink } from '~/hooks/useDeepLink';
-import { NetworkErrorOverlay } from '~/components/common/NetworkErrorOverlay';
-import { useGlobalErrorHandler } from '~/hooks/useGlobalErrorHandler';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,9 +17,6 @@ export const AppNavigator = () => {
 
   // ✅ Initialize deep link handler
   useDeepLink();
-
-  // ✅ Global network error handler
-  const { hasNetworkError, handleRetry } = useGlobalErrorHandler();
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -65,10 +60,6 @@ export const AppNavigator = () => {
       </Stack.Navigator>
 
       {/* ✅ Global Network Error Overlay - Blocks all navigation when offline */}
-      <NetworkErrorOverlay 
-        visible={hasNetworkError} 
-        onRetry={handleRetry}
-      />
     </>
   );
 };
