@@ -264,6 +264,8 @@ class CraftService {
       throw new Error(error.message || "Failed to get craft stats.");
     }
   }
+
+    
 }
 
 export const craftService = new CraftService();

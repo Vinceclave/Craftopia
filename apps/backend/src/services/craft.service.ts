@@ -414,7 +414,7 @@ class CraftService extends BaseService {
   async getUserCraftStats(userId: number) {
     this.validateId(userId, 'User ID');
 
-    const [totalCrafts, recentCrafts, savedCrafts] = await Promise.all([
+    const [totalCrafts, recentCrafts, savedCrafts, craftsWithMaterials] = await Promise.all([
       prisma.craftIdea.count({
         where: { 
           generated_by_user_id: userId,
@@ -436,13 +436,42 @@ class CraftService extends BaseService {
           is_saved: true,
           deleted_at: null 
         }
+      }),
+      // ✅ Get all crafts with recycled_materials to count total unique materials
+      prisma.craftIdea.findMany({
+        where: {
+          generated_by_user_id: userId,
+          deleted_at: null
+        },
+        select: {
+          recycled_materials: true
+        }
       })
     ]);
+
+    // ✅ Calculate total unique materials
+    const allMaterials = new Set<string>();
+    craftsWithMaterials.forEach(craft => {
+      if (craft.recycled_materials) {
+        const materials = Array.isArray(craft.recycled_materials) 
+          ? craft.recycled_materials 
+          : typeof craft.recycled_materials === 'string'
+          ? JSON.parse(craft.recycled_materials)
+          : [];
+        
+        materials.forEach((material: string) => {
+          if (material && typeof material === 'string') {
+            allMaterials.add(material.trim().toLowerCase());
+          }
+        });
+      }
+    });
 
     return {
       totalCrafts,
       craftsThisMonth: recentCrafts,
-      savedCrafts
+      savedCrafts,
+      totalMaterials: allMaterials.size, // ✅ Total unique materials used
     };
   }
 }

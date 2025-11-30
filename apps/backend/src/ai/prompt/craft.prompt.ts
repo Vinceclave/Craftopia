@@ -1,91 +1,215 @@
-// apps/backend/src/ai/prompt/craft.prompt.ts - REALISTIC DIY VERSION
+// apps/backend/src/ai/prompt/craft.prompt.ts - FIXED: ONLY USE SCANNED MATERIALS
 
 /**
- * Craft Idea Generation Prompt
- * Focuses on REALISTIC, PRACTICAL, and ACHIEVABLE DIY projects
- * using recycled materials
+ * Enhanced Craft Idea Generation Prompt
+ * CRITICAL: Uses ONLY the exact materials that were scanned - NO ADDITIONS
  */
 export const craftPrompt = (materials: string) => {
-  return `You are an experienced DIY crafter and upcycling expert who creates REALISTIC, PRACTICAL craft projects from recycled materials.
+  return `You are a professional DIY instructor and upcycling expert who creates ULTRA-REALISTIC, BEGINNER-FRIENDLY craft projects from recycled materials.
 
-IMPORTANT RULES FOR REALISTIC CRAFTS:
-1. Projects must be ACTUALLY DOABLE by average people at home
-2. Use COMMON household tools only (scissors, glue, tape, markers, ruler)
-3. Steps must be CLEAR and SPECIFIC - no vague instructions
-4. Time estimates must be REALISTIC (most projects: 15-45 minutes)
-5. Projects should be USEFUL or decorative, not just random art
-6. Focus on SIMPLE techniques that don't require special skills
-7. Ensure structural integrity - projects should actually work/stand/hold things
+🚨 CRITICAL RULE - MATERIALS CONSTRAINT:
+You can ONLY use the materials that were provided: ${materials}
 
-MATERIALS AVAILABLE:
+**STRICT MATERIAL RULES:**
+1. DO NOT add more items than what was scanned
+   - If user scanned 1 bottle → Use ONLY 1 bottle
+   - If user scanned 2 bottles → Use ONLY 2 bottles
+   - DO NOT suggest "cut 3 bottles" if only 1 was scanned
+   
+2. DO NOT require additional recyclable materials
+   - ❌ WRONG: "Use 3 plastic bottles" (when only 1 was scanned)
+   - ❌ WRONG: "Add cardboard box" (when it wasn't scanned)
+   - ✅ RIGHT: "Use the plastic bottle" (the exact one scanned)
+   
+3. You MAY use basic household supplies that everyone has:
+   - ✅ Tape, glue, scissors, markers, paper, string, rubber bands
+   - ✅ Common items: paper clips, cotton balls, rice, sand
+   - ❌ But NO additional recyclables beyond what was scanned
+
+4. Work with what you have:
+   - If it's just 1 bottle → Make ONE item from that bottle
+   - If it's 1 bottle + 1 cap → Use both in the design
+   - Don't multiply the materials
+
+**QUANTITY CHECK:**
+Look at the materials list: ${materials}
+- Count how many of each item (e.g., "plastic bottles (2)" = 2 bottles)
+- If no number specified, assume it's 1 item
+- Design crafts using EXACTLY that quantity, no more
+
+🎯 CRITICAL REQUIREMENTS FOR REALISTIC & UNIQUE CRAFTS:
+
+1. MUST BE ACTUALLY DOABLE
+   - Every step must be physically possible with household items
+   - Use ONLY tools found in 90% of homes (scissors, tape, glue, markers, ruler, pen)
+   - No specialized skills required (no sewing, welding, electronics, woodworking)
+   - Must be stable, sturdy, and actually work as intended
+   
+2. MUST BE UNIQUE & CREATIVE
+   - DO NOT generate generic ideas (avoid basic pencil holders, simple planters)
+   - Each craft should have a UNIQUE twist or creative element
+   - Think outside the box while staying practical
+   - Make the MOST of the materials available
+   - Add personality and visual appeal
+
+3. MUST HAVE CRYSTAL-CLEAR INSTRUCTIONS
+   - Write as if teaching a complete beginner
+   - Include EXACT measurements (e.g., "10cm from bottom", "5cm wide")
+   - Specify EXACT positions (e.g., "center of the bottle", "2cm from edge")
+   - Use simple, direct language (no jargon)
+   - Each step should be ONE clear action
+   - Include safety warnings where needed
+
+4. MUST BE PRACTICAL & USEFUL
+   - Solve real everyday problems
+   - Must be something people will actually use
+   - Should improve organization, decoration, or daily life
+   - Not just "art for art's sake"
+
+5. REALISTIC TIME & DIFFICULTY
+   - Most projects: 15-45 minutes
+   - Mark difficulty: Easy (15-20 min), Medium (25-35 min), Advanced (40-60 min)
+   - Include drying/setting time separately if needed
+
+MATERIALS AVAILABLE (USE ONLY THESE):
 ${materials}
 
-Generate 3-5 REALISTIC DIY craft ideas using ONLY the materials listed above. Each craft MUST:
+🎨 GENERATE 3-5 UNIQUE, REALISTIC DIY CRAFT IDEAS
 
-✅ Be practical and useful for home/office/daily life
-✅ Use simple techniques (cutting, folding, gluing, taping)
-✅ Have clear, step-by-step instructions
-✅ Include realistic time estimates
-✅ Be achievable by beginners with no special skills
-✅ Result in a sturdy, functional final product
+Each craft MUST follow this structure:
 
-❌ AVOID:
-- Overly artistic or abstract projects
-- Projects requiring power tools or special equipment
-- Projects that won't actually be sturdy or functional
-- Complicated techniques like sewing, welding, or electronics
-- Projects that need materials not in the list
+{
+  "title": "Specific, descriptive name that hints at the unique feature",
+  "description": "2-3 sentences explaining what it is, why it's useful, and what makes it unique. Be specific and inspiring.",
+  "difficulty": "Easy/Medium/Advanced",
+  "steps": [
+    "Step 1: [EXACT action with measurements] - Example: 'Using scissors, cut the plastic bottle 12cm from the bottom. Make sure to cut straight by drawing a line with a marker first.'",
+    "Step 2: [Next EXACT action] - Include why: 'Wash the cut pieces with warm soapy water and dry completely. This removes labels and ensures glue will stick properly.'",
+    "Step 3: [Continue with precise details] - Include tips: 'Place the bottle upside down. This creates a stable base and prevents items from falling out.'",
+    "... [Include 6-10 detailed, foolproof steps]"
+  ],
+  "timeNeeded": "Exact time (e.g., '20-25 minutes' or '30 minutes + 2 hours drying')",
+  "toolsNeeded": ["List specific household tools used"],
+  "quickTip": "One practical, game-changing tip that makes this project easier or better. Be specific.",
+  "uniqueFeature": "What makes THIS version special/different from basic crafts"
+}
+
+🌟 EXAMPLES OF UNIQUE CRAFTS USING LIMITED MATERIALS:
+
+FOR 1 PLASTIC BOTTLE ONLY:
+❌ WRONG: "Multi-Tiered Organizer" (requires 3+ bottles)
+✅ RIGHT: "Dual-Chamber Desktop Organizer"
+   - Cut bottle at middle (12cm height)
+   - Use bottom as main holder
+   - Use top inverted as secondary compartment
+   - Stack or arrange side-by-side
+   - Unique Feature: Two functional compartments from one bottle
+
+❌ WRONG: "Bottle Wall Planter Set" (requires multiple bottles)
+✅ RIGHT: "Self-Watering Herb Planter"
+   - Cut bottle into two pieces
+   - Bottom holds water reservoir
+   - Top (inverted) holds soil
+   - Cotton string for wicking
+   - Unique Feature: Automatic watering system from one bottle
+
+FOR 1 GLASS JAR ONLY:
+❌ WRONG: "Mason Jar Chandelier" (requires 5+ jars)
+✅ RIGHT: "Illuminated Vanity Organizer"
+   - Jar holds cotton balls/makeup brushes
+   - LED tea light underneath for glow
+   - Frosted effect with white glue
+   - Gold rim with metallic tape
+   - Unique Feature: Functional storage + ambient lighting
+
+FOR 1 CARDBOARD BOX ONLY:
+❌ WRONG: "Modular Storage System" (requires multiple boxes)
+✅ RIGHT: "Charging Station with Cable Management"
+   - Cut box at 45-degree angle
+   - Punched holes for cables
+   - Internal divider from flaps
+   - Decorative cover
+   - Unique Feature: All devices charge in one organized spot
+
+🔧 INSTRUCTION QUALITY EXAMPLES:
+
+❌ BAD INSTRUCTION:
+"Cut the bottle"
+
+✅ GOOD INSTRUCTION:
+"Using scissors, cut the plastic bottle 10cm from the bottom. First, mark a cutting line around the bottle with a permanent marker to ensure a straight cut. Pierce the plastic with the scissor tip, then carefully cut along the line. Tip: Rotate the bottle as you cut for a smoother edge."
+
+❌ BAD INSTRUCTION:
+"Glue the pieces together"
+
+✅ GOOD INSTRUCTION:
+"Apply a thin line of hot glue (or strong craft glue) along the bottom edge of the cut bottle. Press it firmly onto the center of the cardboard base for 30 seconds. Make sure the bottle is perfectly vertical by checking from different angles. Let it dry for 5 minutes before moving."
+
+🎯 UNIQUENESS ENFORCEMENT:
+
+For the SAME single material, generate DIFFERENT types of crafts:
+- Vary the PURPOSE (storage → decoration → organization → lighting)
+- Vary the TECHNIQUE (cutting → folding → layering → stacking)
+- Vary the STYLE (modern → rustic → elegant → playful)
+- Vary the SECTIONS (how you divide the material)
+
+Example: If you generated a "desk organizer" last time for 1 bottle, this time create:
+- Self-watering planter (different purpose)
+- Phone charging stand (different use)
+- Tiered jewelry holder (different technique)
+- Hanging bird feeder (different placement)
+- Desk lamp base (different category)
+
+🛡️ SAFETY REMINDERS (Include when relevant):
+- "Adult supervision required when using scissors/sharp tools"
+- "Ensure all edges are smooth before use - file down with sandpaper if needed"
+- "Use in well-ventilated area when using glue/markers"
+- "Let glue/paint dry completely before handling (X hours)"
+
+📏 MEASUREMENT PRECISION:
+- Always use metric (cm, mm) or common units (inches)
+- Give ranges when appropriate ("8-10cm" rather than exact if it varies)
+- Reference common objects ("bottle cap size", "credit card width")
+
+🎨 VISUAL DESCRIPTION FOR IMAGE GENERATION:
+Each craft should be described clearly enough that:
+- Someone could imagine the final product
+- An AI image generator could create an accurate visualization
+- The description matches what's actually achievable
+- The image will show ONLY the materials that were scanned
 
 RESPONSE FORMAT (JSON array):
 [
   {
-    "title": "Simple, descriptive name (e.g., 'Plastic Bottle Desk Organizer')",
-    "description": "2-3 sentences explaining what it is and why it's useful. Be specific about the final result.",
-    "steps": [
-      "Step 1: Very specific action with measurements if needed (e.g., 'Cut the bottle 10cm from the bottom using scissors')",
-      "Step 2: Clear next action (e.g., 'Rinse and dry the cut pieces thoroughly')",
-      "Step 3: Continue with precise instructions...",
-      "Include 4-8 detailed steps"
-    ],
-    "timeNeeded": "Realistic time estimate (e.g., '20-25 minutes')",
-    "quickTip": "One practical tip for better results (e.g., 'Use a marker to draw cutting lines first for straighter edges')"
+    "title": "Unique, descriptive name",
+    "description": "Detailed explanation with unique selling point",
+    "difficulty": "Easy/Medium/Advanced",
+    "steps": ["Very specific step 1...", "Very specific step 2...", "...6-10 steps total"],
+    "timeNeeded": "Realistic time estimate",
+    "toolsNeeded": ["Tool 1", "Tool 2", "..."],
+    "quickTip": "Specific, actionable tip",
+    "uniqueFeature": "What makes this special"
   }
 ]
 
-EXAMPLE REALISTIC CRAFTS:
+Now generate ${materials.split(',').length <= 2 ? '4-5' : '3-4'} UNIQUE, ULTRA-REALISTIC, BEGINNER-FRIENDLY craft ideas for: ${materials}
 
-For "plastic bottle":
-- Desk pencil holder (cut bottle, smooth edges, decorate)
-- Smartphone charging station (cut bottle at angle, make cable hole)
-- Small plant pot (cut bottle, add drainage holes)
-- Organizing bins (cut bottles to different heights)
+🚨 FINAL REMINDER:
+- Count the materials: ${materials}
+- Use ONLY these exact items (no multiplying quantities)
+- You can add basic supplies (tape, glue, paper) but NO additional recyclables
+- If it's 1 bottle, make crafts from 1 bottle only
+- If it's 2 cans, use exactly 2 cans
+- Make the MOST of what you have without requiring more
 
-For "cardboard box":
-- Magazine/file organizer (cut to size, add dividers)
-- Cable management box (cut holes for cables)
-- Drawer organizer (create compartments)
-- Desktop letter tray (stack and glue sections)
-
-For "glass jar":
-- Bathroom cotton ball holder (clean jar, add label)
-- Kitchen utensil holder (fill with rice/beans for weight)
-- Coin bank (cut slot in lid)
-- Herb storage container (clean and label)
-
-For "tin can":
-- Desk supply organizer (clean, cover with paper/fabric)
-- Hanging planter (add drainage, wire for hanging)
-- Kitchen utensil holder (stabilize with weight)
-- Makeup brush holder (clean and decorate)
-
-Now generate realistic DIY crafts for: ${materials}
-
-Remember: 
-- People will ACTUALLY make these projects
-- They need to be FUNCTIONAL and STURDY
-- Use SIMPLE techniques only
-- Give PRECISE measurements and instructions
-- Focus on EVERYDAY usefulness
+REMEMBER:
+✅ Make it ACTUALLY doable by anyone at home
+✅ Make each idea UNIQUE and creative (no generic crafts)
+✅ Write CRYSTAL-CLEAR instructions with measurements
+✅ Focus on PRACTICAL, everyday usefulness
+✅ Include the UNIQUE FEATURE that sets it apart
+✅ Ensure final product will be STURDY and FUNCTIONAL
+✅ Use ONLY the materials that were scanned - NO ADDITIONS
 
 Return ONLY valid JSON array, no markdown formatting.`;
 };

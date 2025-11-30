@@ -1,3 +1,5 @@
+// apps/mobile/src/screens/Craft.tsx - UPDATED WITH SAVED CRAFTS FROM DATABASE
+
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -6,11 +8,11 @@ import {
   Image,
   FlatList,
   ScrollView,
-  Alert,
   useWindowDimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Scan,
@@ -19,130 +21,146 @@ import {
   TrendingUp,
   Award,
   Target,
-  Trash2,
+  Clock,
+  Bookmark,
+  Package,
 } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
-
-type SavedItem = {
-  id: string;
-  uri?: string;
-  manualText?: string;
-  createdAt: number;
-};
-
-const STORAGE_KEY = '@craftopia_saved_items_v1';
+import { useSavedCrafts, useCraftStats } from '~/hooks/queries/useCraft';
 
 export const CraftScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
-  const [recentItems, setRecentItems] = useState<SavedItem[]>([]);
   const { width: screenWidth } = useWindowDimensions();
+  
+  // ✅ Fetch saved crafts and stats from database
+  const { data: savedCraftsData, isLoading: isLoadingCrafts, refetch: refetchCrafts } = useSavedCrafts(1, 10);
+  const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useCraftStats();
+  
+  const [refreshing, setRefreshing] = useState(false);
   
   // Responsive breakpoints
   const isSmallScreen = screenWidth < 375;
   const isLargeScreen = screenWidth > 414;
 
-  useEffect(() => {
-    loadSavedItems();
-  }, []);
-
-  const loadSavedItems = async () => {
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      setRecentItems(raw ? JSON.parse(raw) : []);
-    } catch (err) {
-      console.warn('Failed to load saved items', err);
-    }
-  };
-
-  const deleteItem = async (id: string) => {
-    Alert.alert('Delete Item', 'Delete this saved scan?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const filtered = recentItems.filter((i) => i.id !== id);
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-          setRecentItems(filtered);
-        },
-      },
-    ]);
+  // ✅ Pull to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetchCrafts(), refetchStats()]);
+    setRefreshing(false);
   };
 
   const handleStartScan = () => {
     navigation.navigate('CraftScan');
   };
 
-  const renderSavedItem = ({ item }: { item: SavedItem }) => (
-    <TouchableOpacity
-      className={`mr-3 rounded-xl overflow-hidden bg-craftopia-surface border border-craftopia-light relative ${
-        isSmallScreen ? 'w-28' : isLargeScreen ? 'w-36' : 'w-32'
-      }`}
-      onPress={() => {
-        navigation.navigate('CraftDetails', {
-          craftTitle: item.manualText || 'Your Craft',
-          materials: item.manualText ? item.manualText.split(',').map((t) => t.trim()) : [],
-          steps: ['Step 1: Start crafting', 'Step 2: Finish crafting'],
-        });
-      }}
-      activeOpacity={0.7}
-    >
-      {item.uri ? (
-        <Image 
-          source={{ uri: item.uri }} 
-          className={`w-full ${
-            isSmallScreen ? 'h-20' : isLargeScreen ? 'h-28' : 'h-24'
-          }`}
-          resizeMode="cover" 
-        />
-      ) : (
-        <View className={`w-full ${
-          isSmallScreen ? 'h-20' : isLargeScreen ? 'h-28' : 'h-24'
-        } bg-craftopia-light items-center justify-center`}>
-          <Sparkles 
-            size={isSmallScreen ? 20 : isLargeScreen ? 28 : 24} 
-            color="#E6B655" 
-          />
-        </View>
-      )}
-      
-      <View className="p-2">
-        <Text 
-          className={`text-craftopia-textPrimary font-semibold font-nunito ${
-            isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-          }`}
-          numberOfLines={2}
-        >
-          {item.manualText || new Date(item.createdAt).toLocaleDateString()}
-        </Text>
-        <Text 
-          className={`text-craftopia-textSecondary mt-1 font-nunito ${
-            isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-          }`}
-        >
-          {new Date(item.createdAt).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          })}
-        </Text>
-      </View>
+  const handleCraftPress = (craft: any) => {
+    const ideaJson = typeof craft.idea_json === 'string' 
+      ? JSON.parse(craft.idea_json) 
+      : craft.idea_json;
+    
+    const materials = Array.isArray(craft.recycled_materials) 
+      ? craft.recycled_materials 
+      : typeof craft.recycled_materials === 'string'
+      ? JSON.parse(craft.recycled_materials)
+      : [];
 
-      {/* Delete Button */}
+    navigation.navigate('CraftDetails', {
+      craftTitle: ideaJson.title || 'Craft Idea',
+      materials: materials,
+      steps: ideaJson.steps || [],
+      generatedImageUrl: craft.generated_image_url,
+      timeNeeded: ideaJson.timeNeeded,
+      quickTip: ideaJson.quickTip,
+      description: ideaJson.description,
+      ideaId: craft.idea_id,
+      isSaved: craft.is_saved,
+    });
+  };
+
+  const renderSavedCraft = ({ item }: { item: any }) => {
+    const ideaJson = typeof item.idea_json === 'string' 
+      ? JSON.parse(item.idea_json) 
+      : item.idea_json;
+
+    return (
       <TouchableOpacity
-        onPress={() => deleteItem(item.id)}
-        className={`absolute top-2 right-2 rounded-full bg-craftopia-error/90 items-center justify-center ${
-          isSmallScreen ? 'w-5 h-5' : isLargeScreen ? 'w-7 h-7' : 'w-6 h-6'
+        className={`mr-3 rounded-xl overflow-hidden bg-craftopia-surface border border-craftopia-light relative ${
+          isSmallScreen ? 'w-40' : isLargeScreen ? 'w-48' : 'w-44'
         }`}
+        onPress={() => handleCraftPress(item)}
         activeOpacity={0.7}
       >
-        <Trash2 
-          size={isSmallScreen ? 10 : isLargeScreen ? 14 : 12} 
-          color="#FFFFFF" 
-        />
+        {item.generated_image_url ? (
+          <Image 
+            source={{ uri: item.generated_image_url }} 
+            className={`w-full ${
+              isSmallScreen ? 'h-28' : isLargeScreen ? 'h-36' : 'h-32'
+            }`}
+            resizeMode="cover" 
+          />
+        ) : (
+          <View className={`w-full ${
+            isSmallScreen ? 'h-28' : isLargeScreen ? 'h-36' : 'h-32'
+          } bg-craftopia-light items-center justify-center`}>
+            <Sparkles 
+              size={isSmallScreen ? 24 : isLargeScreen ? 32 : 28} 
+              color="#E6B655" 
+            />
+          </View>
+        )}
+        
+        {/* Saved Badge */}
+        <View className="absolute top-2 right-2 bg-craftopia-success/90 px-2 py-1 rounded-lg flex-row items-center">
+          <Bookmark size={10} color="#FFFFFF" fill="#FFFFFF" />
+          <Text className="text-xs text-white ml-1 font-nunito font-semibold">
+            Saved
+          </Text>
+        </View>
+        
+        <View className="p-3">
+          <Text 
+            className={`text-craftopia-textPrimary font-semibold font-nunito ${
+              isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+            }`}
+            numberOfLines={2}
+          >
+            {ideaJson.title || 'Craft Idea'}
+          </Text>
+          
+          {ideaJson.timeNeeded && (
+            <View className="flex-row items-center mt-1">
+              <Clock size={10} color="#5F6F64" />
+              <Text 
+                className={`text-craftopia-textSecondary ml-1 font-nunito ${
+                  isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-xs' : 'text-xs'
+                }`}
+              >
+                {ideaJson.timeNeeded}
+              </Text>
+            </View>
+          )}
+          
+          <Text 
+            className={`text-craftopia-textSecondary mt-1 font-nunito ${
+              isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
+            }`}
+          >
+            {new Date(item.created_at).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            })}
+          </Text>
+        </View>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
+
+  // ✅ Extract stats
+  const savedCrafts = savedCraftsData?.data || [];
+  const totalCrafts = statsData?.data?.totalCrafts || 0;
+  const craftsMade = statsData?.data?.savedCrafts || 0;
+  const totalMaterials = statsData?.data?.totalMaterials || 0; // Assuming backend provides this
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
@@ -169,7 +187,7 @@ export const CraftScreen: React.FC = () => {
           </View>
 
           {/* History Button */}
-          {recentItems.length > 0 && (
+          {craftsMade > 0 && (
             <TouchableOpacity
               className="flex-row items-center bg-craftopia-light rounded-full px-3 py-2"
               activeOpacity={0.7}
@@ -183,7 +201,7 @@ export const CraftScreen: React.FC = () => {
                   isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
                 }`}
               >
-                {recentItems.length}
+                {craftsMade}
               </Text>
             </TouchableOpacity>
           )}
@@ -225,6 +243,9 @@ export const CraftScreen: React.FC = () => {
       <ScrollView 
         className="flex-1" 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B6E4D']} />
+        }
         contentContainerStyle={{ 
           paddingBottom: isSmallScreen ? 16 : isLargeScreen ? 24 : 20 
         }}
@@ -290,12 +311,12 @@ export const CraftScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Stats Cards */}
+        {/* ✅ Stats Cards with Real Data */}
         <View className={`${
           isSmallScreen ? 'mx-3 mt-4' : isLargeScreen ? 'mx-5 mt-6' : 'mx-4 mt-5'
         }`}>
           <View className="flex-row gap-3">
-            {/* Total Crafts */}
+            {/* Total Materials Used */}
             <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
               <View className="flex-row items-center justify-between mb-2">
                 <View 
@@ -303,33 +324,30 @@ export const CraftScreen: React.FC = () => {
                     isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
                   }`}
                 >
-                  <Target 
+                  <Package 
                     size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16} 
                     color="#3B6E4D" 
                   />
                 </View>
-                <TrendingUp 
-                  size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14} 
-                  color="#5BA776" 
-                />
+                {isLoadingStats && <ActivityIndicator size="small" color="#5BA776" />}
               </View>
               <Text 
                 className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
                   isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
                 }`}
               >
-                {recentItems.length}
+                {totalCrafts}
               </Text>
               <Text 
                 className={`text-craftopia-textSecondary font-nunito ${
                   isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
                 }`}
               >
-                Scanned Items
+                Total Materials
               </Text>
             </View>
 
-            {/* Points Earned */}
+            {/* Crafts Made */}
             <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
               <View className="flex-row items-center justify-between mb-2">
                 <View 
@@ -342,31 +360,35 @@ export const CraftScreen: React.FC = () => {
                     color="#E6B655" 
                   />
                 </View>
-                <TrendingUp 
-                  size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14} 
-                  color="#5BA776" 
-                />
+                {isLoadingStats && <ActivityIndicator size="small" color="#5BA776" />}
               </View>
               <Text 
                 className={`font-bold text-craftopia-textPrimary font-poppinsBold ${
                   isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
                 }`}
               >
-                0
+                {craftsMade}
               </Text>
               <Text 
                 className={`text-craftopia-textSecondary font-nunito ${
                   isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
                 }`}
               >
-                Crafts Made
+                Crafts Saved
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Recent Scans */}
-        {recentItems.length > 0 && (
+        {/* ✅ Saved Crafts from Database */}
+        {isLoadingCrafts ? (
+          <View className="items-center justify-center py-12">
+            <ActivityIndicator size="large" color="#3B6E4D" />
+            <Text className="text-craftopia-textSecondary mt-3 font-nunito">
+              Loading your crafts...
+            </Text>
+          </View>
+        ) : savedCrafts.length > 0 ? (
           <View className={`${isSmallScreen ? 'mt-4' : isLargeScreen ? 'mt-6' : 'mt-5'}`}>
             <View className={`${
               isSmallScreen ? 'px-3 mb-2' : isLargeScreen ? 'px-5 mb-3' : 'px-4 mb-3'
@@ -378,34 +400,38 @@ export const CraftScreen: React.FC = () => {
                       isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
                     }`}
                   >
-                    Recent Scans
+                    Saved Crafts
                   </Text>
                   <Text 
                     className={`text-craftopia-textSecondary font-nunito ${
                       isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
                     }`}
                   >
-                    Your saved recyclables
+                    Your creative collection
+                  </Text>
+                </View>
+                
+                <View className="bg-craftopia-success/10 px-3 py-1.5 rounded-lg">
+                  <Text className="text-craftopia-success font-nunito font-semibold text-xs">
+                    {savedCrafts.length} {savedCrafts.length === 1 ? 'craft' : 'crafts'}
                   </Text>
                 </View>
               </View>
             </View>
 
             <FlatList
-              data={recentItems}
-              keyExtractor={(i) => i.id}
+              data={savedCrafts}
+              keyExtractor={(item) => item.idea_id.toString()}
               horizontal
               showsHorizontalScrollIndicator={false}
-              renderItem={renderSavedItem}
+              renderItem={renderSavedCraft}
               contentContainerStyle={{ 
                 paddingHorizontal: isSmallScreen ? 12 : isLargeScreen ? 20 : 16 
               }}
             />
           </View>
-        )}
-
-        {/* Empty State */}
-        {recentItems.length === 0 && (
+        ) : (
+          // Empty State
           <View className={`${
             isSmallScreen ? 'mx-3 mt-6' : isLargeScreen ? 'mx-5 mt-8' : 'mx-4 mt-6'
           }`}>
@@ -415,7 +441,7 @@ export const CraftScreen: React.FC = () => {
                   isSmallScreen ? 'w-16 h-16' : isLargeScreen ? 'w-20 h-20' : 'w-16 h-16'
                 }`}
               >
-                <Scan 
+                <Bookmark 
                   size={isSmallScreen ? 24 : isLargeScreen ? 32 : 24} 
                   color="#5F6F64" 
                 />
@@ -425,14 +451,14 @@ export const CraftScreen: React.FC = () => {
                   isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
                 }`}
               >
-                No Scans Yet
+                No Saved Crafts Yet
               </Text>
               <Text 
                 className={`text-craftopia-textSecondary text-center mb-4 font-nunito ${
                   isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
                 }`}
               >
-                Start by scanning your recyclable items to discover amazing craft ideas
+                Start by scanning your recyclable items to discover and save amazing craft ideas
               </Text>
               <TouchableOpacity
                 onPress={handleStartScan}

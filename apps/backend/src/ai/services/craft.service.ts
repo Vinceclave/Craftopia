@@ -1,4 +1,4 @@
-// apps/backend/src/ai/services/craft.service.ts 
+// apps/backend/src/ai/services/craft.service.ts - ENHANCED WITH BETTER IMAGE GENERATION
 
 import { AppError } from "../../utils/error";
 import { ai } from "../gemini/client";
@@ -10,9 +10,12 @@ import { generateCraftImage } from "./image-generation.service";
 interface CraftIdea {
   title: string;
   description: string;
+  difficulty?: string;
   steps: string[];
   timeNeeded: string;
+  toolsNeeded?: string[];
   quickTip: string;
+  uniqueFeature?: string;
   generatedImageUrl?: string;
 }
 
@@ -26,7 +29,7 @@ export const generateCraft = async (
     : materials?.trim();
 
   console.log("🎨 ============================================");
-  console.log("🎨 CRAFT SERVICE - Generate Craft Called");
+  console.log("🎨 CRAFT SERVICE - Enhanced Generate Craft");
   console.log("🎨 ============================================");
   console.log("📦 Materials:", cleanMaterials);
   console.log("🖼️  Has referenceImageBase64:", !!referenceImageBase64);
@@ -35,7 +38,6 @@ export const generateCraft = async (
     const imageSizeMB = (referenceImageBase64.length / (1024 * 1024)).toFixed(2);
     console.log("📏 Reference Image Length:", referenceImageBase64.length);
     console.log("📊 Reference Image Size:", imageSizeMB, "MB");
-    console.log("🔍 Reference Image Preview:", referenceImageBase64.substring(0, 100));
   } else {
     console.log("⚠️  No reference image - generating generic craft images");
   }
@@ -77,7 +79,7 @@ export const generateCraft = async (
   }
 
   try {
-    console.log("🤖 Generating craft ideas from AI...");
+    console.log("🤖 Generating ULTRA-REALISTIC craft ideas from AI...");
 
     const prompt = craftPrompt(cleanMaterials);
 
@@ -102,7 +104,7 @@ export const generateCraft = async (
       );
     }
 
-    // Validate each idea structure
+    // Validate each idea structure - ENHANCED validation
     const validIdeas = ideas.filter(
       (idea) =>
         idea &&
@@ -120,23 +122,28 @@ export const generateCraft = async (
     }
 
     console.log(`✅ Generated ${validIdeas.length} valid craft ideas`);
-    console.log("🎨 Starting image generation for each craft idea...");
+    console.log("🎨 Starting ENHANCED image generation for each craft idea...");
 
-    // Generate images for each craft idea (keep as base64)
+    // 🎯 Generate ULTRA-REALISTIC images with craft details
     const ideasWithImages: CraftIdea[] = [];
 
     for (let i = 0; i < validIdeas.length; i++) {
       const idea = validIdeas[i];
       
       try {
-        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating image for: "${idea.title}"`);
+        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating REALISTIC image for: "${idea.title}"`);
+        console.log(`📝 Difficulty: ${idea.difficulty || 'Not specified'}`);
+        console.log(`⏱️  Time: ${idea.timeNeeded}`);
+        console.log(`🔧 Steps: ${idea.steps.length} steps`);
+        console.log(`✨ Unique Feature: ${idea.uniqueFeature || 'None specified'}`);
 
-        // Pass the reference image to image generation
+        // ✅ Pass craft steps to image generation for better visual accuracy
         const imageUrl = await generateCraftImage(
           idea.title,
           idea.description,
           cleanMaterials,
-          referenceImageBase64  // ✅ Pass the scanned image as reference
+          idea.steps, // 🎯 NEW: Pass steps for visual details
+          referenceImageBase64
         );
 
         // ✅ Keep as base64 - will upload to S3 only when user saves
@@ -145,7 +152,7 @@ export const generateCraft = async (
           generatedImageUrl: imageUrl, // Base64 data URI
         });
 
-        console.log(`✅ [${i + 1}/${validIdeas.length}] Image generated successfully`);
+        console.log(`✅ [${i + 1}/${validIdeas.length}] REALISTIC image generated successfully`);
       } catch (imageError: any) {
         console.error(`❌ [${i + 1}/${validIdeas.length}] Failed to generate image:`, imageError.message);
         
@@ -158,17 +165,27 @@ export const generateCraft = async (
     }
 
     console.log("\n🎨 ============================================");
-    console.log(`✅ CRAFT SERVICE COMPLETE`);
+    console.log(`✅ ENHANCED CRAFT SERVICE COMPLETE`);
     console.log(`📊 Total Ideas: ${ideasWithImages.length}`);
     console.log(`🖼️  Ideas with Images: ${ideasWithImages.filter(i => i.generatedImageUrl).length}`);
+    console.log(`✨ Unique Features: ${ideasWithImages.filter(i => i.uniqueFeature).length}`);
+    console.log(`🔧 Tools Specified: ${ideasWithImages.filter(i => i.toolsNeeded).length}`);
     console.log("🎨 ============================================\n");
 
-    // ✅ Return with base64 images - NO database save, NO S3 upload
+    // ✅ Return with base64 images and enhanced metadata
     return {
       materials: Array.isArray(materials) ? materials : [materials],
       ideas: ideasWithImages,
       count: ideasWithImages.length,
       generatedAt: new Date().toISOString(),
+      metadata: {
+        hasReferenceImage: !!referenceImageBase64,
+        averageSteps: Math.round(
+          ideasWithImages.reduce((sum, idea) => sum + idea.steps.length, 0) / 
+          ideasWithImages.length
+        ),
+        imagesGenerated: ideasWithImages.filter(i => i.generatedImageUrl).length,
+      }
     };
   } catch (error: any) {
     if (error instanceof AppError) throw error;

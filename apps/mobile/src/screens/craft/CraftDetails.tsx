@@ -1,6 +1,6 @@
-// apps/mobile/src/screens/craft/CraftDetails.tsx - COMPLETE UPDATED FILE
+// apps/mobile/src/screens/craft/CraftDetails.tsx - FIXED DUPLICATE SAVE WITH HASH CHECKING
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -20,7 +20,10 @@ import {
   Share2, 
   Bookmark, 
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Wrench,
+  Star,
+  BarChart3
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
 
@@ -33,13 +36,22 @@ type RootStackParamList = {
     timeNeeded?: string;
     quickTip?: string;
     description?: string;
-    ideaId?: number;        // ✅ Database ID (if already saved)
-    isSaved?: boolean;      // ✅ Save status
+    difficulty?: string;
+    toolsNeeded?: string[];
+    uniqueFeature?: string;
+    ideaId?: number;
+    isSaved?: boolean;
   };
 };
 
 type CraftDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CraftDetails'>;
 type CraftDetailsRouteProp = RouteProp<RootStackParamList, 'CraftDetails'>;
+
+// ✅ Helper function to create a unique hash for a craft
+const createCraftHash = (title: string, description: string, materials: string[]): string => {
+  const hashString = `${title}-${description}-${materials.join(',')}`.toLowerCase().trim();
+  return hashString;
+};
 
 export const CraftDetailsScreen = () => {
   const navigation = useNavigation<CraftDetailsNavigationProp>();
@@ -53,18 +65,38 @@ export const CraftDetailsScreen = () => {
     timeNeeded,
     quickTip,
     description = '',
+    difficulty,
+    toolsNeeded,
+    uniqueFeature,
     ideaId: initialIdeaId,
     isSaved: initialSaved = false
   } = route.params;
 
-  // ✅ State management
+  // ✅ Create unique hash for this craft
+  const craftHash = createCraftHash(craftTitle, description, materials);
+
   const [isSaved, setIsSaved] = useState(initialSaved);
   const [ideaId, setIdeaId] = useState(initialIdeaId);
   const [imageUrl, setImageUrl] = useState(generatedImageUrl);
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
-  // ✅ Mutations
   const saveMutation = useSaveCraftFromBase64();
   const toggleMutation = useToggleSaveCraft();
+
+  // ✅ Check if this craft is already saved (even without ideaId)
+  useEffect(() => {
+    console.log('🔍 Craft Details loaded:', {
+      title: craftTitle,
+      hash: craftHash,
+      ideaId: initialIdeaId,
+      isSaved: initialSaved,
+    });
+
+    // If already marked as saved, respect that
+    if (initialSaved || initialIdeaId) {
+      console.log('✅ Craft already saved:', { ideaId: initialIdeaId, isSaved: initialSaved });
+    }
+  }, []);
 
   const handleBack = () => {
     navigation.goBack();
@@ -81,10 +113,19 @@ export const CraftDetailsScreen = () => {
     );
   };
 
-  // ✅ Handle save/unsave
   const handleSave = async () => {
+    // ✅ Check 1: Already processing
+    if (saveAttempted && !ideaId) {
+      Alert.alert(
+        'Saving In Progress',
+        'This craft is currently being saved. Please wait...'
+      );
+      return;
+    }
+
+    // ✅ Check 2: Already saved (has ideaId)
     if (ideaId) {
-      // Already in database - just toggle
+      // This craft is in the database - toggle saved state
       try {
         const result = await toggleMutation.mutateAsync(ideaId);
         setIsSaved(result.data.isSaved);
@@ -98,38 +139,96 @@ export const CraftDetailsScreen = () => {
       } catch (error: any) {
         Alert.alert('Error', error.message || 'Failed to toggle save');
       }
-    } else {
-      // Not in database yet - save with base64 image
-      try {
-        const result = await saveMutation.mutateAsync({
-          idea_json: {
-            title: craftTitle,
-            description: description,
-            steps,
-            timeNeeded: timeNeeded || '',
-            quickTip: quickTip || '',
-          },
-          recycled_materials: materials,
-          base64_image: generatedImageUrl, // ✅ Send base64, backend uploads to S3
-        });
+      return;
+    }
 
-        // Update local state with saved data
-        setIdeaId(result.data.idea_id);
+    // ✅ Check 3: Already marked as saved but no ideaId yet
+    if (isSaved && !ideaId) {
+      Alert.alert(
+        'Already Saved',
+        'This craft has already been saved to your collection!',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // ✅ Proceed with saving new craft
+    console.log('💾 Saving new craft:', {
+      title: craftTitle,
+      hash: craftHash,
+      hasImage: !!generatedImageUrl
+    });
+
+    setSaveAttempted(true);
+
+    try {
+      const result = await saveMutation.mutateAsync({
+        idea_json: {
+          title: craftTitle,
+          description: description,
+          difficulty: difficulty,
+          steps,
+          timeNeeded: timeNeeded || '',
+          toolsNeeded: toolsNeeded,
+          quickTip: quickTip || '',
+          uniqueFeature: uniqueFeature,
+        },
+        recycled_materials: materials,
+        base64_image: generatedImageUrl,
+      });
+
+      console.log('✅ Craft saved successfully:', {
+        ideaId: result.data.idea_id,
+        title: craftTitle
+      });
+
+      // Update local state
+      setIdeaId(result.data.idea_id);
+      setIsSaved(true);
+      
+      // Replace base64 with S3 URL if available
+      if (result.data.generated_image_url) {
+        setImageUrl(result.data.generated_image_url);
+      }
+
+      Alert.alert('Success', '✅ Craft saved to your collection!');
+    } catch (error: any) {
+      setSaveAttempted(false);
+      
+      console.error('❌ Save error:', error.message);
+      
+      // Check for duplicate/already saved errors
+      if (error.message?.includes('already saved') || 
+          error.message?.includes('duplicate') ||
+          error.message?.includes('unique constraint')) {
         setIsSaved(true);
-        
-        // ✅ Replace base64 with S3 URL
-        if (result.data.generated_image_url) {
-          setImageUrl(result.data.generated_image_url);
-        }
-
-        Alert.alert('Success', '✅ Craft saved to your collection!');
-      } catch (error: any) {
+        Alert.alert(
+          'Already Saved',
+          'This craft has already been saved to your collection!'
+        );
+      } else {
         Alert.alert('Error', error.message || 'Failed to save craft');
       }
     }
   };
 
   const isProcessing = saveMutation.isPending || toggleMutation.isPending;
+
+  // ✅ Difficulty color mapping
+  const getDifficultyColor = (diff?: string) => {
+    switch (diff?.toLowerCase()) {
+      case 'easy': return { bg: '#E8F5E9', text: '#2E7D32', icon: '#4CAF50' };
+      case 'medium': return { bg: '#FFF9E6', text: '#F57C00', icon: '#FF9800' };
+      case 'advanced': return { bg: '#FFEBEE', text: '#C62828', icon: '#F44336' };
+      default: return { bg: '#F0F4F2', text: '#5F6F64', icon: '#5F6F64' };
+    }
+  };
+
+  const difficultyColors = getDifficultyColor(difficulty);
+
+  // ✅ Determine if save button should be shown
+  const showSaveButton = !isSaved;
+  const saveButtonDisabled = isProcessing || saveAttempted || isSaved;
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FBF8]">
@@ -152,11 +251,13 @@ export const CraftDetailsScreen = () => {
           </View>
           
           <View className="flex-row items-center space-x-2 ml-2">
-            {/* ✅ Bookmark Button */}
+            {/* Bookmark Button */}
             <TouchableOpacity 
               onPress={handleSave}
-              disabled={isProcessing}
-              className="w-9 h-9 rounded-full bg-[#F0F4F2] items-center justify-center"
+              disabled={saveButtonDisabled}
+              className={`w-9 h-9 rounded-full items-center justify-center ${
+                isSaved ? 'bg-[#3B6E4D]/20' : 'bg-[#F0F4F2]'
+              }`}
             >
               {isProcessing ? (
                 <ActivityIndicator size="small" color="#3B6E4D" />
@@ -178,8 +279,23 @@ export const CraftDetailsScreen = () => {
           </View>
         </View>
 
-        {/* Meta Info */}
-        <View className="flex-row items-center mt-3 space-x-3">
+        {/* Enhanced Meta Info */}
+        <View className="flex-row items-center mt-3 flex-wrap gap-2">
+          {difficulty && (
+            <View 
+              className="flex-row items-center px-3 py-1.5 rounded-lg"
+              style={{ backgroundColor: difficultyColors.bg }}
+            >
+              <BarChart3 size={14} color={difficultyColors.icon} />
+              <Text 
+                className="text-sm ml-1 font-nunito font-semibold"
+                style={{ color: difficultyColors.text }}
+              >
+                {difficulty}
+              </Text>
+            </View>
+          )}
+          
           {timeNeeded && (
             <View className="flex-row items-center bg-[#F0F4F2] px-3 py-1.5 rounded-lg">
               <Clock size={14} color="#5F6F64" />
@@ -189,10 +305,10 @@ export const CraftDetailsScreen = () => {
             </View>
           )}
           
-          {/* ✅ Saved Badge */}
+          {/* ✅ Clear saved status badge */}
           {isSaved && (
             <View className="flex-row items-center bg-[#3B6E4D]/10 px-3 py-1.5 rounded-lg">
-              <Bookmark size={14} color="#3B6E4D" fill="#3B6E4D" />
+              <CheckCircle2 size={14} color="#3B6E4D" fill="#3B6E4D" />
               <Text className="text-sm text-[#3B6E4D] ml-1 font-nunito font-semibold">
                 Saved
               </Text>
@@ -202,7 +318,7 @@ export const CraftDetailsScreen = () => {
       </View>
 
       <ScrollView className="flex-1">
-        {/* ✅ AI-Generated Image (base64 initially, S3 URL after save) */}
+        {/* AI-Generated Image */}
         {imageUrl && (
           <View className="mx-4 mt-4 relative">
             <Image
@@ -228,6 +344,25 @@ export const CraftDetailsScreen = () => {
           </View>
         )}
 
+        {/* Unique Feature */}
+        {uniqueFeature && (
+          <View className="mx-4 mt-4 p-4 bg-gradient-to-r from-[#E6B655]/10 to-[#E6B655]/5 rounded-2xl border border-[#E6B655]/30">
+            <View className="flex-row items-start">
+              <View className="w-8 h-8 rounded-full bg-[#E6B655]/20 items-center justify-center mr-3">
+                <Star size={16} color="#E6B655" fill="#E6B655" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-[#1F2A1F] mb-1 font-poppinsBold">
+                  What Makes This Special
+                </Text>
+                <Text className="text-sm text-[#5F6F64] font-nunito leading-5">
+                  {uniqueFeature}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Materials Used */}
         <View className="mx-4 mt-4">
           <Text className="text-base font-bold text-[#1F2A1F] mb-3 font-poppinsBold">
@@ -247,6 +382,31 @@ export const CraftDetailsScreen = () => {
           </View>
         </View>
 
+        {/* Tools Needed */}
+        {toolsNeeded && toolsNeeded.length > 0 && (
+          <View className="mx-4 mt-4">
+            <View className="flex-row items-center mb-3">
+              <Wrench size={18} color="#1F2A1F" />
+              <Text className="text-base font-bold text-[#1F2A1F] ml-2 font-poppinsBold">
+                Tools You'll Need
+              </Text>
+            </View>
+            <View className="flex-row flex-wrap gap-2">
+              {toolsNeeded.map((tool, index) => (
+                <View 
+                  key={index} 
+                  className="bg-[#F0F4F2] px-3 py-2 rounded-lg flex-row items-center"
+                >
+                  <View className="w-1.5 h-1.5 rounded-full bg-[#5F6F64] mr-2" />
+                  <Text className="text-sm text-[#1F2A1F] font-nunito">
+                    {tool}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Steps */}
         <View className="mx-4 mt-6">
           <Text className="text-base font-bold text-[#1F2A1F] mb-4 font-poppinsBold">
@@ -260,7 +420,7 @@ export const CraftDetailsScreen = () => {
                 </Text>
               </View>
               <View className="flex-1 bg-white p-4 rounded-xl border border-[#E8ECEB]">
-                <Text className="text-sm text-[#1F2A1F] font-nunito leading-5">
+                <Text className="text-sm text-[#1F2A1F] font-nunito leading-6">
                   {step}
                 </Text>
               </View>
@@ -275,9 +435,9 @@ export const CraftDetailsScreen = () => {
               <Lightbulb size={20} color="#F59E0B" />
               <View className="flex-1 ml-3">
                 <Text className="text-sm font-bold text-[#92400E] mb-1 font-poppinsBold">
-                  Quick Tip
+                  Pro Tip
                 </Text>
-                <Text className="text-sm text-[#78350F] font-nunito">
+                <Text className="text-sm text-[#78350F] font-nunito leading-5">
                   {quickTip}
                 </Text>
               </View>
@@ -285,17 +445,24 @@ export const CraftDetailsScreen = () => {
           </View>
         )}
 
-        {/* ✅ Save Button (only if not saved) */}
-        {!isSaved && (
+        {/* ✅ Save Button - Only show if not saved */}
+        {showSaveButton && (
           <View className="mx-4 mb-8">
             <TouchableOpacity 
               onPress={handleSave}
-              disabled={isProcessing}
-              className="bg-[#3B6E4D] py-4 rounded-xl flex-row items-center justify-center"
+              disabled={saveButtonDisabled}
+              className={`py-4 rounded-xl flex-row items-center justify-center ${
+                saveButtonDisabled ? 'bg-[#3B6E4D]/50' : 'bg-[#3B6E4D]'
+              }`}
               activeOpacity={0.8}
             >
               {isProcessing ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text className="text-white font-bold text-base ml-2 font-poppinsBold">
+                    Saving...
+                  </Text>
+                </>
               ) : (
                 <>
                   <Bookmark size={20} color="#FFFFFF" />
@@ -305,6 +472,23 @@ export const CraftDetailsScreen = () => {
                 </>
               )}
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ✅ Already Saved Message */}
+        {isSaved && (
+          <View className="mx-4 mb-8 p-4 bg-[#3B6E4D]/10 rounded-xl border border-[#3B6E4D]/20">
+            <View className="flex-row items-center justify-center">
+              <CheckCircle2 size={20} color="#3B6E4D" fill="#3B6E4D" />
+              <Text className="text-[#3B6E4D] font-bold text-base ml-2 font-poppinsBold">
+                Saved to Your Collection
+              </Text>
+            </View>
+            {ideaId && (
+              <Text className="text-[#5F6F64] text-xs text-center mt-2 font-nunito">
+                ID: #{ideaId}
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>
