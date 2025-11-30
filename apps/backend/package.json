@@ -4,7 +4,7 @@
   "description": "Craftopia Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "node --max-old-space-size=2048 node_modules/typescript/lib/tsc.js && npm run copy:prisma",
+    "build": "tsc",
     "start": "node dist/server.js",
     "start:prod": "prisma generate && node dist/server.js",
     "dev": "nodemon src/server.ts",
@@ -16,8 +16,7 @@
     "prisma:studio": "prisma studio",
     "prisma:reset": "prisma migrate reset",
     "prisma:seed": "ts-node src/config/prisma.ts",
-    "postinstall": "prisma generate",
-    "copy:prisma": "cpx \"src/generated/prisma/**/*\" \"dist/generated/prisma\""
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "craftopia",
