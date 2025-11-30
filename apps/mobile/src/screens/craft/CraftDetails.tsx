@@ -104,18 +104,8 @@ export const CraftDetailsScreen = () => {
   }, []);
 
   const handleBack = () => {
-    // ✅ Pass save state back to CraftResults
-    if (navigation.canGoBack()) {
-      navigation.navigate('CraftResults' as any, {
-        craftSavedState: craftIndex !== undefined ? {
-          index: craftIndex,
-          isSaved,
-          ideaId
-        } : undefined
-      });
-    } else {
-      navigation.goBack();
-    }
+    // Simply go back - React Navigation will preserve the route params
+    navigation.goBack();
   };
 
   const handleShare = async () => {
@@ -260,7 +250,7 @@ export const CraftDetailsScreen = () => {
   const saveButtonDisabled = isProcessing || saveAttempted || isSaved;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F8FBF8]">
+    <SafeAreaView edges={['left', 'right', 'bottom']}className="flex-1 bg-[#F8FBF8]">
       {/* Header */}
       <View className="px-4 pt-4 pb-3 bg-white border-b border-[#E8ECEB]">
         <View className="flex-row items-center justify-between">

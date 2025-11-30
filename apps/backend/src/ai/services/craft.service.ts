@@ -1,4 +1,4 @@
-// apps/backend/src/ai/services/craft.service.ts - ENHANCED WITH BETTER IMAGE GENERATION
+// apps/backend/src/ai/services/craft.service.ts 
 
 import { AppError } from "../../utils/error";
 import { ai } from "../gemini/client";
@@ -16,7 +16,7 @@ interface CraftIdea {
   toolsNeeded?: string[];
   quickTip: string;
   uniqueFeature?: string;
-  visualDescription?: string; // ✅ NEW field
+  visualDescription?: string;
   generatedImageUrl?: string;
 }
 
@@ -30,7 +30,7 @@ export const generateCraft = async (
     : materials?.trim();
 
   console.log("🎨 ============================================");
-  console.log("🎨 CRAFT SERVICE - Enhanced Generate Craft");
+  console.log("🎨 CRAFT SERVICE - Image-Enhanced Generation");
   console.log("🎨 ============================================");
   console.log("📦 Materials:", cleanMaterials);
   console.log("🖼️  Has referenceImageBase64:", !!referenceImageBase64);
@@ -39,8 +39,9 @@ export const generateCraft = async (
     const imageSizeMB = (referenceImageBase64.length / (1024 * 1024)).toFixed(2);
     console.log("📏 Reference Image Length:", referenceImageBase64.length);
     console.log("📊 Reference Image Size:", imageSizeMB, "MB");
+    console.log("✅ Will send image to AI for visual material analysis");
   } else {
-    console.log("⚠️  No reference image - generating generic craft images");
+    console.log("⚠️  No reference image - generating from text materials only");
   }
 
   // Validation
@@ -80,14 +81,66 @@ export const generateCraft = async (
   }
 
   try {
-    console.log("🤖 Generating ULTRA-REALISTIC craft ideas from AI...");
+    console.log("🤖 Generating craft ideas with visual material reference...");
 
-    const prompt = craftPrompt(cleanMaterials);
+    const hasReferenceImage = !!referenceImageBase64;
+    const prompt = craftPrompt(cleanMaterials, hasReferenceImage);
 
-    const response = await ai.models.generateContent({
-      model: config.ai.model,
-      contents: prompt,
-    });
+    let response;
+
+    // 🎯 NEW: If we have a reference image, send it to the AI
+    if (referenceImageBase64) {
+      console.log("📸 Sending reference image to AI for accurate material analysis...");
+
+      // Extract base64 data and MIME type
+      let cleanBase64 = referenceImageBase64.trim();
+      let mimeType = "image/jpeg";
+
+      if (cleanBase64.includes(',')) {
+        const parts = cleanBase64.split(',');
+        if (parts.length === 2) {
+          const dataUriPrefix = parts[0];
+          cleanBase64 = parts[1];
+
+          if (dataUriPrefix.includes('image/png')) {
+            mimeType = "image/png";
+          } else if (dataUriPrefix.includes('image/webp')) {
+            mimeType = "image/webp";
+          } else if (dataUriPrefix.includes('image/jpeg') || dataUriPrefix.includes('image/jpg')) {
+            mimeType = "image/jpeg";
+          }
+        }
+      }
+
+      // Send image + prompt to AI
+      response = await ai.models.generateContent({
+        model: config.ai.model,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: cleanBase64,
+                },
+              },
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      });
+
+      console.log("✅ AI analyzed the reference image for material details");
+    } else {
+      // No image - text-only generation
+      response = await ai.models.generateContent({
+        model: config.ai.model,
+        contents: prompt,
+      });
+    }
 
     const text = response.text;
     if (!text?.trim()) {
@@ -105,7 +158,7 @@ export const generateCraft = async (
       );
     }
 
-    // Validate each idea structure - ENHANCED validation
+    // Validate each idea structure
     const validIdeas = ideas.filter(
       (idea) =>
         idea &&
@@ -123,38 +176,37 @@ export const generateCraft = async (
     }
 
     console.log(`✅ Generated ${validIdeas.length} valid craft ideas`);
-    console.log("🎨 Starting ENHANCED image generation for each craft idea...");
+    console.log("🎨 Starting image generation for each craft idea...");
 
-    // 🎯 Generate ULTRA-REALISTIC images with craft details
+    // Generate images for each craft
     const ideasWithImages: CraftIdea[] = [];
 
     for (let i = 0; i < validIdeas.length; i++) {
       const idea = validIdeas[i];
 
       try {
-        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating REALISTIC image for: "${idea.title}"`);
+        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating image for: "${idea.title}"`);
         console.log(`📝 Difficulty: ${idea.difficulty || 'Not specified'}`);
         console.log(`⏱️  Time: ${idea.timeNeeded}`);
         console.log(`🔧 Steps: ${idea.steps.length} steps`);
-        console.log(`✨ Unique Feature: ${idea.uniqueFeature || 'None specified'}`);
+        console.log(`✨ Has Visual Description: ${!!idea.visualDescription}`);
 
-        // ✅ Pass craft steps AND visual description to image generation
+        // Pass craft details AND reference image to image generation
         const imageUrl = await generateCraftImage(
           idea.title,
           idea.description,
           cleanMaterials,
           idea.steps,
-          referenceImageBase64,
-          idea.visualDescription // ✅ Pass the visual description
+          referenceImageBase64, // 🎯 Pass the same reference image
+          idea.visualDescription
         );
 
-        // ✅ Keep as base64 - will upload to S3 only when user saves
         ideasWithImages.push({
           ...idea,
-          generatedImageUrl: imageUrl, // Base64 data URI
+          generatedImageUrl: imageUrl,
         });
 
-        console.log(`✅ [${i + 1}/${validIdeas.length}] REALISTIC image generated successfully`);
+        console.log(`✅ [${i + 1}/${validIdeas.length}] Image generated successfully`);
       } catch (imageError: any) {
         console.error(`❌ [${i + 1}/${validIdeas.length}] Failed to generate image:`, imageError.message);
 
@@ -167,21 +219,19 @@ export const generateCraft = async (
     }
 
     console.log("\n🎨 ============================================");
-    console.log(`✅ ENHANCED CRAFT SERVICE COMPLETE`);
+    console.log(`✅ IMAGE-ENHANCED CRAFT SERVICE COMPLETE`);
     console.log(`📊 Total Ideas: ${ideasWithImages.length}`);
     console.log(`🖼️  Ideas with Images: ${ideasWithImages.filter(i => i.generatedImageUrl).length}`);
-    console.log(`✨ Unique Features: ${ideasWithImages.filter(i => i.uniqueFeature).length}`);
-    console.log(`🔧 Tools Specified: ${ideasWithImages.filter(i => i.toolsNeeded).length}`);
+    console.log(`📸 Used Reference Image: ${hasReferenceImage ? 'Yes' : 'No'}`);
     console.log("🎨 ============================================\n");
 
-    // ✅ Return with base64 images and enhanced metadata
     return {
       materials: Array.isArray(materials) ? materials : [materials],
       ideas: ideasWithImages,
       count: ideasWithImages.length,
       generatedAt: new Date().toISOString(),
       metadata: {
-        hasReferenceImage: !!referenceImageBase64,
+        hasReferenceImage,
         averageSteps: Math.round(
           ideasWithImages.reduce((sum, idea) => sum + idea.steps.length, 0) /
           ideasWithImages.length
