@@ -4,9 +4,9 @@
   "description": "Craftopia Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "start": "node dist/server.js",
-    "start:prod": "prisma generate && node dist/server.js",
+    "start:prod": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "dev:ts": "ts-node src/server.ts",
     "audit": "npm audit --audit-level moderate",
