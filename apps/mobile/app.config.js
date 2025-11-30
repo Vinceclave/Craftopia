@@ -1,11 +1,34 @@
 import 'dotenv/config';
-import appJson from './app.json';
 
 export default () => ({
-  ...appJson.expo,
+  name: "Craftopia",
+  slug: "craftopia",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./assets/icon.png",
+  userInterfaceStyle: "light",
+  android: {
+    package: "com.beans01.craftopia",
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#ffffff"
+    }
+  },
+  scheme: "craftopia",
+  runtimeVersion: {
+    policy: "sdkVersion"
+  },
+  updates: {
+    url: "https://u.expo.dev/403a5f27-f52c-4f20-9083-98d1a0496e99"
+  },
   extra: {
-    ...appJson.expo.extra,
+    eas: {
+      projectId: "403a5f27-f52c-4f20-9083-98d1a0496e99"
+    },
     devUrl: process.env.BACKEND_URL,
     prodUrl: process.env.PROD_URL,
   },
+  plugins: [
+    "expo-font"
+  ]
 });
