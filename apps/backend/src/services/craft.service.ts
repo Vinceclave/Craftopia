@@ -7,7 +7,7 @@ import { ValidationError, NotFoundError, AppError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { uploadBase64ToS3 } from "./s3.service";
 import crypto from "crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../generated/prisma";
 
 interface CreateCraftIdeaData {
   generated_by_user_id?: number;
