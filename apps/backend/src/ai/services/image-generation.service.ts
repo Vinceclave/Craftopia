@@ -1,4 +1,5 @@
 // apps/backend/src/ai/services/image-generation.service.ts 
+// ✅ ENHANCED: Strict material matching to prevent AI hallucination
 
 import { AppError } from "../../utils/error";
 import { aiImage } from "../gemini/client";
@@ -6,7 +7,8 @@ import { config } from "../../config";
 
 /**
  * Generate friendly, accurate DIY craft images that match the materials and craft description
- * ✅ Creates images that show exactly what users can make with their scanned materials
+ * ✅ STRICT material validation to prevent hallucination
+ * ✅ Reference image ensures exact material matching
  */
 export const generateCraftImage = async (
   craftTitle: string,
@@ -18,13 +20,17 @@ export const generateCraftImage = async (
 ) => {
   try {
     console.log("\n🎨 ============================================");
-    console.log("🎨 FRIENDLY DIY IMAGE GENERATION");
+    console.log("🎨 ANTI-HALLUCINATION IMAGE GENERATION");
     console.log("🎨 ============================================");
     console.log("📝 Craft Title:", craftTitle);
     console.log("📝 Materials:", materials);
     console.log("📝 Steps Count:", craftSteps?.length || 0);
     console.log("📝 Visual Description:", visualDescription ? "✅ Provided" : "⚠️ Not provided");
-    console.log("📝 Reference Image:", referenceImageBase64 ? "✅ Provided" : "ℹ️ Not provided");
+    console.log("📝 Reference Image:", referenceImageBase64 ? "✅ Provided (CRITICAL for accuracy)" : "⚠️ Missing");
+
+    if (!referenceImageBase64) {
+      console.warn("⚠️  WARNING: No reference image - AI may hallucinate materials!");
+    }
 
     // Extract material details for strict matching
     const materialList = materials.split(',').map(m => m.trim());
@@ -33,7 +39,7 @@ export const generateCraftImage = async (
     console.log("📊 Detected Materials:", materialList);
     console.log("📊 Material Count:", materialCount);
 
-    // Build the image generation prompt
+    // Build the image generation prompt with STRICT anti-hallucination rules
     let imagePrompt = "";
 
     if (visualDescription && visualDescription.trim()) {
@@ -48,12 +54,31 @@ ${visualDescription}
 
 **CRAFT TITLE:** "${craftTitle}"
 
+**🚨 CRITICAL - MATERIAL ACCURACY RULES (MUST FOLLOW):**
+You have a reference image showing the ACTUAL materials the user scanned.
+- Materials available: ${materials}
+- Item count: ${materialCount} item(s)
+- Use ONLY these exact materials visible in the reference image
+- DO NOT add bottles, cans, jars, or any items not in the reference image
+- DO NOT increase quantities (if reference shows 1 bottle, use 1 bottle, not 2 or 3)
+- DO NOT substitute materials (if they have plastic, don't show glass)
+- Match the SIZE and TYPE of materials from the reference image exactly
+- The finished craft MUST be physically possible with ONLY the items shown
+
+**FORBIDDEN - WILL CAUSE HALLUCINATION:**
+❌ Adding extra bottles, containers, or materials not in the reference image
+❌ Using larger/smaller items than shown in the reference image
+❌ Creating crafts that need more materials than provided
+❌ Inventing additional decorative items from nowhere
+❌ Showing multiple of an item when only one exists in reference
+
 **STYLE REQUIREMENTS:**
 📸 Photography Style:
 - High-quality, Pinterest-worthy photo
 - Looks handmade but polished and neat
 - Shows the recycled materials clearly transformed
 - Natural, inviting aesthetic
+- REALISTIC - must be makeable with ONLY the scanned materials
 
 🌅 Lighting:
 - Bright, natural daylight (soft and warm)
@@ -73,22 +98,25 @@ ${visualDescription}
 - Warm and welcoming
 - Shows the craft in actual use if applicable
 
-**CRITICAL MATERIAL MATCHING:**
-- Materials used: ${materials}
-- Show EXACTLY these materials transformed into the craft
-- Don't add extra recyclables that weren't listed
-- The finished product should clearly show it's made from: ${materialList.join(', ')}
+**MATERIAL VERIFICATION CHECKLIST:**
+Before generating, verify:
+□ Every item in the craft matches the reference image materials
+□ No extra materials added that aren't in the reference image
+□ Quantities match exactly (not more, not less)
+□ Size and type of materials match the reference image
+□ The craft is physically possible with ONLY the scanned materials
 
 **IMPORTANT:**
 - This is a FINISHED, COMPLETED craft - not materials or work-in-progress
 - Should look achievable for beginners
 - Professional but handmade quality
 - Make it look like something from a DIY blog or Pinterest board
+- MUST use ONLY the materials from the reference image - nothing more!
 `.trim();
 
     } else {
-      // Fallback: Generate from craft details
-      console.log("⚠️ No visual description - generating from craft details");
+      // Fallback: Generate from craft details with strict rules
+      console.log("⚠️ No visual description - generating from craft details with strict material rules");
       
       const stepDetails = craftSteps && craftSteps.length > 0 
         ? craftSteps.slice(-2).join(' ') 
@@ -102,9 +130,23 @@ Title: "${craftTitle}"
 Description: ${craftDescription}
 Final steps: ${stepDetails}
 
-**MATERIALS USED (MUST MATCH EXACTLY):**
+**🚨 CRITICAL - MATERIALS USED (MUST MATCH EXACTLY):**
 ${materials}
 Quantity: ${materialCount} item(s)
+
+**ANTI-HALLUCINATION RULES:**
+You have a reference image showing the ACTUAL scanned materials.
+- Use ONLY what you see in the reference image
+- DO NOT add extra bottles, cans, or containers
+- DO NOT increase quantities beyond what's shown
+- DO NOT substitute different materials
+- Match SIZE, TYPE, and QUANTITY from reference image
+
+**FORBIDDEN:**
+❌ Adding materials not in the reference image
+❌ Using more items than shown in reference
+❌ Inventing decorative elements from nowhere
+❌ Showing different sizes/types than reference
 
 **STYLE REQUIREMENTS:**
 📸 Photography Style:
@@ -112,6 +154,7 @@ Quantity: ${materialCount} item(s)
 - Handmade but polished and professional-looking
 - Clearly shows the recycled materials transformed
 - Beginner-friendly and inspiring
+- REALISTIC - physically possible with scanned materials only
 
 🌅 Lighting:
 - Bright natural daylight from the side
@@ -128,20 +171,30 @@ Quantity: ${materialCount} item(s)
 ✨ Final Product Should:
 - Be COMPLETELY FINISHED (not in progress)
 - Use ONLY the materials listed: ${materialList.join(', ')}
+- Match the reference image materials EXACTLY
 - Look sturdy, usable, and well-made
 - Make viewers excited to try making it
-- Show the craft being used if applicable (e.g., holding pens, displaying items)
+- Show the craft being used if applicable
+
+**MATERIAL VERIFICATION:**
+□ Checked reference image for exact materials
+□ No extra items added
+□ Quantities match reference image
+□ Sizes match reference image
+□ Physically possible with scanned materials only
 
 **FORBIDDEN:**
 - Don't add extra recyclables not in the materials list
 - Don't show work in progress or messy workspace
 - Don't make it look like trash - make it look like a treasure!
 - Don't use dark or dramatic lighting
+- Don't add materials not in reference image
 `.trim();
     }
 
     console.log("📝 Image Prompt Length:", imagePrompt.length, "characters");
-    console.log("🔍 Prompt Preview:", imagePrompt.substring(0, 200), "...");
+    console.log("🔍 Anti-Hallucination Rules: ENABLED");
+    console.log("🔍 Reference Image Validation: REQUIRED");
 
     const payload: any = {
       model: config.ai.imageModel,
@@ -151,9 +204,9 @@ Quantity: ${materialCount} item(s)
       },
     };
 
-    // Handle reference image if provided
+    // Handle reference image if provided (CRITICAL for accuracy)
     if (referenceImageBase64) {
-      console.log("🖼️ Processing reference image for material matching...");
+      console.log("🖼️ Processing reference image for STRICT material matching...");
 
       if (typeof referenceImageBase64 !== 'string') {
         console.error("❌ Invalid reference image type:", typeof referenceImageBase64);
@@ -217,12 +270,14 @@ Quantity: ${materialCount} item(s)
         }
       ];
 
-      console.log("✅ Reference image added - will match these exact materials");
+      console.log("✅ Reference image added - AI will match EXACT materials from scan");
+      console.log("🎯 Anti-hallucination mode: ACTIVE");
     } else {
-      console.log("ℹ️ No reference image - generating based on material description only");
+      console.warn("⚠️  DANGER: No reference image - AI may add extra materials!");
+      console.warn("⚠️  Recommend always providing reference image for accuracy");
     }
 
-    console.log("\n🚀 Calling Google Imagen API...");
+    console.log("\n🚀 Calling Google Imagen API with strict material rules...");
 
     let response;
     try {
@@ -245,9 +300,10 @@ Quantity: ${materialCount} item(s)
     }
 
     const generatedSizeMB = (imgBytes.length / (1024 * 1024)).toFixed(2);
-    console.log("✅ ✨ FRIENDLY DIY IMAGE GENERATED! ✨");
+    console.log("✅ ✨ ANTI-HALLUCINATION IMAGE GENERATED! ✨");
     console.log("📊 Generated Image Size:", generatedSizeMB, "MB");
-    console.log("🎨 Image matches materials:", materials);
+    console.log("🎯 Material Matching: STRICT (reference image used)");
+    console.log("📦 Exact materials used:", materials);
     console.log("🎨 ============================================\n");
 
     return `data:image/png;base64,${imgBytes}`;

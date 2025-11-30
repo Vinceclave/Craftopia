@@ -1,10 +1,13 @@
 // apps/backend/src/services/craft.service.ts
+// ✅ ENHANCED: Title-based duplicate detection with full TypeScript safety
 
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
-import { ValidationError, NotFoundError } from "../utils/error";
+import { ValidationError, NotFoundError, AppError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { uploadBase64ToS3 } from "./s3.service";
+import crypto from "crypto";
+import { Prisma } from "@prisma/client";
 
 interface CreateCraftIdeaData {
   generated_by_user_id?: number;
@@ -28,6 +31,47 @@ interface GetCraftIdeasOptions {
   startDate?: string;
   endDate?: string;
   user_id?: number;
+}
+
+/**
+ * ✅ Safely extract string array from Prisma Json field
+ */
+function extractStringArray(jsonValue: Prisma.JsonValue | null | undefined): string[] {
+  if (!jsonValue) return [];
+  
+  if (Array.isArray(jsonValue)) {
+    return jsonValue.filter((item): item is string => typeof item === 'string');
+  }
+  
+  return [];
+}
+
+/**
+ * ✅ Safely extract object from Prisma Json field
+ */
+function extractObject(jsonValue: Prisma.JsonValue | null | undefined): Record<string, any> {
+  if (!jsonValue) return {};
+  
+  if (typeof jsonValue === 'object' && !Array.isArray(jsonValue) && jsonValue !== null) {
+    return jsonValue as Record<string, any>;
+  }
+  
+  return {};
+}
+
+/**
+ * ✅ Create a unique hash from craft title and description
+ * This helps detect duplicates even without idea_id
+ */
+function createCraftHash(title: string, description: string, materials: string[]): string {
+  const normalizedTitle = title.toLowerCase().trim();
+  const normalizedDescription = description.toLowerCase().trim();
+  const normalizedMaterials = materials.map(m => m.toLowerCase().trim()).sort().join(',');
+  
+  const hashString = `${normalizedTitle}|||${normalizedDescription}|||${normalizedMaterials}`;
+  
+  // Create SHA-256 hash
+  return crypto.createHash('sha256').update(hashString).digest('hex').substring(0, 32);
 }
 
 class CraftService extends BaseService {
@@ -64,8 +108,8 @@ class CraftService extends BaseService {
   }
 
   /**
-   * ✅ Save craft idea from base64 image
-   * This uploads the image to S3 first, then saves to DB
+   * ✅ ENHANCED: Save craft idea from base64 image with duplicate detection
+   * Uses title + description + materials hash to detect duplicates
    */
   async saveCraftFromBase64(data: SaveCraftFromBase64Data) {
     this.validateId(data.user_id, 'User ID');
@@ -74,7 +118,71 @@ class CraftService extends BaseService {
       throw new ValidationError('Valid idea_json is required');
     }
 
-    logger.info('Saving craft with base64 image', { userId: data.user_id });
+    // Extract title, description, and materials for hash
+    const ideaJson = extractObject(data.idea_json as Prisma.JsonValue);
+    const title = String(ideaJson.title || '');
+    const description = String(ideaJson.description || '');
+    
+    // ✅ Safely convert materials to string array
+    const materials = extractStringArray(data.recycled_materials as Prisma.JsonValue);
+
+    if (!title.trim()) {
+      throw new ValidationError('Craft title is required');
+    }
+
+    // ✅ Create unique hash from craft details
+    const craftHash = createCraftHash(title, description, materials);
+
+    logger.info('Saving craft with duplicate detection', { 
+      userId: data.user_id,
+      title,
+      craftHash 
+    });
+
+    // ✅ Check for existing craft with same hash (duplicate detection)
+    const existingCrafts = await prisma.craftIdea.findMany({
+      where: {
+        generated_by_user_id: data.user_id,
+        deleted_at: null,
+        is_saved: true
+      }
+    });
+
+    // Check if any existing craft matches this hash
+    for (const existingCraft of existingCrafts) {
+      try {
+        const existingIdeaJson = extractObject(existingCraft.idea_json);
+        const existingTitle = String(existingIdeaJson.title || '');
+        const existingDescription = String(existingIdeaJson.description || '');
+        
+        // ✅ Safely convert existing materials to string array
+        const existingMaterials = extractStringArray(existingCraft.recycled_materials);
+
+        const existingHash = createCraftHash(
+          existingTitle,
+          existingDescription,
+          existingMaterials
+        );
+
+        if (existingHash === craftHash) {
+          logger.warn('Duplicate craft detected', {
+            userId: data.user_id,
+            existingIdeaId: existingCraft.idea_id,
+            craftHash
+          });
+
+          // Return the existing craft instead of creating duplicate
+          return {
+            ...existingCraft,
+            isDuplicate: true,
+            message: 'This craft has already been saved to your collection'
+          };
+        }
+      } catch (hashError) {
+        logger.error('Error computing hash for existing craft', { error: hashError });
+        continue;
+      }
+    }
 
     let s3ImageUrl: string | undefined;
 
@@ -94,10 +202,10 @@ class CraftService extends BaseService {
     const craftIdea = await prisma.craftIdea.create({
       data: {
         generated_by_user_id: data.user_id,
-        idea_json: data.idea_json,
-        recycled_materials: data.recycled_materials,
-        generated_image_url: s3ImageUrl, // ✅ S3 URL or undefined
-        is_saved: true, // ✅ Set to true since user is saving it
+        idea_json: data.idea_json as Prisma.InputJsonValue,
+        recycled_materials: data.recycled_materials as Prisma.InputJsonValue,
+        generated_image_url: s3ImageUrl,
+        is_saved: true,
       },
       include: {
         generated_by_user: {
@@ -106,7 +214,10 @@ class CraftService extends BaseService {
       }
     });
 
-    logger.info('Craft idea saved', { ideaId: craftIdea.idea_id });
+    logger.info('New craft idea saved', { 
+      ideaId: craftIdea.idea_id,
+      craftHash 
+    });
 
     return craftIdea;
   }
@@ -320,8 +431,8 @@ class CraftService extends BaseService {
       const updated = await tx.craftIdea.update({
         where: { idea_id: ideaId },
         data: {
-          ...(data.idea_json && { idea_json: data.idea_json }),
-          ...(data.recycled_materials && { recycled_materials: data.recycled_materials })
+          ...(data.idea_json && { idea_json: data.idea_json as Prisma.InputJsonValue }),
+          ...(data.recycled_materials && { recycled_materials: data.recycled_materials as Prisma.InputJsonValue })
         },
         include: {
           generated_by_user: {
@@ -437,7 +548,6 @@ class CraftService extends BaseService {
           deleted_at: null 
         }
       }),
-      // ✅ Get all crafts with recycled_materials to count total unique materials
       prisma.craftIdea.findMany({
         where: {
           generated_by_user_id: userId,
@@ -449,29 +559,22 @@ class CraftService extends BaseService {
       })
     ]);
 
-    // ✅ Calculate total unique materials
+    // Calculate total unique materials
     const allMaterials = new Set<string>();
     craftsWithMaterials.forEach(craft => {
-      if (craft.recycled_materials) {
-        const materials = Array.isArray(craft.recycled_materials) 
-          ? craft.recycled_materials 
-          : typeof craft.recycled_materials === 'string'
-          ? JSON.parse(craft.recycled_materials)
-          : [];
-        
-        materials.forEach((material: string) => {
-          if (material && typeof material === 'string') {
-            allMaterials.add(material.trim().toLowerCase());
-          }
-        });
-      }
+      const materials = extractStringArray(craft.recycled_materials);
+      materials.forEach(material => {
+        if (material && material.trim()) {
+          allMaterials.add(material.trim().toLowerCase());
+        }
+      });
     });
 
     return {
       totalCrafts,
       craftsThisMonth: recentCrafts,
       savedCrafts,
-      totalMaterials: allMaterials.size, // ✅ Total unique materials used
+      totalMaterials: allMaterials.size,
     };
   }
 }

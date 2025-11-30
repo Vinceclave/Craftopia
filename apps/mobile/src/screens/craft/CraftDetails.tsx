@@ -23,9 +23,11 @@ import {
   Sparkles,
   Wrench,
   Star,
-  BarChart3
+  BarChart3,
+  AlertTriangle
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
+import crypto from 'crypto-js';
 
 type RootStackParamList = {
   CraftDetails: {
@@ -41,17 +43,26 @@ type RootStackParamList = {
     uniqueFeature?: string;
     ideaId?: number;
     isSaved?: boolean;
-    craftIndex?: number; // ✅ NEW: Track which craft in the results array
+    craftIndex?: number;
   };
 };
 
 type CraftDetailsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CraftDetails'>;
 type CraftDetailsRouteProp = RouteProp<RootStackParamList, 'CraftDetails'>;
 
-// ✅ Helper function to create a unique hash for a craft
+/**
+ * ✅ Create a unique hash for a craft (same as backend)
+ * Used to detect duplicates without needing idea_id
+ */
 const createCraftHash = (title: string, description: string, materials: string[]): string => {
-  const hashString = `${title}-${description}-${materials.join(',')}`.toLowerCase().trim();
-  return hashString;
+  const normalizedTitle = title.toLowerCase().trim();
+  const normalizedDescription = description.toLowerCase().trim();
+  const normalizedMaterials = materials.map(m => m.toLowerCase().trim()).sort().join(',');
+  
+  const hashString = `${normalizedTitle}|||${normalizedDescription}|||${normalizedMaterials}`;
+  
+  // Create SHA-256 hash using crypto-js
+  return crypto.SHA256(hashString).toString().substring(0, 32);
 };
 
 export const CraftDetailsScreen = () => {
@@ -71,7 +82,7 @@ export const CraftDetailsScreen = () => {
     uniqueFeature,
     ideaId: initialIdeaId,
     isSaved: initialSaved = false,
-    craftIndex // ✅ Track index for updating parent screen
+    craftIndex
   } = route.params;
 
   // ✅ Create unique hash for this craft
@@ -80,12 +91,11 @@ export const CraftDetailsScreen = () => {
   const [isSaved, setIsSaved] = useState(initialSaved);
   const [ideaId, setIdeaId] = useState(initialIdeaId);
   const [imageUrl, setImageUrl] = useState(generatedImageUrl);
-  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [saveInProgress, setSaveInProgress] = useState(false);
 
   const saveMutation = useSaveCraftFromBase64();
   const toggleMutation = useToggleSaveCraft();
 
-  // ✅ Check if this craft is already saved (even without ideaId)
   useEffect(() => {
     console.log('🔍 Craft Details loaded:', {
       title: craftTitle,
@@ -96,15 +106,9 @@ export const CraftDetailsScreen = () => {
       toolsNeeded: toolsNeeded?.length,
       uniqueFeature: !!uniqueFeature
     });
-
-    // If already marked as saved, respect that
-    if (initialSaved || initialIdeaId) {
-      console.log('✅ Craft already saved:', { ideaId: initialIdeaId, isSaved: initialSaved });
-    }
   }, []);
 
   const handleBack = () => {
-    // Simply go back - React Navigation will preserve the route params
     navigation.goBack();
   };
 
@@ -120,19 +124,19 @@ export const CraftDetailsScreen = () => {
   };
 
   const handleSave = async () => {
-    // ✅ Check 1: Already processing
-    if (saveAttempted && !ideaId) {
+    // ✅ Prevent multiple save attempts
+    if (saveInProgress) {
       Alert.alert(
-        'Saving In Progress',
-        'This craft is currently being saved. Please wait...'
+        'Please Wait',
+        'Your craft is being saved. Please wait...'
       );
       return;
     }
 
-    // ✅ Check 2: Already saved (has ideaId)
+    // ✅ Already saved with ideaId - toggle
     if (ideaId) {
-      // This craft is in the database - toggle saved state
       try {
+        setSaveInProgress(true);
         const result = await toggleMutation.mutateAsync(ideaId);
         const newSavedState = result.data.isSaved;
         setIsSaved(newSavedState);
@@ -145,12 +149,14 @@ export const CraftDetailsScreen = () => {
         );
       } catch (error: any) {
         Alert.alert('Error', error.message || 'Failed to toggle save');
+      } finally {
+        setSaveInProgress(false);
       }
       return;
     }
 
-    // ✅ Check 3: Already marked as saved but no ideaId yet
-    if (isSaved && !ideaId) {
+    // ✅ Already marked as saved - show message
+    if (isSaved) {
       Alert.alert(
         'Already Saved',
         'This craft has already been saved to your collection!',
@@ -159,17 +165,14 @@ export const CraftDetailsScreen = () => {
       return;
     }
 
-    // ✅ Proceed with saving new craft with ALL fields
-    console.log('💾 Saving new craft with all fields:', {
+    // ✅ Save new craft
+    console.log('💾 Saving new craft:', {
       title: craftTitle,
       hash: craftHash,
-      hasImage: !!generatedImageUrl,
-      difficulty,
-      toolsNeeded: toolsNeeded?.length || 0,
-      uniqueFeature: !!uniqueFeature
+      hasImage: !!generatedImageUrl
     });
 
-    setSaveAttempted(true);
+    setSaveInProgress(true);
 
     try {
       const result = await saveMutation.mutateAsync({
@@ -187,21 +190,35 @@ export const CraftDetailsScreen = () => {
         base64_image: generatedImageUrl,
       });
 
-      console.log('✅ Craft saved successfully with all fields:', {
+      // ✅ Check if this is a duplicate
+      if ((result.data as any).isDuplicate) {
+        console.log('⚠️ Duplicate detected by backend');
+        
+        const existingIdeaId = result.data.idea_id;
+        setIdeaId(existingIdeaId);
+        setIsSaved(true);
+        
+        if (result.data.generated_image_url) {
+          setImageUrl(result.data.generated_image_url);
+        }
+
+        Alert.alert(
+          'Already Saved',
+          'This craft has already been saved to your collection!',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // ✅ New craft saved successfully
+      console.log('✅ Craft saved successfully:', {
         ideaId: result.data.idea_id,
         title: craftTitle,
-        savedFields: {
-          difficulty: !!difficulty,
-          toolsNeeded: !!(toolsNeeded?.length),
-          uniqueFeature: !!uniqueFeature,
-          timeNeeded: !!timeNeeded,
-          quickTip: !!quickTip
-        }
+        hash: craftHash
       });
 
       const newIdeaId = result.data.idea_id;
 
-      // Update local state
       setIdeaId(newIdeaId);
       setIsSaved(true);
       
@@ -212,11 +229,9 @@ export const CraftDetailsScreen = () => {
 
       Alert.alert('Success', '✅ Craft saved to your collection!');
     } catch (error: any) {
-      setSaveAttempted(false);
-      
       console.error('❌ Save error:', error.message);
       
-      // Check for duplicate/already saved errors
+      // Check for duplicate errors
       if (error.message?.includes('already saved') || 
           error.message?.includes('duplicate') ||
           error.message?.includes('unique constraint')) {
@@ -228,29 +243,38 @@ export const CraftDetailsScreen = () => {
       } else {
         Alert.alert('Error', error.message || 'Failed to save craft');
       }
+    } finally {
+      setSaveInProgress(false);
     }
   };
 
-  const isProcessing = saveMutation.isPending || toggleMutation.isPending;
+  const isProcessing = saveMutation.isPending || toggleMutation.isPending || saveInProgress;
 
   // ✅ Difficulty color mapping
   const getDifficultyColor = (diff?: string) => {
     switch (diff?.toLowerCase()) {
-      case 'easy': return { bg: '#E8F5E9', text: '#2E7D32', icon: '#4CAF50' };
-      case 'medium': return { bg: '#FFF9E6', text: '#F57C00', icon: '#FF9800' };
-      case 'advanced': return { bg: '#FFEBEE', text: '#C62828', icon: '#F44336' };
-      default: return { bg: '#F0F4F2', text: '#5F6F64', icon: '#5F6F64' };
+      case 'easy': 
+      case 'beginner': 
+        return { bg: '#E8F5E9', text: '#2E7D32', icon: '#4CAF50' };
+      case 'medium': 
+      case 'intermediate':
+        return { bg: '#FFF9E6', text: '#F57C00', icon: '#FF9800' };
+      case 'hard':
+      case 'advanced': 
+        return { bg: '#FFEBEE', text: '#C62828', icon: '#F44336' };
+      default: 
+        return { bg: '#F0F4F2', text: '#5F6F64', icon: '#5F6F64' };
     }
   };
 
   const difficultyColors = getDifficultyColor(difficulty);
 
-  // ✅ Determine if save button should be shown
+  // ✅ Show save button only if not saved
   const showSaveButton = !isSaved;
-  const saveButtonDisabled = isProcessing || saveAttempted || isSaved;
+  const saveButtonDisabled = isProcessing;
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']}className="flex-1 bg-[#F8FBF8]">
+    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-[#F8FBF8]">
       {/* Header */}
       <View className="px-4 pt-4 pb-3 bg-white border-b border-[#E8ECEB]">
         <View className="flex-row items-center justify-between">
@@ -491,6 +515,13 @@ export const CraftDetailsScreen = () => {
                 </>
               )}
             </TouchableOpacity>
+            
+            {/* ✅ Hash display for debugging (optional) */}
+            {__DEV__ && (
+              <Text className="text-xs text-center text-gray-400 mt-2">
+                Hash: {craftHash}
+              </Text>
+            )}
           </View>
         )}
 
