@@ -38,6 +38,12 @@ export type CraftStackParamList = {
     generatedImageUrl?: string;
     timeNeeded?: string;
     quickTip?: string;
+    description?: string;
+    difficulty?: string;
+    toolsNeeded?: string[];
+    uniqueFeature?: string;
+    ideaId?: number;
+    isSaved?: boolean;
   };
 };
 
@@ -45,8 +51,8 @@ export type EcoQuestStackParamList = {
   EcoQuest: undefined;
   UserChallenges: undefined;
   QuestDetails: { questId: number };
-  Rewards: undefined; 
-  RedemptionHistory: undefined; 
+  Rewards: undefined;
+  RedemptionHistory: undefined;
 };
 
 export type ProfileStackParamList = {
@@ -80,12 +86,12 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  VerifyEmail: { 
+  VerifyEmail: {
     email?: string;
     token?: string;
     autoVerify?: boolean;
   };
-  ResetPassword: { 
+  ResetPassword: {
     token?: string;
   };
 };
@@ -100,6 +106,6 @@ export type AppStackParamList = {
 // ✅ Helper type for nested navigation - improves TypeScript autocomplete
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootTabParamList {}
+    interface RootParamList extends RootTabParamList { }
   }
 }

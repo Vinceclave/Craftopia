@@ -38,7 +38,7 @@ export const CraftResultsScreen = () => {
   const { detectedMaterials, craftIdeas } = route.params;
 
   const [showExitModal, setShowExitModal] = useState(false);
-  
+
   // ✅ Track saved state for each craft idea locally
   const [craftSavedStates, setCraftSavedStates] = useState<Record<number, boolean>>(() => {
     const initialStates: Record<number, boolean> = {};
@@ -122,7 +122,7 @@ export const CraftResultsScreen = () => {
       <View className="px-4 pt-4 pb-3 bg-white border-b border-[#E8ECEB]">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleBack}
               className="w-9 h-9 rounded-full bg-[#F0F4F2] items-center justify-center mr-3"
             >
@@ -149,8 +149,8 @@ export const CraftResultsScreen = () => {
           <Text className="text-xs text-[#5F6F64] mb-2 font-nunito">Materials detected:</Text>
           <View className="flex-row flex-wrap gap-2">
             {detectedMaterials.map((material, index) => (
-              <View 
-                key={index} 
+              <View
+                key={index}
                 className="bg-[#3B6E4D]/10 px-3 py-1.5 rounded-lg"
               >
                 <Text className="text-xs text-[#3B6E4D] font-nunito font-semibold">
@@ -194,7 +194,7 @@ export const CraftResultsScreen = () => {
                       AI Generated
                     </Text>
                   </View>
-                  
+
                   {/* ✅ Saved Badge - Shows if this specific craft is saved */}
                   {isCraftSaved && (
                     <View className="absolute top-3 left-3 bg-[#5BA776]/90 px-3 py-1.5 rounded-lg flex-row items-center">
@@ -220,7 +220,7 @@ export const CraftResultsScreen = () => {
                   <Text className="text-lg font-bold text-[#1F2A1F] font-poppinsBold flex-1">
                     {craft.title}
                   </Text>
-                  
+
                   {/* ✅ Save status indicator */}
                   {isCraftSaved && (
                     <View className="ml-2 bg-[#5BA776]/10 px-2 py-1 rounded-lg">
@@ -230,9 +230,9 @@ export const CraftResultsScreen = () => {
                     </View>
                   )}
                 </View>
-                
-                <Text 
-                  className="text-sm text-[#5F6F64] mb-3 font-nunito" 
+
+                <Text
+                  className="text-sm text-[#5F6F64] mb-3 font-nunito"
                   numberOfLines={2}
                 >
                   {craft.description}
@@ -247,7 +247,7 @@ export const CraftResultsScreen = () => {
                       </Text>
                     </View>
                   )}
-                  
+
                   <Text className="text-xs text-[#3B6E4D] font-nunito font-semibold">
                     {craft.steps.length} steps
                   </Text>
@@ -266,7 +266,7 @@ export const CraftResultsScreen = () => {
         onRequestClose={handleExitCancel}
       >
         <View className="flex-1 bg-black/60 items-center justify-center px-4">
-          <View 
+          <View
             className="bg-white rounded-3xl p-6 w-full max-w-sm border-2 border-[#E8ECEB]"
             style={{
               shadowColor: '#000',

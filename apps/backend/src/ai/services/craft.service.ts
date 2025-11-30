@@ -16,6 +16,7 @@ interface CraftIdea {
   toolsNeeded?: string[];
   quickTip: string;
   uniqueFeature?: string;
+  visualDescription?: string; // ✅ NEW field
   generatedImageUrl?: string;
 }
 
@@ -33,7 +34,7 @@ export const generateCraft = async (
   console.log("🎨 ============================================");
   console.log("📦 Materials:", cleanMaterials);
   console.log("🖼️  Has referenceImageBase64:", !!referenceImageBase64);
-  
+
   if (referenceImageBase64) {
     const imageSizeMB = (referenceImageBase64.length / (1024 * 1024)).toFixed(2);
     console.log("📏 Reference Image Length:", referenceImageBase64.length);
@@ -129,7 +130,7 @@ export const generateCraft = async (
 
     for (let i = 0; i < validIdeas.length; i++) {
       const idea = validIdeas[i];
-      
+
       try {
         console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating REALISTIC image for: "${idea.title}"`);
         console.log(`📝 Difficulty: ${idea.difficulty || 'Not specified'}`);
@@ -137,13 +138,14 @@ export const generateCraft = async (
         console.log(`🔧 Steps: ${idea.steps.length} steps`);
         console.log(`✨ Unique Feature: ${idea.uniqueFeature || 'None specified'}`);
 
-        // ✅ Pass craft steps to image generation for better visual accuracy
+        // ✅ Pass craft steps AND visual description to image generation
         const imageUrl = await generateCraftImage(
           idea.title,
           idea.description,
           cleanMaterials,
-          idea.steps, // 🎯 NEW: Pass steps for visual details
-          referenceImageBase64
+          idea.steps,
+          referenceImageBase64,
+          idea.visualDescription // ✅ Pass the visual description
         );
 
         // ✅ Keep as base64 - will upload to S3 only when user saves
@@ -155,7 +157,7 @@ export const generateCraft = async (
         console.log(`✅ [${i + 1}/${validIdeas.length}] REALISTIC image generated successfully`);
       } catch (imageError: any) {
         console.error(`❌ [${i + 1}/${validIdeas.length}] Failed to generate image:`, imageError.message);
-        
+
         // Include the idea even without an image
         ideasWithImages.push({
           ...idea,
@@ -181,7 +183,7 @@ export const generateCraft = async (
       metadata: {
         hasReferenceImage: !!referenceImageBase64,
         averageSteps: Math.round(
-          ideasWithImages.reduce((sum, idea) => sum + idea.steps.length, 0) / 
+          ideasWithImages.reduce((sum, idea) => sum + idea.steps.length, 0) /
           ideasWithImages.length
         ),
         imagesGenerated: ideasWithImages.filter(i => i.generatedImageUrl).length,
