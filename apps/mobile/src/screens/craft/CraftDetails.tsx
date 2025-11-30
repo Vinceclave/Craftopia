@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/craft/CraftDetails.tsx - FIXED DUPLICATE SAVE WITH HASH CHECKING
+// apps/mobile/src/screens/craft/CraftDetails.tsx 
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -41,6 +41,7 @@ type RootStackParamList = {
     uniqueFeature?: string;
     ideaId?: number;
     isSaved?: boolean;
+    craftIndex?: number; // ✅ NEW: Track which craft in the results array
   };
 };
 
@@ -69,7 +70,8 @@ export const CraftDetailsScreen = () => {
     toolsNeeded,
     uniqueFeature,
     ideaId: initialIdeaId,
-    isSaved: initialSaved = false
+    isSaved: initialSaved = false,
+    craftIndex // ✅ Track index for updating parent screen
   } = route.params;
 
   // ✅ Create unique hash for this craft
@@ -90,6 +92,9 @@ export const CraftDetailsScreen = () => {
       hash: craftHash,
       ideaId: initialIdeaId,
       isSaved: initialSaved,
+      difficulty,
+      toolsNeeded: toolsNeeded?.length,
+      uniqueFeature: !!uniqueFeature
     });
 
     // If already marked as saved, respect that
@@ -99,7 +104,18 @@ export const CraftDetailsScreen = () => {
   }, []);
 
   const handleBack = () => {
-    navigation.goBack();
+    // ✅ Pass save state back to CraftResults
+    if (navigation.canGoBack()) {
+      navigation.navigate('CraftResults' as any, {
+        craftSavedState: craftIndex !== undefined ? {
+          index: craftIndex,
+          isSaved,
+          ideaId
+        } : undefined
+      });
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleShare = async () => {
@@ -128,11 +144,12 @@ export const CraftDetailsScreen = () => {
       // This craft is in the database - toggle saved state
       try {
         const result = await toggleMutation.mutateAsync(ideaId);
-        setIsSaved(result.data.isSaved);
+        const newSavedState = result.data.isSaved;
+        setIsSaved(newSavedState);
         
         Alert.alert(
           'Success',
-          result.data.isSaved 
+          newSavedState 
             ? '✅ Craft saved to your collection!' 
             : '📤 Craft removed from saved items'
         );
@@ -152,11 +169,14 @@ export const CraftDetailsScreen = () => {
       return;
     }
 
-    // ✅ Proceed with saving new craft
-    console.log('💾 Saving new craft:', {
+    // ✅ Proceed with saving new craft with ALL fields
+    console.log('💾 Saving new craft with all fields:', {
       title: craftTitle,
       hash: craftHash,
-      hasImage: !!generatedImageUrl
+      hasImage: !!generatedImageUrl,
+      difficulty,
+      toolsNeeded: toolsNeeded?.length || 0,
+      uniqueFeature: !!uniqueFeature
     });
 
     setSaveAttempted(true);
@@ -166,24 +186,33 @@ export const CraftDetailsScreen = () => {
         idea_json: {
           title: craftTitle,
           description: description,
-          difficulty: difficulty,
+          difficulty: difficulty || undefined,
           steps,
           timeNeeded: timeNeeded || '',
-          toolsNeeded: toolsNeeded,
+          toolsNeeded: toolsNeeded || undefined,
           quickTip: quickTip || '',
-          uniqueFeature: uniqueFeature,
+          uniqueFeature: uniqueFeature || undefined,
         },
         recycled_materials: materials,
         base64_image: generatedImageUrl,
       });
 
-      console.log('✅ Craft saved successfully:', {
+      console.log('✅ Craft saved successfully with all fields:', {
         ideaId: result.data.idea_id,
-        title: craftTitle
+        title: craftTitle,
+        savedFields: {
+          difficulty: !!difficulty,
+          toolsNeeded: !!(toolsNeeded?.length),
+          uniqueFeature: !!uniqueFeature,
+          timeNeeded: !!timeNeeded,
+          quickTip: !!quickTip
+        }
       });
 
+      const newIdeaId = result.data.idea_id;
+
       // Update local state
-      setIdeaId(result.data.idea_id);
+      setIdeaId(newIdeaId);
       setIsSaved(true);
       
       // Replace base64 with S3 URL if available

@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/Craft.tsx - UPDATED WITH SAVED CRAFTS FROM DATABASE
+// apps/mobile/src/screens/Craft.tsx - FIXED JSON PARSING FOR SAVED CRAFTS
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -29,6 +29,35 @@ import { CraftStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
 import { useSavedCrafts, useCraftStats } from '~/hooks/queries/useCraft';
 
+// ✅ Helper to safely parse idea_json
+const parseIdeaJson = (ideaJson: any) => {
+  try {
+    if (typeof ideaJson === 'string') {
+      return JSON.parse(ideaJson);
+    }
+    return ideaJson;
+  } catch (error) {
+    console.error('Failed to parse idea_json:', error);
+    return ideaJson || {};
+  }
+};
+
+// ✅ Helper to safely parse recycled_materials
+const parseMaterials = (materials: any) => {
+  try {
+    if (Array.isArray(materials)) {
+      return materials;
+    }
+    if (typeof materials === 'string') {
+      return JSON.parse(materials);
+    }
+    return [];
+  } catch (error) {
+    console.error('Failed to parse materials:', error);
+    return [];
+  }
+};
+
 export const CraftScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
   const { width: screenWidth } = useWindowDimensions();
@@ -55,15 +84,21 @@ export const CraftScreen: React.FC = () => {
   };
 
   const handleCraftPress = (craft: any) => {
-    const ideaJson = typeof craft.idea_json === 'string'
-      ? JSON.parse(craft.idea_json)
-      : craft.idea_json;
+    // ✅ Parse idea_json properly
+    const ideaJson = parseIdeaJson(craft.idea_json);
+    const materials = parseMaterials(craft.recycled_materials);
 
-    const materials = Array.isArray(craft.recycled_materials)
-      ? craft.recycled_materials
-      : typeof craft.recycled_materials === 'string'
-        ? JSON.parse(craft.recycled_materials)
-        : [];
+    console.log('🎨 Opening saved craft:', {
+      ideaId: craft.idea_id,
+      title: ideaJson.title,
+      hasAllFields: {
+        difficulty: !!ideaJson.difficulty,
+        toolsNeeded: !!(ideaJson.toolsNeeded?.length),
+        uniqueFeature: !!ideaJson.uniqueFeature,
+        timeNeeded: !!ideaJson.timeNeeded,
+        steps: ideaJson.steps?.length || 0
+      }
+    });
 
     navigation.navigate('CraftDetails', {
       craftTitle: ideaJson.title || 'Craft Idea',
@@ -73,15 +108,17 @@ export const CraftScreen: React.FC = () => {
       timeNeeded: ideaJson.timeNeeded,
       quickTip: ideaJson.quickTip,
       description: ideaJson.description,
+      difficulty: ideaJson.difficulty,           // ✅ NOW PARSED
+      toolsNeeded: ideaJson.toolsNeeded,         // ✅ NOW PARSED
+      uniqueFeature: ideaJson.uniqueFeature,     // ✅ NOW PARSED
       ideaId: craft.idea_id,
       isSaved: craft.is_saved,
     });
   };
 
   const renderSavedCraft = ({ item }: { item: any }) => {
-    const ideaJson = typeof item.idea_json === 'string'
-      ? JSON.parse(item.idea_json)
-      : item.idea_json;
+    // ✅ Parse idea_json properly
+    const ideaJson = parseIdeaJson(item.idea_json);
 
     return (
       <TouchableOpacity
@@ -136,6 +173,18 @@ export const CraftScreen: React.FC = () => {
             </View>
           )}
 
+          {/* ✅ Show difficulty if available */}
+          {ideaJson.difficulty && (
+            <View className="flex-row items-center mt-1">
+              <Text
+                className={`text-craftopia-accent font-nunito font-semibold ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-xs' : 'text-xs'
+                  }`}
+              >
+                {ideaJson.difficulty}
+              </Text>
+            </View>
+          )}
+
           <Text
             className={`text-craftopia-textSecondary mt-1 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
               }`}
@@ -154,7 +203,7 @@ export const CraftScreen: React.FC = () => {
   const savedCrafts = savedCraftsData?.data || [];
   const totalCrafts = statsData?.data?.totalCrafts || 0;
   const craftsMade = statsData?.data?.savedCrafts || 0;
-  const totalMaterials = statsData?.data?.totalMaterials || 0; // Assuming backend provides this
+  const totalMaterials = statsData?.data?.totalMaterials || 0;
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
@@ -321,7 +370,7 @@ export const CraftScreen: React.FC = () => {
                 className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
                   }`}
               >
-                Total Materials
+                Total Crafts
               </Text>
             </View>
 

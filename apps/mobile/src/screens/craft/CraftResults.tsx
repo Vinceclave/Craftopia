@@ -1,6 +1,6 @@
-// apps/mobile/src/screens/craft/CraftResults.tsx - FIXED DUPLICATE SAVE ISSUE
+// apps/mobile/src/screens/craft/CraftResults.tsx 
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -12,6 +12,11 @@ type RootStackParamList = {
   CraftResults: {
     detectedMaterials: string[];
     craftIdeas: CraftIdea[];
+    craftSavedState?: {
+      index: number;
+      isSaved: boolean;
+      ideaId?: number;
+    };
   };
   CraftDetails: {
     craftTitle: string;
@@ -26,6 +31,7 @@ type RootStackParamList = {
     uniqueFeature?: string;
     ideaId?: number;
     isSaved?: boolean;
+    craftIndex?: number;
   };
 };
 
@@ -35,21 +41,46 @@ type CraftResultsRouteProp = RouteProp<RootStackParamList, 'CraftResults'>;
 export const CraftResultsScreen = () => {
   const navigation = useNavigation<CraftResultsNavigationProp>();
   const route = useRoute<CraftResultsRouteProp>();
-  const { detectedMaterials, craftIdeas } = route.params;
+  const { detectedMaterials, craftIdeas, craftSavedState } = route.params;
 
   const [showExitModal, setShowExitModal] = useState(false);
 
   // ✅ Track saved state for each craft idea locally
-  const [craftSavedStates, setCraftSavedStates] = useState<Record<number, boolean>>(() => {
-    const initialStates: Record<number, boolean> = {};
+  const [craftSavedStates, setCraftSavedStates] = useState<Record<number, { isSaved: boolean; ideaId?: number }>>(() => {
+    const initialStates: Record<number, { isSaved: boolean; ideaId?: number }> = {};
     craftIdeas.forEach((idea, index) => {
-      initialStates[index] = idea.is_saved || false;
+      initialStates[index] = {
+        isSaved: idea.is_saved || false,
+        ideaId: idea.idea_id
+      };
     });
     return initialStates;
   });
 
+  // ✅ Update saved state when returning from CraftDetails
+  useEffect(() => {
+    if (craftSavedState) {
+      console.log('🔄 Updating craft saved state from CraftDetails:', craftSavedState);
+      setCraftSavedStates(prev => ({
+        ...prev,
+        [craftSavedState.index]: {
+          isSaved: craftSavedState.isSaved,
+          ideaId: craftSavedState.ideaId
+        }
+      }));
+    }
+  }, [craftSavedState]);
+
   // ✅ Check if any crafts have been saved
-  const hasSavedCrafts = Object.values(craftSavedStates).some(saved => saved);
+  const hasSavedCrafts = Object.values(craftSavedStates).some(state => state.isSaved);
+  const savedCount = Object.values(craftSavedStates).filter(state => state.isSaved).length;
+
+  console.log('📊 CraftResults State:', {
+    totalCrafts: craftIdeas.length,
+    savedCount,
+    hasSavedCrafts,
+    savedStates: craftSavedStates
+  });
 
   // ✅ Handle hardware back button
   useFocusEffect(
@@ -86,8 +117,20 @@ export const CraftResultsScreen = () => {
   };
 
   const handleCraftPress = (craft: CraftIdea, index: number) => {
-    // ✅ Pass the current saved state from our local tracking
-    const currentlySaved = craftSavedStates[index] || craft.is_saved || false;
+    // ✅ Get the current saved state from our local tracking
+    const currentState = craftSavedStates[index] || { isSaved: craft.is_saved || false, ideaId: craft.idea_id };
+
+    console.log('🎨 Opening craft details:', {
+      index,
+      title: craft.title,
+      currentlySaved: currentState.isSaved,
+      ideaId: currentState.ideaId,
+      hasAllFields: {
+        difficulty: !!craft.difficulty,
+        toolsNeeded: !!(craft.toolsNeeded?.length),
+        uniqueFeature: !!craft.uniqueFeature
+      }
+    });
 
     navigation.navigate('CraftDetails', {
       craftTitle: craft.title,
@@ -97,24 +140,14 @@ export const CraftResultsScreen = () => {
       timeNeeded: craft.timeNeeded,
       quickTip: craft.quickTip,
       description: craft.description,
-      difficulty: craft.difficulty,
-      toolsNeeded: craft.toolsNeeded,
-      uniqueFeature: craft.uniqueFeature,
-      ideaId: craft.idea_id,
-      isSaved: currentlySaved, // ✅ Pass current saved state
+      difficulty: craft.difficulty, // ✅ Pass difficulty
+      toolsNeeded: craft.toolsNeeded, // ✅ Pass tools
+      uniqueFeature: craft.uniqueFeature, // ✅ Pass unique feature
+      ideaId: currentState.ideaId,
+      isSaved: currentState.isSaved,
+      craftIndex: index, // ✅ Pass index to track which craft this is
     });
   };
-
-  // ✅ Listen for navigation back from CraftDetails to update saved state
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      // When returning from CraftDetails, check if any crafts were saved
-      // This could be enhanced with a parameter passing mechanism
-      console.log('📍 Returned to CraftResults, checking saved states...');
-    });
-
-    return unsubscribe;
-  }, [navigation]);
 
   return (
     <SafeAreaView className="flex-1 bg-[#F8FBF8]">
@@ -134,7 +167,14 @@ export const CraftResultsScreen = () => {
           </View>
 
           {/* Save indicator */}
-          {!hasSavedCrafts && (
+          {hasSavedCrafts ? (
+            <View className="flex-row items-center bg-[#3B6E4D]/10 px-3 py-1.5 rounded-lg border border-[#3B6E4D]/20">
+              <Save size={14} color="#3B6E4D" fill="#3B6E4D" />
+              <Text className="text-xs text-[#3B6E4D] ml-1 font-nunito font-semibold">
+                {savedCount} Saved
+              </Text>
+            </View>
+          ) : (
             <View className="flex-row items-center bg-[#FFF9E6] px-3 py-1.5 rounded-lg border border-[#FFE8A3]">
               <AlertCircle size={14} color="#F59E0B" />
               <Text className="text-xs text-[#92400E] ml-1 font-nunito font-semibold">
@@ -170,7 +210,8 @@ export const CraftResultsScreen = () => {
 
         {craftIdeas.map((craft, index) => {
           // ✅ Get current saved state for this craft
-          const isCraftSaved = craftSavedStates[index] || craft.is_saved || false;
+          const craftState = craftSavedStates[index] || { isSaved: craft.is_saved || false, ideaId: craft.idea_id };
+          const isCraftSaved = craftState.isSaved;
 
           return (
             <TouchableOpacity
@@ -248,9 +289,16 @@ export const CraftResultsScreen = () => {
                     </View>
                   )}
 
-                  <Text className="text-xs text-[#3B6E4D] font-nunito font-semibold">
-                    {craft.steps.length} steps
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    {craft.difficulty && (
+                      <Text className="text-xs text-[#5F6F64] font-nunito">
+                        {craft.difficulty}
+                      </Text>
+                    )}
+                    <Text className="text-xs text-[#3B6E4D] font-nunito font-semibold">
+                      {craft.steps.length} steps
+                    </Text>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
