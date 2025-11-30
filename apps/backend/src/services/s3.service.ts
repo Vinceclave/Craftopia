@@ -1,9 +1,11 @@
-// services/s3.service.ts
+// apps/backend/src/services/s3.service.ts
+
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Upload } from '@aws-sdk/lib-storage';
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'crypto';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -14,6 +16,83 @@ const s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
+
+/**
+ * Upload base64 image to S3 and return a pre-signed URL
+ * Used for AI-generated images that need to be saved
+ * @param base64Data - Base64 string (with or without data URI prefix)
+ * @param folder - Folder name in S3 bucket (e.g., 'crafts', 'posts')
+ * @param expiresIn - Pre-signed URL expiration time in seconds (default: 7 days)
+ * @returns Pre-signed URL valid for specified duration
+ */
+export async function uploadBase64ToS3(
+  base64Data: string,
+  folder: string = 'crafts',
+  expiresIn: number = 604800 // 7 days
+): Promise<string> {
+  try {
+    // Remove data URI prefix if present (data:image/png;base64,...)
+    let cleanBase64 = base64Data;
+    let mimeType = 'image/jpeg'; // default
+    
+    if (base64Data.includes(',')) {
+      const parts = base64Data.split(',');
+      cleanBase64 = parts[1];
+      
+      // Extract MIME type from data URI
+      const dataUriPrefix = parts[0];
+      if (dataUriPrefix.includes('image/png')) {
+        mimeType = 'image/png';
+      } else if (dataUriPrefix.includes('image/webp')) {
+        mimeType = 'image/webp';
+      } else if (dataUriPrefix.includes('image/jpeg') || dataUriPrefix.includes('image/jpg')) {
+        mimeType = 'image/jpeg';
+      }
+    }
+
+    // Convert base64 to buffer
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomString = crypto.randomBytes(8).toString('hex');
+    const extension = mimeType === 'image/png' ? '.png' : '.jpg';
+    const key = `${folder}/image_${timestamp}_${randomString}${extension}`;
+
+    console.log(`📤 Uploading base64 image to S3: ${key}`);
+    console.log(`📊 Image size: ${(buffer.length / 1024).toFixed(2)} KB`);
+
+    // Upload to S3 using Upload (handles large files)
+    const upload = new Upload({
+      client: s3,
+      params: {
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+      },
+    });
+
+    await upload.done();
+
+    console.log(`✅ Upload complete: ${key}`);
+
+    // Generate pre-signed URL
+    const command = new GetObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: key,
+    });
+
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn });
+
+    console.log(`✅ Pre-signed URL generated (expires in ${expiresIn / 86400} days)`);
+
+    return signedUrl;
+  } catch (error: any) {
+    console.error('❌ S3 base64 upload error:', error);
+    throw new Error(`Failed to upload image to S3: ${error.message}`);
+  }
+}
 
 /**
  * Upload file to S3 and return a pre-signed URL

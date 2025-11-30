@@ -1,3 +1,5 @@
+// apps/backend/src/controllers/craft.controller.ts 
+
 import { Request, Response } from "express";
 import * as craftService from '../services/craft.service';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -11,6 +13,24 @@ export const createCraftIdea = asyncHandler(async (req: AuthRequest, res: Respon
   });
   
   sendSuccess(res, craftIdea, 'Craft idea created successfully', 201);
+});
+
+/**
+ * ✅ Save craft from base64 image
+ * Uploads image to S3 first, then saves to database
+ * POST /api/v1/crafts/save-from-base64
+ */
+export const saveCraftFromBase64 = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { idea_json, recycled_materials, base64_image } = req.body;
+
+  const craftIdea = await craftService.saveCraftFromBase64({
+    user_id: req.user!.userId,
+    idea_json,
+    recycled_materials,
+    base64_image, // ✅ Will be uploaded to S3
+  });
+
+  sendSuccess(res, craftIdea, 'Craft idea saved successfully', 201);
 });
 
 export const getCraftIdeas = asyncHandler(async (req: Request, res: Response) => {
@@ -73,4 +93,43 @@ export const getRecentCraftIdeas = asyncHandler(async (req: Request, res: Respon
   const crafts = await craftService.getRecentCraftIdeas(limit);
   
   sendSuccess(res, crafts, 'Recent craft ideas retrieved');
+});
+
+/**
+ * ✅ Toggle save/unsave craft (for already-saved crafts)
+ * POST /api/v1/crafts/:idea_id/toggle-save
+ */
+export const toggleSaveCraft = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const ideaId = Number(req.params.idea_id);
+  
+  const result = await craftService.toggleSaveCraft(ideaId, req.user!.userId);
+  
+  const message = result.isSaved 
+    ? 'Craft idea saved successfully' 
+    : 'Craft idea unsaved successfully';
+  
+  sendSuccess(res, result, message);
+});
+
+/**
+ * ✅ Get saved craft ideas
+ * GET /api/v1/crafts/saved/list
+ */
+export const getSavedCraftIdeas = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  
+  const result = await craftService.getSavedCraftIdeas(req.user!.userId, page, limit);
+  
+  sendPaginatedSuccess(res, result.data, result.meta, 'Saved craft ideas retrieved');
+});
+
+/**
+ * ✅ Get user craft stats
+ * GET /api/v1/crafts/stats/user
+ */
+export const getUserCraftStats = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const stats = await craftService.getUserCraftStats(req.user!.userId);
+  
+  sendSuccess(res, stats, 'User craft statistics retrieved');
 });

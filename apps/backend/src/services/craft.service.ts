@@ -1,14 +1,23 @@
-// apps/backend/src/services/craft.service.ts - REFACTORED VERSION
+// apps/backend/src/services/craft.service.ts
+
 import prisma from "../config/prisma";
 import { BaseService } from "./base.service";
-import { ValidationError, NotFoundError, ForbiddenError } from "../utils/error";
+import { ValidationError, NotFoundError } from "../utils/error";
 import { logger } from "../utils/logger";
-import { VALIDATION_LIMITS } from "../constats";
+import { uploadBase64ToS3 } from "./s3.service";
 
 interface CreateCraftIdeaData {
   generated_by_user_id?: number;
   idea_json: object;
   recycled_materials?: object;
+  generated_image_url?: string;
+}
+
+interface SaveCraftFromBase64Data {
+  user_id: number;
+  idea_json: object;
+  recycled_materials?: object;
+  base64_image?: string;
 }
 
 interface GetCraftIdeasOptions {
@@ -50,6 +59,54 @@ class CraftService extends BaseService {
       ideaId: craftIdea.idea_id,
       userId: data.generated_by_user_id 
     });
+
+    return craftIdea;
+  }
+
+  /**
+   * ✅ Save craft idea from base64 image
+   * This uploads the image to S3 first, then saves to DB
+   */
+  async saveCraftFromBase64(data: SaveCraftFromBase64Data) {
+    this.validateId(data.user_id, 'User ID');
+
+    if (!data.idea_json || typeof data.idea_json !== 'object') {
+      throw new ValidationError('Valid idea_json is required');
+    }
+
+    logger.info('Saving craft with base64 image', { userId: data.user_id });
+
+    let s3ImageUrl: string | undefined;
+
+    // ✅ Upload base64 image to S3 if provided
+    if (data.base64_image) {
+      try {
+        console.log('📤 Uploading image to S3...');
+        s3ImageUrl = await uploadBase64ToS3(data.base64_image, 'crafts');
+        console.log('✅ Image uploaded to S3');
+      } catch (uploadError: any) {
+        console.error('❌ S3 upload failed:', uploadError.message);
+        // Continue without image if upload fails
+      }
+    }
+
+    // Save to database with S3 URL
+    const craftIdea = await prisma.craftIdea.create({
+      data: {
+        generated_by_user_id: data.user_id,
+        idea_json: data.idea_json,
+        recycled_materials: data.recycled_materials,
+        generated_image_url: s3ImageUrl, // ✅ S3 URL or undefined
+        is_saved: true, // ✅ Set to true since user is saving it
+      },
+      include: {
+        generated_by_user: {
+          select: { user_id: true, username: true }
+        }
+      }
+    });
+
+    logger.info('Craft idea saved', { ideaId: craftIdea.idea_id });
 
     return craftIdea;
   }
@@ -227,40 +284,6 @@ class CraftService extends BaseService {
     });
   }
 
-  // Get trending craft ideas (most viewed/popular)
-  async getTrendingCraftIdeas(limit: number = 10) {
-    if (limit < 1 || limit > 50) {
-      throw new ValidationError('Limit must be between 1 and 50');
-    }
-
-    logger.debug('Fetching trending craft ideas', { limit });
-
-    // For now, just return recent ones
-    // TODO: Implement view tracking and return most viewed
-    return this.getRecentCraftIdeas(limit);
-  }
-
-  // Get craft ideas by material type
-  async getCraftIdeasByMaterial(material: string, page = 1, limit = 10) {
-    if (!material?.trim()) {
-      throw new ValidationError('Material is required');
-    }
-
-    logger.debug('Fetching craft ideas by material', { material, page, limit });
-
-    return this.paginate(prisma.craftIdea, {
-      page,
-      limit,
-      where: {
-        deleted_at: null,
-        recycled_materials: {
-          array_contains: [material.trim()]
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
-  }
-
   // Update craft idea
   async updateCraftIdea(
     ideaId: number, 
@@ -313,11 +336,85 @@ class CraftService extends BaseService {
     });
   }
 
-  // Get user craft statistics
+  /**
+   * ✅ Toggle save/unsave craft idea (for already-saved crafts)
+   */
+  async toggleSaveCraft(ideaId: number, userId: number) {
+    this.validateId(ideaId, 'Craft Idea ID');
+    this.validateId(userId, 'User ID');
+
+    logger.info('Toggling saved craft', { ideaId, userId });
+
+    return await this.executeTransaction(async (tx) => {
+      const craftIdea = await tx.craftIdea.findFirst({
+        where: { 
+          idea_id: ideaId,
+          deleted_at: null 
+        }
+      });
+
+      if (!craftIdea) {
+        throw new NotFoundError('Craft idea');
+      }
+
+      this.checkOwnership(
+        craftIdea.generated_by_user_id!,
+        userId,
+        'craft ideas'
+      );
+
+      const newSavedState = !craftIdea.is_saved;
+
+      const updated = await tx.craftIdea.update({
+        where: { idea_id: ideaId },
+        data: { is_saved: newSavedState }
+      });
+
+      logger.info('Craft save toggled', { 
+        ideaId, 
+        userId, 
+        isSaved: newSavedState 
+      });
+
+      return {
+        isSaved: newSavedState,
+        craftIdea: updated
+      };
+    });
+  }
+
+  /**
+   * ✅ Get saved craft ideas for a user
+   */
+  async getSavedCraftIdeas(userId: number, page = 1, limit = 10) {
+    this.validateId(userId, 'User ID');
+
+    logger.debug('Fetching saved craft ideas', { userId, page, limit });
+
+    return this.paginate(prisma.craftIdea, {
+      page,
+      limit,
+      where: {
+        generated_by_user_id: userId,
+        is_saved: true,
+        deleted_at: null
+      },
+      orderBy: { created_at: 'desc' },
+      include: {
+        generated_by_user: {
+          select: { user_id: true, username: true }
+        }
+      }
+    });
+  }
+
+  /**
+   * ✅ Get user craft statistics
+   */
   async getUserCraftStats(userId: number) {
     this.validateId(userId, 'User ID');
 
-    const [totalCrafts, recentCrafts] = await Promise.all([
+    const [totalCrafts, recentCrafts, savedCrafts] = await Promise.all([
       prisma.craftIdea.count({
         where: { 
           generated_by_user_id: userId,
@@ -332,12 +429,20 @@ class CraftService extends BaseService {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
           }
         }
+      }),
+      prisma.craftIdea.count({
+        where: { 
+          generated_by_user_id: userId,
+          is_saved: true,
+          deleted_at: null 
+        }
       })
     ]);
 
     return {
       totalCrafts,
-      craftsThisMonth: recentCrafts
+      craftsThisMonth: recentCrafts,
+      savedCrafts
     };
   }
 }
@@ -347,13 +452,14 @@ export const craftService = new CraftService();
 
 // Export individual functions for backward compatibility
 export const createCraftIdea = craftService.createCraftIdea.bind(craftService);
+export const saveCraftFromBase64 = craftService.saveCraftFromBase64.bind(craftService);
 export const getCraftIdeas = craftService.getCraftIdeas.bind(craftService);
 export const getCraftIdeaById = craftService.getCraftIdeaById.bind(craftService);
 export const getCraftIdeasByUser = craftService.getCraftIdeasByUser.bind(craftService);
 export const deleteCraftIdea = craftService.deleteCraftIdea.bind(craftService);
 export const countCraftIdeas = craftService.countCraftIdeas.bind(craftService);
 export const getRecentCraftIdeas = craftService.getRecentCraftIdeas.bind(craftService);
-export const getTrendingCraftIdeas = craftService.getTrendingCraftIdeas.bind(craftService);
-export const getCraftIdeasByMaterial = craftService.getCraftIdeasByMaterial.bind(craftService);
 export const updateCraftIdea = craftService.updateCraftIdea.bind(craftService);
+export const toggleSaveCraft = craftService.toggleSaveCraft.bind(craftService);
+export const getSavedCraftIdeas = craftService.getSavedCraftIdeas.bind(craftService);
 export const getUserCraftStats = craftService.getUserCraftStats.bind(craftService);

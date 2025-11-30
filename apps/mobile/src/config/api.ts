@@ -39,6 +39,10 @@ export const API_ENDPOINTS = {
     BY_USER: (userId: string) => `${API_BASE_URL}/api/v1/crafts/user/${userId}`,
     RECENT: `${API_BASE_URL}/api/v1/crafts/stats/recent`,
     COUNT: `${API_BASE_URL}/api/v1/crafts/stats/count`,
+    SAVE_FROM_BASE64: `${API_BASE_URL}/api/v1/crafts/save-from-base64`,      // ✅ NEW
+    TOGGLE_SAVE: (id: string) => `${API_BASE_URL}/api/v1/crafts/${id}/toggle-save`,  // ✅ NEW
+    SAVED_LIST: `${API_BASE_URL}/api/v1/crafts/saved/list`,                  // ✅ NEW
+    USER_STATS: `${API_BASE_URL}/api/v1/crafts/stats/user`,                  // ✅ NEW
   },
   AI: {
     GENERATE_CHALLENGE: `${API_BASE_URL}/api/v1/craft/generate-challenge`,

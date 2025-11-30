@@ -6731,6 +6731,8 @@ export namespace Prisma {
   export type CraftIdeaMinAggregateOutputType = {
     idea_id: number | null
     generated_by_user_id: number | null
+    generated_image_url: string | null
+    is_saved: boolean | null
     created_at: Date | null
     deleted_at: Date | null
   }
@@ -6738,6 +6740,8 @@ export namespace Prisma {
   export type CraftIdeaMaxAggregateOutputType = {
     idea_id: number | null
     generated_by_user_id: number | null
+    generated_image_url: string | null
+    is_saved: boolean | null
     created_at: Date | null
     deleted_at: Date | null
   }
@@ -6747,6 +6751,8 @@ export namespace Prisma {
     generated_by_user_id: number
     idea_json: number
     recycled_materials: number
+    generated_image_url: number
+    is_saved: number
     created_at: number
     deleted_at: number
     _all: number
@@ -6766,6 +6772,8 @@ export namespace Prisma {
   export type CraftIdeaMinAggregateInputType = {
     idea_id?: true
     generated_by_user_id?: true
+    generated_image_url?: true
+    is_saved?: true
     created_at?: true
     deleted_at?: true
   }
@@ -6773,6 +6781,8 @@ export namespace Prisma {
   export type CraftIdeaMaxAggregateInputType = {
     idea_id?: true
     generated_by_user_id?: true
+    generated_image_url?: true
+    is_saved?: true
     created_at?: true
     deleted_at?: true
   }
@@ -6782,6 +6792,8 @@ export namespace Prisma {
     generated_by_user_id?: true
     idea_json?: true
     recycled_materials?: true
+    generated_image_url?: true
+    is_saved?: true
     created_at?: true
     deleted_at?: true
     _all?: true
@@ -6878,6 +6890,8 @@ export namespace Prisma {
     generated_by_user_id: number | null
     idea_json: JsonValue
     recycled_materials: JsonValue | null
+    generated_image_url: string | null
+    is_saved: boolean
     created_at: Date
     deleted_at: Date | null
     _count: CraftIdeaCountAggregateOutputType | null
@@ -6906,6 +6920,8 @@ export namespace Prisma {
     generated_by_user_id?: boolean
     idea_json?: boolean
     recycled_materials?: boolean
+    generated_image_url?: boolean
+    is_saved?: boolean
     created_at?: boolean
     deleted_at?: boolean
     generated_by_user?: boolean | CraftIdea$generated_by_userArgs<ExtArgs>
@@ -6916,6 +6932,8 @@ export namespace Prisma {
     generated_by_user_id?: boolean
     idea_json?: boolean
     recycled_materials?: boolean
+    generated_image_url?: boolean
+    is_saved?: boolean
     created_at?: boolean
     deleted_at?: boolean
     generated_by_user?: boolean | CraftIdea$generated_by_userArgs<ExtArgs>
@@ -6926,6 +6944,8 @@ export namespace Prisma {
     generated_by_user_id?: boolean
     idea_json?: boolean
     recycled_materials?: boolean
+    generated_image_url?: boolean
+    is_saved?: boolean
     created_at?: boolean
     deleted_at?: boolean
     generated_by_user?: boolean | CraftIdea$generated_by_userArgs<ExtArgs>
@@ -6936,11 +6956,13 @@ export namespace Prisma {
     generated_by_user_id?: boolean
     idea_json?: boolean
     recycled_materials?: boolean
+    generated_image_url?: boolean
+    is_saved?: boolean
     created_at?: boolean
     deleted_at?: boolean
   }
 
-  export type CraftIdeaOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"idea_id" | "generated_by_user_id" | "idea_json" | "recycled_materials" | "created_at" | "deleted_at", ExtArgs["result"]["craftIdea"]>
+  export type CraftIdeaOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"idea_id" | "generated_by_user_id" | "idea_json" | "recycled_materials" | "generated_image_url" | "is_saved" | "created_at" | "deleted_at", ExtArgs["result"]["craftIdea"]>
   export type CraftIdeaInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     generated_by_user?: boolean | CraftIdea$generated_by_userArgs<ExtArgs>
   }
@@ -6961,6 +6983,8 @@ export namespace Prisma {
       generated_by_user_id: number | null
       idea_json: Prisma.JsonValue
       recycled_materials: Prisma.JsonValue | null
+      generated_image_url: string | null
+      is_saved: boolean
       created_at: Date
       deleted_at: Date | null
     }, ExtArgs["result"]["craftIdea"]>
@@ -7391,6 +7415,8 @@ export namespace Prisma {
     readonly generated_by_user_id: FieldRef<"CraftIdea", 'Int'>
     readonly idea_json: FieldRef<"CraftIdea", 'Json'>
     readonly recycled_materials: FieldRef<"CraftIdea", 'Json'>
+    readonly generated_image_url: FieldRef<"CraftIdea", 'String'>
+    readonly is_saved: FieldRef<"CraftIdea", 'Boolean'>
     readonly created_at: FieldRef<"CraftIdea", 'DateTime'>
     readonly deleted_at: FieldRef<"CraftIdea", 'DateTime'>
   }
@@ -23421,6 +23447,8 @@ export namespace Prisma {
     generated_by_user_id: 'generated_by_user_id',
     idea_json: 'idea_json',
     recycled_materials: 'recycled_materials',
+    generated_image_url: 'generated_image_url',
+    is_saved: 'is_saved',
     created_at: 'created_at',
     deleted_at: 'deleted_at'
   };
@@ -24197,6 +24225,8 @@ export namespace Prisma {
     generated_by_user_id?: IntNullableFilter<"CraftIdea"> | number | null
     idea_json?: JsonFilter<"CraftIdea">
     recycled_materials?: JsonNullableFilter<"CraftIdea">
+    generated_image_url?: StringNullableFilter<"CraftIdea"> | string | null
+    is_saved?: BoolFilter<"CraftIdea"> | boolean
     created_at?: DateTimeFilter<"CraftIdea"> | Date | string
     deleted_at?: DateTimeNullableFilter<"CraftIdea"> | Date | string | null
     generated_by_user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -24207,6 +24237,8 @@ export namespace Prisma {
     generated_by_user_id?: SortOrderInput | SortOrder
     idea_json?: SortOrder
     recycled_materials?: SortOrderInput | SortOrder
+    generated_image_url?: SortOrderInput | SortOrder
+    is_saved?: SortOrder
     created_at?: SortOrder
     deleted_at?: SortOrderInput | SortOrder
     generated_by_user?: UserOrderByWithRelationInput
@@ -24220,6 +24252,8 @@ export namespace Prisma {
     generated_by_user_id?: IntNullableFilter<"CraftIdea"> | number | null
     idea_json?: JsonFilter<"CraftIdea">
     recycled_materials?: JsonNullableFilter<"CraftIdea">
+    generated_image_url?: StringNullableFilter<"CraftIdea"> | string | null
+    is_saved?: BoolFilter<"CraftIdea"> | boolean
     created_at?: DateTimeFilter<"CraftIdea"> | Date | string
     deleted_at?: DateTimeNullableFilter<"CraftIdea"> | Date | string | null
     generated_by_user?: XOR<UserNullableScalarRelationFilter, UserWhereInput> | null
@@ -24230,6 +24264,8 @@ export namespace Prisma {
     generated_by_user_id?: SortOrderInput | SortOrder
     idea_json?: SortOrder
     recycled_materials?: SortOrderInput | SortOrder
+    generated_image_url?: SortOrderInput | SortOrder
+    is_saved?: SortOrder
     created_at?: SortOrder
     deleted_at?: SortOrderInput | SortOrder
     _count?: CraftIdeaCountOrderByAggregateInput
@@ -24247,6 +24283,8 @@ export namespace Prisma {
     generated_by_user_id?: IntNullableWithAggregatesFilter<"CraftIdea"> | number | null
     idea_json?: JsonWithAggregatesFilter<"CraftIdea">
     recycled_materials?: JsonNullableWithAggregatesFilter<"CraftIdea">
+    generated_image_url?: StringNullableWithAggregatesFilter<"CraftIdea"> | string | null
+    is_saved?: BoolWithAggregatesFilter<"CraftIdea"> | boolean
     created_at?: DateTimeWithAggregatesFilter<"CraftIdea"> | Date | string
     deleted_at?: DateTimeNullableWithAggregatesFilter<"CraftIdea"> | Date | string | null
   }
@@ -25639,6 +25677,8 @@ export namespace Prisma {
   export type CraftIdeaCreateInput = {
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
     generated_by_user?: UserCreateNestedOneWithoutCraftIdeasInput
@@ -25649,6 +25689,8 @@ export namespace Prisma {
     generated_by_user_id?: number | null
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
   }
@@ -25656,6 +25698,8 @@ export namespace Prisma {
   export type CraftIdeaUpdateInput = {
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     generated_by_user?: UserUpdateOneWithoutCraftIdeasNestedInput
@@ -25666,6 +25710,8 @@ export namespace Prisma {
     generated_by_user_id?: NullableIntFieldUpdateOperationsInput | number | null
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -25675,6 +25721,8 @@ export namespace Prisma {
     generated_by_user_id?: number | null
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
   }
@@ -25682,6 +25730,8 @@ export namespace Prisma {
   export type CraftIdeaUpdateManyMutationInput = {
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -25691,6 +25741,8 @@ export namespace Prisma {
     generated_by_user_id?: NullableIntFieldUpdateOperationsInput | number | null
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -27367,6 +27419,8 @@ export namespace Prisma {
     generated_by_user_id?: SortOrder
     idea_json?: SortOrder
     recycled_materials?: SortOrder
+    generated_image_url?: SortOrder
+    is_saved?: SortOrder
     created_at?: SortOrder
     deleted_at?: SortOrder
   }
@@ -27379,6 +27433,8 @@ export namespace Prisma {
   export type CraftIdeaMaxOrderByAggregateInput = {
     idea_id?: SortOrder
     generated_by_user_id?: SortOrder
+    generated_image_url?: SortOrder
+    is_saved?: SortOrder
     created_at?: SortOrder
     deleted_at?: SortOrder
   }
@@ -27386,6 +27442,8 @@ export namespace Prisma {
   export type CraftIdeaMinOrderByAggregateInput = {
     idea_id?: SortOrder
     generated_by_user_id?: SortOrder
+    generated_image_url?: SortOrder
+    is_saved?: SortOrder
     created_at?: SortOrder
     deleted_at?: SortOrder
   }
@@ -30418,6 +30476,8 @@ export namespace Prisma {
   export type CraftIdeaCreateWithoutGenerated_by_userInput = {
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
   }
@@ -30426,6 +30486,8 @@ export namespace Prisma {
     idea_id?: number
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
   }
@@ -30992,6 +31054,8 @@ export namespace Prisma {
     generated_by_user_id?: IntNullableFilter<"CraftIdea"> | number | null
     idea_json?: JsonFilter<"CraftIdea">
     recycled_materials?: JsonNullableFilter<"CraftIdea">
+    generated_image_url?: StringNullableFilter<"CraftIdea"> | string | null
+    is_saved?: BoolFilter<"CraftIdea"> | boolean
     created_at?: DateTimeFilter<"CraftIdea"> | Date | string
     deleted_at?: DateTimeNullableFilter<"CraftIdea"> | Date | string | null
   }
@@ -34581,6 +34645,8 @@ export namespace Prisma {
     idea_id?: number
     idea_json: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: string | null
+    is_saved?: boolean
     created_at?: Date | string
     deleted_at?: Date | string | null
   }
@@ -34794,6 +34860,8 @@ export namespace Prisma {
   export type CraftIdeaUpdateWithoutGenerated_by_userInput = {
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -34802,6 +34870,8 @@ export namespace Prisma {
     idea_id?: IntFieldUpdateOperationsInput | number
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
@@ -34810,6 +34880,8 @@ export namespace Prisma {
     idea_id?: IntFieldUpdateOperationsInput | number
     idea_json?: JsonNullValueInput | InputJsonValue
     recycled_materials?: NullableJsonNullValueInput | InputJsonValue
+    generated_image_url?: NullableStringFieldUpdateOperationsInput | string | null
+    is_saved?: BoolFieldUpdateOperationsInput | boolean
     created_at?: DateTimeFieldUpdateOperationsInput | Date | string
     deleted_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }

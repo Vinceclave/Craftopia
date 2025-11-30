@@ -160,6 +160,8 @@ exports.Prisma.CraftIdeaScalarFieldEnum = {
   generated_by_user_id: 'generated_by_user_id',
   idea_json: 'idea_json',
   recycled_materials: 'recycled_materials',
+  generated_image_url: 'generated_image_url',
+  is_saved: 'is_saved',
   created_at: 'created_at',
   deleted_at: 'deleted_at'
 };

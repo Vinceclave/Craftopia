@@ -71,6 +71,8 @@ model CraftIdea {
   generated_by_user_id Int?
   idea_json            Json
   recycled_materials   Json?
+  generated_image_url  String? 
+  is_saved             Boolean   @default(false)  
   created_at           DateTime  @default(now())
   deleted_at           DateTime?
   generated_by_user    User?     @relation(fields: [generated_by_user_id], references: [user_id])

@@ -1,63 +1,31 @@
-import * as craftController from '../controllers/craft.controller';
-import { createCraftIdeaSchema, updateCraftIdeaSchema } from '../schemas/craft.schema';
+// apps/backend/src/routes/craft.routes.ts 
+
 import { Router } from 'express';
-import { validate } from '../utils/validation';
+import * as craftController from '../controllers/craft.controller';
 import { requireAuth } from '../middlewares/rolebase.middleware';
+import { validate } from '../utils/validation';
+import {
+  createCraftIdeaSchema,
+  updateCraftIdeaSchema,
+  getCraftIdeasSchema,
+} from '../schemas/craft.schema';
 
-const craftRouter = Router();
+const router = Router();
 
-// Create
-craftRouter.post(
-  '/',
-  requireAuth,
-  validate(createCraftIdeaSchema),
-  craftController.createCraftIdea
-);
+// Public routes
+router.get('/', validate(getCraftIdeasSchema), craftController.getCraftIdeas);
+router.get('/stats/recent', craftController.getRecentCraftIdeas);
+router.get('/stats/count', craftController.countCraftIdeas);
+router.get('/:idea_id', craftController.getCraftIdeaById);
+router.get('/user/:user_id', craftController.getCraftIdeasByUser);
 
-// Read
-craftRouter.get(
-  '/',
-  requireAuth,
-  craftController.getCraftIdeas
-);
+// Protected routes (require authentication)
+router.post('/', requireAuth, validate(createCraftIdeaSchema), craftController.createCraftIdea);
+router.post('/save-from-base64', requireAuth, craftController.saveCraftFromBase64); // ✅ NEW
+router.post('/:idea_id/toggle-save', requireAuth, craftController.toggleSaveCraft); // ✅ NEW
+router.get('/saved/list', requireAuth, craftController.getSavedCraftIdeas); // ✅ NEW
+router.get('/stats/user', requireAuth, craftController.getUserCraftStats); // ✅ NEW
+router.put('/:idea_id', requireAuth, validate(updateCraftIdeaSchema), craftController.updateCraftIdea);
+router.delete('/:idea_id', requireAuth, craftController.deleteCraftIdea);
 
-craftRouter.get(
-  '/stats/count',
-  requireAuth,
-  craftController.countCraftIdeas
-);
-
-craftRouter.get(
-  '/stats/recent',
-  requireAuth,
-  craftController.getRecentCraftIdeas
-);
-
-craftRouter.get(
-  '/user/:user_id',
-  requireAuth,
-  craftController.getCraftIdeasByUser
-);
-
-craftRouter.get(
-  '/:idea_id',
-  requireAuth,
-  craftController.getCraftIdeaById
-);
-
-// Update
-craftRouter.put(
-  '/:idea_id',
-  requireAuth,
-  validate(updateCraftIdeaSchema),
-  craftController.updateCraftIdea
-);
-
-// Delete
-craftRouter.delete(
-  '/:idea_id',
-  requireAuth,
-  craftController.deleteCraftIdea
-);
-
-export default craftRouter;
+export default router;

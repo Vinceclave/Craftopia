@@ -1,4 +1,4 @@
-// apps/backend/src/ai/services/craft.service.ts
+// apps/backend/src/ai/services/craft.service.ts 
 
 import { AppError } from "../../utils/error";
 import { ai } from "../gemini/client";
@@ -122,7 +122,7 @@ export const generateCraft = async (
     console.log(`✅ Generated ${validIdeas.length} valid craft ideas`);
     console.log("🎨 Starting image generation for each craft idea...");
 
-    // Generate images for each craft idea
+    // Generate images for each craft idea (keep as base64)
     const ideasWithImages: CraftIdea[] = [];
 
     for (let i = 0; i < validIdeas.length; i++) {
@@ -136,12 +136,13 @@ export const generateCraft = async (
           idea.title,
           idea.description,
           cleanMaterials,
-          referenceImageBase64  // ✅ CRITICAL: Pass the scanned image as reference
+          referenceImageBase64  // ✅ Pass the scanned image as reference
         );
 
+        // ✅ Keep as base64 - will upload to S3 only when user saves
         ideasWithImages.push({
           ...idea,
-          generatedImageUrl: imageUrl,
+          generatedImageUrl: imageUrl, // Base64 data URI
         });
 
         console.log(`✅ [${i + 1}/${validIdeas.length}] Image generated successfully`);
@@ -162,6 +163,7 @@ export const generateCraft = async (
     console.log(`🖼️  Ideas with Images: ${ideasWithImages.filter(i => i.generatedImageUrl).length}`);
     console.log("🎨 ============================================\n");
 
+    // ✅ Return with base64 images - NO database save, NO S3 upload
     return {
       materials: Array.isArray(materials) ? materials : [materials],
       ideas: ideasWithImages,
