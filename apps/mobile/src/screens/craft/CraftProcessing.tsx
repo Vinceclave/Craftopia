@@ -1,4 +1,4 @@
-// apps/mobile/src/screens/craft/CraftProcessing.tsx
+// apps/mobile/src/screens/craft/CraftProcessing.tsx - FIXED FileSystem API
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -54,9 +54,9 @@ export const CraftProcessingScreen = () => {
       const onBackPress = () => {
         if (isProcessing) {
           setShowExitModal(true);
-          return true; // Prevent default back behavior
+          return true;
         }
-        return false; // Allow default back behavior
+        return false;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -102,7 +102,7 @@ export const CraftProcessingScreen = () => {
       setIsProcessing(true);
       setProcessingError(null);
 
-      // Step 1: Analyzing image (0.5s delay for UX)
+      // Step 1: Analyzing image
       console.log("\n📊 Step 1: Analyzing image...");
       setProcessingStep(0);
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -114,53 +114,113 @@ export const CraftProcessingScreen = () => {
       console.log("🖼️  Original image URI:", imageUri);
       console.log("⏳ Starting image compression...");
       
-      // Compress image before converting to base64
-      const compressedImage = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [
-          { resize: { width: 1024 } } // Resize to max width of 1024px
-        ],
-        {
-          compress: 0.7, // 70% quality
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true
-        }
-      );
-
-      console.log("✅ Image compressed successfully");
+      // ✅ Use ImageManipulator with base64 output (most reliable method)
+      let base64Image: string;
       
-      // Get base64 from compressed image
-      const base64Data = compressedImage.base64;
-      if (!base64Data) {
-        throw new Error('Failed to convert image to base64');
+      try {
+        console.log("🔧 Using ImageManipulator for compression and base64 conversion...");
+        
+        // Compress image and get base64
+        const compressedImage = await ImageManipulator.manipulateAsync(
+          imageUri,
+          [{ resize: { width: 1024 } }], // Resize to max width of 1024px
+          {
+            compress: 0.7, // 70% quality
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: true // ✅ Get base64 output directly
+          }
+        );
+
+        // ✅ Validate base64 output
+        if (!compressedImage.base64 || typeof compressedImage.base64 !== 'string') {
+          throw new Error('ImageManipulator returned invalid base64');
+        }
+        
+        const base64Data = compressedImage.base64;
+        
+        // ✅ Validate minimum length
+        if (base64Data.length < 100) {
+          throw new Error(`Base64 too short: ${base64Data.length} characters`);
+        }
+        
+        // ✅ Validate base64 characters
+        if (!/^[A-Za-z0-9+/=]+$/.test(base64Data)) {
+          throw new Error('Invalid base64 characters detected');
+        }
+        
+        // ✅ Add proper data URI prefix
+        base64Image = `data:image/jpeg;base64,${base64Data}`;
+        
+        console.log("✅ ImageManipulator conversion successful");
+        
+      } catch (conversionError: any) {
+        console.error("❌ Image conversion failed:", conversionError);
+        throw new Error(`Failed to convert image: ${conversionError.message}`);
+      }
+
+      // ✅ CRITICAL: Validate final base64 format
+      console.log("\n🔍 Validating base64 format...");
+      
+      // Check 1: Must be a string
+      if (typeof base64Image !== 'string') {
+        throw new Error(`Invalid type: ${typeof base64Image}, expected string`);
       }
       
-      // Add the data URI prefix
-      const base64Image = `data:image/jpeg;base64,${base64Data}`;
+      // Check 2: Must have data URI prefix
+      if (!base64Image.startsWith('data:image/')) {
+        throw new Error('Missing data URI prefix');
+      }
+      
+      // Check 3: Must have comma separator
+      if (!base64Image.includes(',')) {
+        throw new Error('Invalid data URI format - missing comma');
+      }
+      
+      // Check 4: Extract and validate base64 part
+      const parts = base64Image.split(',');
+      if (parts.length !== 2) {
+        throw new Error(`Invalid data URI - expected 2 parts, got ${parts.length}`);
+      }
+      
+      const actualBase64 = parts[1];
+      
+      // Check 5: Validate base64 characters (already done above, but double-check)
+      if (!/^[A-Za-z0-9+/=]+$/.test(actualBase64)) {
+        throw new Error('Invalid base64 characters detected in final validation');
+      }
+      
+      // Check 6: Minimum length
+      if (actualBase64.length < 100) {
+        throw new Error(`Base64 too short: ${actualBase64.length} characters`);
+      }
       
       // Calculate and log size
       const sizeInBytes = base64Image.length;
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
       
-      console.log("📊 Image Conversion Results:");
-      console.log("  📏 Base64 Length:", base64Image.length, "characters");
+      console.log("✅ Base64 validation passed");
+      console.log("📊 Image Details:");
+      console.log("  📏 Total Length:", base64Image.length, "characters");
+      console.log("  📏 Base64 Length:", actualBase64.length, "characters");
       console.log("  📊 Size:", sizeInMB, "MB");
-      console.log("  🔍 Preview:", base64Image.substring(0, 100));
+      console.log("  🔍 Prefix:", parts[0]);
+      console.log("  🔍 Preview:", actualBase64.substring(0, 50), "...");
       
       if (parseFloat(sizeInMB) > 10) {
-        console.warn("⚠️  WARNING: Image is large:", sizeInMB, "MB - may cause processing delays");
+        console.warn("⚠️  WARNING: Image is large:", sizeInMB, "MB");
       }
       
       if (parseFloat(sizeInMB) > 50) {
         throw new Error(`Image too large: ${sizeInMB} MB. Please use a smaller image.`);
       }
       
-      setImageBase64(base64Image); // Store for craft generation
+      setImageBase64(base64Image);
 
+      // Step 3: Detect materials
       console.log("\n📊 Step 3: Detecting materials...");
-      console.log("🔍 Calling detectMaterials API...");
+      setProcessingStep(2);
+      console.log("🔍 Calling detectMaterials API with validated base64...");
       
-      // Detect materials from the image
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
       
       if (!detectResponse.success || !detectResponse.data?.materials) {
@@ -169,26 +229,23 @@ export const CraftProcessingScreen = () => {
 
       console.log("✅ Materials detection successful");
       console.log("📦 Materials detected:", detectResponse.data.materials);
-      console.log("📊 Total materials:", detectResponse.data.materials.length);
 
-      // Step 3: Identifying recyclables (brief delay for UX)
-      console.log("\n📊 Step 3: Identifying recyclables...");
-      setProcessingStep(2);
+      // Step 4: Identifying recyclables
+      console.log("\n📊 Step 4: Identifying recyclables...");
+      setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Step 4: Generating visualizations & craft ideas
-      console.log("\n📊 Step 4: Generating craft ideas WITH reference image...");
-      setProcessingStep(3);
+      // Step 5: Generate craft ideas WITH validated reference image
+      console.log("\n📊 Step 5: Generating craft ideas with reference image...");
+      setProcessingStep(4);
       
-      console.log("🎨 Calling generateCraft API...");
-      console.log("📦 Materials to use:", detectResponse.data.materials);
-      console.log("🖼️  Reference image length:", base64Image.length);
-      console.log("🔍 Reference image preview:", base64Image.substring(0, 100));
+      console.log("🎨 Calling generateCraft API with validated base64...");
+      console.log("📦 Materials:", detectResponse.data.materials);
+      console.log("🖼️  Reference image validated and ready");
       
-      // Generate craft ideas WITH the reference image
       const craftResponse = await generateCraftMutation.mutateAsync({
         materials: detectResponse.data.materials,
-        referenceImageBase64: base64Image, // ✅ CRITICAL: Pass the scanned image as reference
+        referenceImageBase64: base64Image, // ✅ Validated base64
       });
 
       if (!craftResponse.success || !craftResponse.data?.ideas) {
@@ -196,31 +253,18 @@ export const CraftProcessingScreen = () => {
       }
 
       console.log("✅ Craft generation successful");
-      console.log("📊 Craft ideas generated:", craftResponse.data.ideas.length);
+      console.log("📊 Ideas generated:", craftResponse.data.ideas.length);
       
-      // Log which ideas have generated images
       const ideasWithImages = craftResponse.data.ideas.filter(idea => idea.generatedImageUrl).length;
-      console.log("🖼️  Ideas with generated images:", ideasWithImages);
-
-      // Step 5: Finalizing
-      console.log("\n📊 Step 5: Finalizing...");
-      setProcessingStep(4);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("🖼️  Ideas with images:", ideasWithImages);
 
       console.log("\n✅ ============================================");
       console.log("✅ PROCESSING COMPLETE");
-      console.log("✅ ============================================");
-      console.log("📊 Summary:");
-      console.log("  🖼️  Original Image:", imageUri);
-      console.log("  📦 Materials:", detectResponse.data.materials.length);
-      console.log("  🎨 Craft Ideas:", craftResponse.data.ideas.length);
-      console.log("  🖼️  Images Generated:", ideasWithImages);
       console.log("✅ ============================================\n");
 
       setIsProcessing(false);
 
-      // Navigate to results with the actual data including generated images
-      console.log("🚀 Navigating to CraftResults...");
+      // Navigate to results
       navigation.replace('CraftResults', {
         imageUri,
         detectedMaterials: detectResponse.data.materials,
@@ -232,14 +276,13 @@ export const CraftProcessingScreen = () => {
       console.error("❌ PROCESSING FAILED");
       console.error("❌ ============================================");
       console.error("❌ Error:", error);
-      console.error("❌ Error Message:", error.message);
-      console.error("❌ Error Stack:", error.stack);
+      console.error("❌ Message:", error.message);
+      console.error("❌ Stack:", error.stack);
       console.error("❌ ============================================\n");
       
       setIsProcessing(false);
-      setProcessingError(error.message || 'Unable to process the image. Please try again.');
+      setProcessingError(error.message || 'Processing failed');
       
-      // Show error alert with option to retry or go back
       Alert.alert(
         'Processing Failed',
         error.message || 'Unable to process the image. Please try again.',
@@ -265,7 +308,6 @@ export const CraftProcessingScreen = () => {
   const handleExitConfirm = () => {
     setShowExitModal(false);
     console.log("🚫 User cancelled processing");
-    // Use goBack instead of navigate to prevent creating new screen instance
     navigation.goBack();
   };
 
@@ -397,7 +439,6 @@ export const CraftProcessingScreen = () => {
               
               return (
                 <View key={index} className={`flex-row items-center ${index < processingSteps.length - 1 ? 'mb-4' : ''}`}>
-                  {/* Icon */}
                   <View 
                     className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${
                       isComplete 
@@ -416,7 +457,6 @@ export const CraftProcessingScreen = () => {
                     )}
                   </View>
 
-                  {/* Label */}
                   <View className="flex-1">
                     <Text 
                       className={`text-sm font-nunito ${
@@ -429,7 +469,6 @@ export const CraftProcessingScreen = () => {
                     </Text>
                   </View>
 
-                  {/* Status Indicator */}
                   {isComplete && (
                     <View className="w-2 h-2 rounded-full bg-craftopia-success" />
                   )}
@@ -475,7 +514,6 @@ export const CraftProcessingScreen = () => {
               shadowRadius: 16,
             }}
           >
-            {/* Icon */}
             <View className="items-center mb-4">
               <View className="w-16 h-16 rounded-full bg-craftopia-warning/20 items-center justify-center mb-3">
                 <AlertCircle size={32} color="#E6B655" />
@@ -485,12 +523,10 @@ export const CraftProcessingScreen = () => {
               </Text>
             </View>
 
-            {/* Message */}
             <Text className="text-base font-nunito text-craftopia-textSecondary text-center mb-6">
               Your scan is being processed. Are you sure you want to cancel and go back?
             </Text>
 
-            {/* Buttons */}
             <View className="gap-3">
               <TouchableOpacity
                 onPress={handleExitConfirm}

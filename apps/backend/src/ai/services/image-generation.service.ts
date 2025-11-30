@@ -1,4 +1,4 @@
-// apps/backend/src/ai/services/image-generation.service.ts - VISUAL ENHANCED
+// apps/backend/src/ai/services/image-generation.service.ts - FIXED FOR APK BUILDS
 
 import { AppError } from "../../utils/error";
 import { aiImage } from "../gemini/client";
@@ -7,6 +7,7 @@ import { config } from "../../config";
 /**
  * Enhanced craft image generation with VISUAL focus
  * Uses visualDescription if available, otherwise strict material rules
+ * ✅ FIXED: Proper null/undefined handling for APK builds
  */
 export const generateCraftImage = async (
   craftTitle: string,
@@ -24,6 +25,7 @@ export const generateCraftImage = async (
     console.log("📝 Materials:", materials);
     console.log("📝 Steps Count:", craftSteps?.length || 0);
     console.log("📝 Visual Description:", visualDescription ? "Provided" : "Not provided");
+    console.log("📝 Reference Image:", referenceImageBase64 ? "Provided" : "Not provided");
 
     // 🎯 Extract material count for strict enforcement
     const materialList = materials.split(',').map(m => m.trim());
@@ -107,25 +109,66 @@ Show the user exactly what they can make with the items they just scanned. Inspi
       },
     };
 
-    // Handle reference image if provided
+    // ✅ FIXED: Handle reference image with proper null/undefined checks
     if (referenceImageBase64) {
       console.log("🖼️  Processing reference image for STRICT material matching...");
 
-      let cleanBase64 = referenceImageBase64;
+      // ✅ Validate input first
+      if (typeof referenceImageBase64 !== 'string') {
+        console.error("❌ referenceImageBase64 is not a string:", typeof referenceImageBase64);
+        throw new AppError("Invalid reference image format - expected string", 400);
+      }
+
+      let cleanBase64 = referenceImageBase64.trim();
       let mimeType = "image/jpeg";
 
-      if (referenceImageBase64.includes(',')) {
-        const parts = referenceImageBase64.split(',');
-        cleanBase64 = parts[1];
+      // ✅ Handle data URI format
+      if (cleanBase64.includes(',')) {
+        try {
+          const parts = cleanBase64.split(',');
+          
+          if (parts.length !== 2) {
+            throw new AppError("Invalid base64 data URI format", 400);
+          }
 
-        const dataUriPrefix = parts[0];
-        if (dataUriPrefix.includes('image/png')) {
-          mimeType = "image/png";
-        } else if (dataUriPrefix.includes('image/webp')) {
-          mimeType = "image/webp";
-        } else if (dataUriPrefix.includes('image/jpeg') || dataUriPrefix.includes('image/jpg')) {
-          mimeType = "image/jpeg";
+          const dataUriPrefix = parts[0];
+          cleanBase64 = parts[1];
+
+          // ✅ Detect MIME type from data URI
+          if (dataUriPrefix.includes('image/png')) {
+            mimeType = "image/png";
+          } else if (dataUriPrefix.includes('image/webp')) {
+            mimeType = "image/webp";
+          } else if (dataUriPrefix.includes('image/jpeg') || dataUriPrefix.includes('image/jpg')) {
+            mimeType = "image/jpeg";
+          } else {
+            console.warn("⚠️  Unknown MIME type in data URI, defaulting to image/jpeg");
+          }
+        } catch (splitError) {
+          console.error("❌ Error splitting data URI:", splitError);
+          throw new AppError("Failed to parse base64 data URI", 400);
         }
+      } else {
+        // ✅ No data URI prefix - assume raw base64
+        console.log("ℹ️  No data URI prefix detected, treating as raw base64");
+      }
+
+      // ✅ Validate base64 string
+      if (!cleanBase64 || cleanBase64.length < 100) {
+        console.error("❌ Invalid base64 length:", cleanBase64?.length || 0);
+        throw new AppError("Invalid reference image - too short or empty", 400);
+      }
+
+      // ✅ Test if valid base64
+      try {
+        // Try to validate base64 format (basic check)
+        if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+          console.error("❌ Invalid base64 characters detected");
+          throw new AppError("Invalid base64 encoding", 400);
+        }
+      } catch (validationError) {
+        console.error("❌ Base64 validation failed:", validationError);
+        throw new AppError("Invalid base64 format", 400);
       }
 
       const imageSizeMB = (cleanBase64.length / (1024 * 1024)).toFixed(2);
@@ -133,27 +176,38 @@ Show the user exactly what they can make with the items they just scanned. Inspi
       console.log("📊 Reference Image Details:");
       console.log("  - MIME Type:", mimeType);
       console.log("  - Size:", imageSizeMB, "MB");
+      console.log("  - Base64 Length:", cleanBase64.length);
 
-      if (!cleanBase64 || cleanBase64.length < 100) {
-        throw new AppError("Invalid reference image - too short", 400);
-      }
-
-      payload.referenceImages = [
-        {
-          mimeType: mimeType,
-          image: {
-            imageBytes: cleanBase64
+      // ✅ Safely construct payload
+      try {
+        payload.referenceImages = [
+          {
+            mimeType: mimeType,
+            image: {
+              imageBytes: cleanBase64
+            }
           }
-        }
-      ];
+        ];
 
-      console.log("✅ Reference image added");
+        console.log("✅ Reference image added to payload");
+      } catch (payloadError) {
+        console.error("❌ Error creating referenceImages payload:", payloadError);
+        throw new AppError("Failed to prepare reference image for API", 500);
+      }
+    } else {
+      console.log("ℹ️  No reference image provided - generating without visual reference");
     }
 
     console.log("\n🚀 Calling Google Imagen API...");
 
-    // Call Imagen API
-    const response = await aiImage.models.generateImages(payload);
+    // Call Imagen API with error handling
+    let response;
+    try {
+      response = await aiImage.models.generateImages(payload);
+    } catch (apiError: any) {
+      console.error("❌ Imagen API call failed:", apiError);
+      throw new AppError(`Imagen API error: ${apiError.message || 'Unknown error'}`, 500);
+    }
 
     console.log("✅ Imagen API response received");
 
@@ -179,6 +233,7 @@ Show the user exactly what they can make with the items they just scanned. Inspi
     console.error("❌ IMAGEN API ERROR");
     console.error("❌ ============================================");
     console.error("❌ Error:", err.message);
+    console.error("❌ Stack:", err.stack);
     console.error("❌ ============================================\n");
 
     throw new AppError(err.message || "Image generation failed", 500);
