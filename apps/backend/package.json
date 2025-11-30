@@ -4,7 +4,7 @@
   "description": "Craftopia Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "build": "node --max-old-space-size=2048 node_modules/typescript/lib/tsc.js && npm run copy:prisma",
+    "build": "prisma generate && node --max-old-space-size=2048 node_modules/typescript/lib/tsc.js",
     "start": "node dist/server.js",
     "start:prod": "prisma generate && node dist/server.js",
     "dev": "nodemon src/server.ts",
