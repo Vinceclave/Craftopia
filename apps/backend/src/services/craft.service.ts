@@ -7,7 +7,11 @@ import { ValidationError, NotFoundError, AppError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { uploadBase64ToS3 } from "./s3.service";
 import crypto from "crypto";
-import { Prisma } from "../generated/prisma";
+
+// ✅ FIX: Use proper type definitions instead of Prisma namespace
+// This fixes the TS2694 errors with Prisma.JsonValue and Prisma.InputJsonValue
+type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
+type InputJsonValue = JsonValue;
 
 interface CreateCraftIdeaData {
   generated_by_user_id?: number;
@@ -36,7 +40,7 @@ interface GetCraftIdeasOptions {
 /**
  * ✅ Safely extract string array from Prisma Json field
  */
-function extractStringArray(jsonValue: Prisma.JsonValue | null | undefined): string[] {
+function extractStringArray(jsonValue: JsonValue | null | undefined): string[] {
   if (!jsonValue) return [];
   
   if (Array.isArray(jsonValue)) {
@@ -49,7 +53,7 @@ function extractStringArray(jsonValue: Prisma.JsonValue | null | undefined): str
 /**
  * ✅ Safely extract object from Prisma Json field
  */
-function extractObject(jsonValue: Prisma.JsonValue | null | undefined): Record<string, any> {
+function extractObject(jsonValue: JsonValue | null | undefined): Record<string, any> {
   if (!jsonValue) return {};
   
   if (typeof jsonValue === 'object' && !Array.isArray(jsonValue) && jsonValue !== null) {
@@ -119,12 +123,12 @@ class CraftService extends BaseService {
     }
 
     // Extract title, description, and materials for hash
-    const ideaJson = extractObject(data.idea_json as Prisma.JsonValue);
+    const ideaJson = extractObject(data.idea_json as JsonValue);
     const title = String(ideaJson.title || '');
     const description = String(ideaJson.description || '');
     
     // ✅ Safely convert materials to string array
-    const materials = extractStringArray(data.recycled_materials as Prisma.JsonValue);
+    const materials = extractStringArray(data.recycled_materials as JsonValue);
 
     if (!title.trim()) {
       throw new ValidationError('Craft title is required');
@@ -202,8 +206,8 @@ class CraftService extends BaseService {
     const craftIdea = await prisma.craftIdea.create({
       data: {
         generated_by_user_id: data.user_id,
-        idea_json: data.idea_json as Prisma.InputJsonValue,
-        recycled_materials: data.recycled_materials as Prisma.InputJsonValue,
+        idea_json: data.idea_json as InputJsonValue,
+        recycled_materials: data.recycled_materials as InputJsonValue,
         generated_image_url: s3ImageUrl,
         is_saved: true,
       },
@@ -431,8 +435,8 @@ class CraftService extends BaseService {
       const updated = await tx.craftIdea.update({
         where: { idea_id: ideaId },
         data: {
-          ...(data.idea_json && { idea_json: data.idea_json as Prisma.InputJsonValue }),
-          ...(data.recycled_materials && { recycled_materials: data.recycled_materials as Prisma.InputJsonValue })
+          ...(data.idea_json && { idea_json: data.idea_json as InputJsonValue }),
+          ...(data.recycled_materials && { recycled_materials: data.recycled_materials as InputJsonValue })
         },
         include: {
           generated_by_user: {
