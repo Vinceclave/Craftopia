@@ -67,9 +67,10 @@ export const useChallenges = (category?: string) => {
   return useQuery({
     queryKey: challengeKeys.list(category),
     queryFn: async () => {
-      const params = category && category !== 'all' ? { category } : {};
+      const params: any = category && category !== 'all' ? { category } : {};
+      params.includeInactive = false; // Only active challenges for mobile
       const response: { data?: Challenge[]; challenges?: Challenge[] } = await apiService.request(API_ENDPOINTS.CHALLENGES.LIST, { params });
-      
+
       // Handle different response structures
       let challenges: any[] = [];
       if (Array.isArray(response)) {
@@ -79,7 +80,7 @@ export const useChallenges = (category?: string) => {
       } else if (response.challenges && Array.isArray(response.challenges)) {
         challenges = response.challenges;
       }
-      
+
       return challenges.map(normalizeChallenge);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -88,11 +89,11 @@ export const useChallenges = (category?: string) => {
 
 // Get single challenge
 export const useChallenge = (challengeId: number) => {
-  
+
   return useQuery({
     queryKey: challengeKeys.detail(challengeId),
     queryFn: async () => {
-      const response: { data?: Challenge; challenge: Challenge} = await apiService.request(API_ENDPOINTS.CHALLENGES.BY_ID(challengeId));
+      const response: { data?: Challenge; challenge: Challenge } = await apiService.request(API_ENDPOINTS.CHALLENGES.BY_ID(challengeId));
       const challengeData = response.data || response;
       return normalizeChallenge(challengeData);
     },

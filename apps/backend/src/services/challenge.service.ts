@@ -124,7 +124,6 @@ class ChallengeService extends BaseService {
     // ✅ CRITICAL: Only filter by deleted_at
     const where: any = {
       deleted_at: null
-      // DO NOT add: is_active: true (this hides inactive challenges!)
     };
 
     // Optionally filter by category
@@ -135,6 +134,10 @@ class ChallengeService extends BaseService {
     // Only filter by active status if explicitly requested
     if (!includeInactive) {
       where.is_active = true;
+      where.OR = [
+        { expires_at: null },
+        { expires_at: { gt: new Date() } }
+      ];
     }
 
     const challenges = await prisma.ecoChallenge.findMany({
