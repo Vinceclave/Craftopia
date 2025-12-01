@@ -39,16 +39,16 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = [
       config.frontend.url
     ];
-    
+
     // Allow all localhost origins in development
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       return callback(null, true);
     }
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -83,12 +83,12 @@ if (process.env.NODE_ENV === 'development') {
     console.log('🔍 Request body keys:', Object.keys(req.body));
     console.log('🔍 Materials:', req.body.materials);
     console.log('🔍 Has referenceImageBase64:', !!req.body.referenceImageBase64);
-    
+
     if (req.body.referenceImageBase64) {
       console.log('🔍 referenceImageBase64 type:', typeof req.body.referenceImageBase64);
       console.log('🔍 referenceImageBase64 length:', req.body.referenceImageBase64.length);
       console.log('🔍 referenceImageBase64 preview:', req.body.referenceImageBase64.substring(0, 100));
-      
+
       // Calculate size
       const sizeInBytes = Buffer.byteLength(req.body.referenceImageBase64, 'utf8');
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
@@ -141,9 +141,9 @@ const generalLimiter = rateLimit({
   legacyHeaders: false,
   // ✅ ADD: Skip static files and health checks
   skip: (req) => {
-    return req.path.startsWith('/uploads') || 
-           req.path === '/health' ||
-           req.path === '/api/v1/health';
+    return req.path.startsWith('/uploads') ||
+      req.path === '/health' ||
+      req.path === '/api/v1/health';
   },
   handler: (req, res) => {
     logger.logSecurityEvent(
@@ -190,21 +190,21 @@ const aiLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: RATE_LIMITS.AUTH.WINDOW_MS,
   max: RATE_LIMITS.AUTH.MAX,
-  keyGenerator: (req) => {
+  keyGenerator: (req, res) => {
     const email = req.body?.email?.toLowerCase();
     if (email && email.trim()) {
       return `email:${email}`;
     }
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return ipKeyGenerator(req as any, res as any);
   },
   handler: (req, res) => {
     logger.logSecurityEvent(
       'Auth Rate Limit Exceeded',
       'high',
-      { 
+      {
         email: req.body?.email,
         ip: req.ip,
-        url: req.url 
+        url: req.url
       }
     );
     res.status(429).json({

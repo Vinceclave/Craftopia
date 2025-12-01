@@ -8,7 +8,10 @@ import {
   TouchableOpacity, 
   Image, 
   Alert,
-  ActivityIndicator 
+  ActivityIndicator,
+  Modal,
+  StatusBar,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -24,10 +27,13 @@ import {
   Wrench,
   Star,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  X
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
 import crypto from 'crypto-js';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type RootStackParamList = {
   CraftDetails: {
@@ -92,6 +98,7 @@ export const CraftDetailsScreen = () => {
   const [ideaId, setIdeaId] = useState(initialIdeaId);
   const [imageUrl, setImageUrl] = useState(generatedImageUrl);
   const [saveInProgress, setSaveInProgress] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
 
   const saveMutation = useSaveCraftFromBase64();
   const toggleMutation = useToggleSaveCraft();
@@ -121,6 +128,14 @@ export const CraftDetailsScreen = () => {
         { text: 'Share', onPress: () => console.log('Sharing...') }
       ]
     );
+  };
+
+  const handleImagePress = () => {
+    setImageModalVisible(true);
+  };
+
+  const handleCloseImageModal = () => {
+    setImageModalVisible(false);
   };
 
   const handleSave = async () => {
@@ -364,17 +379,22 @@ export const CraftDetailsScreen = () => {
         {/* AI-Generated Image */}
         {imageUrl && (
           <View className="mx-4 mt-4 relative">
-            <Image
-              source={{ uri: imageUrl }}
-              className="w-full h-60 rounded-2xl"
-              resizeMode="cover"
-            />
-            <View className="absolute top-3 right-3 bg-[#3B6E4D]/90 px-3 py-1.5 rounded-lg flex-row items-center">
-              <Sparkles size={12} color="#FFFFFF" />
-              <Text className="text-xs text-white ml-1 font-nunito font-semibold">
-                AI Generated
-              </Text>
-            </View>
+            <TouchableOpacity 
+              onPress={handleImagePress}
+              activeOpacity={0.9}
+            >
+              <Image
+                source={{ uri: imageUrl }}
+                className="w-full h-60 rounded-2xl"
+                resizeMode="cover"
+              />
+              <View className="absolute top-3 right-3 bg-[#3B6E4D]/90 px-3 py-1.5 rounded-lg flex-row items-center">
+                <Sparkles size={12} color="#FFFFFF" />
+                <Text className="text-xs text-white ml-1 font-nunito font-semibold">
+                  AI Generated
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -542,6 +562,49 @@ export const CraftDetailsScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* ✅ Full-Screen Image Preview Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseImageModal}
+        statusBarTranslucent
+      >
+        <View  className="absolute inset-0 bg-black">
+          
+          {/* Close Button */}
+          <TouchableOpacity
+            onPress={handleCloseImageModal}
+            className="absolute top-12 right-4 z-50 w-10 h-10 rounded-full bg-white/20 items-center justify-center"
+            activeOpacity={0.8}
+          >
+            <X size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* Full-Screen Image */}
+          <View className="flex-1 items-center justify-center">
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ 
+                width: SCREEN_WIDTH, 
+                height: SCREEN_HEIGHT 
+              }}
+              resizeMode="contain"
+            />
+          </View>
+
+          {/* AI Generated Badge */}
+          <View className="absolute bottom-8 left-0 right-0 items-center">
+            <View className="bg-[#3B6E4D]/90 px-4 py-2 rounded-full flex-row items-center">
+              <Sparkles size={16} color="#FFFFFF" />
+              <Text className="text-white ml-2 font-nunito font-semibold">
+                AI Generated Image
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
