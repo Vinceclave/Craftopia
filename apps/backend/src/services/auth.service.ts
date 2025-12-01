@@ -343,37 +343,54 @@ class AuthService {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Verify Your Account - Craftopia</title>
       </head>
-      <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #F9FAFB;">
-        <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #F3F4F6; padding: 40px;">
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
-            <div style="font-size: 24px; font-weight: 800; color: #004E98;">🎨 CRAFTOPIA</div>
+      <body style="margin:0; padding:0; background-color:#f5f6f7; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+        <div style="max-width:560px; margin:40px auto; background:#ffffff; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 4px 12px rgba(0,0,0,0.04); padding:40px;">
+
+          <!-- Logo / Header -->
+          <div style="text-align:center; padding-bottom:24px; border-bottom:1px solid #e5e7eb;">
+            <div style="font-size:26px; font-weight:800; color:#004E98; letter-spacing:-0.5px;">
+              Craftopia
+            </div>
           </div>
-          
-          <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 16px;">Welcome to Craftopia!</h1>
-          
-          <p style="color: #6B7280; margin-bottom: 8px;">Hello <strong style="color: #004E98;">${userName}</strong>,</p>
-          
-          <p style="color: #6B7280; margin-bottom: 24px;">Thanks for signing up! Please verify your email address to complete your registration and start your crafting journey.</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verificationUrl}" style="display: inline-block; background-color: #004E98; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
+
+          <!-- Title -->
+          <h1 style="font-size:22px; font-weight:700; color:#111827; margin-top:32px; margin-bottom:12px;">
+            Welcome to Craftopia!
+          </h1>
+
+          <!-- Greeting -->
+          <p style="font-size:15px; color:#4b5563; margin-bottom:12px; line-height:1.6;">
+            Hello <strong style="color:#004E98;">${userName}</strong>,
+          </p>
+
+          <!-- Body -->
+          <p style="font-size:15px; color:#4b5563; margin-bottom:28px; line-height:1.6;">
+            Thanks for signing up! Please verify your email address to complete your registration and start exploring creative crafting ideas.
+          </p>
+
+          <!-- Button -->
+          <div style="text-align:center; margin:32px 0;">
+            <a href="${verificationUrl}"
+              style="background:#004E98; color:#ffffff; padding:14px 32px; font-size:16px; font-weight:600; text-decoration:none; border-radius:10px; display:inline-block;">
+              Verify Email Address
+            </a>
           </div>
-          
-          <p style="font-size: 13px; color: #6B7280; margin-top: 24px;">
-            This link expires in <strong>24 hours</strong>. If you didn't create a Craftopia account, you can safely ignore this email.
+
+          <!-- Expiry Notice -->
+          <p style="font-size:13px; color:#6b7280; margin-top:20px; line-height:1.6;">
+            This link expires in <strong>24 hours</strong>. If you didn’t create a Craftopia account, you can safely ignore this email.
           </p>
-          
-          <p style="font-size: 11px; color: #9CA3AF; margin-top: 16px;">
-            If the button doesn't work, copy and paste this link into your browser:<br>
-            <a href="${verificationUrl}" style="color: #004E98; word-break: break-all;">${verificationUrl}</a>
-          </p>
-          
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">
-            <p style="font-size: 12px; color: #9CA3AF; text-align: center;">
+
+          <!-- Footer -->
+          <div style="margin-top:40px; padding-top:24px; border-top:1px solid #e5e7eb;">
+            <p style="font-size:12px; color:#9ca3af; text-align:center;">
               © ${new Date().getFullYear()} Craftopia. All rights reserved.
             </p>
           </div>
+
         </div>
+
       </body>
       </html>
     `;
@@ -389,50 +406,67 @@ class AuthService {
     const userName = user.email.split('@')[0];
 
     const html = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Password Reset - Craftopia</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #F9FAFB;">
-        <div style="max-width: 500px; margin: 0 auto; background-color: #FFFFFF; border: 1px solid #F3F4F6; padding: 40px;">
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
-            <div style="font-size: 24px; font-weight: 800; color: #6D28D9;">🔒 CRAFTOPIA</div>
-          </div>
-          
-          <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 16px;">Reset Your Password</h1>
-          
-          <p style="color: #6B7280; margin-bottom: 8px;">Hello <strong style="color: #6D28D9;">${userName}</strong>,</p>
-          
-          <p style="color: #6B7280; margin-bottom: 24px;">We received a request to reset your password. Click the button below to create a new password:</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background-color: #6D28D9; color: #FFFFFF; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px;">Reset Password</a>
-          </div>
-          
-          <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 24px 0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 14px; color: #92400E;">
-              <strong>Security Note:</strong> This link expires in <strong>24 hours</strong>. If you didn't request a password reset, please ignore this email and your password will remain unchanged.
-            </p>
-          </div>
-          
-          <p style="font-size: 11px; color: #9CA3AF; margin-top: 24px;">
-            If the button doesn't work, copy and paste this link:<br>
-            <a href="${resetUrl}" style="color: #6D28D9; word-break: break-all; font-size: 10px;">${resetUrl}</a>
-          </p>
-          
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #F3F4F6;">
-            <p style="font-size: 12px; color: #9CA3AF; text-align: center;">
-              © ${new Date().getFullYear()} Craftopia. All rights reserved.
-            </p>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Password Reset - Craftopia</title>
+    </head>
+    <body style="margin:0; padding:0; background-color:#f5f6f7; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+      <div style="max-width:560px; margin:40px auto; background:#ffffff; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 4px 12px rgba(0,0,0,0.04); padding:40px;">
+
+        <!-- Header -->
+        <div style="text-align:center; padding-bottom:24px; border-bottom:1px solid #e5e7eb;">
+          <div style="font-size:26px; font-weight:800; color:#6D28D9; letter-spacing:-0.5px;">
+            Craftopia
           </div>
         </div>
-      </body>
-      </html>
-    `;
 
+        <!-- Title -->
+        <h1 style="font-size:22px; font-weight:700; color:#111827; margin-top:32px; margin-bottom:12px;">
+          Reset Your Password
+        </h1>
+
+        <!-- Greeting -->
+        <p style="font-size:15px; color:#4b5563; margin-bottom:12px; line-height:1.6;">
+          Hello <strong style="color:#6D28D9;">${userName}</strong>,
+        </p>
+
+        <!-- Body -->
+        <p style="font-size:15px; color:#4b5563; margin-bottom:28px; line-height:1.6;">
+          We received a request to reset your password. Click the button below to create a new password.
+        </p>
+
+        <!-- Reset Button -->
+        <div style="text-align:center; margin:32px 0;">
+          <a href="${resetUrl}"
+            style="background:#6D28D9; color:#ffffff; padding:14px 32px; font-size:16px; font-weight:600; text-decoration:none; border-radius:10px; display:inline-block;">
+            Reset Password
+          </a>
+        </div>
+
+        <!-- Security Notice -->
+        <div style="background:#FEF3C7; border-left:4px solid #F59E0B; padding:16px; margin-top:24px; border-radius:6px;">
+          <p style="margin:0; font-size:14px; color:#92400E; line-height:1.6;">
+            <strong>Security Notice:</strong> This link expires in <strong>24 hours</strong>.
+            If you didn’t request a password reset, simply ignore this email—your password will remain unchanged.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top:40px; padding-top:24px; border-top:1px solid #e5e7eb;">
+          <p style="font-size:12px; color:#9ca3af; text-align:center;">
+            © ${new Date().getFullYear()} Craftopia. All rights reserved.
+          </p>
+        </div>
+
+      </div>
+
+    </body>
+    </html>
+    `;
     return sendEmail(user.email, 'Reset Your Craftopia Password', html);
   }
 }
