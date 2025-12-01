@@ -3,7 +3,7 @@ import { Response, NextFunction } from 'express';
 import { authMiddleware, optionalAuthMiddleware, AuthRequest } from './auth.middleware';
 import { ForbiddenError, UnauthorizedError } from '../utils/error';
 import { logger } from '../utils/logger';
-import { UserRole } from '../generated/prisma';
+import { UserRole } from "@prisma/client";
 
 // Check if user has required role
 const checkRole = (userRole: string, allowedRoles: string[]): boolean => {

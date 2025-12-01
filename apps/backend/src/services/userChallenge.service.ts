@@ -1,6 +1,6 @@
 // apps/backend/src/services/userChallenge.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { ChallengeStatus, VerificationType } from "../generated/prisma";
+import { ChallengeStatus, VerificationType } from "@prisma/client";
 import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error";
 import { logger } from "../utils/logger";

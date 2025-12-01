@@ -6,7 +6,7 @@ import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError, AppError } from "../utils/error";
 import { logger } from "../utils/logger";
 import { uploadBase64ToS3 } from "./s3.service";
-import { Prisma } from "../generated/prisma";
+import { Prisma } from "@prisma/client";
 import crypto from "crypto";
 
 // ✅ FIX: Use proper type definitions instead of Prisma namespace

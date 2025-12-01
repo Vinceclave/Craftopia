@@ -1,4 +1,4 @@
-import { MessageSender } from "../generated/prisma";
+import { MessageSender } from "@prisma/client";
 import { BaseService } from "./base.service";
 import { ValidationError } from '../utils/error';
 import { logger } from "../utils/logger";

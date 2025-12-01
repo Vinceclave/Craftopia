@@ -1,6 +1,6 @@
 // apps/backend/src/services/user.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { User } from "../generated/prisma";
+import { User } from "@prisma/client";
 import { BaseService } from "./base.service";
 import { 
   NotFoundError, 

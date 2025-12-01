@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { ModerationAction } from '../generated/prisma';
+import { ModerationAction } from "@prisma/client";
 import { commonSchemas } from '../utils/validation';
 
 export const createModerationLogSchema = Joi.object({

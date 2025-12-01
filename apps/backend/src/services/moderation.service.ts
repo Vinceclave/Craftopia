@@ -3,7 +3,7 @@ import { ValidationError } from '../utils/error';
 import { logger } from "../utils/logger";
 import prisma from "../config/prisma";
 
-import { ModerationAction } from "../generated/prisma";
+import { ModerationAction } from "@prisma/client";
 
 class ModerationService extends BaseService {
   // Create moderation log

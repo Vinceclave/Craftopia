@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { ReportStatus } from '../generated/prisma';
+import { ReportStatus } from "@prisma/client";
 import { commonSchemas } from '../utils/validation';
 import { VALIDATION_LIMITS } from '../constats';
 

@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { MaterialType, ChallengeCategory } from '../generated/prisma';
+import { MaterialType, ChallengeCategory } from "@prisma/client";
 import { commonSchemas } from '../utils/validation';
 import { VALIDATION_LIMITS, POINTS } from '../constats';
 

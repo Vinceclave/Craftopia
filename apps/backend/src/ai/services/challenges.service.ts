@@ -7,7 +7,7 @@ import { challengePrompt } from "../prompt/challenges.prompt";
 import { parseJsonFromMarkdown } from "../utils/responseParser";
 import { config } from "../../config";
 import prisma from "../../config/prisma";
-import { MaterialType, ChallengeCategory, ChallengeSource } from "../../generated/prisma";
+import { MaterialType, ChallengeCategory, ChallengeSource } from "@prisma/client";
 
 export interface AIChallenge {
   title: string;

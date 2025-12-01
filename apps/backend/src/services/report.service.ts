@@ -1,6 +1,6 @@
 // apps/backend/src/services/report.service.ts - FIXED VERSION
 import prisma from "../config/prisma";
-import { ReportStatus } from "../generated/prisma";
+import { ReportStatus } from "@prisma/client";
 import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError, ConflictError } from "../utils/error";
 import { logger } from "../utils/logger";

@@ -3,7 +3,7 @@
 import prisma from "../../config/prisma";
 import { BaseService } from "../base.service";
 import { AppError, ValidationError } from "../../utils/error";
-import { UserRole, ModerationAction } from "../../generated/prisma";
+import { UserRole, ModerationAction } from "@prisma/client";
 import { logger } from "../../utils/logger";
 import WebSocketEmitter from "../../websocket/events";
 

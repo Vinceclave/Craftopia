@@ -3,7 +3,7 @@
 import prisma from "../../config/prisma";
 import { BaseService } from "../base.service";
 import { AppError, ValidationError } from "../../utils/error";
-import { ModerationAction } from "../../generated/prisma";
+import { ModerationAction } from "@prisma/client";
 import { logger } from "../../utils/logger";
 
 // Interface for type safety

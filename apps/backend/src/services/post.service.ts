@@ -1,5 +1,5 @@
 // apps/backend/src/services/post.service.ts - FIXED VERSION WITH USER DATA
-import { Post, Comment, Category } from '../generated/prisma';
+import { Post, Comment, Category } from "@prisma/client";
 import prisma from '../config/prisma';
 import { AppError } from '../utils/error';
 

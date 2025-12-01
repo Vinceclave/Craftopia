@@ -1,6 +1,6 @@
 // apps/backend/src/services/challenge.service.ts - REFACTORED VERSION
 import prisma from "../config/prisma";
-import { MaterialType, ChallengeCategory, ChallengeSource, ChallengeStatus } from "../generated/prisma";
+import { MaterialType, ChallengeCategory, ChallengeSource, ChallengeStatus } from "@prisma/client";
 import { BaseService } from "./base.service";
 import { ValidationError, NotFoundError } from "../utils/error";
 import { VALIDATION_LIMITS, POINTS } from "../constats";

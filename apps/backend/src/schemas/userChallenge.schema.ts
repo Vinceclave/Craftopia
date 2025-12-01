@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { ChallengeStatus } from '../generated/prisma';
+import { ChallengeStatus } from "@prisma/client";
 import { commonSchemas } from '../utils/validation';
 
 export const joinChallengeSchema = Joi.object({
