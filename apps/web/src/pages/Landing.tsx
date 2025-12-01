@@ -6,8 +6,6 @@ export const Landing = () => {
   return (
     <>
       <Banner />
-      <Features />
-      <HowItWorks />
     </>
   )
 }
