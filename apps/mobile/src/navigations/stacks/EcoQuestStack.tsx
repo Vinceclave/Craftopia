@@ -12,14 +12,51 @@ const Stack = createNativeStackNavigator<EcoQuestStackParamList>();
 
 export function EcoQuestStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{ headerShown: false }}
-    >
-      <Stack.Screen name="EcoQuest" component={EcoQuestScreen} />
-      <Stack.Screen name="QuestDetails" component={QuestDetailsScreen} />
-      <Stack.Screen name="UserChallenges" component={UserChallengesScreen} />
-      <Stack.Screen name="Rewards" component={RewardsScreen} />
-      <Stack.Screen name="RedemptionHistory" component={RedemptionHistoryScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      {/* 1️⃣ Main EcoQuest Screen - fade in */}
+      <Stack.Screen
+        name="EcoQuest"
+        component={EcoQuestScreen}
+        options={{
+          animation: "fade",
+        }}
+      />
+
+      {/* 2️⃣ Quest Details - slide from right */}
+      <Stack.Screen
+        name="QuestDetails"
+        component={QuestDetailsScreen}
+        options={{
+          animation: "slide_from_right",
+        }}
+      />
+
+      {/* 3️⃣ User Challenges - slide from bottom */}
+      <Stack.Screen
+        name="UserChallenges"
+        component={UserChallengesScreen}
+        options={{
+          animation: "slide_from_bottom",
+        }}
+      />
+
+      {/* 4️⃣ Rewards - flip animation */}
+      <Stack.Screen
+        name="Rewards"
+        component={RewardsScreen}
+        options={{
+          animation: "flip",
+        }}
+      />
+
+      {/* 5️⃣ Redemption History - slide from left */}
+      <Stack.Screen
+        name="RedemptionHistory"
+        component={RedemptionHistoryScreen}
+        options={{
+          animation: "slide_from_left",
+        }}
+      />
     </Stack.Navigator>
   );
 }

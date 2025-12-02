@@ -1,12 +1,11 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import Animated, { Easing } from "react-native-reanimated";
 
-// Screens
 import { ProfileScreen } from "~/screens/Profile";
 import { SettingsScreen } from "~/screens/profile/Settings";
 import { EditProfileScreen } from "~/screens/profile/EditProfile";
-
-// Add these imports if you already created the screens
+import ChangePasswordScreen from "~/screens/profile/ChangePassword";
 import { HelpCenterScreen } from "~/screens/profile/HelpCenter";
 import { ContactUsScreen } from "~/screens/profile/ContactUs";
 import { AboutUsScreen } from "~/screens/profile/AboutUs";
@@ -14,69 +13,95 @@ import { PrivacyPolicyScreen } from "~/screens/profile/PrivacyPolicy";
 import { TermsOfServiceScreen } from "~/screens/profile/TermsOfService";
 
 import { ProfileStackParamList } from "../types";
-import ChangePasswordScreen from "~/screens/profile/ChangePassword";
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export function ProfileStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false, 
-      }}
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+
+      {/* 1️⃣ Profile — Fade */}
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: "My Profile" }}
+        options={{
+          animation: "fade",
+        }}
       />
 
+      {/* 2️⃣ Settings — Smooth slide from right */}
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: "Settings" }}
+        options={{
+          animationDuration: 300,
+          animation: "slide_from_right",
+        }}
       />
 
+      {/* 3️⃣ Edit Profile — Bottom sheet (spring) */}
       <Stack.Screen
         name="EditProfile"
         component={EditProfileScreen}
-        options={{ title: "Edit Profile" }}
+        options={{
+          animation: "slide_from_bottom",
+          animationDuration: 450,
+        }}
       />
 
+      {/* 4️⃣ Change Password — Slide + Fade */}
       <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
-        options={{ title: "Change Password" }}
+        options={{
+          animation: "slide_from_left",
+          animationDuration: 350,
+        }}
       />
 
+      {/* 5️⃣ Help Center — Zoom in */}
       <Stack.Screen
         name="HelpCenter"
         component={HelpCenterScreen}
-        options={{ title: "Help Center" }}
+        options={{
+          presentation: "transparentModal",
+          animation: "fade",
+        }}
       />
 
+      {/* 6️⃣ Contact Us — Elastic drop from top */}
       <Stack.Screen
         name="ContactUs"
         component={ContactUsScreen}
-        options={{ title: "Contact Us" }}
       />
 
+      {/* 7️⃣ About Us — Flip animation */}
       <Stack.Screen
         name="AboutUs"
         component={AboutUsScreen}
-        options={{ title: "About Us" }}
+        options={{
+          animation: "flip",
+        }}
       />
 
+      {/* 8️⃣ Privacy Policy — Scale + Fade */}
       <Stack.Screen
         name="PrivacyPolicy"
         component={PrivacyPolicyScreen}
-        options={{ title: "Privacy Policy" }}
+        options={{
+          presentation: "transparentModal",
+          animation: "fade",
+        }}
       />
 
+      {/* 9️⃣ Terms of Service — Slide up + overshoot */}
       <Stack.Screen
         name="TermsOfService"
         component={TermsOfServiceScreen}
-        options={{ title: "Terms of Service" }}
+        options={{
+          animation: "slide_from_bottom",
+          animationDuration: 420,
+        }}
       />
     </Stack.Navigator>
   );

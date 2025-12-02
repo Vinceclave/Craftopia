@@ -9,9 +9,17 @@ const Stack = createNativeStackNavigator<FeedStackParamList>();
 export function FeedStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Feed" component={FeedScreen} />
-      <Stack.Screen name="Create" component={CreatePostScreen} />
-      {/* <Stack.Screen name="PostDetails" component={PostDetailsScreen} /> */}
+      <Stack.Screen 
+        name="Feed" 
+        component={FeedScreen}
+        options={{ animation: "fade" }}
+      />
+
+      <Stack.Screen 
+        name="Create" 
+        component={CreatePostScreen}
+        options={{ animation: "slide_from_bottom" }} 
+      />
     </Stack.Navigator>
   );
 }

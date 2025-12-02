@@ -28,11 +28,51 @@ export const AuthNavigator = () => {
       screenOptions={{ headerShown: false }}
       initialRouteName="Login"
     >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-      <Stack.Screen name="ResetPassword" component={ResetPassword} />
+      {/* 1️⃣ Login — Fade */}
+      <Stack.Screen 
+        name="Login" 
+        component={LoginScreen}
+        options={{
+          animation: "fade",
+        }}
+      />
+
+      {/* 2️⃣ Register — Slide from right */}
+      <Stack.Screen 
+        name="Register" 
+        component={RegisterScreen}
+        options={{
+          animation: "slide_from_right",
+        }}
+      />
+
+      {/* 3️⃣ Verify Email — Zoom in */}
+      <Stack.Screen 
+        name="VerifyEmail" 
+        component={VerifyEmailScreen}
+        options={{
+          presentation: "transparentModal",
+          animation: "fade",
+        }}
+      />
+
+      {/* 4️⃣ Forgot Password — Bottom sheet slide */}
+      <Stack.Screen 
+        name="ForgotPassword" 
+        component={ForgotPassword}
+        options={{
+          animation: "slide_from_bottom",
+        }}
+      />
+
+      {/* 5️⃣ Reset Password — Slide from left */}
+      <Stack.Screen 
+        name="ResetPassword" 
+        component={ResetPassword}
+        options={{
+          animation: "slide_from_left",
+        }}
+      />
     </Stack.Navigator>
   );
 };

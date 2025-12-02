@@ -115,7 +115,7 @@ export const RedemptionHistoryScreen = () => {
         </View>
 
         {/* Reward Info */}
-        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+        <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
           {redemption.reward.title}
         </Text>
         
@@ -144,7 +144,7 @@ export const RedemptionHistoryScreen = () => {
 
           <View className="flex-row items-center bg-craftopia-primary/10 px-2 py-1 rounded-lg">
             <Package size={12} color="#3B6E4D" />
-            <Text className="text-xs font-bold text-craftopia-primary ml-1 font-poppinsBold">
+            <Text className="text-xs font-poppinsBold text-craftopia-primary ml-1">
               {redemption.reward.points_cost} pts
             </Text>
           </View>
@@ -168,20 +168,32 @@ export const RedemptionHistoryScreen = () => {
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
       {/* Header */}
-      <View className="px-4 pt-4 pb-3 bg-craftopia-surface border-b border-craftopia-light">
+      <View className="px-4 pt-6 pb-3 bg-craftopia-surface border-b border-craftopia-light">
         <View className="flex-row items-center mb-3">
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center mr-3"
+            activeOpacity={0.7}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <ArrowLeft size={18} color="#3B6E4D" />
           </TouchableOpacity>
 
           <View className="flex-1">
-            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-0.5 font-nunito">
+            <Text 
+              className="text-xs text-craftopia-textSecondary mb-0.5 font-nunito"
+              accessibilityLabel="Your Rewards"
+              numberOfLines={1}
+            >
               Your Rewards
             </Text>
-            <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text 
+              className="text-lg font-poppinsBold text-craftopia-textPrimary"
+              accessibilityLabel="Redemption History"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               Redemption History
             </Text>
           </View>
@@ -207,6 +219,9 @@ export const RedemptionHistoryScreen = () => {
                   ? 'bg-craftopia-primary border-craftopia-primary'
                   : 'bg-craftopia-surface border-craftopia-light'
               }`}
+              activeOpacity={0.7}
+              accessibilityLabel={`Filter by ${filter.label}`}
+              accessibilityRole="button"
             >
               <Text
                 className={`text-sm font-semibold font-nunito ${
@@ -252,7 +267,7 @@ export const RedemptionHistoryScreen = () => {
               <View className="w-12 h-12 rounded-full bg-craftopia-error/10 items-center justify-center mb-3">
                 <AlertCircle size={24} color="#D66B4E" />
               </View>
-              <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+              <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
                 Failed to Load History
               </Text>
               <Text className="text-xs text-craftopia-textSecondary text-center mb-3 font-nunito">
@@ -276,7 +291,7 @@ export const RedemptionHistoryScreen = () => {
               <View className="w-12 h-12 rounded-full bg-craftopia-light items-center justify-center mb-3">
                 <Package size={24} color="#5F6F64" />
               </View>
-              <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+              <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
                 No Redemptions Yet
               </Text>
               <Text className="text-xs text-craftopia-textSecondary text-center font-nunito">

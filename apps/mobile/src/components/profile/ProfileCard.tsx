@@ -29,7 +29,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   onEditPress,
 }) => {
   return (
-    <View className="bg-craftopia-surface px-4 py-4 border-b border-craftopia-light">
+    <View className="bg-craftopia-surface px-4 py-4 pt-6 border-b border-craftopia-light">
       {/* Background decorative elements */}
       <View className="absolute top-0 right-0 w-32 h-32 bg-craftopia-primary/5 rounded-full -mr-8 -mt-8" />
       <View className="absolute bottom-4 left-4 w-16 h-16 bg-craftopia-secondary/5 rounded-full" />

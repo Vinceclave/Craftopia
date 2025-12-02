@@ -8,9 +8,10 @@ export type QuestType = 'in_progress' | 'pending_verification' | 'rejected' | 'c
 interface ChallengeTabProps {
   activeTab: QuestType;
   onChangeTab: (tab: QuestType) => void;
+  accessibilityLabel?: string;
 }
 
-export const ChallengeTab = ({ activeTab, onChangeTab }: ChallengeTabProps) => {
+export const ChallengeTab = ({ activeTab, onChangeTab, accessibilityLabel }: ChallengeTabProps) => {
   const tabs: Array<{ key: QuestType; label: string; icon: any }> = [
     { key: 'in_progress', label: 'In Progress', icon: Clock },
     { key: 'pending_verification', label: 'Pending', icon: HourglassIcon },
@@ -19,11 +20,16 @@ export const ChallengeTab = ({ activeTab, onChangeTab }: ChallengeTabProps) => {
   ];
 
   return (
-    <View className="px-4 py-3 bg-craftopia-background border-b border-craftopia-light">
+    <View 
+      className="px-4 py-3 bg-craftopia-surface border-b border-craftopia-light"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="tablist"
+    >
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8 }}
+        accessibilityLabel="Filter tabs"
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -39,6 +45,9 @@ export const ChallengeTab = ({ activeTab, onChangeTab }: ChallengeTabProps) => {
                   : 'bg-craftopia-surface border-craftopia-light'
               }`}
               activeOpacity={0.7}
+              accessibilityLabel={`Filter by ${tab.label}`}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
             >
               <Icon 
                 size={16} 

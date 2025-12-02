@@ -58,24 +58,6 @@ export const ProfileScreen = () => {
     return 'Novice Crafter';
   }
 
-  const stats = [
-    {
-      label: 'Crafts',
-      value: '12',
-      change: '+2 this week',
-    },
-    {
-      label: 'Points',
-      value: userProfile.totalPoints.toString(),
-      change: 'Level ' + userProfile.level,
-    },
-    {
-      label: 'Waste Saved',
-      value: `${(userProfile.totalPoints * 0.1).toFixed(1)}kg`,
-      change: 'Environmental impact',
-    },
-  ];
-
   const handleSettingsPress = () => navigation.navigate("Settings");
   const handleEditPress = () => navigation.navigate("EditProfile");
 
@@ -86,13 +68,6 @@ export const ProfileScreen = () => {
       icon: FileText,
       color: activeContent === 'mypost' ? 'primary' : undefined,
       onPress: () => setActiveContent('mypost'),
-    },
-    { 
-      label: 'Crafts',
-      icon: Folder,
-      color: activeContent === 'crafts' ? 'primary' : undefined,
-      onPress: () => setActiveContent('crafts'),
-      badge: 12
     },
     { 
       label: 'Activity',

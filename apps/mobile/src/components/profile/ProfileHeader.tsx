@@ -24,7 +24,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   const isEmoji = profilePicture && profilePicture.length <= 2 && !profilePicture.startsWith('http');
 
   return (
-    <View className="bg-white px-6 py-5 border-b border-gray-100/80">
+    <View className="bg-white px-6 py-5 pt-8 border-b border-gray-100/80">
       <View className="flex-row justify-between items-center">
         {/* Profile Section */}
         <View className="flex-row items-center flex-1">

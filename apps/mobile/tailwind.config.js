@@ -53,6 +53,12 @@
           'base': ['16px', '20px'],
           'lg': ['18px', '22px'],
         },
+        padding: {
+          'safe': 'env(safe-area-inset-top',
+        },
+         margin: {
+        'safe': 'env(safe-area-inset-top)',
+      },
       },
     },
   };

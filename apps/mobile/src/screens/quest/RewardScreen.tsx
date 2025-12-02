@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { 
+  ArrowLeft,
   Gift, 
   Award, 
   AlertCircle, 
@@ -91,13 +92,32 @@ export const RewardsScreen = () => {
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
       {/* Header */}
-      <View className="px-4 pt-4 pb-4 bg-craftopia-surface border-b border-craftopia-light">
-        <View className="flex-row justify-between items-center mb-3">
+      <View className="px-4 pt-4 pb-3 bg-craftopia-surface border-b border-craftopia-light">
+        <View className="flex-row items-center mb-3">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center mr-3"
+            activeOpacity={0.7}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <ArrowLeft size={18} color="#3B6E4D" />
+          </TouchableOpacity>
+
           <View className="flex-1">
-            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-1 font-nunito">
+            <Text 
+              className="text-xs text-craftopia-textSecondary mb-0.5 font-nunito"
+              accessibilityLabel="Rewards Shop"
+              numberOfLines={1}
+            >
               Rewards Shop
             </Text>
-            <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text 
+              className="text-lg font-poppinsBold text-craftopia-textPrimary"
+              accessibilityLabel="Redeem Your Points"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               Redeem Your Points
             </Text>
           </View>
@@ -106,6 +126,9 @@ export const RewardsScreen = () => {
           <TouchableOpacity
             onPress={() => navigation.navigate('RedemptionHistory')}
             className="flex-row items-center bg-craftopia-light rounded-full px-3 py-2 ml-2"
+            activeOpacity={0.7}
+            accessibilityLabel="View redemption history"
+            accessibilityRole="button"
           >
             <History size={16} color="#3B6E4D" />
             <Text className="text-xs font-semibold text-craftopia-primary ml-1 font-nunito">
@@ -115,17 +138,30 @@ export const RewardsScreen = () => {
         </View>
 
         {/* Points Balance Card */}
-        <View className="bg-craftopia-light rounded-xl px-4 py-4 border border-craftopia-accent/20">
+        <View 
+          className="bg-craftopia-light rounded-xl px-4 py-4 border border-craftopia-accent/20"
+          accessibilityLabel="Points balance information"
+          accessibilityRole="summary"
+        >
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <View className="w-12 h-12 rounded-full bg-craftopia-primary/20 items-center justify-center mr-3">
+              <View 
+                className="w-12 h-12 rounded-full bg-craftopia-primary/20 items-center justify-center mr-3"
+                accessibilityLabel="Award icon"
+              >
                 <Award size={24} color="#3B6E4D" />
               </View>
               <View>
-                <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                <Text 
+                  className="text-xs text-craftopia-textSecondary font-nunito"
+                  accessibilityLabel="Your Balance"
+                >
                   Your Balance
                 </Text>
-                <Text className="text-2xl font-bold text-craftopia-primary font-poppinsBold">
+                <Text 
+                  className="text-2xl font-poppinsBold text-craftopia-primary"
+                  accessibilityLabel={`${statsLoading ? 'Loading...' : userPoints.toLocaleString()} points`}
+                >
                   {statsLoading ? '...' : userPoints.toLocaleString()}
                 </Text>
                 <View className="flex-row items-center mt-1">
@@ -133,6 +169,7 @@ export const RewardsScreen = () => {
                   <Text 
                     className="text-xs font-semibold ml-1 font-nunito"
                     style={{ color: pointsTier.color }}
+                    accessibilityLabel={`${pointsTier.label} Tier`}
                   >
                     {pointsTier.label} Tier
                   </Text>
@@ -158,19 +195,19 @@ export const RewardsScreen = () => {
         <View className="flex-row justify-between mt-3">
           <View className="items-center">
             <Text className="text-xs text-craftopia-textSecondary font-nunito">Available</Text>
-            <Text className="text-sm font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
               {rewards.length}
             </Text>
           </View>
           <View className="items-center">
             <Text className="text-xs text-craftopia-textSecondary font-nunito">Affordable</Text>
-            <Text className="text-sm font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
               {rewards.filter(r => r.points_cost <= userPoints).length}
             </Text>
           </View>
           <View className="items-center">
             <Text className="text-xs text-craftopia-textSecondary font-nunito">Featured</Text>
-            <Text className="text-sm font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
               {featuredRewards.length}
             </Text>
           </View>
@@ -212,7 +249,7 @@ export const RewardsScreen = () => {
                     <Star size={18} color="#E6B655" />
                   </View>
                   <View>
-                    <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
+                    <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
                       Featured Rewards
                     </Text>
                     <Text className="text-xs text-craftopia-textSecondary font-nunito">
@@ -244,7 +281,7 @@ export const RewardsScreen = () => {
                   <Gift size={18} color="#3B6E4D" />
                 </View>
                 <View>
-                  <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
+                  <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
                     Available Rewards
                   </Text>
                   <Text className="text-xs text-craftopia-textSecondary font-nunito">
@@ -270,7 +307,7 @@ export const RewardsScreen = () => {
                 <View className="w-12 h-12 rounded-full bg-craftopia-error/10 items-center justify-center mb-3">
                   <AlertCircle size={24} color="#D66B4E" />
                 </View>
-                <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+                <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
                   Failed to Load Rewards
                 </Text>
                 <Text className="text-xs text-craftopia-textSecondary text-center mb-3 font-nunito">
@@ -294,7 +331,7 @@ export const RewardsScreen = () => {
                 <View className="w-12 h-12 rounded-full bg-craftopia-light items-center justify-center mb-3">
                   <Gift size={24} color="#5F6F64" />
                 </View>
-                <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+                <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
                   No Rewards Available
                 </Text>
                 <Text className="text-xs text-craftopia-textSecondary text-center mb-4 font-nunito">
@@ -336,7 +373,7 @@ export const RewardsScreen = () => {
                 <View className="flex-row items-start">
                   <Zap size={16} color="#E6B655" className="mt-0.5 mr-2" />
                   <View className="flex-1">
-                    <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+                    <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
                       Boost Your Points
                     </Text>
                     <Text className="text-xs text-craftopia-textSecondary font-nunito">
@@ -351,7 +388,7 @@ export const RewardsScreen = () => {
                 <View className="flex-row items-start">
                   <Clock size={16} color="#3B6E4D" className="mt-0.5 mr-2" />
                   <View className="flex-1">
-                    <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+                    <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
                       Redemption Process
                     </Text>
                     <Text className="text-xs text-craftopia-textSecondary font-nunito">

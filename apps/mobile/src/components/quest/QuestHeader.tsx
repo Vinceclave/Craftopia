@@ -8,55 +8,91 @@ interface QuestHeaderProps {
 
 export const QuestHeader = ({ navigation }: QuestHeaderProps) => {
   return (
-    <View className="px-4 pt-4 pb-4 bg-craftopia-surface border-b border-craftopia-light">
+    <View className="px-4 pt-6 pb-4 bg-craftopia-surface border-b border-craftopia-light">
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1 flex-row items-center">
           <View className="flex-1">
-            <Text className="text-xs text-craftopia-textSecondary uppercase tracking-wider mb-1 font-nunito">
+            <Text 
+              className="text-xs font-nunito text-craftopia-textSecondary mb-1"
+              accessibilityLabel="Quest Hub"
+              numberOfLines={1}
+            >
               Quest Hub
             </Text>
-            <Text className="text-xl font-bold text-craftopia-textPrimary font-poppinsBold">
+            <Text 
+              className="text-lg font-poppinsBold text-craftopia-textPrimary"
+              accessibilityLabel="Daily Challenges"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               Daily Challenges
             </Text>
           </View>
         </View>
         
-        <View className="flex-row gap-2">
+        <View className="flex-row items-center gap-2">
           {/* Rewards Button */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('Rewards')}
-            className="flex-row items-center bg-craftopia-accent/10 rounded-full px-3 py-2"
+            className="active:opacity-70"
+            activeOpacity={0.7}
+            accessibilityLabel="View rewards"
+            accessibilityRole="button"
           >
-            <Gift size={14} color="#E6B655" />
-            <Text className="text-xs font-semibold text-craftopia-accent ml-1 font-nunito">
-              Rewards
-            </Text>
+            <View className="w-10 h-10 rounded-lg bg-craftopia-light items-center justify-center border border-craftopia-light">
+              <Gift 
+                size={18} 
+                color="#3B6E4D" 
+                accessibilityLabel="Rewards icon"
+              />
+            </View>
           </TouchableOpacity>
 
           {/* My Quests Button */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('UserChallenges')}
-            className="flex-row items-center bg-craftopia-primary/10 rounded-full px-3 py-2"
+            className="active:opacity-70"
+            activeOpacity={0.7}
+            accessibilityLabel="View my quests"
+            accessibilityRole="button"
           >
-            <Trophy size={14} color="#3B6E4D" />
-            <Text className="text-xs font-semibold text-craftopia-primary ml-1 font-nunito">
-              My Quests
-            </Text>
+            <View className="w-10 h-10 rounded-lg bg-craftopia-light items-center justify-center border border-craftopia-light">
+              <Trophy 
+                size={18} 
+                color="#3B6E4D" 
+                accessibilityLabel="My quests icon"
+              />
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Motivational Card */}
-      <View className="bg-craftopia-light rounded-xl px-3 py-3 border border-craftopia-accent/20">
+      <View 
+        className="mx-4 bg-craftopia-light rounded-xl p-3 border border-craftopia-light"
+        accessibilityLabel="Motivational message"
+        accessibilityRole="summary"
+      >
         <View className="flex-row items-center">
-          <View className="w-8 h-8 rounded-full bg-craftopia-accent/20 items-center justify-center mr-2">
-            <Gift size={16} color="#E6B655" />
+          <View 
+            className="w-9 h-9 rounded-lg bg-craftopia-primary/10 items-center justify-center mr-3 border border-craftopia-primary/20"
+            accessibilityLabel="Gift icon"
+          >
+            <Gift size={18} color="#3B6E4D" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-craftopia-textPrimary mb-0.5 font-poppinsBold">
+            <Text 
+              className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1"
+              accessibilityLabel="Complete challenges, earn rewards!"
+              numberOfLines={2}
+            >
               Complete challenges, earn rewards!
             </Text>
-            <Text className="text-xs text-craftopia-textSecondary font-nunito">
+            <Text 
+              className="text-xs font-nunito text-craftopia-textSecondary"
+              accessibilityLabel="Redeem points for exclusive prizes"
+              numberOfLines={1}
+            >
               Redeem points for exclusive prizes
             </Text>
           </View>

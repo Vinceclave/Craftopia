@@ -20,7 +20,7 @@ export const FeedHeader: React.FC<FeedHeaderProps> = ({
   hasActiveFilter,
 }) => {
   return (
-    <View className="px-4 pt-8 pb-3 bg-craftopia-surface border-b border-craftopia-light">
+    <View className="px-4 pt-6 pb-3 bg-craftopia-surface border-b border-craftopia-light">
       {/* Main Header Row */}
       <View className="flex-row justify-between items-center mb-3">
         <View className="flex-1">

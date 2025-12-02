@@ -161,7 +161,7 @@ export const ChallengeList = ({
           <View className="w-12 h-12 rounded-full bg-craftopia-error/10 items-center justify-center mb-3">
             <AlertCircle size={24} color="#D66B4E" />
           </View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+          <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
             Failed to Load Challenges
           </Text>
           <Text className="text-xs text-craftopia-textSecondary text-center mb-3 px-4 font-nunito">
@@ -172,6 +172,8 @@ export const ChallengeList = ({
               className="bg-craftopia-primary rounded-full px-6 py-3"
               onPress={onRetry}
               activeOpacity={0.7}
+              accessibilityLabel="Retry loading challenges"
+              accessibilityRole="button"
             >
               <Text className="text-sm font-semibold text-white font-nunito">
                 Try Again
@@ -195,7 +197,7 @@ export const ChallengeList = ({
               <Trophy size={18} color="#E6B655" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
+              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
                 Your Challenges
               </Text>
               <Text className="text-xs text-craftopia-textSecondary font-nunito">
@@ -209,7 +211,7 @@ export const ChallengeList = ({
           <View className="w-12 h-12 rounded-full bg-craftopia-light items-center justify-center mb-3">
             <Trophy size={24} color="#5F6F64" />
           </View>
-          <Text className="text-base font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+          <Text className="text-base font-poppinsBold text-craftopia-textPrimary mb-1">
             No Challenges Yet
           </Text>
           <Text className="text-xs text-craftopia-textSecondary text-center mb-3 font-nunito">
@@ -230,6 +232,9 @@ export const ChallengeList = ({
         className={`bg-craftopia-surface rounded-xl p-3 mb-2 border ${statusConfig.borderColor}`}
         onPress={() => handleChallengePress(challenge)}
         activeOpacity={0.7}
+        accessibilityLabel={`${challenge.title} - ${statusConfig.label}`}
+        accessibilityRole="button"
+        accessibilityHint="View challenge details"
       >
         {/* Status Badge */}
         <View className="flex-row items-center justify-between mb-2">
@@ -245,7 +250,7 @@ export const ChallengeList = ({
 
           {challenge.points && challenge.points > 0 && (
             <View className="px-2 py-1 rounded-lg bg-craftopia-primary/10">
-              <Text className="text-xs font-bold text-craftopia-primary font-poppinsBold">
+              <Text className="text-xs font-poppinsBold text-craftopia-primary">
                 +{challenge.points}
               </Text>
             </View>
@@ -253,7 +258,7 @@ export const ChallengeList = ({
         </View>
 
         {/* Challenge Info */}
-        <Text className="text-sm font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold">
+        <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-1">
           {challenge.title}
         </Text>
         <Text className="text-xs text-craftopia-textSecondary mb-2 font-nunito" numberOfLines={2}>
@@ -301,6 +306,7 @@ export const ChallengeList = ({
           />
         ) : undefined
       }
+      accessibilityLabel="List of your challenges"
     >
       <View className="mx-4 mb-6 mt-3">
         {/* Section Header */}
@@ -310,7 +316,7 @@ export const ChallengeList = ({
               <Trophy size={18} color="#E6B655" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-craftopia-textPrimary font-poppinsBold">
+              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
                 Your Challenges
               </Text>
               <Text className="text-xs text-craftopia-textSecondary font-nunito">
@@ -333,7 +339,7 @@ export const ChallengeList = ({
             <Text className="text-xs font-medium text-craftopia-textPrimary font-nunito">
               Total Progress
             </Text>
-            <Text className="text-xs font-semibold text-craftopia-primary font-poppinsBold">
+            <Text className="text-xs font-poppinsBold text-craftopia-primary">
               {challenges.filter(c => c.status === 'completed').length}/{challenges.length} Completed
             </Text>
           </View>
