@@ -284,7 +284,7 @@ export interface UserRedemption {
     user_id: number;
     username: string;
     email: string;
-    profile?: {                         
+    profile?: {
       profile_picture_url?: string;
     };
   };
@@ -565,7 +565,7 @@ export const reportsAPI = {
 // ===== CHALLENGES API =====
 export const challengesAPI = {
   getAll: (category?: string): Promise<ApiResponse<Challenge[]>> =>
-    api.get('/challenges', { params: category ? { category } : {} }),
+    api.get('/challenges', { params: { ...(category ? { category } : {}), includeInactive: true } }),
 
   getById: (challengeId: number): Promise<ApiResponse<Challenge>> =>
     api.get(`/challenges/${challengeId}`),
@@ -606,7 +606,7 @@ export const challengesAPI = {
   ): Promise<ApiResponse<PaginatedResponse<UserChallenge>>> =>
     api.get(`/user-challenges/pending-verifications`, { params: { page, limit } }),
 
-   getAllUserChallenges: (
+  getAllUserChallenges: (
     page = 1,
     limit = 20,
     filters?: {
@@ -679,7 +679,7 @@ export const sponsorsAPI = {
     logo_url?: string;
     description?: string;
     contact_email?: string;
-  }): Promise<ApiResponse<Sponsor>> => 
+  }): Promise<ApiResponse<Sponsor>> =>
     api.post('/sponsors/sponsors', data),
 
   update: (
@@ -691,7 +691,7 @@ export const sponsorsAPI = {
       contact_email: string;
       is_active: boolean;
     }>
-  ): Promise<ApiResponse<Sponsor>> => 
+  ): Promise<ApiResponse<Sponsor>> =>
     api.put(`/sponsors/sponsors/${sponsorId}`, data),
 
   delete: (sponsorId: number): Promise<ApiResponse<any>> =>
@@ -725,7 +725,7 @@ export const rewardsAPI = {
     quantity?: number;
     display_on_leaderboard?: boolean;
     expires_at?: Date;
-  }): Promise<ApiResponse<SponsorReward>> => 
+  }): Promise<ApiResponse<SponsorReward>> =>
     api.post('/sponsors/rewards', data),
 
   update: (
@@ -739,7 +739,7 @@ export const rewardsAPI = {
       display_on_leaderboard: boolean;
       expires_at: Date | null;
     }>
-  ): Promise<ApiResponse<SponsorReward>> => 
+  ): Promise<ApiResponse<SponsorReward>> =>
     api.put(`/sponsors/rewards/${rewardId}`, data),
 
   delete: (rewardId: number): Promise<ApiResponse<any>> =>
@@ -748,10 +748,10 @@ export const rewardsAPI = {
   toggleStatus: (rewardId: number): Promise<ApiResponse<SponsorReward>> =>
     api.patch(`/sponsors/rewards/${rewardId}/toggle-status`),
 
-  redeem: (reward_id: number): Promise<ApiResponse<{ 
-    redemption: UserRedemption; 
-    points_spent: number; 
-    remaining_points: number; 
+  redeem: (reward_id: number): Promise<ApiResponse<{
+    redemption: UserRedemption;
+    points_spent: number;
+    remaining_points: number;
   }>> => api.post('/sponsors/redemptions', { reward_id }),
 };
 
@@ -773,15 +773,15 @@ export const redemptionsAPI = {
   cancel: (
     redemptionId: number,
     refundPoints = true
-  ): Promise<ApiResponse<{ 
-    redemption: UserRedemption; 
-    refunded: boolean; 
-    refund_amount: number; 
-    new_points: number; 
+  ): Promise<ApiResponse<{
+    redemption: UserRedemption;
+    refunded: boolean;
+    refund_amount: number;
+    new_points: number;
   }>> =>
     api.patch(`/sponsors/redemptions/${redemptionId}/cancel`, { refundPoints }),
 
-  getStats: (): Promise<ApiResponse<SponsorStats>> => 
+  getStats: (): Promise<ApiResponse<SponsorStats>> =>
     api.get('/sponsors/stats'),
 };
 

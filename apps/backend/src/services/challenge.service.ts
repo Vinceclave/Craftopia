@@ -117,7 +117,7 @@ class ChallengeService extends BaseService {
     category?: string;
     includeInactive?: boolean;
   }) {
-    const { category, includeInactive = true } = options; // DEFAULT: show all
+    const { category, includeInactive = false } = options; // DEFAULT: only active for mobile
 
     logger.debug('Fetching all challenges', { category, includeInactive });
 
