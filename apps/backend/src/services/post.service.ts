@@ -1,13 +1,13 @@
-// apps/backend/src/services/post.service.ts - FIXED VERSION WITH USER DATA
+// apps/backend/src/services/post.service.ts - FIXED VERSION WITH WEBSOCKET EVENTS
 import { Post, Comment, Category } from "@prisma/client";
 import prisma from '../config/prisma';
 import { AppError } from '../utils/error';
+import { WebSocketEmitter } from '../websocket/events';
 
 // ============================================
 // INLINE TYPE DEFINITIONS
 // ============================================
 
-// PostWithAuthor type - inline definition
 interface PostWithAuthor {
   post_id: number;
   title: string;
@@ -29,7 +29,6 @@ interface PostWithAuthor {
   is_liked: boolean;
 }
 
-// CommentWithAuthor type - inline definition
 interface CommentWithAuthor {
   comment_id: number;
   post_id: number;
@@ -43,7 +42,6 @@ interface CommentWithAuthor {
   };
 }
 
-// Input types
 interface CreatePostInput {
   user_id: number;
   title: string;
@@ -140,83 +138,87 @@ export class PostService {
       },
     });
 
+    // ✅ Emit WebSocket event for new post
+    WebSocketEmitter.postCreated({
+      post_id: post.post_id,
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      author: post.user,
+      tags: post.tags
+    });
+
     return transformPostToResponse({ ...post, likes: [] });
   }
 
   async getPosts(
-  feedType: 'all' | 'trending' | 'popular' | 'featured',
-  page: number,
-  limit: number,
-  userId?: number
-) {
-  this.validatePagination(page, limit);
-  const skip = (page - 1) * limit;
+    feedType: 'all' | 'trending' | 'popular' | 'featured',
+    page: number,
+    limit: number,
+    userId?: number
+  ) {
+    this.validatePagination(page, limit);
+    const skip = (page - 1) * limit;
 
-  let orderBy: any = { created_at: 'desc' };
-  let where: any = { deleted_at: null };
+    let orderBy: any = { created_at: 'desc' };
+    let where: any = { deleted_at: null };
 
-  if (feedType === 'trending') {
-    orderBy = { created_at: 'desc' };
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    where.created_at = { gte: sevenDaysAgo };
-  } else if (feedType === 'popular') {
-    orderBy = { likes: { _count: 'desc' } };
-  } else if (feedType === 'featured') {
-    where.featured = true;
-  }
+    if (feedType === 'trending') {
+      orderBy = { created_at: 'desc' };
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      where.created_at = { gte: sevenDaysAgo };
+    } else if (feedType === 'popular') {
+      orderBy = { likes: { _count: 'desc' } };
+    } else if (feedType === 'featured') {
+      where.featured = true;
+    }
 
-  const [posts, total] = await Promise.all([
-    prisma.post.findMany({
-      where,
-      orderBy,
-      skip,
-      take: limit,
-      include: {
-        user: {
-          select: {
-            user_id: true,
-            username: true,
-            profile: {
-              select: {
-                profile_picture_url: true,
-              }
+    const [posts, total] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              username: true,
+              profile: {
+                select: {
+                  profile_picture_url: true,
+                }
+              },
             },
           },
-        },
-        _count: {
-          select: {
-            comments: true, // ✅ CRITICAL: Must include this
-            likes: true,    // ✅ CRITICAL: Must include this
+          _count: {
+            select: {
+              comments: true,
+              likes: true,
+            },
           },
+          likes: userId ? {
+            where: { user_id: userId },
+            select: { user_id: true },
+          } : false,
         },
-        likes: userId ? {
-          where: { user_id: userId },
-          select: { user_id: true },
-        } : false,
+      }),
+      prisma.post.count({ where }),
+    ]);
+
+    const postsWithAuthor = posts.map((post) => transformPostToResponse(post, userId));
+
+    return {
+      data: postsWithAuthor,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit),
       },
-    }),
-    prisma.post.count({ where }),
-  ]);
-
-  console.log('📊 Posts fetched with counts:', posts.map(p => ({
-    id: p.post_id,
-    comments: p._count.comments,
-    likes: p._count.likes
-  })));
-
-  const postsWithAuthor = posts.map((post) => transformPostToResponse(post, userId));
-
-  return {
-    data: postsWithAuthor,
-    meta: {
-      total,
-      page,
-      limit,
-      lastPage: Math.ceil(total / limit),
-    },
-  };
-}
+    };
+  }
 
   async searchPosts(params: SearchPostsParams) {
     this.validatePagination(params.page, params.limit);
@@ -381,6 +383,16 @@ export class PostService {
       },
     });
 
+    // ✅ Emit WebSocket event for post update
+    WebSocketEmitter.postUpdated({
+      post_id: updatedPost.post_id,
+      title: updatedPost.title,
+      content: updatedPost.content,
+      category: updatedPost.category,
+      tags: updatedPost.tags,
+      updated_at: updatedPost.updated_at
+    });
+
     return transformPostToResponse({ ...updatedPost, likes: [] });
   }
 
@@ -397,10 +409,15 @@ export class PostService {
       throw new AppError('You are not authorized to delete this post', 403);
     }
 
-    return await prisma.post.update({
+    const deleted = await prisma.post.update({
       where: { post_id: postId },
       data: { deleted_at: new Date() },
     });
+
+    // ✅ Emit WebSocket event for post deletion
+    WebSocketEmitter.postDeleted(postId);
+
+    return deleted;
   }
 
   async addComment(data: {
@@ -410,6 +427,11 @@ export class PostService {
   }): Promise<CommentWithAuthor> {
     const post = await prisma.post.findUnique({
       where: { post_id: data.postId, deleted_at: null },
+      include: {
+        user: {
+          select: { user_id: true, username: true }
+        }
+      }
     });
 
     if (!post) {
@@ -435,6 +457,21 @@ export class PostService {
           },
         },
       },
+    });
+
+    // ✅ Get new comment count
+    const commentCount = await prisma.comment.count({
+      where: { post_id: data.postId, deleted_at: null }
+    });
+
+    // ✅ Emit WebSocket event to post owner
+    WebSocketEmitter.postCommented(post.user.user_id, {
+      postId: data.postId,
+      commentId: comment.comment_id,
+      userId: data.userId,
+      username: comment.user.username,
+      content: data.content,
+      commentCount
     });
 
     return {
@@ -470,7 +507,7 @@ export class PostService {
       },
     });
 
-    return comments.map(( comment) => ({
+    return comments.map((comment) => ({
       comment_id: comment.comment_id,
       post_id: comment.post_id,
       content: comment.content,
@@ -479,6 +516,7 @@ export class PostService {
       user: {
         user_id: comment.user.user_id,
         username: comment.user.username,
+        profile_picture_url: comment.user.profile?.profile_picture_url || null,
       },
     }));
   }
@@ -496,15 +534,25 @@ export class PostService {
       throw new AppError('You are not authorized to delete this comment', 403);
     }
 
-    return await prisma.comment.update({
+    const deleted = await prisma.comment.update({
       where: { comment_id: commentId },
       data: { deleted_at: new Date() },
     });
+
+    // ✅ Emit WebSocket event for comment deletion
+    WebSocketEmitter.commentDeleted(commentId, comment.post_id);
+
+    return deleted;
   }
 
   async togglePostReaction(postId: number, userId: number) {
     const post = await prisma.post.findUnique({
       where: { post_id: postId, deleted_at: null },
+      include: {
+        user: {
+          select: { user_id: true, username: true }
+        }
+      }
     });
 
     if (!post) {
@@ -520,6 +568,12 @@ export class PostService {
       },
     });
 
+    // Get user info for the person who liked
+    const likingUser = await prisma.user.findUnique({
+      where: { user_id: userId },
+      select: { user_id: true, username: true }
+    });
+
     if (existingReaction) {
       await prisma.like.delete({
         where: {
@@ -532,6 +586,15 @@ export class PostService {
 
       const likeCount = await prisma.like.count({
         where: { post_id: postId },
+      });
+
+      // ✅ Emit WebSocket event for unlike
+      WebSocketEmitter.postLiked(post.user.user_id, {
+        postId,
+        userId,
+        username: likingUser?.username || 'Unknown',
+        likeCount,
+        isLiked: false
       });
 
       return {
@@ -552,10 +615,18 @@ export class PostService {
         where: { post_id: postId },
       });
 
+      // ✅ Emit WebSocket event for like
+      WebSocketEmitter.postLiked(post.user.user_id, {
+        postId,
+        userId,
+        username: likingUser?.username || 'Unknown',
+        likeCount,
+        isLiked: true
+      });
 
       return {
-        isLiked: !existingReaction, // or true if created
-        likeCount, // ✅ Real count from DB
+        isLiked: true,
+        likeCount,
         postId,
         userId,
       };

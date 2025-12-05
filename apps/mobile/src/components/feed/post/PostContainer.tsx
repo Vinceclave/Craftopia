@@ -1,7 +1,5 @@
 // apps/mobile/src/components/feed/post/PostContainer.tsx - CRAFTOPIA REFINED
 import React, { useState, useCallback } from 'react';
-import { Share, Platform } from 'react-native';
-
 import { Post } from './Post';
 import { CommentModal } from './comment/CommentModal';
 import { ReportModal, ReportReason } from '../ReportModal';
@@ -97,36 +95,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     setShowDetailsModal(true);
   };
 
-  const handleShare = async () => {
-    if (isDeleted) return;
-    
-    try {
-      const shareContent = {
-        title: `${title} - Craftopia`,
-        message: `Check out this post on Craftopia!\n\n${title}\n\n${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
-        url: `craftopia://post/${postId}`,
-      };
-
-      const result = await Share.share(
-        Platform.OS === 'ios' 
-          ? {
-              title: shareContent.title,
-              message: shareContent.message,
-              url: shareContent.url,
-            }
-          : {
-              title: shareContent.title,
-              message: `${shareContent.message}\n\n${shareContent.url}`,
-            }
-      );
-
-      if (result.action === Share.sharedAction) {
-        success('Shared', 'Post shared successfully!');
-      }
-    } catch (error: any) {
-      showError('Share Failed', 'Failed to share post. Please try again.');
-    }
-  };
 
   const handleDeletePost = () => {
     setShowDeleteConfirm(false);
@@ -162,11 +130,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
           {
             text: 'Edit Post',
             onPress: handleEdit,
-            style: 'default',
-          },
-          {
-            text: 'Share Post',
-            onPress: handleShare,
             style: 'default',
           },
           {
@@ -283,7 +246,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
         onToggleReaction={onToggleReaction}
         onOpenComments={handleOpenComments}
         onOptionsPress={handleOptions}
-        onShare={handleShare}
         onPress={handlePostPress}
       />
 
@@ -331,7 +293,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
             postId={postId}
             onClose={() => setShowDetailsModal(false)}
             onToggleReaction={handleToggleReactionInDetails}
-            onShare={handleShare}
           />
 
           {isOwnPost && (

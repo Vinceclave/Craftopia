@@ -10,7 +10,6 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  StatusBar,
   Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,14 +19,12 @@ import {
   ArrowLeft, 
   Clock, 
   Lightbulb, 
-  Share2, 
   Bookmark, 
   CheckCircle2,
   Sparkles,
   Wrench,
   Star,
   BarChart3,
-  AlertTriangle,
   X
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
@@ -117,17 +114,6 @@ export const CraftDetailsScreen = () => {
 
   const handleBack = () => {
     navigation.goBack();
-  };
-
-  const handleShare = async () => {
-    Alert.alert(
-      'Share Craft',
-      'Share this craft idea with others?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Share', onPress: () => console.log('Sharing...') }
-      ]
-    );
   };
 
   const handleImagePress = () => {
@@ -326,13 +312,6 @@ export const CraftDetailsScreen = () => {
                   fill={isSaved ? "#3B6E4D" : "transparent"}
                 />
               )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={handleShare}
-              className="w-9 h-9 rounded-full bg-[#F0F4F2] items-center justify-center"
-            >
-              <Share2 size={18} color="#5F6F64" />
             </TouchableOpacity>
           </View>
         </View>

@@ -1,7 +1,7 @@
 // apps/mobile/src/components/feed/post/PostActions.tsx - CRAFTOPIA REFINED
 import React, { memo, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
-import { Heart, MessageCircle, Share2 } from 'lucide-react-native';
+import { Heart, MessageCircle } from 'lucide-react-native';
 
 interface PostActionsProps {
   likeCount: number;
@@ -9,7 +9,6 @@ interface PostActionsProps {
   isLiked: boolean;
   onToggleReaction?: () => void;
   onOpenComments?: () => void;
-  onShare?: () => void;
 }
 
 export const PostActions: React.FC<PostActionsProps> = memo(({ 
@@ -18,7 +17,6 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
   isLiked = false, 
   onToggleReaction, 
   onOpenComments,
-  onShare
 }) => {
   const [scaleAnim] = useState(new Animated.Value(1));
 
@@ -81,23 +79,6 @@ export const PostActions: React.FC<PostActionsProps> = memo(({
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Right Section - Share */}
-      {onShare && (
-        <TouchableOpacity 
-          className="flex-row items-center gap-1.5 active:opacity-70"
-          onPress={onShare}
-          activeOpacity={0.7}
-        >
-          <Share2 
-            size={16} 
-            color="#3B6E4D" 
-          />
-          <Text className="text-sm font-poppinsBold text-craftopia-textSecondary">
-            Share
-          </Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 });

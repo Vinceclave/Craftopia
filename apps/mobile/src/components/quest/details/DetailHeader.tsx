@@ -1,7 +1,7 @@
 // DetailHeader.tsx - Redesigned to match HomeHeader style
 import React from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { ArrowLeft, Share2 } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 
 interface DetailHeaderProps {
   onBackPress: () => void;
@@ -29,12 +29,6 @@ export const DetailHeader = ({ onBackPress, questId }: DetailHeaderProps) => {
             </Text>
           </View>
         </View>
-        
-        <TouchableOpacity 
-          className="w-9 h-9 rounded-full bg-craftopia-light items-center justify-center"
-        >
-          <Share2 size={18} color="#3B6E4D" />
-        </TouchableOpacity>
       </View>
     </View>
   );

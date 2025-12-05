@@ -46,7 +46,6 @@ export const Post: React.FC<PostProps> = memo((props) => {
           isLiked={props.isLiked || false}
           onToggleReaction={props.onToggleReaction}
           onOpenComments={props.onOpenComments}
-          onShare={props.onShare}
         />
       </View>
     </View>

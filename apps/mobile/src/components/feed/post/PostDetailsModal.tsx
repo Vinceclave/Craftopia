@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { X, Heart, MessageCircle, Share2, Clock, Edit, User, AlertCircle, Sparkles } from 'lucide-react-native';
+import { X, Heart, MessageCircle, Clock, Edit, AlertCircle, Sparkles } from 'lucide-react-native';
 import { usePost, useComments, useAddComment } from '~/hooks/queries/usePosts';
 import { formatTimeAgo } from '~/utils/time';
 import { CommentItem } from './comment/CommentItem';
@@ -25,7 +25,6 @@ interface PostDetailsModalProps {
   postId: number;
   onClose: () => void;
   onToggleReaction?: () => void;
-  onShare?: () => void;
 }
 
 export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
@@ -33,7 +32,6 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
   postId,
   onClose,
   onToggleReaction,
-  onShare,
 }) => {
   const { 
     data: post, 
@@ -323,19 +321,6 @@ export const PostDetailsModal: React.FC<PostDetailsModalProps> = ({
                       Comment
                     </Text>
                   </TouchableOpacity>
-
-                  {onShare && (
-                    <TouchableOpacity
-                      className="flex-1 flex-row items-center justify-center py-2 rounded-md active:opacity-70"
-                      onPress={onShare}
-                      activeOpacity={0.7}
-                    >
-                      <Share2 size={18} color="#5F6F64" />
-                      <Text className="ml-1.5 text-sm font-poppinsBold text-craftopia-textSecondary">
-                        Share
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
 

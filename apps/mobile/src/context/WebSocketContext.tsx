@@ -1,4 +1,4 @@
-// apps/mobile/src/context/WebSocketContext.tsx
+// apps/mobile/src/context/WebSocketContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { wsManager, WebSocketEvent } from '~/config/websocket';
 import { useAuth } from './AuthContext';
@@ -141,16 +141,22 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Post event handlers
     const handlePostCreated = (data: any) => {
+      console.log('📬 POST CREATED EVENT:', data);
       queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'all' });
     };
 
     const handlePostLiked = (data: any) => {
+      console.log('❤️ POST LIKED EVENT:', data);
+      // ✅ FIX: Check data.userId instead of data.user_id
+      const likerUserId = data.userId || data.user_id;
+      
       const updatePost = (post: any) => {
         if (post.post_id !== data.postId) return post;
         return {
           ...post,
           likeCount: data.likeCount,
-          isLiked: data.userId === user?.id ? data.isLiked : post.isLiked
+          // ✅ Only update isLiked if this is the current user's action
+          isLiked: likerUserId === user.id ? data.isLiked : post.isLiked
         };
       };
 
@@ -186,13 +192,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           return {
             ...oldPost,
             likeCount: data.likeCount,
-            isLiked: data.userId === user?.id ? data.isLiked : oldPost.isLiked
+            isLiked: likerUserId === user.id ? data.isLiked : oldPost.isLiked
           };
         }
       );
     };
 
     const handlePostCommented = (data: any) => {
+      console.log('💬 POST COMMENTED EVENT:', data);
+      
       const updatePost = (post: any) => {
         if (post.post_id !== data.postId) return post;
         const newCommentCount = data.commentCount ?? (post.commentCount + 1);
@@ -243,6 +251,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handlePostDeleted = (data: any) => {
+      console.log('🗑️ POST DELETED EVENT:', data);
+      
       // Update posts list
       queryClient.setQueriesData(
         { queryKey: ['posts'] },
@@ -275,6 +285,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handlePostUpdated = (data: any) => {
+      console.log('✏️ POST UPDATED EVENT:', data);
+      
       const updatePost = (post: any) =>
         post.post_id === data.post_id
           ? { ...post, ...data, updated_at: new Date().toISOString() }
@@ -316,6 +328,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Challenge event handlers
     const handleChallengeCreated = (data: any) => {
+      console.log('🎯 CHALLENGE CREATED EVENT:', data);
       queryClient.invalidateQueries({ queryKey: challengeKeys.all, refetchType: 'all' });
       
       Alert.alert(
@@ -326,53 +339,57 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     const handleChallengeJoined = (data: any) => {
-      if (data.userId === user.id) {
-        queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
-        queryClient.invalidateQueries({
-          queryKey: userChallengeKeys.progress(data.challenge?.challenge_id, user.id)
-        });
-      }
+      console.log('✅ CHALLENGE JOINED EVENT:', data);
+      // ✅ No need to check userId - this event is only sent to the user who joined
+      queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: userChallengeKeys.progress(data.challenge?.challenge_id, user.id)
+      });
     };
 
     const handleChallengeVerified = (data: any) => {
-      if (data.userId === user.id) {
-        queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
-        queryClient.invalidateQueries({
-          queryKey: userChallengeKeys.wasteStats(user.id)
-        });
-        
-        Alert.alert(
-          'Challenge Completed!',
-          `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
-          [{ text: 'Awesome!' }]
-        );
-      }
+      console.log('✅ CHALLENGE VERIFIED EVENT:', data);
+      // ✅ This event is sent directly to the user, so no need to check userId
+      queryClient.invalidateQueries({ queryKey: userChallengeKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: userChallengeKeys.wasteStats(user.id)
+      });
+      
+      Alert.alert(
+        'Challenge Completed!',
+        `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
+        [{ text: 'Awesome!' }]
+      );
     };
 
     const handlePointsAwarded = (data: any) => {
-      if (data.userId === user.id) {
-        queryClient.invalidateQueries({ queryKey: ['userStats', user.id] });
-        queryClient.invalidateQueries({
-          queryKey: userChallengeKeys.wasteStats(user.id)
-        });
-      }
+      console.log('💎 POINTS AWARDED EVENT:', data);
+      // ✅ This event is sent directly to the user
+      queryClient.invalidateQueries({ queryKey: ['userStats', user.id] });
+      queryClient.invalidateQueries({
+        queryKey: userChallengeKeys.wasteStats(user.id)
+      });
     };
 
     const handleLeaderboardUpdated = (data: any) => {
+      console.log('🏆 LEADERBOARD UPDATED EVENT:', data);
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
     };
 
     // Connection event handlers
     const handleConnected = () => {
+      console.log('🔗 WEBSOCKET CONNECTED');
       setIsConnected(true);
       connectionAttemptRef.current = 0;
     };
 
     const handleDisconnect = () => {
+      console.log('🔌 WEBSOCKET DISCONNECTED');
       setIsConnected(false);
     };
 
     const handleReconnect = () => {
+      console.log('🔄 WEBSOCKET RECONNECTED');
       queryClient.invalidateQueries({ queryKey: ['posts'], refetchType: 'active' });
       queryClient.invalidateQueries({ queryKey: challengeKeys.all, refetchType: 'active' });
       queryClient.invalidateQueries({ queryKey: userChallengeKeys.all, refetchType: 'active' });
@@ -380,6 +397,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // Register event listeners
     const registerListener = (event: string, handler: Function) => {
+      console.log(`📡 Registering listener for: ${event}`);
       wsManager.on(event, handler);
     };
 
@@ -402,8 +420,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     registerListener('disconnect', handleDisconnect);
     registerListener('reconnect', handleReconnect);
 
+    console.log('✅ All WebSocket listeners registered');
+
     // Cleanup
     return () => {
+      console.log('🧹 Cleaning up WebSocket listeners');
       listenersRegistered.current = false;
       
       const unregisterListener = (event: string, handler: Function) => {
@@ -432,15 +453,21 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [isConnected, user, queryClient]);
 
   const emit = useCallback((event: string, data: any) => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      console.warn('⚠️ Cannot emit - WebSocket not connected');
+      return;
+    }
+    console.log(`📤 Emitting event: ${event}`, data);
     wsManager.emit(event, data);
   }, [isConnected]);
 
   const on = useCallback((event: WebSocketEvent | string, callback: Function) => {
+    console.log(`🎧 Adding listener for: ${event}`);
     wsManager.on(event, callback);
   }, []);
 
   const off = useCallback((event: WebSocketEvent | string, callback: Function) => {
+    console.log(`🔇 Removing listener for: ${event}`);
     wsManager.off(event, callback);
   }, []);
 
