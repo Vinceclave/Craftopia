@@ -61,35 +61,61 @@ class AnnouncementService extends BaseService {
     return announcement;
   }
 
-  // Get announcements with pagination
-  async getAnnouncements(page = 1, limit = 10, includeExpired = false) {
-    logger.info('=== FETCHING ANNOUNCEMENTS ===', { page, limit, includeExpired });
+  // Get announcements with pagination and filters
+  async getAnnouncements(page = 1, limit = 10, status?: string, search?: string) {
+    logger.info('=== FETCHING ANNOUNCEMENTS ===', { page, limit, status, search });
 
     const now = new Date();
-    
-    // Build where clause - show all non-deleted announcements
+
+    // Build where clause
     const where: any = {
       deleted_at: null
     };
 
-    // If not including expired, filter by expiration date
-    if (!includeExpired) {
-      where.OR = [
-        { expires_at: null }, // Never expires
-        { expires_at: { gte: now } } // Not expired yet
+    // Status filtering
+    if (status) {
+      switch (status) {
+        case 'active':
+          where.is_active = true;
+          where.OR = [
+            { expires_at: null },
+            { expires_at: { gte: now } }
+          ];
+          break;
+        case 'draft':
+          where.is_active = false;
+          break;
+        case 'expired':
+          where.expires_at = { lt: now };
+          break;
+        case 'scheduled':
+          where.is_active = true;
+          where.expires_at = { gte: now };
+          break;
+      }
+    }
+
+    // Search filtering
+    if (search) {
+      where.AND = [
+        {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { content: { contains: search, mode: 'insensitive' } },
+            {
+              admin: {
+                username: { contains: search, mode: 'insensitive' }
+              }
+            }
+          ]
+        }
       ];
-      
-      logger.info('Filtering expired announcements', { 
-        now: now.toISOString(),
-        includeExpired 
-      });
     }
 
     logger.info('Where clause', JSON.stringify(where, null, 2));
 
-    // Use custom pagination to include admin data
     const skip = (page - 1) * limit;
-    
+
     try {
       const [data, total] = await Promise.all([
         prisma.announcement.findMany({
@@ -105,20 +131,6 @@ class AnnouncementService extends BaseService {
         }),
         prisma.announcement.count({ where })
       ]);
-
-      logger.info('=== QUERY RESULTS ===', { 
-        found: data.length, 
-        total,
-        page,
-        limit,
-        announcements: data.map(a => ({
-          id: a.announcement_id,
-          title: a.title,
-          is_active: a.is_active,
-          expires_at: a.expires_at,
-          deleted_at: a.deleted_at
-        }))
-      });
 
       const lastPage = Math.ceil(total / limit) || 1;
 
@@ -287,9 +299,9 @@ class AnnouncementService extends BaseService {
       'Announcement'
     );
 
-    logger.info('Toggling announcement status', { 
-      announcementId, 
-      currentStatus: announcement.is_active 
+    logger.info('Toggling announcement status', {
+      announcementId,
+      currentStatus: announcement.is_active
     });
 
     const updated = await prisma.announcement.update({

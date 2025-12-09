@@ -8,26 +8,47 @@ import { useToast } from './useToast';
 interface AnnouncementFilters {
   page: number;
   limit: number;
-  includeExpired: boolean;
+  status: string;
+  search: string;
 }
 
 export const useAnnouncements = () => {
   const [params, setParams] = useState<AnnouncementFilters>({
     page: 1,
     limit: 20,
-    includeExpired: true,
+    status: 'all',
+    search: '',
   });
 
   const queryClient = useQueryClient();
   const { subscribe } = useWebSocket();
   const { success, info } = useToast();
 
-  // Fetch all announcements for stats
-  const { data: allAnnouncementsData } = useQuery({
+  // Fetch all announcements for stats (no filters)
+  const { data: allAnnouncementsData, isLoading: isStatsLoading, error: statsError } = useQuery({
     queryKey: ['announcements-all'],
     queryFn: async () => {
-      const response: any = await announcementsAPI.getAll(1, 1000, true);
-      return response?.data ?? [];
+      try {
+        console.log('Fetching all announcements for stats...');
+        const response: any = await announcementsAPI.getAll(1, 1000, undefined, undefined);
+        console.log('All announcements response:', response);
+
+        // Check if response has data array directly (from interceptor)
+        if (response?.data && Array.isArray(response.data)) {
+          console.log('Found data array in response.data, length:', response.data.length);
+          return response.data;
+        }
+        // Fallback if response is the array itself (some interceptors do this)
+        if (Array.isArray(response)) {
+          console.log('Response is array, length:', response.length);
+          return response;
+        }
+        console.warn('Unexpected response structure for all announcements:', response);
+        return [];
+      } catch (err) {
+        console.error('Error fetching all announcements:', err);
+        throw err;
+      }
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -40,7 +61,8 @@ export const useAnnouncements = () => {
       const response: any = await announcementsAPI.getAll(
         params.page,
         params.limit,
-        params.includeExpired
+        params.status === 'all' ? undefined : params.status,
+        params.search
       );
       return {
         data: response?.data ?? [],
@@ -197,8 +219,12 @@ export const useAnnouncements = () => {
     setParams((prev) => ({ ...prev, limit, page: 1 }));
   }, []);
 
-  const toggleIncludeExpired = useCallback(() => {
-    setParams((prev) => ({ ...prev, includeExpired: !prev.includeExpired, page: 1 }));
+  const setStatus = useCallback((status: string) => {
+    setParams((prev) => ({ ...prev, status, page: 1 }));
+  }, []);
+
+  const setSearch = useCallback((search: string) => {
+    setParams((prev) => ({ ...prev, search, page: 1 }));
   }, []);
 
   return {
@@ -221,11 +247,13 @@ export const useAnnouncements = () => {
     nextPage,
     prevPage,
     setLimit,
-    toggleIncludeExpired,
+    setStatus,
+    setSearch,
 
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isToggling: toggleStatusMutation.isPending,
+    isStatsLoading,
   };
 };

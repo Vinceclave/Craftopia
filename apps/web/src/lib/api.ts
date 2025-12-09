@@ -640,9 +640,10 @@ export const announcementsAPI = {
   getAll: (
     page = 1,
     limit = 10,
-    includeExpired = false
+    status?: string,
+    search?: string
   ): Promise<ApiResponse<PaginatedResponse<Announcement>>> =>
-    api.get('/announcements', { params: { page, limit, includeExpired } }),
+    api.get('/announcements', { params: { page, limit, status, search } }),
 
   getById: (announcementId: number): Promise<ApiResponse<Announcement>> =>
     api.get(`/announcements/${announcementId}`),

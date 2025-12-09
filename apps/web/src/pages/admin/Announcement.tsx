@@ -1,5 +1,5 @@
-// apps/web/src/pages/admin/Announcements.tsx - FIXED
-import { useState, useMemo } from 'react';
+// apps/web/src/pages/admin/Announcements.tsx
+import { useState, useMemo, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -54,20 +54,24 @@ import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExc
 export default function AdminAnnouncements() {
   const {
     announcements,
+    allAnnouncements,
     isLoading,
     error,
     createAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
     toggleStatus,
+    setStatus,
+    setSearch,
     isCreating,
     isUpdating,
     isDeleting,
     isToggling,
+    isStatsLoading,
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { success, error: showError } = useToast(); // FIXED: Use individual methods instead of 'toast'
+  const { success, error: showError } = useToast();
 
   // State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -84,19 +88,32 @@ export default function AdminAnnouncements() {
     expires_at: '',
   });
 
-  // Stats
+  // Handle search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(globalFilter);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [globalFilter, setSearch]);
+
+  // Handle status filter
+  useEffect(() => {
+    setStatus(statusFilter);
+  }, [statusFilter, setStatus]);
+
+  // Stats - Use allAnnouncements for accurate counts
   const stats = useMemo(() => {
-    const total = announcements.length;
-    const active = announcements.filter((a: Announcement) =>
+    const total = allAnnouncements?.length || 0;
+    const active = allAnnouncements?.filter((a: Announcement) =>
       a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
-    ).length;
-    const draft = announcements.filter((a: Announcement) => !a.is_active).length;
-    const expired = announcements.filter((a: Announcement) =>
+    ).length || 0;
+    const draft = allAnnouncements?.filter((a: Announcement) => !a.is_active).length || 0;
+    const expired = allAnnouncements?.filter((a: Announcement) =>
       a.expires_at && new Date(a.expires_at) < new Date()
-    ).length;
-    const scheduled = announcements.filter((a: Announcement) =>
+    ).length || 0;
+    const scheduled = allAnnouncements?.filter((a: Announcement) =>
       a.is_active && a.expires_at && new Date(a.expires_at) > new Date()
-    ).length;
+    ).length || 0;
 
     return [
       {
@@ -130,29 +147,7 @@ export default function AdminAnnouncements() {
         color: 'text-blue-600',
       },
     ];
-  }, [announcements]);
-
-  // Filtered data
-  const filteredData = useMemo(() => {
-    return announcements.filter((announcement: Announcement) => {
-      const searchTerm = globalFilter.toLowerCase();
-      const matchesSearch =
-        !globalFilter ||
-        announcement.title.toLowerCase().includes(searchTerm) ||
-        announcement.content.toLowerCase().includes(searchTerm) ||
-        (announcement.admin?.username || 'Admin').toLowerCase().includes(searchTerm) ||
-        new Date(announcement.created_at).toLocaleDateString().toLowerCase().includes(searchTerm);
-
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'active' && announcement.is_active && (!announcement.expires_at || new Date(announcement.expires_at) > new Date())) ||
-        (statusFilter === 'draft' && !announcement.is_active) ||
-        (statusFilter === 'expired' && announcement.expires_at && new Date(announcement.expires_at) < new Date()) ||
-        (statusFilter === 'scheduled' && announcement.is_active && announcement.expires_at && new Date(announcement.expires_at) > new Date());
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [announcements, globalFilter, statusFilter]);
+  }, [allAnnouncements]);
 
   // Filters
   const filters: FilterOption[] = [
@@ -351,11 +346,11 @@ export default function AdminAnnouncements() {
         content: formData.content,
         expires_at: formData.expires_at ? new Date(formData.expires_at) : undefined,
       });
-      success('Announcement created and published!'); // FIXED: Use success method
+      success('Announcement created and published!');
       setFormData({ title: '', content: '', expires_at: '' });
       setCreateDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to create announcement'); // FIXED: Use showError method
+      showError(err?.message || 'Failed to create announcement');
     }
   };
 
@@ -372,12 +367,12 @@ export default function AdminAnnouncements() {
           expires_at: formData.expires_at ? new Date(formData.expires_at) : null,
         },
       });
-      success('Announcement updated successfully!'); // FIXED: Use success method
+      success('Announcement updated successfully!');
       setFormData({ title: '', content: '', expires_at: '' });
       setSelectedAnnouncement(null);
       setEditDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to update announcement'); // FIXED: Use showError method
+      showError(err?.message || 'Failed to update announcement');
     }
   };
 
@@ -386,11 +381,11 @@ export default function AdminAnnouncements() {
 
     try {
       await deleteAnnouncement(selectedAnnouncement.announcement_id);
-      success('Announcement deleted successfully!'); // FIXED: Use success method
+      success('Announcement deleted successfully!');
       setSelectedAnnouncement(null);
       setDeleteDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to delete announcement'); // FIXED: Use showError method
+      showError(err?.message || 'Failed to delete announcement');
     }
   };
 
@@ -400,25 +395,25 @@ export default function AdminAnnouncements() {
     try {
       await toggleStatus(selectedAnnouncement.announcement_id);
       const newStatus = !selectedAnnouncement.is_active;
-      success(newStatus ? 'Announcement published!' : 'Announcement unpublished'); // FIXED: Use success method
+      success(newStatus ? 'Announcement published!' : 'Announcement unpublished');
       setSelectedAnnouncement(null);
       setToggleDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to toggle status'); // FIXED: Use showError method
+      showError(err?.message || 'Failed to toggle status');
     }
   };
 
-  if (isLoading && announcements.length === 0) {
+  if (isLoading && (!announcements || announcements.length === 0)) {
     return <LoadingState message="Loading announcements..." />;
   }
 
-    // Export handlers
+  // Export handlers
   const handleExportPDF = () => {
     const config: ExportConfig = {
       title: 'Announcements Report',
       subtitle: 'Platform announcements and notifications',
       stats: [
-        { label: 'Total Announcements', value: announcements.length },
+        { label: 'Total Announcements', value: allAnnouncements?.length || 0 },
         { label: 'Active', value: stats[1].value },
         { label: 'Drafts', value: stats[2].value },
         { label: 'Expired', value: stats[3].value },
@@ -427,14 +422,16 @@ export default function AdminAnnouncements() {
         { header: 'Title', dataKey: 'title' },
         { header: 'Content', dataKey: 'content' },
         { header: 'Author', dataKey: 'admin', formatter: (val) => val?.username || 'Admin' },
-        { header: 'Status', dataKey: 'is_active', formatter: (val, row) => {
-          const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
-          return val && !isExpired ? 'Active' : isExpired ? 'Expired' : 'Draft';
-        }},
+        {
+          header: 'Status', dataKey: 'is_active', formatter: (val, row) => {
+            const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
+            return val && !isExpired ? 'Active' : isExpired ? 'Expired' : 'Draft';
+          }
+        },
         { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
         { header: 'Expires', dataKey: 'expires_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Never' },
       ],
-      data: filteredData,
+      data: allAnnouncements || [],
       filename: 'announcements-report',
     };
     generateGenericPDF(config);
@@ -447,14 +444,16 @@ export default function AdminAnnouncements() {
         { header: 'Title', dataKey: 'title', width: 30 },
         { header: 'Content', dataKey: 'content', width: 50 },
         { header: 'Author', dataKey: 'admin', formatter: (val) => val?.username || 'Admin', width: 20 },
-        { header: 'Status', dataKey: 'is_active', formatter: (val, row) => {
-          const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
-          return val && !isExpired ? 'Active' : isExpired ? 'Expired' : 'Draft';
-        }, width: 15 },
+        {
+          header: 'Status', dataKey: 'is_active', formatter: (val, row) => {
+            const isExpired = row.expires_at && new Date(row.expires_at) < new Date();
+            return val && !isExpired ? 'Active' : isExpired ? 'Expired' : 'Draft';
+          }, width: 15
+        },
         { header: 'Created', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
         { header: 'Expires', dataKey: 'expires_at', formatter: (val) => val ? new Date(val).toLocaleDateString() : 'Never', width: 20 },
       ],
-      data: filteredData,
+      data: allAnnouncements || [],
     }];
     generateGenericExcel({ sheets, filename: 'announcements-report' });
   };
@@ -477,7 +476,7 @@ export default function AdminAnnouncements() {
         description="Create and manage platform-wide announcements"
         icon={<Megaphone className="w-6 h-6 text-white" />}
         actions={
-           <div className="flex gap-2">
+          <div className="flex gap-2">
             <ExportButtons onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} />
             <Button
               size="sm"
@@ -495,7 +494,15 @@ export default function AdminAnnouncements() {
       {error && <ErrorState error={error} title="Error loading announcements" />}
 
       {/* Stats Grid */}
-      < StatsGrid stats={stats} />
+      {isStatsLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <StatsGrid stats={stats} />
+      )}
 
       {/* Active Announcements Preview */}
       {
@@ -520,8 +527,8 @@ export default function AdminAnnouncements() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3">
-                {announcements
-                  .filter(
+                {allAnnouncements
+                  ?.filter(
                     (a: Announcement) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
                   )
                   .slice(0, 3)
@@ -573,7 +580,7 @@ export default function AdminAnnouncements() {
 
       {/* Data Table */}
       <DataTable
-        data={filteredData}
+        data={announcements || []}
         columns={columns}
         searchPlaceholder="Search titles, content, authors, dates..."
         onSearchChange={setGlobalFilter}
