@@ -14,6 +14,7 @@ interface Challenge {
   completedAt?: string | null;
   points?: number;
   status: 'in_progress' | 'pending_verification' | 'rejected' | 'completed';
+  proofUrl?: string;
 }
 
 interface ChallengeListProps {
@@ -37,7 +38,6 @@ export const ChallengeList = ({
 
   // Debug logging
   useEffect(() => {
-
     if (challenges.length > 0) {
       console.log('🎨 [ChallengeList] First challenge:', challenges[0]);
     }
@@ -81,14 +81,27 @@ export const ChallengeList = ({
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-
     if (!challenge.challenge_id) {
       console.error('❌ [ChallengeList] Missing challenge_id!');
       return;
     }
 
-    navigation.navigate('QuestDetails', { 
-      questId: challenge.challenge_id 
+    navigation.navigate('QuestDetails', {
+      questId: challenge.challenge_id
+    });
+  };
+
+  const handleShareToFeed = (challenge: Challenge) => {
+    // @ts-ignore - navigating to another stack
+    navigation.navigate('FeedStack', {
+      screen: 'Create',
+      params: {
+        initialTitle: `I completed the ${challenge.title} challenge!`,
+        initialContent: `I just completed the ${challenge.title} challenge! It was amazing. Check out my progress.`,
+        initialCategory: 'Challenge',
+        initialTags: ['challenge', 'eco-friendly', 'craftopia'],
+        initialImageUri: challenge.proofUrl,
+      }
     });
   };
 
@@ -109,8 +122,8 @@ export const ChallengeList = ({
 
         {/* Challenge Item Skeletons */}
         {[1, 2, 3].map((item) => (
-          <View 
-            key={item} 
+          <View
+            key={item}
             className="bg-craftopia-surface rounded-xl p-3 mb-2 border border-craftopia-light"
           >
             <View className="flex-row items-center mb-2">
@@ -138,7 +151,6 @@ export const ChallengeList = ({
 
   // Error State
   if (error) {
-    
     return (
       <View className="mx-4 mb-6 mt-3">
         <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-error/20">
@@ -152,7 +164,7 @@ export const ChallengeList = ({
             {error}
           </Text>
           {onRetry && (
-            <TouchableOpacity 
+            <TouchableOpacity
               className="bg-craftopia-primary rounded-full px-6 py-3"
               onPress={onRetry}
               activeOpacity={0.7}
@@ -188,7 +200,7 @@ export const ChallengeList = ({
             </View>
           </View>
         </View>
-        
+
         <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light">
           <View className="w-12 h-12 rounded-full bg-craftopia-light items-center justify-center mb-3">
             <Trophy size={24} color="#5F6F64" />
@@ -222,7 +234,7 @@ export const ChallengeList = ({
         <View className="flex-row items-center justify-between mb-2">
           <View className={`flex-row items-center px-2 py-1 rounded-lg ${statusConfig.bgColor}`}>
             <StatusIcon size={14} color={statusConfig.color} />
-            <Text 
+            <Text
               className="text-xs font-medium uppercase tracking-wide ml-1 font-nunito"
               style={{ color: statusConfig.color }}
             >
@@ -249,22 +261,35 @@ export const ChallengeList = ({
 
         {/* Footer */}
         <View className="flex-row justify-between items-center pt-2 border-t border-craftopia-light">
-          {challenge.completedAt && (
-            <Text className="text-xs text-craftopia-textSecondary font-nunito">
-              📅 {new Date(challenge.completedAt).toLocaleDateString()}
-            </Text>
-          )}
-          {!challenge.completedAt && challenge.status === 'in_progress' && (
-            <Text className="text-xs text-craftopia-textSecondary font-nunito">
-              ⏱️ Keep going!
-            </Text>
-          )}
+          <View className="flex-1">
+            {challenge.completedAt && (
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                📅 {new Date(challenge.completedAt).toLocaleDateString()}
+              </Text>
+            )}
+            {!challenge.completedAt && challenge.status === 'in_progress' && (
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                ⏱️ Keep going!
+              </Text>
+            )}
+          </View>
 
           <View className="flex-row items-center">
-            <Text className="text-xs font-semibold text-craftopia-primary mr-1 font-nunito">
-              View Details
-            </Text>
-            <ChevronRight size={14} color="#3B6E4D" />
+            {challenge.status === 'completed' && (
+              <TouchableOpacity
+                className="bg-craftopia-primary/10 px-3 py-1.5 rounded-lg mr-2 border border-craftopia-primary/20"
+                onPress={() => handleShareToFeed(challenge)}
+              >
+                <Text className="text-xs font-poppinsBold text-craftopia-primary">Share</Text>
+              </TouchableOpacity>
+            )}
+
+            <View className="flex-row items-center">
+              <Text className="text-xs font-semibold text-craftopia-primary mr-1 font-nunito">
+                View Details
+              </Text>
+              <ChevronRight size={14} color="#3B6E4D" />
+            </View>
           </View>
         </View>
       </TouchableOpacity>
@@ -323,10 +348,10 @@ export const ChallengeList = ({
             </Text>
           </View>
           <View className="w-full h-1.5 bg-craftopia-surface rounded-full overflow-hidden mt-1.5">
-            <View 
+            <View
               className="h-full bg-craftopia-primary rounded-full"
-              style={{ 
-                width: `${(challenges.filter(c => c.status === 'completed').length / challenges.length) * 100}%` 
+              style={{
+                width: `${(challenges.filter(c => c.status === 'completed').length / challenges.length) * 100}%`
               }}
             />
           </View>

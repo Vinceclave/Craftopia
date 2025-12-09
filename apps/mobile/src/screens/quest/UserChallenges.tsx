@@ -27,9 +27,9 @@ export const UserChallengesScreen = () => {
 
 
   // Get user challenges for the selected status
-  const { 
-    data: userChallenges = [], 
-    isLoading, 
+  const {
+    data: userChallenges = [],
+    isLoading,
     error,
     refetch,
     isFetching,
@@ -41,7 +41,7 @@ export const UserChallengesScreen = () => {
   const transformedChallenges = userChallenges.map((userChallenge) => {
     // Extract the actual challenge_id from nested challenge object
     const challengeId = userChallenge.challenge?.challenge_id || userChallenge.challenge_id;
-    
+
     const transformed = {
       id: userChallenge.user_challenge_id, // For React key
       challenge_id: challengeId, // For navigation
@@ -50,6 +50,7 @@ export const UserChallengesScreen = () => {
       completedAt: userChallenge.completed_at || userChallenge.verified_at || null,
       points: userChallenge.challenge?.points_reward || 0,
       status: userChallenge.status,
+      proofUrl: userChallenge.proof_url,
     };
 
     return transformed;
@@ -83,8 +84,8 @@ export const UserChallengesScreen = () => {
       <ChallengeTab activeTab={activeTab} onChangeTab={handleTabChange} />
 
       {/* Challenges List */}
-      <ChallengeList 
-        challenges={transformedChallenges} 
+      <ChallengeList
+        challenges={transformedChallenges}
         loading={isLoading && !isRefetching}
         error={error?.message || null}
         onRefresh={handleRefresh}

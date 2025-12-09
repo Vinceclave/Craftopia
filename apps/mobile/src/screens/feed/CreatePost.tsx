@@ -38,14 +38,14 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
   const { uploadToFolder } = useLocalUpload()  // ✅ Add upload hook
   const [loading, setLoading] = useState(false)
   const [showCategoryPicker, setShowCategoryPicker] = useState(false)
-  const [tagsInput, setTagsInput] = useState('')
+  const [tagsInput, setTagsInput] = useState(route.params?.initialTags?.join(', ') || '')
 
   const [formData, setFormData] = useState<CreatePostFormData>({
-    title: '',
-    content: '',
-    imageUri: '',  // ✅ Local URI
-    tags: [],
-    category: 'Other',
+    title: route.params?.initialTitle || '',
+    content: route.params?.initialContent || '',
+    imageUri: route.params?.initialImageUri || '',  // ✅ Local URI
+    tags: route.params?.initialTags || [],
+    category: route.params?.initialCategory || 'Other',
     featured: false,
   })
 
@@ -121,7 +121,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
         title: formData.title.trim(),
         content: formData.content.trim(),
         imageUrl: uploadedImageUrl,
-        tags: tagsInput.split(',').map(t => t.trim()).filter(Boolean),
+        tags: tagsInput.split(',').map((t: string) => t.trim()).filter(Boolean),
         category: formData.category as 'Social' | 'Tutorial' | 'Challenge' | 'Marketplace' | 'Other',
         featured: formData.featured,
       }
@@ -167,7 +167,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
       <View className="px-4 py-3 border-b border-craftopia-light">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => navigation.goBack()}
               className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70 mr-2"
               activeOpacity={0.7}
@@ -184,16 +184,14 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
           <TouchableOpacity
             onPress={handleSubmit}
             disabled={!isFormValid || loading}
-            className={`px-4 py-2 rounded-lg flex-row items-center active:opacity-70 border ${
-              isFormValid && !loading 
-                ? 'bg-craftopia-primary border-craftopia-primary' 
-                : 'bg-craftopia-light border-craftopia-light'
-            }`}
+            className={`px-4 py-2 rounded-lg flex-row items-center active:opacity-70 border ${isFormValid && !loading
+              ? 'bg-craftopia-primary border-craftopia-primary'
+              : 'bg-craftopia-light border-craftopia-light'
+              }`}
             activeOpacity={0.7}
           >
-            <Text className={`font-poppinsBold text-sm ${
-              isFormValid && !loading ? 'text-white' : 'text-craftopia-textSecondary'
-            }`}>
+            <Text className={`font-poppinsBold text-sm ${isFormValid && !loading ? 'text-white' : 'text-craftopia-textSecondary'
+              }`}>
               {loading ? 'Sharing...' : 'Share'}
             </Text>
           </TouchableOpacity>
@@ -271,14 +269,14 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
               ref={refs.tags}
               className="bg-craftopia-surface border-craftopia-light rounded-xl px-3 py-2.5 text-sm font-nunito"
             />
-            
+
             {/* Tag Preview */}
             {formData.tags.length > 0 && (
               <View className="flex-row flex-wrap gap-1.5 mt-2">
                 {formData.tags.map((tag, index) => (
                   <View key={index} className="bg-craftopia-primary/5 px-2.5 py-1 rounded-full flex-row items-center border border-craftopia-primary/20">
                     <Text className="text-craftopia-primary text-xs font-poppinsBold">#{tag}</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       className="ml-1 active:opacity-70"
                       onPress={() => {
                         const newTags = formData.tags.filter((_, i) => i !== index)
@@ -301,9 +299,8 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
             <Text className="text-sm font-poppinsBold text-craftopia-textPrimary mb-2">Category</Text>
             <TouchableOpacity
               onPress={() => setShowCategoryPicker(true)}
-              className={`flex-row items-center justify-between p-3 border rounded-lg active:opacity-70 ${
-                errors.category ? 'border-craftopia-error bg-craftopia-error/10' : 'border-craftopia-light bg-craftopia-surface'
-              }`}
+              className={`flex-row items-center justify-between p-3 border rounded-lg active:opacity-70 ${errors.category ? 'border-craftopia-error bg-craftopia-error/10' : 'border-craftopia-light bg-craftopia-surface'
+                }`}
               activeOpacity={0.7}
             >
               <View className="flex-row items-center">
@@ -338,7 +335,7 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
                 </Text>
                 <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">Choose a Category</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowCategoryPicker(false)}
                 className="w-8 h-8 items-center justify-center rounded-lg bg-craftopia-light active:opacity-70"
                 activeOpacity={0.7}
@@ -352,29 +349,25 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
                 {CATEGORIES.map((category) => (
                   <TouchableOpacity
                     key={category.id}
-                    className={`flex-row items-center justify-between p-3 rounded-lg border active:opacity-70 ${
-                      formData.category === category.id 
-                        ? 'bg-craftopia-primary border-craftopia-primary' 
-                        : 'bg-craftopia-surface border-craftopia-light'
-                    }`}
+                    className={`flex-row items-center justify-between p-3 rounded-lg border active:opacity-70 ${formData.category === category.id
+                      ? 'bg-craftopia-primary border-craftopia-primary'
+                      : 'bg-craftopia-surface border-craftopia-light'
+                      }`}
                     onPress={() => handleCategorySelect(category.id)}
                     activeOpacity={0.7}
                   >
                     <View className="flex-row items-center flex-1">
-                      <Text className={`text-xl mr-2 ${
-                        formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
-                      }`}>
+                      <Text className={`text-xl mr-2 ${formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
+                        }`}>
                         {category.icon}
                       </Text>
                       <View className="flex-1">
-                        <Text className={`font-poppinsBold text-sm ${
-                          formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
-                        }`}>
+                        <Text className={`font-poppinsBold text-sm ${formData.category === category.id ? 'text-white' : 'text-craftopia-textPrimary'
+                          }`}>
                           {category.label}
                         </Text>
-                        <Text className={`text-xs mt-0.5 font-nunito ${
-                          formData.category === category.id ? 'text-white/80' : 'text-craftopia-textSecondary'
-                        }`}>
+                        <Text className={`text-xs mt-0.5 font-nunito ${formData.category === category.id ? 'text-white/80' : 'text-craftopia-textSecondary'
+                          }`}>
                           {category.description}
                         </Text>
                       </View>

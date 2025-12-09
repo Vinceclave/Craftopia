@@ -9,17 +9,26 @@ export interface CraftIdea {
   quickTip: string;
 }
 
+// HomeStack only contains the Home screen
 export type HomeStackParamList = {
   Home: undefined;
-  Details?: { id: string };
 };
 
+// FeedStack contains Feed and Create screens
 export type FeedStackParamList = {
   Feed: undefined;
-  Create: { onPostCreated?: () => void };
+  Create: {
+    onPostCreated?: () => void;
+    initialTitle?: string;
+    initialContent?: string;
+    initialImageUri?: string;
+    initialTags?: string[];
+    initialCategory?: string;
+  };
   PostDetails?: { postId: string };
 };
 
+// CraftStack contains all craft-related screens
 export type CraftStackParamList = {
   Craft: undefined;
   CraftScan: undefined;

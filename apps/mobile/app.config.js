@@ -19,6 +19,10 @@ export default () => ({
       backgroundColor: "#ffffff"
     }
   },
+  ios: {
+    bundleIdentifier: "com.beans01.craftopia", // <-- Add this line
+    buildNumber: "1.0.0"
+  },
   scheme: "craftopia",
   runtimeVersion: {
     policy: "sdkVersion"

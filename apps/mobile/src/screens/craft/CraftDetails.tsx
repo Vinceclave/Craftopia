@@ -2,12 +2,12 @@
 // ✅ COMPLETE VERSION WITH NETWORK ERROR HANDLING & DUPLICATE PREVENTION
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
   Alert,
   ActivityIndicator,
   Modal,
@@ -16,11 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  ArrowLeft, 
-  Clock, 
-  Lightbulb, 
-  Bookmark, 
+import {
+  ArrowLeft,
+  Clock,
+  Lightbulb,
+  Bookmark,
   CheckCircle2,
   Sparkles,
   Wrench,
@@ -29,6 +29,7 @@ import {
   X,
   WifiOff,
   AlertCircle,
+  Share2,
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
 import { NetworkError } from '~/services/craft.service';
@@ -65,9 +66,9 @@ const createCraftHash = (title: string, description: string, materials: string[]
   const normalizedTitle = title.toLowerCase().trim();
   const normalizedDescription = description.toLowerCase().trim();
   const normalizedMaterials = materials.map(m => m.toLowerCase().trim()).sort().join(',');
-  
+
   const hashString = `${normalizedTitle}|||${normalizedDescription}|||${normalizedMaterials}`;
-  
+
   // Create SHA-256 hash using crypto-js
   return crypto.SHA256(hashString).toString().substring(0, 32);
 };
@@ -75,11 +76,11 @@ const createCraftHash = (title: string, description: string, materials: string[]
 export const CraftDetailsScreen = () => {
   const navigation = useNavigation<CraftDetailsNavigationProp>();
   const route = useRoute<CraftDetailsRouteProp>();
-  
-  const { 
-    craftTitle, 
-    materials, 
-    steps, 
+
+  const {
+    craftTitle,
+    materials,
+    steps,
     generatedImageUrl,
     timeNeeded,
     quickTip,
@@ -102,7 +103,7 @@ export const CraftDetailsScreen = () => {
   const [isNetworkError, setIsNetworkError] = useState(false);
   const [isPendingSave, setIsPendingSave] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  
+
   // ✅ CRITICAL: Prevent duplicate save attempts
   const saveAttemptRef = useRef(false);
   const lastSaveAttemptRef = useRef(0);
@@ -113,9 +114,9 @@ export const CraftDetailsScreen = () => {
   // ✅ Monitor SAVE mutation success
   useEffect(() => {
     if (saveMutation.isSuccess && saveMutation.data) {
-      
+
       const responseData = saveMutation.data.data;
-      
+
       // Check for duplicate
       if ((responseData as any).isDuplicate) {
         setIsSaved(true);
@@ -152,7 +153,7 @@ export const CraftDetailsScreen = () => {
   useEffect(() => {
     if (saveMutation.isError && saveMutation.error) {
       console.error('❌ Save mutation error:', saveMutation.error);
-      
+
       if (saveMutation.error instanceof NetworkError) {
         setIsNetworkError(true);
         setIsPendingSave(true);
@@ -171,11 +172,11 @@ export const CraftDetailsScreen = () => {
       const newSavedState = toggleMutation.data.data.isSaved;
       setIsSaved(newSavedState);
       setIsNetworkError(false);
-      
+
       Alert.alert(
         'Success',
-        newSavedState 
-          ? '✅ Craft saved to your collection!' 
+        newSavedState
+          ? '✅ Craft saved to your collection!'
           : '📤 Craft removed from saved items'
       );
     }
@@ -185,10 +186,10 @@ export const CraftDetailsScreen = () => {
   useEffect(() => {
     if (toggleMutation.isError && toggleMutation.error) {
       console.error('❌ Toggle mutation error:', toggleMutation.error);
-      
+
       if (toggleMutation.error instanceof NetworkError) {
         setIsNetworkError(true);
-        
+
         Alert.alert(
           '📡 Network Error',
           'Please check your internet connection and try again.',
@@ -217,11 +218,26 @@ export const CraftDetailsScreen = () => {
     setImageModalVisible(false);
   };
 
+  // ✅ Share to Feed Handler - No image so user can upload their own creation
+  const handleShareToFeed = () => {
+    // @ts-ignore - navigating to another stack
+    navigation.navigate('FeedStack', {
+      screen: 'Create',
+      params: {
+        initialTitle: `Check out my ${craftTitle} craft!`,
+        initialContent: `I just created this amazing ${craftTitle} using recycled materials: ${materials.join(', ')}. ${description}`,
+        initialCategory: 'Tutorial',
+        initialTags: ['craft', 'diy', 'upcycling', 'recycled'],
+        // No initialImageUri - let user upload their own creation photo
+      }
+    });
+  };
+
   const handleSave = async () => {
     // ✅ CRITICAL: Prevent rapid duplicate clicks
     const now = Date.now();
     const timeSinceLastAttempt = now - lastSaveAttemptRef.current;
-    
+
     if (saveAttemptRef.current) {
       Alert.alert(
         'Please Wait',
@@ -246,11 +262,11 @@ export const CraftDetailsScreen = () => {
     if (ideaId && isSaved) {
       try {
         await toggleMutation.mutateAsync(ideaId);
-        
+
         // Success is handled in useEffect
       } catch (error: any) {
         saveAttemptRef.current = false;
-        
+
         if (!(error instanceof NetworkError)) {
           Alert.alert(
             'Error',
@@ -291,11 +307,11 @@ export const CraftDetailsScreen = () => {
       // Success is handled in useEffect
     } catch (error: any) {
       saveAttemptRef.current = false;
-      
+
       // ✅ Check for duplicate error messages
-      if (error.message?.includes('already saved') || 
-          error.message?.includes('duplicate') ||
-          error.message?.includes('unique constraint')) {
+      if (error.message?.includes('already saved') ||
+        error.message?.includes('duplicate') ||
+        error.message?.includes('unique constraint')) {
         setIsSaved(true);
         Alert.alert(
           'Already Saved',
@@ -318,16 +334,16 @@ export const CraftDetailsScreen = () => {
   // ✅ Difficulty color mapping
   const getDifficultyColor = (diff?: string) => {
     switch (diff?.toLowerCase()) {
-      case 'easy': 
-      case 'beginner': 
+      case 'easy':
+      case 'beginner':
         return { bg: '#E8F5E9', text: '#2E7D32', icon: '#4CAF50' };
-      case 'medium': 
+      case 'medium':
       case 'intermediate':
         return { bg: '#FFF9E6', text: '#F57C00', icon: '#FF9800' };
       case 'hard':
-      case 'advanced': 
+      case 'advanced':
         return { bg: '#FFEBEE', text: '#C62828', icon: '#F44336' };
-      default: 
+      default:
         return { bg: '#F0F4F2', text: '#5F6F64', icon: '#5F6F64' };
     }
   };
@@ -361,20 +377,20 @@ export const CraftDetailsScreen = () => {
       <View className="px-4 pt-4 pb-3 bg-white border-b border-[#E8ECEB]">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center flex-1">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleBack}
               className="w-9 h-9 rounded-full bg-[#F0F4F2] items-center justify-center mr-3"
             >
               <ArrowLeft size={18} color="#3B6E4D" />
             </TouchableOpacity>
-            <Text 
-              className="text-lg font-bold text-[#1F2A1F] font-poppinsBold flex-1" 
+            <Text
+              className="text-lg font-bold text-[#1F2A1F] font-poppinsBold flex-1"
               numberOfLines={1}
             >
               {craftTitle}
             </Text>
           </View>
-          
+
           {/* Status Indicators */}
           <View className="flex-row items-center space-x-2 ml-2">
             {/* Network Error Badge */}
@@ -386,21 +402,20 @@ export const CraftDetailsScreen = () => {
                 </Text>
               </View>
             )}
-            
+
             {/* Bookmark Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleSave}
               disabled={saveButtonDisabled}
-              className={`w-9 h-9 rounded-full items-center justify-center ${
-                isSaved ? 'bg-[#3B6E4D]/20' : 'bg-[#F0F4F2]'
-              }`}
+              className={`w-9 h-9 rounded-full items-center justify-center ${isSaved ? 'bg-[#3B6E4D]/20' : 'bg-[#F0F4F2]'
+                }`}
             >
               {isProcessing ? (
                 <ActivityIndicator size="small" color="#3B6E4D" />
               ) : (
-                <Bookmark 
-                  size={18} 
-                  color={isSaved ? "#3B6E4D" : "#5F6F64"} 
+                <Bookmark
+                  size={18}
+                  color={isSaved ? "#3B6E4D" : "#5F6F64"}
                   fill={isSaved ? "#3B6E4D" : "transparent"}
                 />
               )}
@@ -411,12 +426,12 @@ export const CraftDetailsScreen = () => {
         {/* Enhanced Meta Info */}
         <View className="flex-row items-center mt-3 flex-wrap gap-2">
           {difficulty && (
-            <View 
+            <View
               className="flex-row items-center px-3 py-1.5 rounded-lg"
               style={{ backgroundColor: difficultyColors.bg }}
             >
               <BarChart3 size={14} color={difficultyColors.icon} />
-              <Text 
+              <Text
                 className="text-sm ml-1 font-nunito font-semibold"
                 style={{ color: difficultyColors.text }}
               >
@@ -424,7 +439,7 @@ export const CraftDetailsScreen = () => {
               </Text>
             </View>
           )}
-          
+
           {timeNeeded && (
             <View className="flex-row items-center bg-[#F0F4F2] px-3 py-1.5 rounded-lg">
               <Clock size={14} color="#5F6F64" />
@@ -433,7 +448,7 @@ export const CraftDetailsScreen = () => {
               </Text>
             </View>
           )}
-          
+
           {/* ✅ Clear saved status badge */}
           {isSaved && !isPendingSave && (
             <View className="flex-row items-center bg-[#3B6E4D]/10 px-3 py-1.5 rounded-lg">
@@ -450,7 +465,7 @@ export const CraftDetailsScreen = () => {
         {/* AI-Generated Image */}
         {imageUrl && (
           <View className="mx-4 mt-4 relative">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleImagePress}
               activeOpacity={0.9}
             >
@@ -521,8 +536,8 @@ export const CraftDetailsScreen = () => {
           </Text>
           <View className="flex-row flex-wrap gap-2">
             {materials.map((material, index) => (
-              <View 
-                key={index} 
+              <View
+                key={index}
                 className="bg-[#3B6E4D]/10 px-4 py-2 rounded-xl"
               >
                 <Text className="text-sm text-[#3B6E4D] font-nunito font-semibold">
@@ -544,8 +559,8 @@ export const CraftDetailsScreen = () => {
             </View>
             <View className="flex-row flex-wrap gap-2">
               {toolsNeeded.map((tool, index) => (
-                <View 
-                  key={index} 
+                <View
+                  key={index}
                   className="bg-[#F0F4F2] px-3 py-2 rounded-lg flex-row items-center"
                 >
                   <View className="w-1.5 h-1.5 rounded-full bg-[#5F6F64] mr-2" />
@@ -598,14 +613,13 @@ export const CraftDetailsScreen = () => {
 
         {/* ✅ Save Button - Smart Display Logic */}
         {showSaveButton && (
-          <View className="mx-4 mb-8">
-            <TouchableOpacity 
+          <View className="mx-4 mb-4">
+            <TouchableOpacity
               onPress={handleSave}
               disabled={saveButtonDisabled}
-              className={`py-4 rounded-xl flex-row items-center justify-center ${
-                saveButtonDisabled ? 'bg-[#3B6E4D]/50' : 
-                (isSaved && ideaId) ? 'bg-[#E66555]' : 'bg-[#3B6E4D]'
-              }`}
+              className={`py-4 rounded-xl flex-row items-center justify-center ${saveButtonDisabled ? 'bg-[#3B6E4D]/50' :
+                  (isSaved && ideaId) ? 'bg-[#E66555]' : 'bg-[#3B6E4D]'
+                }`}
               activeOpacity={0.8}
             >
               {isProcessing ? (
@@ -624,7 +638,23 @@ export const CraftDetailsScreen = () => {
                 </>
               )}
             </TouchableOpacity>
-            
+          </View>
+        )}
+
+        {/* ✅ Share Your Creation Button - Only show when saved */}
+        {isSaved && (
+          <View className="mx-4 mb-8">
+            <TouchableOpacity
+              onPress={handleShareToFeed}
+              className="py-4 rounded-xl flex-row items-center justify-center bg-[#E6B655]"
+              activeOpacity={0.8}
+            >
+              <Share2 size={20} color="#FFFFFF" />
+              <Text className="text-white font-bold text-base ml-2 font-poppinsBold">
+                Share Your Creation
+              </Text>
+            </TouchableOpacity>
+
             {/* ✅ Debug Info (Dev Mode Only) */}
             {__DEV__ && (
               <View className="mt-2">
@@ -666,7 +696,7 @@ export const CraftDetailsScreen = () => {
         statusBarTranslucent
       >
         <View className="absolute inset-0 bg-black">
-          
+
           {/* Close Button */}
           <TouchableOpacity
             onPress={handleCloseImageModal}
@@ -680,9 +710,9 @@ export const CraftDetailsScreen = () => {
           <View className="flex-1 items-center justify-center">
             <Image
               source={{ uri: imageUrl }}
-              style={{ 
-                width: SCREEN_WIDTH, 
-                height: SCREEN_HEIGHT 
+              style={{
+                width: SCREEN_WIDTH,
+                height: SCREEN_HEIGHT
               }}
               resizeMode="contain"
             />
