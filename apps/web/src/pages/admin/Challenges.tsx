@@ -153,7 +153,7 @@ export default function AdminChallenges() {
     refetch,
     createChallenge,
     updateChallenge,
-    includeExpired,
+
     setIncludeExpired,
     deleteChallenge,
     toggleStatus,
@@ -593,8 +593,8 @@ export default function AdminChallenges() {
               {row.original.expires_at && (
                 <Badge
                   className={`text-xs font-nunito ${isExpired
-                      ? 'bg-red-50 text-red-600 border border-red-200'
-                      : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    ? 'bg-red-50 text-red-600 border border-red-200'
+                    : 'bg-blue-50 text-blue-600 border border-blue-200'
                     }`}
                 >
                   <Calendar className="w-3 h-3 mr-1" />
@@ -616,8 +616,8 @@ export default function AdminChallenges() {
           <div className="flex flex-col gap-1">
             <Badge
               className={`font-poppins border-0 ${row.original.is_active
-                  ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+                ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
                 }`}
             >
               {row.original.is_active ? (

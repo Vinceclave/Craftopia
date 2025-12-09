@@ -31,6 +31,7 @@ const AdminLayout = () => {
     { name: 'Content', href: '/admin/posts', icon: FileText, badge: null },
     { name: 'Challenges', href: '/admin/challenges', icon: Trophy, badge: null },
     { name: 'Sponsors', href: '/admin/sponsors', icon: Trophy, badge: null },
+    { name: 'Reports', href: '/admin/reports', icon: BarChart3, badge: null },
     { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, badge: null },
   ];
 
@@ -77,16 +78,16 @@ const AdminLayout = () => {
               {/* Improved Logo Container */}
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-xl flex items-center justify-center shadow-lg border border-[#6CAC73]/30">
-                  <img 
-                    src={logo} 
-                    alt="Craftopia Logo" 
+                  <img
+                    src={logo}
+                    alt="Craftopia Logo"
                     className="w-6 h-6 object-contain filter brightness-0 invert"
                   />
                 </div>
                 {/* Subtle shine effect */}
                 <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
               </div>
-              
+
               {sidebarOpen && (
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1">
@@ -117,10 +118,10 @@ const AdminLayout = () => {
                   <div
                     className={`flex items-center w-full relative group rounded-xl transition-all duration-200
                     ${sidebarOpen ? 'px-3 py-2.5' : 'px-2 py-2.5 justify-center'}
-                    ${isActive 
-                      ? 'bg-gradient-to-r from-[#6CAC73]/10 to-[#2B4A2F]/5 text-[#2B4A2F] border border-[#6CAC73]/20' 
-                      : 'text-gray-600 hover:text-[#2B4A2F] hover:bg-white/50 border border-transparent'
-                    }`}
+                    ${isActive
+                        ? 'bg-gradient-to-r from-[#6CAC73]/10 to-[#2B4A2F]/5 text-[#2B4A2F] border border-[#6CAC73]/20'
+                        : 'text-gray-600 hover:text-[#2B4A2F] hover:bg-white/50 border border-transparent'
+                      }`}
                   >
                     <item.icon className={`w-4 h-4 ${sidebarOpen ? 'mr-3' : ''}`} />
                     {sidebarOpen && (
@@ -156,18 +157,18 @@ const AdminLayout = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="flex-1 text-xs h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10 hover:text-[#2B4A2F]"
                   >
                     <Settings className="w-3 h-3 mr-2" />
                     Settings
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="flex-1 text-xs h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10 hover:text-[#2B4A2F]" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 text-xs h-8 border border-[#6CAC73]/20 hover:bg-[#6CAC73]/10 hover:text-[#2B4A2F]"
                     onClick={handleLogout}
                   >
                     <LogOut className="w-3 h-3 mr-2" />
@@ -180,10 +181,10 @@ const AdminLayout = () => {
                 <div className="w-8 h-8 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-full flex items-center justify-center text-white text-sm shadow-lg">
                   {user?.username?.charAt(0).toUpperCase() || 'A'}
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 hover:bg-[#6CAC73]/10 border border-[#6CAC73]/20" 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 hover:bg-[#6CAC73]/10 border border-[#6CAC73]/20"
                   onClick={handleLogout}
                 >
                   <LogOut className="w-3 h-3 text-[#2B4A2F]" />
@@ -196,9 +197,8 @@ const AdminLayout = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        }`}
+        className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
+          }`}
       >
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-sm border-b border-[#6CAC73]/20">

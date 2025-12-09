@@ -213,7 +213,13 @@ export interface DashboardStats {
     totalLikes: number;
     avgPostsPerUser: number;
     avgChallengesPerUser: number;
+    average: number;
+    sessions: number;
   };
+  materials: {
+    name: string;
+    count: number;
+  }[];
 }
 
 export interface Announcement {
@@ -565,13 +571,13 @@ export const reportsAPI = {
 // ===== CHALLENGES API =====
 export const challengesAPI = {
   getAll: (category?: string, includeExpired?: boolean): Promise<ApiResponse<Challenge[]>> =>
-    api.get('/challenges', { 
-      params: { 
-        ...(category ? { category } : {}), 
+    api.get('/challenges', {
+      params: {
+        ...(category ? { category } : {}),
         includeInactive: true,
         includeExpired: includeExpired ?? false // NEW: Add expiration filter
-      } 
-  }),
+      }
+    }),
   getById: (challengeId: number): Promise<ApiResponse<Challenge>> =>
     api.get(`/challenges/${challengeId}`),
 

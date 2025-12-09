@@ -39,6 +39,10 @@ export interface DashboardStats {
     average: number;
     sessions: number;
   };
+  materials: {
+    name: string;
+    count: number;
+  }[];
 }
 
 export interface ActivityLog {
@@ -71,11 +75,11 @@ class DashboardService extends BaseService {
         prisma.post.count({ where: { deleted_at: null } }),
         prisma.comment.count({ where: { deleted_at: null } }),
         prisma.craftIdea.count({ where: { deleted_at: null } }),
-        prisma.post.count({ 
-          where: { 
+        prisma.post.count({
+          where: {
             deleted_at: null,
             created_at: { gte: startOfToday }
-          } 
+          }
         })
       ]);
 
@@ -84,11 +88,11 @@ class DashboardService extends BaseService {
         prisma.ecoChallenge.count({ where: { deleted_at: null } }),
         prisma.ecoChallenge.count({ where: { is_active: true, deleted_at: null } }),
         prisma.userChallenge.count({ where: { status: 'completed', deleted_at: null } }),
-        prisma.userChallenge.count({ 
-          where: { 
+        prisma.userChallenge.count({
+          where: {
             status: 'pending_verification',
-            deleted_at: null 
-          } 
+            deleted_at: null
+          }
         })
       ]);
 
@@ -102,7 +106,7 @@ class DashboardService extends BaseService {
 
       // Engagement stats
       const totalLikes = await prisma.like.count({ where: { deleted_at: null } });
-      
+
       const avgPostsPerUser = totalUsers > 0 ? totalPosts / totalUsers : 0;
       const avgChallengesPerUser = totalUsers > 0 ? completedChallenges / totalUsers : 0;
       const avgEngagement = totalPosts > 0 ? (totalLikes + totalComments) / totalPosts : 0;
@@ -114,6 +118,42 @@ class DashboardService extends BaseService {
           updated_at: { gte: subDays(today, 1) }
         }
       });
+
+      // Material stats
+      const craftsWithMaterials = await prisma.craftIdea.findMany({
+        where: { deleted_at: null },
+        select: { recycled_materials: true }
+      });
+
+      const materialCounts: Record<string, number> = {};
+      craftsWithMaterials.forEach(craft => {
+        const materials = this.extractStringArray(craft.recycled_materials);
+        materials.forEach(material => {
+          if (material) {
+            // Clean material name using regex
+            // 1. Remove content in parentheses (e.g., "(1)")
+            // 2. Remove "x" followed by numbers or numbers followed by "x"
+            // 3. Remove digits
+            // 4. Remove special characters except spaces
+            let cleaned = material.replace(/\s*\([^)]*\)/g, '');
+            cleaned = cleaned.replace(/^\d+\s*x\s*/i, '').replace(/\s*x\s*\d+$/i, '');
+            cleaned = cleaned.replace(/[0-9]/g, '');
+            cleaned = cleaned.replace(/[^\w\s]/g, ' ');
+
+            // Normalize whitespace and case
+            cleaned = cleaned.replace(/\s+/g, ' ').trim().toLowerCase();
+
+            if (cleaned.length > 1) { // Ignore single characters
+              materialCounts[cleaned] = (materialCounts[cleaned] || 0) + 1;
+            }
+          }
+        });
+      });
+
+      const topMaterials = Object.entries(materialCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10); // Top 10 materials
 
       logger.info('Dashboard statistics fetched successfully');
 
@@ -149,7 +189,8 @@ class DashboardService extends BaseService {
           avgChallengesPerUser: Number(avgChallengesPerUser.toFixed(2)),
           average: Number(avgEngagement.toFixed(2)),
           sessions: activeSessions
-        }
+        },
+        materials: topMaterials
       };
     } catch (error) {
       logger.error('Error fetching dashboard stats', error);
@@ -166,7 +207,7 @@ class DashboardService extends BaseService {
       logger.debug('Fetching activity logs', { days });
 
       const activityData: ActivityLog[] = [];
-      
+
       for (let i = days - 1; i >= 0; i--) {
         const date = subDays(new Date(), i);
         const dayStart = startOfDay(date);
@@ -174,19 +215,19 @@ class DashboardService extends BaseService {
 
         const [users, posts, challenges] = await Promise.all([
           prisma.user.count({
-            where: { 
+            where: {
               created_at: { gte: dayStart, lte: dayEnd },
-              deleted_at: null 
+              deleted_at: null
             }
           }),
           prisma.post.count({
-            where: { 
+            where: {
               created_at: { gte: dayStart, lte: dayEnd },
               deleted_at: null
             }
           }),
           prisma.userChallenge.count({
-            where: { 
+            where: {
               created_at: { gte: dayStart, lte: dayEnd },
               deleted_at: null
             }
@@ -334,6 +375,14 @@ class DashboardService extends BaseService {
       logger.error('Error fetching recent activity', error);
       throw new AppError('Failed to fetch recent activity', 500);
     }
+  }
+
+  private extractStringArray(jsonValue: any): string[] {
+    if (!jsonValue) return [];
+    if (Array.isArray(jsonValue)) {
+      return jsonValue.filter((item): item is string => typeof item === 'string');
+    }
+    return [];
   }
 }
 
