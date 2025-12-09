@@ -26,7 +26,7 @@ export const useAnnouncements = () => {
 
   // Fetch all announcements for stats (no filters)
   // 🔥 FIX: Changed limit from 1000 to 100 (backend validation limit)
-  const { data: allAnnouncementsData, isLoading: isStatsLoading, error: statsError } = useQuery({
+  const { data: allAnnouncementsData, isLoading: isStatsLoading } = useQuery({
     queryKey: ['announcements-all'],
     queryFn: async () => {
       const response: any = await announcementsAPI.getAll(1, 100, undefined, undefined);
