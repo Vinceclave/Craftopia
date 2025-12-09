@@ -68,8 +68,13 @@ export const useChallenges = (category?: string) => {
     queryKey: challengeKeys.list(category),
     queryFn: async () => {
       const params: any = category && category !== 'all' ? { category } : {};
-      params.includeInactive = false; // Only active challenges for mobile
-      const response: { data?: Challenge[]; challenges?: Challenge[] } = await apiService.request(API_ENDPOINTS.CHALLENGES.LIST, { params });
+      
+      // ✅ MOBILE: Only show active, non-expired challenges
+      params.includeInactive = false;
+      params.includeExpired = false; // NEW: Never show expired on mobile
+      
+      const response: { data?: Challenge[]; challenges?: Challenge[] } = 
+        await apiService.request(API_ENDPOINTS.CHALLENGES.LIST, { params });
 
       // Handle different response structures
       let challenges: any[] = [];

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import {
@@ -153,6 +153,8 @@ export default function AdminChallenges() {
     refetch,
     createChallenge,
     updateChallenge,
+    includeExpired,
+    setIncludeExpired,
     deleteChallenge,
     toggleStatus,
     generateAIChallenge,
@@ -165,12 +167,28 @@ export default function AdminChallenges() {
   } = useChallenges();
 
   const { success, error: showError, info } = useToast();
-const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challenges');
+  const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challenges');
   // ✅ FIX: Set default filters - active challenges and pending user challenges
   const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('active');
   const [userChallengeStatusFilter, setUserChallengeStatusFilter] = useState<UserChallengeStatusFilter>('pending_verification');
   const [challengeSearchQuery, setChallengeSearchQuery] = useState('');
   const [userChallengeSearchQuery, setUserChallengeSearchQuery] = useState('');
+  // Add expiration filter type
+  type ExpirationFilter = 'all' | 'active' | 'expired';
+  const [expirationFilter, setExpirationFilter] = useState<ExpirationFilter>('active');
+
+  // ✅ Sync expiration filter with hook
+  useEffect(() => {
+    // If filtering for 'expired' or 'all', we need to fetch expired challenges from backend
+    // If filtering for 'active', we can optimize (or just fetch all and filter client-side)
+    // But since the backend logic for includeExpired=true returns ALL, we should use that
+    // when we need to see expired ones.
+    if (expirationFilter === 'active') {
+      setIncludeExpired(false);
+    } else {
+      setIncludeExpired(true);
+    }
+  }, [expirationFilter, setIncludeExpired]);
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -326,7 +344,7 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
     if (e) {
       e.preventDefault();
     }
-    
+
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -350,15 +368,15 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
     if (e) {
       e.preventDefault();
     }
-    
+
     if (!selectedChallenge) return;
-    
+
     const errors = validateChallengeForm(formData);
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
-    
+
     try {
       await updateChallenge({
         challengeId: selectedChallenge.challenge_id,
@@ -456,12 +474,27 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
   const filteredChallenges = useMemo(() => {
     let filtered = challengeList;
 
-    // Status filter
+    // Status filter (active/inactive)
     if (challengeStatusFilter === 'active') {
       filtered = filtered.filter((c: Challenge) => c.is_active);
     } else if (challengeStatusFilter === 'inactive') {
       filtered = filtered.filter((c: Challenge) => !c.is_active);
     }
+
+    // Expiration filter
+    const now = new Date();
+    if (expirationFilter === 'active') {
+      // Only non-expired challenges
+      filtered = filtered.filter((c: Challenge) =>
+        !c.expires_at || new Date(c.expires_at) > now
+      );
+    } else if (expirationFilter === 'expired') {
+      // Only expired challenges
+      filtered = filtered.filter((c: Challenge) =>
+        c.expires_at && new Date(c.expires_at) <= now
+      );
+    }
+    // 'all' shows everything
 
     // Search filter
     if (challengeSearchQuery.trim()) {
@@ -474,7 +507,8 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
     }
 
     return filtered;
-  }, [challengeList, challengeStatusFilter, challengeSearchQuery]);
+  }, [challengeList, challengeStatusFilter, expirationFilter, challengeSearchQuery]);
+
 
   // ✅ FIX: Filter user challenges client-side
   const filteredUserChallenges = useMemo(() => {
@@ -514,59 +548,101 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
     {
       accessorKey: 'title',
       header: 'Challenge',
-      cell: ({ row }) => (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-[#2B4A2F] font-poppins">{row.original.title}</span>
-            {row.original.source === 'ai' && (
-              <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
-                <Sparkles className="w-3 h-3 mr-1" />
-                AI
+      cell: ({ row }) => {
+        const isExpired = row.original.expires_at && new Date(row.original.expires_at) <= new Date();
+
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-[#2B4A2F] font-poppins">{row.original.title}</span>
+
+              {/* Expired Badge - Show first if expired */}
+              {isExpired && (
+                <Badge className="bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-700 border-0 font-poppins">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Expired
+                </Badge>
+              )}
+
+              {/* Source Badges */}
+              {row.original.source === 'ai' && (
+                <Badge className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 text-purple-700 border-0 font-poppins">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI
+                </Badge>
+              )}
+              {row.original.source === 'admin' && (
+                <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
+                  <Users className="w-3 h-3 mr-1" />
+                  Admin
+                </Badge>
+              )}
+            </div>
+
+            {/* Category and Material Type Badges */}
+            <div className="flex gap-2 flex-wrap">
+              <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
+                <TrendingUp className="w-3 h-3 mr-1" />
+                {row.original.category}
               </Badge>
-            )}
-            {row.original.source === 'admin' && (
-              <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
-                <Users className="w-3 h-3 mr-1" />
-                Admin
+              <Badge className="capitalize text-xs border-0 bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
+                {row.original.material_type}
               </Badge>
-            )}
+
+              {/* Expiration Date Display (if exists) */}
+              {row.original.expires_at && (
+                <Badge
+                  className={`text-xs font-nunito ${isExpired
+                      ? 'bg-red-50 text-red-600 border border-red-200'
+                      : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    }`}
+                >
+                  <Calendar className="w-3 h-3 mr-1" />
+                  {new Date(row.original.expires_at).toLocaleDateString()}
+                </Badge>
+              )}
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Badge className="capitalize text-xs border-0 bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F] font-poppins">
-              <TrendingUp className="w-3 h-3 mr-1" />
-              {row.original.category}
-            </Badge>
-            <Badge className="capitalize text-xs border-0 bg-white/80 border border-[#6CAC73]/20 text-[#2B4A2F] font-nunito">
-              {row.original.material_type}
-            </Badge>
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       accessorKey: 'is_active',
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge
-          className={`font-poppins border-0 ${
-            row.original.is_active
-              ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-              : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-          }`}
-        >
-          {row.original.is_active ? (
-            <>
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Active
-            </>
-          ) : (
-            <>
-              <XCircle className="w-3 h-3 mr-1" />
-              Inactive
-            </>
-          )}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const isExpired = row.original.expires_at && new Date(row.original.expires_at) <= new Date();
+
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge
+              className={`font-poppins border-0 ${row.original.is_active
+                  ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+                }`}
+            >
+              {row.original.is_active ? (
+                <>
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Active
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-3 h-3 mr-1" />
+                  Inactive
+                </>
+              )}
+            </Badge>
+
+            {/* Show expiration status */}
+            {isExpired && (
+              <Badge className="text-xs bg-red-50 text-red-600 border border-red-200 font-nunito">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Expired
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'points_reward',
@@ -838,15 +914,17 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
           { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown' },
           { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A' },
           { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A' },
-          { header: 'Status', dataKey: 'status', formatter: (val) => {
-            const statusMap: Record<string, string> = {
-              in_progress: 'In Progress',
-              pending_verification: 'Pending Verification',
-              completed: 'Completed',
-              rejected: 'Rejected'
-            };
-            return statusMap[val] || val;
-          }},
+          {
+            header: 'Status', dataKey: 'status', formatter: (val) => {
+              const statusMap: Record<string, string> = {
+                in_progress: 'In Progress',
+                pending_verification: 'Pending Verification',
+                completed: 'Completed',
+                rejected: 'Rejected'
+              };
+              return statusMap[val] || val;
+            }
+          },
           { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0 },
           { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—' },
           { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString() },
@@ -918,15 +996,17 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
             { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
             { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A', width: 25 },
             { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A', width: 30 },
-            { header: 'Status', dataKey: 'status', formatter: (val) => {
-              const statusMap: Record<string, string> = {
-                in_progress: 'In Progress',
-                pending_verification: 'Pending Verification',
-                completed: 'Completed',
-                rejected: 'Rejected'
-              };
-              return statusMap[val] || val;
-            }, width: 20 },
+            {
+              header: 'Status', dataKey: 'status', formatter: (val) => {
+                const statusMap: Record<string, string> = {
+                  in_progress: 'In Progress',
+                  pending_verification: 'Pending Verification',
+                  completed: 'Completed',
+                  rejected: 'Rejected'
+                };
+                return statusMap[val] || val;
+              }, width: 20
+            },
             { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0, width: 15 },
             { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—', width: 20 },
             { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
@@ -960,15 +1040,17 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
             { header: 'User', dataKey: 'user', formatter: (val) => val?.username || 'Unknown', width: 20 },
             { header: 'Email', dataKey: 'user', formatter: (val) => val?.email || 'N/A', width: 25 },
             { header: 'Challenge', dataKey: 'challenge', formatter: (val) => val?.title || 'N/A', width: 30 },
-            { header: 'Status', dataKey: 'status', formatter: (val) => {
-              const statusMap: Record<string, string> = {
-                in_progress: 'In Progress',
-                pending_verification: 'Pending Verification',
-                completed: 'Completed',
-                rejected: 'Rejected'
-              };
-              return statusMap[val] || val;
-            }, width: 20 },
+            {
+              header: 'Status', dataKey: 'status', formatter: (val) => {
+                const statusMap: Record<string, string> = {
+                  in_progress: 'In Progress',
+                  pending_verification: 'Pending Verification',
+                  completed: 'Completed',
+                  rejected: 'Rejected'
+                };
+                return statusMap[val] || val;
+              }, width: 20
+            },
             { header: 'Points Awarded', dataKey: 'points_awarded', formatter: (val) => val || 0, width: 15 },
             { header: 'Waste Saved (kg)', dataKey: 'waste_kg_saved', formatter: (val) => val ? `${val} kg` : '—', width: 20 },
             { header: 'Started', dataKey: 'created_at', formatter: (val) => new Date(val).toLocaleDateString(), width: 20 },
@@ -980,11 +1062,11 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
       ];
     }
 
-    generateGenericExcel({ 
-      sheets, 
-      filename: activeTab === 'challenges' ? 'challenges-report' : 
-                activeTab === 'submissions' ? 'user-submissions-report' : 
-                'challenges-comprehensive-report' 
+    generateGenericExcel({
+      sheets,
+      filename: activeTab === 'challenges' ? 'challenges-report' :
+        activeTab === 'submissions' ? 'user-submissions-report' :
+          'challenges-comprehensive-report'
     });
   };
 
@@ -1016,7 +1098,7 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
         actions={
           <div className="flex gap-2">
             <ExportButtons onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} />
-            
+
             <Button
               size="sm"
               onClick={handleOpenCreate}
@@ -1074,22 +1156,22 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
       </Card>
 
       {/* Main Tabs */}
-<Tabs defaultValue="challenges" className="w-full" onValueChange={(value) => setActiveTab(value as 'challenges' | 'submissions')}>        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
-          <TabsTrigger
-            value="challenges"
-            className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
-          >
-            <Trophy className="w-4 h-4 mr-2" />
-            Challenges ({challengeStats.total})
-          </TabsTrigger>
-          <TabsTrigger
-            value="submissions"
-            className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-poppins"
-          >
-            <Clock className="w-4 h-4 mr-2" />
-            Submissions ({userChallengeStats.pending} Pending)
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="challenges" className="w-full" onValueChange={(value) => setActiveTab(value as 'challenges' | 'submissions')}>        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
+        <TabsTrigger
+          value="challenges"
+          className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#2B4A2F] data-[state=active]:to-[#6CAC73] data-[state=active]:text-white font-poppins"
+        >
+          <Trophy className="w-4 h-4 mr-2" />
+          Challenges ({challengeStats.total})
+        </TabsTrigger>
+        <TabsTrigger
+          value="submissions"
+          className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white font-poppins"
+        >
+          <Clock className="w-4 h-4 mr-2" />
+          Submissions ({userChallengeStats.pending} Pending)
+        </TabsTrigger>
+      </TabsList>
 
         {/* Challenges Tab */}
         <TabsContent value="challenges">
@@ -1130,6 +1212,17 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
                   { label: 'Inactive', value: 'inactive' },
                 ],
                 onChange: (value) => setChallengeStatusFilter(value as ChallengeStatusFilter),
+              },
+              // NEW: Expiration filter
+              {
+                label: 'Expiration',
+                value: expirationFilter,
+                options: [
+                  { label: 'All', value: 'all' },
+                  { label: 'Active (Not Expired)', value: 'active' },
+                  { label: 'Expired', value: 'expired' },
+                ],
+                onChange: (value) => setExpirationFilter(value as ExpirationFilter),
               },
             ]}
             emptyState={{
@@ -1411,7 +1504,7 @@ const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challe
         <ConfirmDialog
           open={verifyDialogOpen}
           onOpenChange={setVerifyDialogOpen}
-          onConfirm={() => {}}
+          onConfirm={() => { }}
           title="Review Submission"
           description="Verify completion and provide feedback"
           variant="info"

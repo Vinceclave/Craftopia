@@ -26,12 +26,13 @@ export const generateChallenge = asyncHandler(async (req: AuthRequest, res: Resp
 
 export const getAllChallenges = asyncHandler(async (req: AuthRequest, res: Response) => {
   const category = req.query.category as string;
-  // ✅ Default to false for mobile users, only true when explicitly set
   const includeInactive = req.query.includeInactive === 'true';
+  const includeExpired = req.query.includeExpired === 'true';
 
   const challenges = await challengeService.getAllChallenges({
     category,
-    includeInactive
+    includeInactive,
+    includeExpired
   });
 
   sendSuccess(res, challenges, 'Challenges retrieved successfully');

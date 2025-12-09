@@ -112,33 +112,44 @@ class ChallengeService extends BaseService {
     return savedChallenges[0];
   }
 
-  // Get all challenges with filtering
+// Get all challenges with filtering
   async getAllChallenges(options: {
     category?: string;
     includeInactive?: boolean;
+    includeExpired?: boolean;
   }) {
-    const { category, includeInactive = false } = options; // DEFAULT: only active for mobile
+    const { 
+      category, 
+      includeInactive = false,
+      includeExpired = false 
+    } = options;
 
-    logger.debug('Fetching all challenges', { category, includeInactive });
+    logger.debug('Fetching all challenges', { category, includeInactive, includeExpired });
 
-    // ✅ CRITICAL: Only filter by deleted_at
     const where: any = {
       deleted_at: null
     };
 
-    // Optionally filter by category
+    // Filter by category
     if (category?.trim()) {
       where.category = category.trim();
     }
 
-    // Only filter by active status if explicitly requested
+    // For mobile (includeInactive = false):
+    // Only show active challenges
     if (!includeInactive) {
       where.is_active = true;
+    }
+
+    // Handle expiration filtering
+    if (!includeExpired) {
+      // Mobile: Only show non-expired challenges (expires_at is null OR in the future)
       where.OR = [
         { expires_at: null },
         { expires_at: { gt: new Date() } }
       ];
     }
+    // Web (includeExpired = true): Show all challenges regardless of expiration
 
     const challenges = await prisma.ecoChallenge.findMany({
       where,
@@ -153,7 +164,7 @@ class ChallengeService extends BaseService {
           select: {
             participants: {
               where: {
-                deleted_at: null // Only count non-deleted participants
+                deleted_at: null
               }
             }
           }
@@ -164,7 +175,6 @@ class ChallengeService extends BaseService {
 
     return challenges;
   }
-
 
   // Get challenge by ID
   async getChallengeById(challengeId: number, userId?: number) {

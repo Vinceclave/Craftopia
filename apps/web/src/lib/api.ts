@@ -564,9 +564,14 @@ export const reportsAPI = {
 
 // ===== CHALLENGES API =====
 export const challengesAPI = {
-  getAll: (category?: string): Promise<ApiResponse<Challenge[]>> =>
-    api.get('/challenges', { params: { ...(category ? { category } : {}), includeInactive: true } }),
-
+  getAll: (category?: string, includeExpired?: boolean): Promise<ApiResponse<Challenge[]>> =>
+    api.get('/challenges', { 
+      params: { 
+        ...(category ? { category } : {}), 
+        includeInactive: true,
+        includeExpired: includeExpired ?? false // NEW: Add expiration filter
+      } 
+  }),
   getById: (challengeId: number): Promise<ApiResponse<Challenge>> =>
     api.get(`/challenges/${challengeId}`),
 

@@ -8,6 +8,7 @@ interface ChallengeFilters {
   category: string;
   page: number;
   limit: number;
+  includeExpired: boolean; // NEW: Add expiration filter
 }
 
 export const useChallenges = () => {
@@ -15,6 +16,7 @@ export const useChallenges = () => {
     category: '',
     page: 1,
     limit: 10,
+    includeExpired: false, // NEW: Add expiration filter
   });
 
   const queryClient = useQueryClient();
@@ -28,11 +30,14 @@ export const useChallenges = () => {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ['challenges'], // ✅ Removed category from queryKey
+    queryKey: ['challenges', filters.includeExpired], // ✅ Added expiration filter to queryKey
     queryFn: async () => {
       try {
         // ✅ Fetch ALL challenges without category filter
-        const response = await challengesAPI.getAll();
+        const response = await challengesAPI.getAll(
+          filters.category,
+          filters.includeExpired // NEW: Pass expiration filter
+        );
         return {
           data: response?.data ?? [],
           success: response?.success ?? true,
@@ -48,6 +53,10 @@ export const useChallenges = () => {
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
+
+  const setIncludeExpired = useCallback((includeExpired: boolean) => {
+    setFilters(prev => ({ ...prev, includeExpired, page: 1 }));
+  }, []);
 
   // Fetch pending verifications
   const {
@@ -237,18 +246,19 @@ export const useChallenges = () => {
       category: '',
       page: 1,
       limit: 10,
+      includeExpired: false,
     });
   }, []);
 
   // ✅ FIX: Filter challenges client-side
   const challenges = useMemo(() => {
     const allChallenges = data?.data || [];
-    
+
     // Apply category filter client-side
     if (filters.category) {
       return allChallenges.filter((c: any) => c.category === filters.category);
     }
-    
+
     return allChallenges;
   }, [data?.data, filters.category]);
 
@@ -289,6 +299,8 @@ export const useChallenges = () => {
       refetchPending();
     },
     refetchPending,
+    includeExpired: filters.includeExpired,
+    setIncludeExpired,
 
     createChallenge: createMutation.mutateAsync,
     updateChallenge: updateMutation.mutateAsync,
