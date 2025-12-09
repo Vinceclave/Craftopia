@@ -38,7 +38,7 @@ export const VerifyEmailScreen = () => {
     try {
 
       await verifyEmailMutation.mutateAsync(token);
-      
+
       success(
         'Email Verified! 🎉',
         'Your email has been successfully verified. You can now sign in to your account.',
@@ -48,7 +48,7 @@ export const VerifyEmailScreen = () => {
       );
     } catch (err: any) {
       console.error('❌ [VerifyEmail] Auto-verification failed:', err);
-      
+
       if (err.message?.toLowerCase().includes('already verified')) {
         success(
           'Already Verified',
@@ -76,7 +76,7 @@ export const VerifyEmailScreen = () => {
 
     try {
       await resendVerificationMutation.mutateAsync(email.trim());
-      
+
       success(
         'Verification Email Sent! 📧',
         'A new verification email has been sent to your inbox. Please check your email and click the verification link.',
@@ -84,14 +84,15 @@ export const VerifyEmailScreen = () => {
     } catch (err: any) {
       console.error('❌ [VerifyEmail] Resend failed:', err);
       error(
-        'Failed to Send Email', 
+        'Failed to Send Email',
         err.message || 'Could not send verification email. Please try again later.'
       );
     }
   };
 
+  // Open Gmail app (inbox, not compose)
   const handleOpenEmail = () => {
-    Linking.openURL('mailto:');
+    Linking.openURL('googlegmail://');
   };
 
   // Show loading state during auto-verification
@@ -135,7 +136,7 @@ export const VerifyEmailScreen = () => {
             <Text className="text-craftopia-textPrimary text-lg font-semibold mb-3 text-center font-poppinsBold">
               Check Your Email
             </Text>
-            
+
             {email && (
               <Text className="text-craftopia-textSecondary text-base leading-relaxed mb-4 font-nunito">
                 We sent a verification email to:{'\n'}

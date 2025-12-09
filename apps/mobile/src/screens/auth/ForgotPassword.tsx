@@ -26,18 +26,18 @@ const ForgotPassword = () => {
   // Validate email
   const validateEmail = (value: string): boolean => {
     setEmailError('');
-    
+
     if (!value.trim()) {
       setEmailError('Email is required');
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(value)) {
       setEmailError('Please enter a valid email address');
       return false;
     }
-    
+
     return true;
   };
 
@@ -70,9 +70,9 @@ const ForgotPassword = () => {
     }
   };
 
-  // Open email app
+  // Open Gmail app (inbox, not compose)
   const handleOpenEmail = () => {
-    Linking.openURL('mailto:');
+    Linking.openURL('googlegmail://');
   };
 
   // Render email input step
@@ -157,7 +157,7 @@ const ForgotPassword = () => {
             <Text className="text-craftopia-textPrimary text-lg font-semibold mb-3 text-center font-poppinsBold">
               What's Next?
             </Text>
-            
+
             <Text className="text-craftopia-textSecondary text-base leading-relaxed mb-4 font-nunito">
               We sent an email to:{'\n'}
               <Text className="font-semibold text-purple-600">{email}</Text>
@@ -170,14 +170,14 @@ const ForgotPassword = () => {
                   Check your inbox for the password reset email
                 </Text>
               </View>
-              
+
               <View className="flex-row items-start">
                 <Text className="text-purple-600 font-bold mr-2 font-poppinsBold">2.</Text>
                 <Text className="flex-1 text-craftopia-textSecondary font-nunito">
                   Click the "Reset Password" button in the email
                 </Text>
               </View>
-              
+
               <View className="flex-row items-start">
                 <Text className="text-purple-600 font-bold mr-2 font-poppinsBold">3.</Text>
                 <Text className="flex-1 text-craftopia-textSecondary font-nunito">
@@ -220,7 +220,7 @@ const ForgotPassword = () => {
               }}
               variant="outline"
             />
-            
+
             <Button
               title="Back to Login"
               onPress={() => navigation.navigate('Login')}
