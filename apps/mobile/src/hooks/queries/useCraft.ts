@@ -160,29 +160,31 @@ export const useToggleSaveCraft = () => {
 /**
  * ✅ Get saved crafts with error handling and offline support
  */
-export const useSavedCrafts = (page = 1, limit = 10, enabled = true) =>
-  useQuery({
-    queryKey: ['savedCrafts', page, limit],
-    queryFn: () => craftService.getSavedCrafts(page, limit),
-    enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: (failureCount, error: any) => {
-      // Don't retry network errors for queries
-      if (error instanceof NetworkError) {
-        return false;
-      }
-      return failureCount < 2;
-    },
-    onError: (error: any) => {
-      console.error('❌ Get saved crafts error:', error);
-      
-      if (error instanceof NetworkError) {
-        // Silent fail for queries - show cached data if available
-        console.warn('⚠️ Network error, showing cached data if available');
-      }
-    },
-  });
+  export const useSavedCrafts = (page = 1, limit = 10, enabled = true) =>
+    useQuery({
+      queryKey: ['savedCrafts', page, limit],
+      queryFn: async () => {
+        try {
+          return await craftService.getSavedCrafts(page, limit);
+        } catch (error: any) {
+          console.error('❌ Get saved crafts error:', error);
+
+          if (error instanceof NetworkError) {
+            console.warn('⚠️ Network error, showing cached data if available');
+          }
+
+          throw error; // <-- IMPORTANT
+        }
+      },
+      enabled,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: (failureCount, error: any) => {
+        if (error instanceof NetworkError) return false;
+        return failureCount < 2;
+      },
+    });
+
 
 /**
  * ✅ Get user craft statistics with error handling
@@ -190,24 +192,28 @@ export const useSavedCrafts = (page = 1, limit = 10, enabled = true) =>
 export const useCraftStats = (enabled = true) =>
   useQuery({
     queryKey: ['craftStats'],
-    queryFn: () => craftService.getUserCraftStats(),
-    enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    retry: (failureCount, error: any) => {
-      if (error instanceof NetworkError) {
-        return false;
+    queryFn: async () => {
+      try {
+        return await craftService.getUserCraftStats();
+      } catch (error: any) {
+        console.error('❌ Get craft stats error:', error);
+
+        if (error instanceof NetworkError) {
+          console.warn('⚠️ Network error, showing cached stats if available');
+        }
+
+        throw error; // IMPORTANT so react-query handles it
       }
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: (failureCount, error: any) => {
+      if (error instanceof NetworkError) return false;
       return failureCount < 2;
     },
-    onError: (error: any) => {
-      console.error('❌ Get craft stats error:', error);
-      
-      if (error instanceof NetworkError) {
-        console.warn('⚠️ Network error, showing cached stats if available');
-      }
-    },
-  });
+  }); 
+
 
 /**
  * ✅ Get pending saves count

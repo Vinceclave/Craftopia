@@ -189,10 +189,14 @@ export const CraftScreen: React.FC = () => {
 
   // ✅ Extract stats
   const savedCrafts = savedCraftsData?.data || [];
-  const totalCrafts = statsData?.data?.totalCrafts || 0;
-  const craftsMade = statsData?.data?.savedCrafts || 0;
-  const totalMaterials = statsData?.data?.totalMaterials || 0;
-
+  const stats = statsData?.data ?? {
+    totalCrafts: 0,
+    savedCrafts: 0,
+    totalMaterials: 0,
+  };
+  const totalCrafts = stats.totalCrafts;
+  const craftsMade = stats.savedCrafts;
+  const totalMaterials = stats.totalMaterials;
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
       {/* Header */}
