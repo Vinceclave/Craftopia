@@ -7,6 +7,11 @@ export default () => ({
   orientation: "portrait",
   icon: "./assets/icon.png",
   userInterfaceStyle: "light",
+  splash: {
+    image: "./assets/adaptive-icon.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff"
+  },
   android: {
     package: "com.beans01.craftopia",
     adaptiveIcon: {

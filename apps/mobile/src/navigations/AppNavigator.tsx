@@ -7,6 +7,7 @@ import { OnboardingScreen } from '~/screens/Onboarding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useDeepLink } from '~/hooks/useDeepLink';
+import * as SplashScreen from 'expo-splash-screen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,13 +25,20 @@ export const AppNavigator = () => {
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
         if (!hasSeenOnboarding) setShowOnboarding(true);
       } catch (err) {
-        throw err        
+        throw err
       } finally {
         setCheckingOnboarding(false);
       }
     };
     checkOnboarding();
   }, []);
+
+  // ✅ Hide splash screen when all checks are done
+  useEffect(() => {
+    if (!checkingOnboarding && !isLoading) {
+      SplashScreen.hideAsync().catch(console.warn);
+    }
+  }, [checkingOnboarding, isLoading]);
 
   const handleFinishOnboarding = async () => {
     try {
@@ -42,7 +50,7 @@ export const AppNavigator = () => {
   };
 
   if (checkingOnboarding || isLoading) {
-    return <LoadingScreen message="Loading..." />;
+    return null; // Keep native splash screen visible
   }
 
   return (

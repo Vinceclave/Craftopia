@@ -1,4 +1,4 @@
-// apps/web/src/pages/admin/Announcements.tsx
+// apps/web/src/pages/admin/Announcements.tsx - WITH CONTENT TRUNCATION
 import { useState, useMemo, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +50,12 @@ import {
 } from '@/components/shared';
 import { generateGenericPDF, type ExportConfig } from '@/utils/exportToPDF';
 import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExcel';
+
+// 🔥 NEW: Utility function to truncate text
+const truncateText = (text: string, maxLength: number = 100): string => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
 
 export default function AdminAnnouncements() {
   const {
@@ -165,7 +171,7 @@ export default function AdminAnnouncements() {
     },
   ];
 
-  // Columns
+  // Columns - 🔥 UPDATED: Truncate content in table
   const columns = useMemo<ColumnDef<Announcement>[]>(
     () => [
       {
@@ -180,8 +186,9 @@ export default function AdminAnnouncements() {
               <p className="font-semibold text-[#2B4A2F] font-poppins truncate">
                 {row.original.title}
               </p>
-              <p className="text-sm text-gray-500 font-nunito truncate">
-                {row.original.content}
+              {/* 🔥 UPDATED: Truncate content to 80 characters */}
+              <p className="text-sm text-gray-500 font-nunito truncate" title={row.original.content}>
+                {truncateText(row.original.content, 80)}
               </p>
             </div>
           </div>
@@ -504,79 +511,81 @@ export default function AdminAnnouncements() {
         <StatsGrid stats={stats} />
       )}
 
-      {/* Active Announcements Preview */}
-      {
-        stats[1].value > 0 && (
-          <Card className="border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-[#2B4A2F] font-poppins flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-blue-600 animate-pulse" />
-                    Live Announcements
-                  </CardTitle>
-                  <CardDescription className="font-nunito">
-                    Currently visible to all users ({stats[1].value} total)
-                  </CardDescription>
-                </div>
-                <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
-                  <Send className="w-3 h-3 mr-1" />
-                  {stats[1].value} Active
-                </Badge>
+      {/* Active Announcements Preview - 🔥 UPDATED: Truncate content */}
+      {stats[1].value > 0 && (
+        <Card className="border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-white/80 backdrop-blur-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-[#2B4A2F] font-poppins flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-blue-600 animate-pulse" />
+                  Live Announcements
+                </CardTitle>
+                <CardDescription className="font-nunito">
+                  Currently visible to all users ({stats[1].value} total)
+                </CardDescription>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-3">
-                {allAnnouncements
-                  ?.filter(
-                    (a: Announcement) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
-                  )
-                  .slice(0, 3)
-                  .map((announcement: Announcement) => (
-                    <div
-                      key={announcement.announcement_id}
-                      className="p-4 border border-blue-200 rounded-xl bg-white/60 backdrop-blur-sm"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-[#2B4A2F] font-poppins mb-1">
-                            {announcement.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 font-nunito mb-2">
-                            {announcement.content}
-                          </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
-                            <span className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {announcement.admin?.username || 'Admin'}
+              <Badge className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 text-blue-700 border-0 font-poppins">
+                <Send className="w-3 h-3 mr-1" />
+                {stats[1].value} Active
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3">
+              {allAnnouncements
+                ?.filter(
+                  (a: Announcement) => a.is_active && (!a.expires_at || new Date(a.expires_at) > new Date())
+                )
+                .slice(0, 3)
+                .map((announcement: Announcement) => (
+                  <div
+                    key={announcement.announcement_id}
+                    className="p-4 border border-blue-200 rounded-xl bg-white/60 backdrop-blur-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-[#2B4A2F] font-poppins mb-1">
+                          {announcement.title}
+                        </h3>
+                        {/* 🔥 UPDATED: Truncate content to 150 characters with tooltip */}
+                        <p 
+                          className="text-sm text-gray-600 font-nunito mb-2" 
+                          title={announcement.content}
+                        >
+                          {truncateText(announcement.content, 150)}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500 font-nunito">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            {announcement.admin?.username || 'Admin'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(announcement.created_at).toLocaleDateString()}
+                          </span>
+                          {announcement.expires_at && (
+                            <span className="flex items-center gap-1 text-orange-600">
+                              <Clock className="w-3 h-3" />
+                              Expires {new Date(announcement.expires_at).toLocaleDateString()}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(announcement.created_at).toLocaleDateString()}
-                            </span>
-                            {announcement.expires_at && (
-                              <span className="flex items-center gap-1 text-orange-600">
-                                <Clock className="w-3 h-3" />
-                                Expires {new Date(announcement.expires_at).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
-                {stats[1].value > 3 && (
-                  <div className="text-center pt-2">
-                    <p className="text-sm text-gray-500 font-nunito">
-                      + {stats[1].value - 3} more active announcements
-                    </p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )
-      }
+                ))}
+              {stats[1].value > 3 && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-500 font-nunito">
+                    + {stats[1].value - 3} more active announcements
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Data Table */}
       <DataTable
@@ -702,62 +711,58 @@ export default function AdminAnnouncements() {
       </Dialog>
 
       {/* Delete Dialog */}
-      {
-        selectedAnnouncement && (
-          <ConfirmDialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-            onConfirm={handleConfirmDelete}
-            title="Delete Announcement?"
-            description="This action cannot be undone. This will permanently delete the announcement."
-            confirmText="Delete Announcement"
-            loading={isDeleting}
-            variant="danger"
-            icon={<X className="w-5 h-5" />}
-            alertMessage={
-              <>
-                <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
-                <p className="font-bold text-[#2B4A2F]">"{selectedAnnouncement.title}"</p>
-              </>
-            }
-          />
-        )
-      }
+      {selectedAnnouncement && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleConfirmDelete}
+          title="Delete Announcement?"
+          description="This action cannot be undone. This will permanently delete the announcement."
+          confirmText="Delete Announcement"
+          loading={isDeleting}
+          variant="danger"
+          icon={<X className="w-5 h-5" />}
+          alertMessage={
+            <>
+              <p className="font-medium mb-2 text-[#2B4A2F]">You are about to delete:</p>
+              <p className="font-bold text-[#2B4A2F]">"{selectedAnnouncement.title}"</p>
+            </>
+          }
+        />
+      )}
 
       {/* Toggle Status Dialog */}
-      {
-        selectedAnnouncement && (
-          <ConfirmDialog
-            open={toggleDialogOpen}
-            onOpenChange={setToggleDialogOpen}
-            onConfirm={handleConfirmToggle}
-            title={selectedAnnouncement.is_active ? 'Unpublish Announcement?' : 'Publish Announcement?'}
-            description={
-              selectedAnnouncement.is_active
-                ? 'This will hide the announcement from all users.'
-                : 'This will make the announcement visible to all users immediately.'
-            }
-            confirmText={selectedAnnouncement.is_active ? 'Unpublish' : 'Publish Now'}
-            loading={isToggling}
-            variant={selectedAnnouncement.is_active ? 'warning' : 'success'}
-            icon={
-              selectedAnnouncement.is_active ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )
-            }
-            alertMessage={
-              <>
-                <p className="font-medium mb-2 text-[#2B4A2F]">
-                  {selectedAnnouncement.is_active ? 'Unpublishing:' : 'Publishing:'}
-                </p>
-                <p className="font-bold text-[#2B4A2F]">"{selectedAnnouncement.title}"</p>
-              </>
-            }
-          />
-        )
-      }
-    </PageContainer >
+      {selectedAnnouncement && (
+        <ConfirmDialog
+          open={toggleDialogOpen}
+          onOpenChange={setToggleDialogOpen}
+          onConfirm={handleConfirmToggle}
+          title={selectedAnnouncement.is_active ? 'Unpublish Announcement?' : 'Publish Announcement?'}
+          description={
+            selectedAnnouncement.is_active
+              ? 'This will hide the announcement from all users.'
+              : 'This will make the announcement visible to all users immediately.'
+          }
+          confirmText={selectedAnnouncement.is_active ? 'Unpublish' : 'Publish Now'}
+          loading={isToggling}
+          variant={selectedAnnouncement.is_active ? 'warning' : 'success'}
+          icon={
+            selectedAnnouncement.is_active ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )
+          }
+          alertMessage={
+            <>
+              <p className="font-medium mb-2 text-[#2B4A2F]">
+                {selectedAnnouncement.is_active ? 'Unpublishing:' : 'Publishing:'}
+              </p>
+              <p className="font-bold text-[#2B4A2F]">"{selectedAnnouncement.title}"</p>
+            </>
+          }
+        />
+      )}
+    </PageContainer>
   );
 }

@@ -1,4 +1,4 @@
-// apps/web/src/hooks/useAnnouncements.COMPLETE_FIX.ts
+// apps/web/src/hooks/useAnnouncements.ts - FINAL FIX
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsAPI } from '../lib/api';
 import { useState, useCallback, useEffect } from 'react';
@@ -25,30 +25,13 @@ export const useAnnouncements = () => {
   const { success, info } = useToast();
 
   // Fetch all announcements for stats (no filters)
+  // 🔥 FIX: Changed limit from 1000 to 100 (backend validation limit)
   const { data: allAnnouncementsData, isLoading: isStatsLoading, error: statsError } = useQuery({
     queryKey: ['announcements-all'],
     queryFn: async () => {
-      try {
-        console.log('Fetching all announcements for stats...');
-        const response: any = await announcementsAPI.getAll(1, 1000, undefined, undefined);
-        console.log('All announcements response:', response);
-
-        // Check if response has data array directly (from interceptor)
-        if (response?.data && Array.isArray(response.data)) {
-          console.log('Found data array in response.data, length:', response.data.length);
-          return response.data;
-        }
-        // Fallback if response is the array itself (some interceptors do this)
-        if (Array.isArray(response)) {
-          console.log('Response is array, length:', response.length);
-          return response;
-        }
-        console.warn('Unexpected response structure for all announcements:', response);
-        return [];
-      } catch (err) {
-        console.error('Error fetching all announcements:', err);
-        throw err;
-      }
+      const response: any = await announcementsAPI.getAll(1, 100, undefined, undefined);
+      // response.data is the announcements array
+      return response?.data || [];
     },
     staleTime: 60_000,
     refetchOnWindowFocus: false,
@@ -64,9 +47,11 @@ export const useAnnouncements = () => {
         params.status === 'all' ? undefined : params.status,
         params.search
       );
+      // response.data is the announcements array
+      // response.meta is the pagination metadata
       return {
-        data: response?.data ?? [],
-        meta: response?.meta ?? {},
+        data: response?.data || [],
+        meta: response?.meta || {},
       };
     },
     retry: 1,
@@ -79,7 +64,8 @@ export const useAnnouncements = () => {
     queryKey: ['active-announcements'],
     queryFn: async () => {
       const response: any = await announcementsAPI.getActive(5);
-      return response?.data ?? [];
+      // response.data is the announcements array
+      return response?.data || [];
     },
     staleTime: 60_000,
   });
