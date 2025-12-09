@@ -31,11 +31,8 @@ const ResetPassword = () => {
   useEffect(() => {
     const tokenFromRoute = route.params?.token;
     if (tokenFromRoute) {
-      console.log('🔑 [ResetPassword] Token received from deep link');
       setToken(tokenFromRoute);
-    } else {
-      console.warn('⚠️ [ResetPassword] No token provided');
-    }
+    } 
   }, [route.params?.token]);
 
   // Validate password
@@ -108,7 +105,6 @@ const ResetPassword = () => {
     setIsLoading(true);
     try {
       await authService.resetPassword(token, password);
-      console.log('✅ [ResetPassword] Password reset successful');
       
       setIsSuccess(true);
       

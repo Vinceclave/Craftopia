@@ -80,14 +80,10 @@ export function EditProfileScreen() {
         profile_picture_url: profile.avatar.startsWith('http') ? profile.avatar : null
       };
 
-      console.log('Updating profile with payload:', payload);
-
       const response = await apiService.request('/api/v1/users/profile', { 
         method: 'PUT', 
         data: payload 
       });
-
-      console.log('Profile update response:', response);
 
       // Update the user data in TanStack Query cache
       queryClient.setQueryData(authKeys.user, (oldData: any) => {

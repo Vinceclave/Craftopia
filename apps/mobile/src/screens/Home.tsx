@@ -20,8 +20,6 @@ export const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { isConnected } = useWebSocket();
 
-  console.log('🏠 [HomeScreen] Rendered, WebSocket connected:', isConnected);
-
   // Pull-to-refresh handler
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);

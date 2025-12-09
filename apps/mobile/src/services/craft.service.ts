@@ -1,7 +1,8 @@
-// apps/mobile/src/services/craft.service.ts - COMPLETE UPDATED FILE
+// apps/mobile/src/services/craft.service.ts - ENHANCED WITH NETWORK ERROR HANDLING
 
 import { apiService } from "./base.service";
 import { API_ENDPOINTS } from "~/config/api";
+import NetInfo from '@react-native-community/netinfo';
 
 // ----------------------
 // Types
@@ -15,9 +16,9 @@ export interface CraftIdea {
   difficulty?: string;
   toolsNeeded?: string[];
   uniqueFeature?: string;
-  generatedImageUrl?: string;  // Base64 initially, S3 URL after save
-  idea_id?: number;             // ✅ Database ID (after save)
-  is_saved?: boolean;           // ✅ Save status
+  generatedImageUrl?: string;
+  idea_id?: number;
+  is_saved?: boolean;
 }
 
 export interface GenerateCraftRequest {
@@ -37,19 +38,6 @@ export interface GenerateCraftResponse {
   timestamp: string;
 }
 
-export interface DetectMaterialsResult {
-  imageUrl: string;
-  imageBase64: string;
-  materials: string[];
-}
-
-export interface DetectMaterialsResponse {
-  success: boolean;
-  message: string;
-  data: DetectMaterialsResult;
-}
-
-// ✅ NEW: Save craft request/response
 export interface SaveCraftRequest {
   idea_json: {
     title: string;
@@ -62,7 +50,7 @@ export interface SaveCraftRequest {
     uniqueFeature?: string;
   };
   recycled_materials: string[];
-  base64_image?: string;  // Base64 image, backend uploads to S3
+  base64_image?: string;
 }
 
 export interface SaveCraftResponse {
@@ -72,64 +60,82 @@ export interface SaveCraftResponse {
     idea_id: number;
     idea_json: object;
     recycled_materials: object;
-    generated_image_url?: string;  // S3 URL
+    generated_image_url?: string;
     is_saved: boolean;
     created_at: string;
   };
   timestamp: string;
 }
 
-export interface ToggleSaveResponse {
-  success: boolean;
-  message: string;
-  data: {
-    isSaved: boolean;
-    craftIdea: any;
-  };
-  timestamp: string;
+// ✅ NEW: Network error type
+export class NetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NetworkError';
+  }
 }
 
-export interface SavedCraftsResponse {
-  success: boolean;
-  data: CraftIdea[];
-  pagination: {
-    total: number;
-    page: number;
-    lastPage: number;
-    limit: number;
-  };
-  timestamp: string;
+// ✅ NEW: Offline queue for failed saves
+interface PendingSave {
+  id: string;
+  request: SaveCraftRequest;
+  timestamp: number;
+  retryCount: number;
 }
 
-export interface CraftStatsResponse {
-  success: boolean;
-  data: {
-    totalCrafts: number;
-    craftsThisMonth: number;
-    savedCrafts: number;
-    totalMaterials: number;
-  };
-  timestamp: string;
-}
-
-// ----------------------
-// Service
-// ----------------------
 class CraftService {
+  private pendingSaves: Map<string, PendingSave> = new Map();
+  private isOnline: boolean = true;
+  private maxRetries = 3;
+
+  constructor() {
+    // Monitor network status
+    this.initNetworkMonitoring();
+  }
+
+  /**
+   * ✅ Monitor network status and process pending saves when online
+   */
+  private initNetworkMonitoring() {
+    NetInfo.addEventListener(state => {
+      const wasOffline = !this.isOnline;
+      this.isOnline = state.isConnected ?? false;
+
+      // If just came back online, process pending saves
+      if (wasOffline && this.isOnline) {
+        this.processPendingSaves();
+      }
+    });
+  }
+
+  /**
+   * ✅ Check if device is online
+   */
+  async checkNetworkStatus(): Promise<boolean> {
+    try {
+      const state = await NetInfo.fetch();
+      return state.isConnected ?? false;
+    } catch (error) {
+      console.error('❌ Failed to check network status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * ✅ Generate craft ideas with network error handling
+   */
   async generateCraft(
     request: GenerateCraftRequest
   ): Promise<GenerateCraftResponse> {
     try {
-      console.log("\n🎨 ============================================");
-      console.log("🎨 CRAFT SERVICE - Generate Craft Request");
-      console.log("🎨 ============================================");
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        throw new NetworkError('No internet connection. Please check your network and try again.');
+      }
 
       if (!request.materials || request.materials.length === 0) {
         throw new Error("Materials are required");
-      }
-
-      if (!request.referenceImageBase64) {
-        console.warn("⚠️  WARNING: No reference image provided");
       }
 
       const payload = {
@@ -141,16 +147,10 @@ class CraftService {
       const payloadSize = new Blob([payloadString]).size;
       const payloadSizeMB = (payloadSize / (1024 * 1024)).toFixed(2);
 
-      console.log("📊 Request Details:");
-      console.log("  📦 Materials:", request.materials);
-      console.log("  🖼️  Has Reference Image:", !!request.referenceImageBase64);
-      console.log("  📊 Payload Size:", payloadSizeMB, "MB");
-
       if (parseFloat(payloadSizeMB) > 50) {
         throw new Error(`Payload too large: ${payloadSizeMB} MB`);
       }
 
-      console.log("⏳ Sending request...");
       const startTime = Date.now();
 
       const response = await apiService.postAI<GenerateCraftResponse>(
@@ -164,115 +164,272 @@ class CraftService {
       return response;
     } catch (error: any) {
       console.error("❌ Generate craft failed:", error.message);
+      
+      // Check if it's a network error
+      if (this.isNetworkError(error)) {
+        throw new NetworkError('Network request failed. Please check your internet connection.');
+      }
+      
       throw new Error(error.message || "Failed to generate craft ideas.");
     }
   }
 
-  async detectMaterials(imageBase64: string): Promise<DetectMaterialsResponse> {
+  /**
+   * ✅ Detect materials with network error handling
+   */
+  async detectMaterials(imageBase64: string): Promise<any> {
     try {
-      console.log("🔍 Detecting materials...");
+
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        throw new NetworkError('No internet connection. Please check your network and try again.');
+      }
 
       if (!imageBase64 || !imageBase64.trim()) {
         throw new Error("Image base64 is required");
       }
 
-      const response = await apiService.postAI<DetectMaterialsResponse>(
+      const response = await apiService.postAI<any>(
         API_ENDPOINTS.AI.DETECT_MATERIALS,
         { imageBase64 }
       );
 
-      console.log("✅ Materials detected:", response.data?.materials?.length || 0);
-
       return response;
     } catch (error: any) {
       console.error("❌ Detect materials failed:", error.message);
+      
+      if (this.isNetworkError(error)) {
+        throw new NetworkError('Network request failed. Please check your internet connection.');
+      }
+      
       throw new Error(error.message || "Failed to detect materials.");
     }
   }
 
   /**
-   * ✅ Save craft with base64 image
-   * Backend uploads image to S3 and saves to database
+   * ✅ Save craft with network error handling and offline queue
    */
   async saveCraftFromBase64(request: SaveCraftRequest): Promise<SaveCraftResponse> {
     try {
-      console.log("💾 Saving craft with base64 image...");
+
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        // Add to pending queue
+        const pendingId = this.addToPendingQueue(request);
+        
+        throw new NetworkError(
+          'No internet connection. Your craft will be saved automatically when you\'re back online.'
+        );
+      }
 
       const response = await apiService.post<SaveCraftResponse>(
         API_ENDPOINTS.CRAFTS.SAVE_FROM_BASE64,
         request
       );
 
-      console.log("✅ Craft saved with S3 image");
       return response;
     } catch (error: any) {
       console.error("❌ Save craft failed:", error.message);
+      
+      if (this.isNetworkError(error)) {
+        // Add to pending queue
+        const pendingId = this.addToPendingQueue(request);
+        
+        throw new NetworkError(
+          'Network error occurred. Your craft will be saved automatically when connection is restored.'
+        );
+      }
+      
       throw new Error(error.message || "Failed to save craft.");
     }
   }
 
   /**
-   * ✅ Toggle save/unsave (for already-saved crafts)
+   * ✅ Toggle save with network error handling
    */
-  async toggleSaveCraft(ideaId: number): Promise<ToggleSaveResponse> {
+  async toggleSaveCraft(ideaId: number): Promise<any> {
     try {
-      console.log("💾 Toggling save for craft:", ideaId);
 
-      const response = await apiService.post<ToggleSaveResponse>(
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        throw new NetworkError('No internet connection. Please check your network and try again.');
+      }
+
+      const response = await apiService.post<any>(
         API_ENDPOINTS.CRAFTS.TOGGLE_SAVE(ideaId.toString()),
         {}
       );
 
-      console.log("✅ Save toggled:", response.data.isSaved);
-
       return response;
     } catch (error: any) {
-      console.error("❌ Toggle save failed:", error.message);
+      
+      if (this.isNetworkError(error)) {
+        throw new NetworkError('Network request failed. Please check your internet connection.');
+      }
+      
       throw new Error(error.message || "Failed to toggle save.");
     }
   }
 
   /**
-   * ✅ Get saved crafts
+   * ✅ Get saved crafts with network error handling
    */
-  async getSavedCrafts(page = 1, limit = 10): Promise<SavedCraftsResponse> {
+  async getSavedCrafts(page = 1, limit = 10): Promise<any> {
     try {
-      console.log("📚 Fetching saved crafts...");
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        throw new NetworkError('No internet connection. Please check your network and try again.');
+      }
 
-      const response = await apiService.get<SavedCraftsResponse>(
+      const response = await apiService.get<any>(
         `${API_ENDPOINTS.CRAFTS.SAVED_LIST}?page=${page}&limit=${limit}`
       );
 
-      console.log("✅ Saved crafts retrieved:", response.data?.length || 0);
 
       return response;
     } catch (error: any) {
       console.error("❌ Get saved crafts failed:", error.message);
+      
+      if (this.isNetworkError(error)) {
+        throw new NetworkError('Network request failed. Please check your internet connection.');
+      }
+      
       throw new Error(error.message || "Failed to get saved crafts.");
     }
   }
 
   /**
-   * ✅ Get user craft stats
+   * ✅ Get user craft stats with network error handling
    */
-  async getUserCraftStats(): Promise<CraftStatsResponse> {
+  async getUserCraftStats(): Promise<any> {
     try {
-      console.log("📊 Fetching user craft stats...");
 
-      const response = await apiService.get<CraftStatsResponse>(
+      // Check network first
+      const isOnline = await this.checkNetworkStatus();
+      if (!isOnline) {
+        throw new NetworkError('No internet connection. Please check your network and try again.');
+      }
+
+      const response = await apiService.get<any>(
         API_ENDPOINTS.CRAFTS.USER_STATS
       );
-
-      console.log("✅ Stats retrieved");
 
       return response;
     } catch (error: any) {
       console.error("❌ Get stats failed:", error.message);
+      
+      if (this.isNetworkError(error)) {
+        throw new NetworkError('Network request failed. Please check your internet connection.');
+      }
+      
       throw new Error(error.message || "Failed to get craft stats.");
     }
   }
 
+  /**
+   * ✅ Add craft save to pending queue
+   */
+  private addToPendingQueue(request: SaveCraftRequest): string {
+    const id = `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const pendingSave: PendingSave = {
+      id,
+      request,
+      timestamp: Date.now(),
+      retryCount: 0,
+    };
 
+    this.pendingSaves.set(id, pendingSave);
+    
+    return id;
+  }
+
+  /**
+   * ✅ Process all pending saves (called when back online)
+   */
+  private async processPendingSaves() {
+    if (this.pendingSaves.size === 0) {
+      return;
+    }
+
+    const promises = Array.from(this.pendingSaves.entries()).map(
+      async ([id, pendingSave]) => {
+        try {
+
+          const response = await apiService.post<SaveCraftResponse>(
+            API_ENDPOINTS.CRAFTS.SAVE_FROM_BASE64,
+            pendingSave.request
+          );
+
+          this.pendingSaves.delete(id);
+
+          return { success: true, id, response };
+        } catch (error: any) {
+
+          // Increment retry count
+          pendingSave.retryCount++;
+
+          // If max retries reached, remove from queue
+          if (pendingSave.retryCount >= this.maxRetries) {
+            this.pendingSaves.delete(id);
+          } else {
+            // Update the pending save
+            this.pendingSaves.set(id, pendingSave);
+          }
+
+          return { success: false, id, error: error.message };
+        }
+      }
+    );
+
+    const results = await Promise.allSettled(promises);
+    
+    const successful = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+    const failed = results.length - successful;
+
+  }
+
+  /**
+   * ✅ Check if error is a network error
+   */
+  private isNetworkError(error: any): boolean {
+    if (error instanceof NetworkError) {
+      return true;
+    }
+
+    const errorMessage = error.message?.toLowerCase() || '';
+    const networkKeywords = [
+      'network',
+      'connection',
+      'timeout',
+      'fetch',
+      'enotfound',
+      'econnrefused',
+      'econnreset',
+      'offline',
+      'no internet',
+    ];
+
+    return networkKeywords.some(keyword => errorMessage.includes(keyword));
+  }
+
+  /**
+   * ✅ Get pending saves count (for UI display)
+   */
+  getPendingSavesCount(): number {
+    return this.pendingSaves.size;
+  }
+
+  /**
+   * ✅ Clear all pending saves
+   */
+  clearPendingSaves(): void {
+    this.pendingSaves.clear();
+  }
 }
 
 export const craftService = new CraftService();

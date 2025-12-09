@@ -147,13 +147,8 @@ export const verifyChallengeAI = async (
   if (!imageUrl?.trim()) throw new Error("Image URL required");
   if (!points || points <= 0) throw new Error("Valid challenge points required");
 
-  console.log("🔍 [verifyChallengeAI] Starting verification");
-  console.log("📸 Image URL:", imageUrl);
-
   // Fetch image from S3 URL and convert to base64
   const { base64: base64ImageData, contentType } = await fetchImageAsBase64(imageUrl);
-
-  console.log("✅ Image fetched successfully, size:", base64ImageData.length);
 
   const prompt = createChallengeVerificationPrompt(
     description, 
@@ -163,7 +158,6 @@ export const verifyChallengeAI = async (
     userId
   );
 
-  console.log("🤖 Sending to AI for verification...");
 
   const result = await ai.models.generateContent({
     model: config.ai.model,
@@ -184,7 +178,6 @@ export const verifyChallengeAI = async (
   });
 
   const text = result.text;
-  console.log("📝 AI Response:", text?.substring(0, 200));
 
   if (!text?.trim()) throw new Error("AI verification failed - empty response");
 
@@ -192,8 +185,6 @@ export const verifyChallengeAI = async (
   if (!verification || typeof verification !== "object") {
     throw new Error("Invalid AI verification format");
   }
-
-  console.log("✅ Verification result:", verification);
 
   return verification;
 };

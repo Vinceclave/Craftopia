@@ -31,8 +31,6 @@ export const detectMaterialsFromImage = async (
 
     const prompt = createMaterialDetectionPrompt();
 
-    console.log("🤖 Analyzing base64 image...");
-
     // Send to AI model
     const response = await ai.models.generateContent({
       model: config.ai.model,

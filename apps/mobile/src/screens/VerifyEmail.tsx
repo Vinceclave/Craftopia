@@ -36,8 +36,7 @@ export const VerifyEmailScreen = () => {
   const handleAutoVerify = async (token: string) => {
     setIsVerifying(true);
     try {
-      console.log('🔄 [VerifyEmail] Auto-verifying with token from deep link...');
-      
+
       await verifyEmailMutation.mutateAsync(token);
       
       success(

@@ -66,11 +66,7 @@ export const CraftProcessingScreen = () => {
   );
 
   useEffect(() => {
-    console.log("\n🚀 ============================================");
-    console.log("🚀 CRAFT PROCESSING SCREEN - Started");
-    console.log("🚀 ============================================");
-    console.log("📷 Image URI:", imageUri);
-    
+ 
     // Initial animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -103,23 +99,16 @@ export const CraftProcessingScreen = () => {
       setProcessingError(null);
 
       // Step 1: Analyzing image
-      console.log("\n📊 Step 1: Analyzing image...");
       setProcessingStep(0);
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Step 2: Compress and convert image to base64
-      console.log("\n📊 Step 2: Compressing and converting to base64...");
       setProcessingStep(1);
-      
-      console.log("🖼️  Original image URI:", imageUri);
-      console.log("⏳ Starting image compression...");
       
       // ✅ Use ImageManipulator with base64 output (most reliable method)
       let base64Image: string;
       
       try {
-        console.log("🔧 Using ImageManipulator for compression and base64 conversion...");
-        
         // Compress image and get base64
         const compressedImage = await ImageManipulator.manipulateAsync(
           imageUri,
@@ -151,16 +140,11 @@ export const CraftProcessingScreen = () => {
         // ✅ Add proper data URI prefix
         base64Image = `data:image/jpeg;base64,${base64Data}`;
         
-        console.log("✅ ImageManipulator conversion successful");
-        
       } catch (conversionError: any) {
         console.error("❌ Image conversion failed:", conversionError);
         throw new Error(`Failed to convert image: ${conversionError.message}`);
       }
 
-      // ✅ CRITICAL: Validate final base64 format
-      console.log("\n🔍 Validating base64 format...");
-      
       // Check 1: Must be a string
       if (typeof base64Image !== 'string') {
         throw new Error(`Invalid type: ${typeof base64Image}, expected string`);
@@ -197,15 +181,7 @@ export const CraftProcessingScreen = () => {
       // Calculate and log size
       const sizeInBytes = base64Image.length;
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
-      
-      console.log("✅ Base64 validation passed");
-      console.log("📊 Image Details:");
-      console.log("  📏 Total Length:", base64Image.length, "characters");
-      console.log("  📏 Base64 Length:", actualBase64.length, "characters");
-      console.log("  📊 Size:", sizeInMB, "MB");
-      console.log("  🔍 Prefix:", parts[0]);
-      console.log("  🔍 Preview:", actualBase64.substring(0, 50), "...");
-      
+
       if (parseFloat(sizeInMB) > 10) {
         console.warn("⚠️  WARNING: Image is large:", sizeInMB, "MB");
       }
@@ -217,9 +193,7 @@ export const CraftProcessingScreen = () => {
       setImageBase64(base64Image);
 
       // Step 3: Detect materials
-      console.log("\n📊 Step 3: Detecting materials...");
       setProcessingStep(2);
-      console.log("🔍 Calling detectMaterials API with validated base64...");
       
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
       
@@ -227,21 +201,12 @@ export const CraftProcessingScreen = () => {
         throw new Error('Failed to detect materials from image');
       }
 
-      console.log("✅ Materials detection successful");
-      console.log("📦 Materials detected:", detectResponse.data.materials);
-
       // Step 4: Identifying recyclables
-      console.log("\n📊 Step 4: Identifying recyclables...");
       setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Step 5: Generate craft ideas WITH validated reference image
-      console.log("\n📊 Step 5: Generating craft ideas with reference image...");
       setProcessingStep(4);
-      
-      console.log("🎨 Calling generateCraft API with validated base64...");
-      console.log("📦 Materials:", detectResponse.data.materials);
-      console.log("🖼️  Reference image validated and ready");
       
       const craftResponse = await generateCraftMutation.mutateAsync({
         materials: detectResponse.data.materials,
@@ -252,15 +217,7 @@ export const CraftProcessingScreen = () => {
         throw new Error('Failed to generate craft ideas');
       }
 
-      console.log("✅ Craft generation successful");
-      console.log("📊 Ideas generated:", craftResponse.data.ideas.length);
-      
       const ideasWithImages = craftResponse.data.ideas.filter(idea => idea.generatedImageUrl).length;
-      console.log("🖼️  Ideas with images:", ideasWithImages);
-
-      console.log("\n✅ ============================================");
-      console.log("✅ PROCESSING COMPLETE");
-      console.log("✅ ============================================\n");
 
       setIsProcessing(false);
 
@@ -272,13 +229,6 @@ export const CraftProcessingScreen = () => {
       });
 
     } catch (error: any) {
-      console.error("\n❌ ============================================");
-      console.error("❌ PROCESSING FAILED");
-      console.error("❌ ============================================");
-      console.error("❌ Error:", error);
-      console.error("❌ Message:", error.message);
-      console.error("❌ Stack:", error.stack);
-      console.error("❌ ============================================\n");
       
       setIsProcessing(false);
       setProcessingError(error.message || 'Processing failed');
@@ -307,7 +257,6 @@ export const CraftProcessingScreen = () => {
 
   const handleExitConfirm = () => {
     setShowExitModal(false);
-    console.log("🚫 User cancelled processing");
     navigation.goBack();
   };
 

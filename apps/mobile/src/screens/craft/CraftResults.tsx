@@ -60,7 +60,6 @@ export const CraftResultsScreen = () => {
   // ✅ Update saved state when returning from CraftDetails
   useEffect(() => {
     if (craftSavedState) {
-      console.log('🔄 Updating craft saved state from CraftDetails:', craftSavedState);
       setCraftSavedStates(prev => ({
         ...prev,
         [craftSavedState.index]: {
@@ -74,13 +73,6 @@ export const CraftResultsScreen = () => {
   // ✅ Check if any crafts have been saved
   const hasSavedCrafts = Object.values(craftSavedStates).some(state => state.isSaved);
   const savedCount = Object.values(craftSavedStates).filter(state => state.isSaved).length;
-
-  console.log('📊 CraftResults State:', {
-    totalCrafts: craftIdeas.length,
-    savedCount,
-    hasSavedCrafts,
-    savedStates: craftSavedStates
-  });
 
   // ✅ Handle hardware back button
   useFocusEffect(
@@ -119,18 +111,6 @@ export const CraftResultsScreen = () => {
   const handleCraftPress = (craft: CraftIdea, index: number) => {
     // ✅ Get the current saved state from our local tracking
     const currentState = craftSavedStates[index] || { isSaved: craft.is_saved || false, ideaId: craft.idea_id };
-
-    console.log('🎨 Opening craft details:', {
-      index,
-      title: craft.title,
-      currentlySaved: currentState.isSaved,
-      ideaId: currentState.ideaId,
-      hasAllFields: {
-        difficulty: !!craft.difficulty,
-        toolsNeeded: !!(craft.toolsNeeded?.length),
-        uniqueFeature: !!craft.uniqueFeature
-      }
-    });
 
     navigation.navigate('CraftDetails', {
       craftTitle: craft.title,

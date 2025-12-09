@@ -81,7 +81,6 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
 
     // Clear image URI when status becomes rejected to force new upload
     if (challengeData.status === 'rejected') {
-      console.log('🔄 Challenge rejected - clearing old image to force new upload')
       setImageUri(null)
       return
     }
@@ -89,7 +88,6 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
     // Only set existing proof_url for completed or pending challenges
     if (challengeData.proof_url && !imageUri && 
         (challengeData.status === 'completed' || challengeData.status === 'pending_verification')) {
-      console.log('📸 Loading existing proof image:', challengeData.proof_url)
       setImageUri(challengeData.proof_url)
     }
   }, [challengeData?.proof_url, challengeData?.status])
@@ -110,14 +108,12 @@ export const QuestDetail: React.FC<QuestDetailProps> = ({
 
       // ✅ UPLOAD IMAGE ONLY ON SUBMIT
       if (imageUri.startsWith('file://')) {
-        console.log('📤 Uploading image to AWS...')
         const url = await uploadToFolder(imageUri, 'challenges')
         if (!url) {
           error('Upload Failed', 'Failed to upload image. Please try again.')
           return
         }
         uploadedImageUrl = url
-        console.log('✅ Image uploaded:', uploadedImageUrl)
       }
 
       // Validate URL format

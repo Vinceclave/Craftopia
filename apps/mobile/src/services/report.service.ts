@@ -39,7 +39,6 @@ class ReportService {
    */
   async submitReport(payload: CreateReportPayload): Promise<ApiResponse<Report>> {
     try {
-      console.log('📝 Submitting report:', payload);
       
       // Transform payload to match backend schema
       const backendPayload: any = {
@@ -53,14 +52,11 @@ class ReportService {
         backendPayload.reported_comment_id = payload.targetId;
       }
 
-      console.log('📤 Backend payload:', backendPayload);
-      
       const response = await apiService.post<ApiResponse<Report>>(
         API_ENDPOINTS.REPORTS.CREATE,
         backendPayload
       );
       
-      console.log('✅ Report submitted successfully:', response);
       return response;
     } catch (error: any) {
       console.error('❌ Failed to submit report:', error);

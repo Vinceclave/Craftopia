@@ -79,16 +79,9 @@ class PostService {
    * Normalize post data and ensure user has profile_picture_url
    */
   private normalizePost(post: any): Post {
-    console.log('🔍 Normalizing post:', {
-      post_id: post.post_id,
-      has_user: !!post.user,
-      has_profile_picture: !!post.user?.profile_picture_url,
-    });
-
     let user = post.user;
     
     if (!user) {
-      console.warn('⚠️ Post missing user object, creating from user_id');
       user = {
         user_id: post.user_id,
         username: `User ${post.user_id}`,
@@ -97,7 +90,6 @@ class PostService {
     }
     
     if (user && (!user.username || user.username === '')) {
-      console.warn('⚠️ User missing username, using fallback');
       user.username = `User ${user.user_id || post.user_id}`;
     }
 
@@ -132,12 +124,6 @@ class PostService {
       }
     };
 
-    console.log('✅ Normalized post with profile photo:', {
-      post_id: normalized.post_id,
-      username: normalized.user.username,
-      has_profile_picture: !!normalized.user.profile_picture_url,
-    });
-
     return normalized;
   }
 
@@ -167,7 +153,6 @@ class PostService {
     limit: number = 10
   ): Promise<PaginatedResponse<Post>> {
     try {
-      console.log('📡 Fetching posts:', { feedType, page, limit });
       
       const response = await apiService.get<PaginatedResponse<Post>>(
         `${API_ENDPOINTS.POSTS.LIST}?feedType=${feedType}&page=${page}&limit=${limit}`
@@ -177,10 +162,8 @@ class PostService {
         response.data = response.data.map((post) => this.normalizePost(post));
       }
 
-      console.log('✅ Posts fetched and normalized:', response.data?.length || 0);
       return response;
     } catch (error) {
-      console.error('❌ Failed to fetch posts:', error);
       throw error;
     }
   }
@@ -190,7 +173,6 @@ class PostService {
    */
   async searchPosts(params: SearchPostsParams): Promise<PaginatedResponse<Post>> {
     try {
-      console.log('🔍 Searching posts:', params);
       
       const queryParams = new URLSearchParams();
       if (params.query) queryParams.append('search', params.query);
@@ -207,7 +189,6 @@ class PostService {
         response.data = response.data.map((post) => this.normalizePost(post));
       }
 
-      console.log('✅ Search results:', response.data?.length || 0);
       return response;
     } catch (error) {
       console.error('❌ Failed to search posts:', error);
@@ -220,7 +201,6 @@ class PostService {
    */
   async getPostById(postId: string): Promise<ApiResponse<Post>> {
     try {
-      console.log('📡 Fetching post:', postId);
       
       const response = await apiService.get<ApiResponse<Post>>(
         API_ENDPOINTS.POSTS.BY_ID(postId)
@@ -230,7 +210,6 @@ class PostService {
         response.data = this.normalizePost(response.data);
       }
 
-      console.log('✅ Post normalized:', response.data);
       return response;
     } catch (error) {
       console.error(`❌ Failed to fetch post ${postId}:`, error);
@@ -266,7 +245,6 @@ class PostService {
         response.data = this.normalizePost(response.data);
       }
 
-      console.log('✅ Post created successfully');
       return response;
     } catch (error) {
       console.error('Failed to create post:', error);
@@ -279,7 +257,6 @@ class PostService {
    */
   async updatePost(postId: string, payload: UpdatePostPayload): Promise<ApiResponse<Post>> {
     try {
-      console.log('✏️ Updating post:', postId, payload);
       
       const response = await apiService.put<ApiResponse<Post>>(
         API_ENDPOINTS.POSTS.BY_ID(postId),
@@ -290,7 +267,6 @@ class PostService {
         response.data = this.normalizePost(response.data);
       }
 
-      console.log('✅ Post updated successfully');
       return response;
     } catch (error) {
       console.error('Failed to update post:', error);
@@ -306,7 +282,6 @@ class PostService {
       const response = await apiService.delete<ApiResponse<null>>(
         API_ENDPOINTS.POSTS.DELETE(postId)
       );
-      console.log('✅ Post deleted successfully');
       return response;
     } catch (error) {
       console.error(`Failed to delete post ${postId}:`, error);
@@ -319,14 +294,11 @@ class PostService {
    */
   async toggleReaction(postId: string): Promise<ApiResponse<ReactionResponse>> {
     try {
-      console.log('🔵 Service: Toggling reaction for post:', postId);
       const response = await apiService.post<ApiResponse<ReactionResponse>>(
         API_ENDPOINTS.POSTS.TOGGLE_REACTION(postId)
       );
-      console.log('🔵 Service: Response:', response.data);
       return response;
     } catch (error) {
-      console.error(`Failed to toggle reaction for post ${postId}:`, error);
       throw error;
     }
   }
@@ -347,7 +319,6 @@ class PostService {
 
       return response;
     } catch (error) {
-      console.error(`Failed to fetch comments for post ${postId}:`, error);
       throw error;
     }
   }
@@ -367,10 +338,8 @@ class PostService {
         response.data = this.normalizeComment(response.data);
       }
 
-      console.log('✅ Comment added successfully');
       return response;
     } catch (error) {
-      console.error('Failed to add comment:', error);
       throw error;
     }
   }
@@ -383,10 +352,8 @@ class PostService {
       const response = await apiService.delete<ApiResponse<null>>(
         API_ENDPOINTS.POSTS.DELETE_COMMENT(commentId)
       );
-      console.log('✅ Comment deleted successfully');
       return response;
     } catch (error) {
-      console.error(`Failed to delete comment ${commentId}:`, error);
       throw error;
     }
   }

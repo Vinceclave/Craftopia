@@ -84,8 +84,6 @@ export const chatAiResponse = async (
     // Add current user message
     fullPrompt += `User: ${message.trim()}\n\nCraftopia AI:`;
 
-    console.log("🤖 Sending to AI with context...");
-
     const response = await ai.models.generateContent({
       model: config.ai.model,
       contents: fullPrompt,
@@ -100,7 +98,6 @@ export const chatAiResponse = async (
     // Clean markdown formatting from the response
     const cleanedResponse = cleanMarkdownFormatting(aiResponse);
 
-    console.log("✅ AI response generated and cleaned");
     return cleanedResponse;
     
   } catch (err: any) {

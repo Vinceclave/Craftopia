@@ -80,8 +80,6 @@ const RegisterScreen: React.FC = () => {
         }
       );
     } catch (err: any) {
-      console.log('Registration failed:', err.message);
-      
       // Handle specific error cases
       if (err.message?.toLowerCase().includes('username')) {
         setErrors(prev => ({ ...prev, username: err.message }));

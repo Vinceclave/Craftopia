@@ -131,12 +131,10 @@ export const HelpCenterScreen = () => {
 
   const handleContactSupport = () => {
     // Navigate to support chat or open email
-    console.log('Contact support pressed');
   };
 
   const handleSearchHelp = () => {
     // Navigate to search screen or implement search
-    console.log('Search help pressed');
   };
 
   return (

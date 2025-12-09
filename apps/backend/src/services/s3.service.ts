@@ -59,9 +59,6 @@ export async function uploadBase64ToS3(
     const extension = mimeType === 'image/png' ? '.png' : '.jpg';
     const key = `${folder}/image_${timestamp}_${randomString}${extension}`;
 
-    console.log(`📤 Uploading base64 image to S3: ${key}`);
-    console.log(`📊 Image size: ${(buffer.length / 1024).toFixed(2)} KB`);
-
     // Upload to S3 using Upload (handles large files)
     const upload = new Upload({
       client: s3,
@@ -75,8 +72,6 @@ export async function uploadBase64ToS3(
 
     await upload.done();
 
-    console.log(`✅ Upload complete: ${key}`);
-
     // Generate pre-signed URL
     const command = new GetObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME!,
@@ -84,8 +79,6 @@ export async function uploadBase64ToS3(
     });
 
     const signedUrl = await getSignedUrl(s3, command, { expiresIn });
-
-    console.log(`✅ Pre-signed URL generated (expires in ${expiresIn / 86400} days)`);
 
     return signedUrl;
   } catch (error: any) {

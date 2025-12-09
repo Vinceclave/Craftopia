@@ -46,8 +46,6 @@ export const searchPosts = asyncHandler(async (req: AuthRequest, res: Response) 
   const limit = Number(req.query.limit) || 10;
   const userId = req.user?.userId;
   
-  console.log('🔍 Search posts:', { search, category, tag, page, limit });
-  
   const result = await postService.searchPosts({
     search: search as string,
     category: category as string,
@@ -76,7 +74,6 @@ export const updatePost = asyncHandler(async (req: AuthRequest, res: Response) =
   const postId = Number(req.params.postId);
   const { title, content, tags, imageUrl, category } = req.body;
   
-  console.log('✏️ Updating post:', postId, { title, content });
   
   const post = await postService.updatePost(postId, req.user!.userId, {
     title,
@@ -151,12 +148,8 @@ export const handlePostReactionToggle = asyncHandler(async (req: AuthRequest, re
   const postId = Number(req.params.postId);
   const userId = req.user!.userId;
   
-  console.log('🔵 Backend Controller: Toggle reaction - PostID:', postId, 'UserID:', userId);
-  
   // Use the enhanced toggle method that returns consistent data
   const reactionData = await postService.togglePostReaction(postId, userId);
-  
-  console.log('🔵 Backend Controller: Reaction data:', reactionData);
   
   // ✅ GET USERNAME FROM DATABASE
   const user = await prisma.user.findUnique({

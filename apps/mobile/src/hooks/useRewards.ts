@@ -45,7 +45,6 @@ export const useRedeemReward = () => {
   return useMutation({
     mutationFn: (rewardId: number) => rewardService.redeemReward(rewardId),
     onSuccess: (response) => {
-      console.log('✅ Reward redeemed:', response.data);
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['rewards'] });

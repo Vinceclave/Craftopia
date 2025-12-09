@@ -7,12 +7,6 @@ import { apiService } from './base.service';
 const normalizeUser = (rawUser: any): User => {
   if (!rawUser) return rawUser;
   
-  console.log('🔄 [normalizeUser] Raw user:', {
-    has_id: !!rawUser.id,
-    has_user_id: !!rawUser.user_id,
-    username: rawUser.username
-  });
-  
   const normalized: User = {
     id: rawUser.id || rawUser.user_id, // ✅ Support both formats
     username: rawUser.username,
@@ -36,12 +30,7 @@ const normalizeUser = (rawUser: any): User => {
       location: '',
     }
   };
-  
-  console.log('✅ [normalizeUser] Normalized user:', {
-    id: normalized.id,
-    username: normalized.username
-  });
-  
+
   return normalized;
 };
 
@@ -49,7 +38,6 @@ class AuthService {
   // ✅ Login with user normalization
   async login(credentials: LoginRequest): Promise<AuthResponse> {
     try {
-      console.log('🔑 [AuthService] Attempting login for:', credentials.email);
       
       const response = await apiService.request<any>(
         API_ENDPOINTS.AUTH.LOGIN,
@@ -58,13 +46,6 @@ class AuthService {
           data: credentials,
         }
       );
-      
-      console.log('📦 [AuthService] Login response received');
-      console.log('🔍 [AuthService] Response structure:', {
-        hasData: !!response.data,
-        hasUser: !!response.data?.user || !!response.user,
-        hasAccessToken: !!response.data?.accessToken || !!response.accessToken,
-      });
       
       // ✅ Handle both response formats
       const authData = response.data || response;
@@ -76,8 +57,6 @@ class AuthService {
       
       // ✅ Normalize user object
       const normalizedUser = normalizeUser(authData.user);
-      
-      console.log('✅ [AuthService] Login successful, user normalized');
       
       return {
         accessToken: authData.accessToken,
@@ -93,7 +72,6 @@ class AuthService {
   // ✅ Register
   async register(userData: RegisterRequest): Promise<{ message: string }> {
     try {
-      console.log('📝 [AuthService] Attempting registration for:', userData.email);
       
       const response = await apiService.request<{ message: string }>(
         API_ENDPOINTS.AUTH.REGISTER,
@@ -103,17 +81,14 @@ class AuthService {
         }
       );
       
-      console.log('✅ [AuthService] Registration successful');
       return { message: response.message || 'Registration successful' };
     } catch (error: any) {
-      console.error('❌ [AuthService] Register error:', error.message);
       throw new Error(error.message || 'Registration failed');
     }
   }
 
   // ✅ Logout
   async logout(): Promise<void> {
-    console.log('👋 [AuthService] Logging out...');
     
     const refreshToken = await this.getRefreshToken();
     
@@ -124,24 +99,20 @@ class AuthService {
           data: { refreshToken },
         });
       } catch (error) {
-        console.warn('⚠️ [AuthService] Backend logout failed:', error);
+        throw error;
       }
     }
     
     await this.clearTokens();
-    console.log('✅ [AuthService] Logged out successfully');
   }
 
   // ✅ Get current user with normalization
   async getCurrentUser(): Promise<User> {
     try {
-      console.log('👤 [AuthService] Fetching current user...');
       
       const response = await apiService.request<any>(
         API_ENDPOINTS.USER.PROFILE
       );
-      
-      console.log('📦 [AuthService] User profile received');
       
       // Handle different response formats
       const userData = response.data || response;
@@ -149,15 +120,10 @@ class AuthService {
       // ✅ Normalize user object
       const normalizedUser = normalizeUser(userData);
       
-      console.log('✅ [AuthService] Current user normalized');
-      
       return normalizedUser;
     } catch (error: any) {
-      console.error('❌ [AuthService] Get current user error:', error);
-      
       // Clear tokens on auth error
       if (error.message?.includes('401') || error.message?.includes('unauthorized')) {
-        console.log('🔒 [AuthService] Clearing tokens due to auth error');
         await this.clearTokens();
       }
       
@@ -167,7 +133,6 @@ class AuthService {
 
   // ✅ Update profile with normalization
   async updateProfile(data: Partial<UserProfile>): Promise<User> {
-    console.log('✏️ [AuthService] Updating profile...');
     
     const response = await apiService.request<any>(
       API_ENDPOINTS.USER.UPDATE_PROFILE,
@@ -180,28 +145,23 @@ class AuthService {
     const userData = response.data || response;
     const normalizedUser = normalizeUser(userData);
     
-    console.log('✅ [AuthService] Profile updated');
     return normalizedUser;
   }
 
   // ✅ Email verification
   async verifyEmail(token: string): Promise<{ message: string; alreadyVerified?: boolean }> {
     try {
-      console.log('✉️ [AuthService] Verifying email...');
       
       const response = await apiService.request<any>(
         `${API_ENDPOINTS.AUTH.VERIFY_EMAIL}?token=${encodeURIComponent(token)}`,
         { method: 'GET' }
       );
       
-      console.log('✅ [AuthService] Email verified');
-      
       return { 
         message: response.message || 'Email verified successfully',
         alreadyVerified: response.data?.alreadyVerified || false
       };
     } catch (error: any) {
-      console.error('❌ [AuthService] Verify email error:', error);
       
       if (error.message?.includes('already verified')) {
         return {
@@ -217,7 +177,6 @@ class AuthService {
   // ✅ Resend verification
   async resendVerification(email: string): Promise<{ message: string }> {
     try {
-      console.log('📧 [AuthService] Resending verification email...');
       
       const response = await apiService.request<{ message: string }>(
         API_ENDPOINTS.AUTH.RESEND_VERIFICATION,
@@ -227,20 +186,16 @@ class AuthService {
         }
       );
       
-      console.log('✅ [AuthService] Verification email sent');
-      
       return { 
         message: response.message || 'Verification email sent successfully' 
       };
     } catch (error: any) {
-      console.error('❌ [AuthService] Resend verification error:', error);
       throw new Error(error.message || 'Failed to send verification email');
     }
   }
 
   // ✅ NEW: Change password (for logged-in users)
   async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
-    console.log('🔑 [AuthService] Changing password...');
     
     const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
@@ -250,13 +205,11 @@ class AuthService {
       }
     );
     
-    console.log('✅ [AuthService] Password changed successfully');
     return { message: response.message || 'Password changed successfully' };
   }
 
   // Forgot password (for password reset flow)
   async forgotPassword(email: string): Promise<{ message: string }> {
-    console.log('🔑 [AuthService] Requesting password reset...');
     
     const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
@@ -271,7 +224,6 @@ class AuthService {
 
   // Reset password (using token from email)
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-    console.log('🔑 [AuthService] Resetting password...');
     
     const response = await apiService.request<{ message: string }>(
       API_ENDPOINTS.AUTH.RESET_PASSWORD,
@@ -286,7 +238,6 @@ class AuthService {
 
   // Token management
   async saveTokens(accessToken: string, refreshToken: string): Promise<void> {
-    console.log('💾 [AuthService] Saving tokens...');
     await AsyncStorage.multiSet([
       ['access_token', accessToken],
       ['refresh_token', refreshToken],
@@ -302,7 +253,6 @@ class AuthService {
   }
 
   async clearTokens(): Promise<void> {
-    console.log('🗑️ [AuthService] Clearing tokens...');
     await AsyncStorage.multiRemove(['access_token', 'refresh_token']);
   }
 

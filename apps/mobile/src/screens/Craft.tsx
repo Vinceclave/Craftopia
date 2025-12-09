@@ -88,18 +88,6 @@ export const CraftScreen: React.FC = () => {
     const ideaJson = parseIdeaJson(craft.idea_json);
     const materials = parseMaterials(craft.recycled_materials);
 
-    console.log('🎨 Opening saved craft:', {
-      ideaId: craft.idea_id,
-      title: ideaJson.title,
-      hasAllFields: {
-        difficulty: !!ideaJson.difficulty,
-        toolsNeeded: !!(ideaJson.toolsNeeded?.length),
-        uniqueFeature: !!ideaJson.uniqueFeature,
-        timeNeeded: !!ideaJson.timeNeeded,
-        steps: ideaJson.steps?.length || 0
-      }
-    });
-
     navigation.navigate('CraftDetails', {
       craftTitle: ideaJson.title || 'Craft Idea',
       materials: materials,

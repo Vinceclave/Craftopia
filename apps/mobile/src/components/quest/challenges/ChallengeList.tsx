@@ -37,13 +37,6 @@ export const ChallengeList = ({
 
   // Debug logging
   useEffect(() => {
-    console.log('🎨 [ChallengeList] Rendering with:', {
-      challengesCount: challenges.length,
-      loading,
-      refreshing,
-      hasError: !!error,
-      errorMessage: error,
-    });
 
     if (challenges.length > 0) {
       console.log('🎨 [ChallengeList] First challenge:', challenges[0]);
@@ -88,12 +81,6 @@ export const ChallengeList = ({
   };
 
   const handleChallengePress = (challenge: Challenge) => {
-    console.log('🎯 [ChallengeList] Challenge pressed:', {
-      user_challenge_id: challenge.id,
-      challenge_id: challenge.challenge_id,
-      title: challenge.title,
-      status: challenge.status,
-    });
 
     if (!challenge.challenge_id) {
       console.error('❌ [ChallengeList] Missing challenge_id!');
@@ -107,8 +94,6 @@ export const ChallengeList = ({
 
   // Loading State
   if (loading && !refreshing) {
-    console.log('⏳ [ChallengeList] Showing loading state');
-    
     return (
       <View className="mx-4 mb-6">
         {/* Section Header Skeleton */}
@@ -153,7 +138,6 @@ export const ChallengeList = ({
 
   // Error State
   if (error) {
-    console.log('❌ [ChallengeList] Showing error state:', error);
     
     return (
       <View className="mx-4 mb-6 mt-3">
@@ -187,8 +171,6 @@ export const ChallengeList = ({
 
   // Empty State
   if (!challenges || challenges.length === 0) {
-    console.log('📭 [ChallengeList] Showing empty state');
-    
     return (
       <View className="mx-4 mb-6 mt-3">
         <View className="flex-row items-center justify-between mb-3">
@@ -288,9 +270,6 @@ export const ChallengeList = ({
       </TouchableOpacity>
     );
   };
-
-  // Success State - Show Challenges
-  console.log('✅ [ChallengeList] Showing challenges:', challenges.length);
 
   return (
     <ScrollView

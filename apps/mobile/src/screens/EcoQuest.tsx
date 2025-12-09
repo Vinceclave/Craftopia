@@ -25,8 +25,6 @@ export const EcoQuestScreen = () => {
     error: statsError 
   } = useUserStats();
 
-  console.log(userStats)
-
   // Waste stats query
   const {
     data: wasteStats,

@@ -60,13 +60,8 @@ export const verifyChallengeWithUpload = asyncHandler(
     }
 
     try {
-      console.log("🔍 Starting challenge verification");
-      console.log("📸 Image URL:", imageUrl);
-
       // Fetch image from S3 URL and convert to base64
       const { base64: base64ImageData, contentType } = await fetchImageAsBase64(imageUrl);
-
-      console.log("✅ Image fetched successfully");
 
       // Create prompt for AI
       const prompt = createChallengeVerificationPrompt(
@@ -76,8 +71,6 @@ export const verifyChallengeWithUpload = asyncHandler(
         Date.now(),
         userId
       );
-
-      console.log("🤖 Sending request to AI for verification...");
 
       const result = await ai.models.generateContent({
         model: config.ai.model,
@@ -101,8 +94,6 @@ export const verifyChallengeWithUpload = asyncHandler(
 
       const rawText = result.text;
 
-      console.log("📝 Raw AI response:", rawText);
-
       if (!rawText?.trim()) {
         return sendError(res, "AI verification failed - empty response", 500);
       }
@@ -110,7 +101,6 @@ export const verifyChallengeWithUpload = asyncHandler(
       let verification;
       try {
         verification = parseJsonFromMarkdown(rawText);
-        console.log("✅ Parsed verification result:", verification);
       } catch (parseError) {
         console.error("❌ Failed to parse AI verification response:", parseError);
         return sendError(res, "Invalid AI verification format", 500);

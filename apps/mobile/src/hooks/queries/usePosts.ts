@@ -160,9 +160,7 @@ export const useTrendingTags = () => {
   return useQuery({
     queryKey: postKeys.trendingTags(),
     queryFn: async () => {
-      console.log('🔍 [useTrendingTags] Fetching trending tags...');
       const response = await postService.getTrendingTags();
-      console.log('🔍 [useTrendingTags] Raw response:', response);
 
       let rawTags: any[] = [];
 
@@ -193,7 +191,6 @@ export const useTrendingTags = () => {
         }
       });
 
-      console.log('✅ [useTrendingTags] Normalized tags:', normalizedTags);
       return normalizedTags;
     },
     staleTime: 5 * 60 * 1000,
@@ -318,8 +315,6 @@ export const useUpdatePost = () => {
       queryClient.invalidateQueries({ 
         queryKey: postKeys.detail(postId) 
       });
-      
-      console.log('✅ Post updated successfully:', postId);
     },
   });
 };
@@ -337,11 +332,9 @@ export const useTogglePostReaction = () => {
 
   return useMutation({
     mutationFn: async (postId: number) => {
-      console.log('🔵 Frontend: Toggle reaction requested for post:', postId);
       
       const existingMutation = pendingMutations.current.get(postId);
       if (existingMutation) {
-        console.log('⚠️ Mutation already in progress for post:', postId);
         return existingMutation;
       }
 
@@ -351,7 +344,6 @@ export const useTogglePostReaction = () => {
       
       if (timeSinceLastMutation < DEBOUNCE_MS) {
         const waitTime = DEBOUNCE_MS - timeSinceLastMutation;
-        console.log(`⏳ Debouncing: Waiting ${waitTime}ms`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
 

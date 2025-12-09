@@ -341,6 +341,7 @@ class ChallengeService extends BaseService {
       page,
       limit,
       where: {
+        expired_at: null,
         category,
         is_active: true,
         deleted_at: null

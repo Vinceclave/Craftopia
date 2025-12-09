@@ -1,6 +1,7 @@
-// apps/mobile/src/screens/craft/CraftDetails.tsx 
+// apps/mobile/src/screens/craft/CraftDetails.tsx
+// ✅ COMPLETE VERSION WITH NETWORK ERROR HANDLING & DUPLICATE PREVENTION
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -25,9 +26,12 @@ import {
   Wrench,
   Star,
   BarChart3,
-  X
+  X,
+  WifiOff,
+  AlertCircle,
 } from 'lucide-react-native';
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
+import { NetworkError } from '~/services/craft.service';
 import crypto from 'crypto-js';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -91,25 +95,114 @@ export const CraftDetailsScreen = () => {
   // ✅ Create unique hash for this craft
   const craftHash = createCraftHash(craftTitle, description, materials);
 
+  // ✅ State management
   const [isSaved, setIsSaved] = useState(initialSaved);
   const [ideaId, setIdeaId] = useState(initialIdeaId);
   const [imageUrl, setImageUrl] = useState(generatedImageUrl);
-  const [saveInProgress, setSaveInProgress] = useState(false);
+  const [isNetworkError, setIsNetworkError] = useState(false);
+  const [isPendingSave, setIsPendingSave] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
+  
+  // ✅ CRITICAL: Prevent duplicate save attempts
+  const saveAttemptRef = useRef(false);
+  const lastSaveAttemptRef = useRef(0);
 
   const saveMutation = useSaveCraftFromBase64();
   const toggleMutation = useToggleSaveCraft();
 
+  // ✅ Monitor SAVE mutation success
   useEffect(() => {
-    console.log('🔍 Craft Details loaded:', {
-      title: craftTitle,
-      hash: craftHash,
-      ideaId: initialIdeaId,
-      isSaved: initialSaved,
-      difficulty,
-      toolsNeeded: toolsNeeded?.length,
-      uniqueFeature: !!uniqueFeature
-    });
+    if (saveMutation.isSuccess && saveMutation.data) {
+      
+      const responseData = saveMutation.data.data;
+      
+      // Check for duplicate
+      if ((responseData as any).isDuplicate) {
+        setIsSaved(true);
+        setIdeaId(responseData.idea_id);
+        if (responseData.generated_image_url) {
+          setImageUrl(responseData.generated_image_url);
+        }
+        setIsNetworkError(false);
+        setIsPendingSave(false);
+        saveAttemptRef.current = false;
+
+        Alert.alert(
+          'Already Saved',
+          'This craft has already been saved to your collection!',
+          [{ text: 'OK' }]
+        );
+      } else {
+        // New save success
+        setIsSaved(true);
+        setIdeaId(responseData.idea_id);
+        if (responseData.generated_image_url) {
+          setImageUrl(responseData.generated_image_url);
+        }
+        setIsNetworkError(false);
+        setIsPendingSave(false);
+        saveAttemptRef.current = false;
+
+        Alert.alert('Success', '✅ Craft saved to your collection!');
+      }
+    }
+  }, [saveMutation.isSuccess, saveMutation.data]);
+
+  // ✅ Monitor SAVE mutation errors
+  useEffect(() => {
+    if (saveMutation.isError && saveMutation.error) {
+      console.error('❌ Save mutation error:', saveMutation.error);
+      
+      if (saveMutation.error instanceof NetworkError) {
+        setIsNetworkError(true);
+        setIsPendingSave(true);
+        saveAttemptRef.current = false;
+      } else {
+        setIsNetworkError(false);
+        setIsPendingSave(false);
+        saveAttemptRef.current = false;
+      }
+    }
+  }, [saveMutation.isError, saveMutation.error]);
+
+  // ✅ Monitor TOGGLE mutation success
+  useEffect(() => {
+    if (toggleMutation.isSuccess && toggleMutation.data) {
+      const newSavedState = toggleMutation.data.data.isSaved;
+      setIsSaved(newSavedState);
+      setIsNetworkError(false);
+      
+      Alert.alert(
+        'Success',
+        newSavedState 
+          ? '✅ Craft saved to your collection!' 
+          : '📤 Craft removed from saved items'
+      );
+    }
+  }, [toggleMutation.isSuccess, toggleMutation.data]);
+
+  // ✅ Monitor TOGGLE mutation errors
+  useEffect(() => {
+    if (toggleMutation.isError && toggleMutation.error) {
+      console.error('❌ Toggle mutation error:', toggleMutation.error);
+      
+      if (toggleMutation.error instanceof NetworkError) {
+        setIsNetworkError(true);
+        
+        Alert.alert(
+          '📡 Network Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  }, [toggleMutation.isError, toggleMutation.error]);
+
+  // ✅ Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      saveAttemptRef.current = false;
+    };
   }, []);
 
   const handleBack = () => {
@@ -125,8 +218,11 @@ export const CraftDetailsScreen = () => {
   };
 
   const handleSave = async () => {
-    // ✅ Prevent multiple save attempts
-    if (saveInProgress) {
+    // ✅ CRITICAL: Prevent rapid duplicate clicks
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastSaveAttemptRef.current;
+    
+    if (saveAttemptRef.current) {
       Alert.alert(
         'Please Wait',
         'Your craft is being saved. Please wait...'
@@ -134,30 +230,41 @@ export const CraftDetailsScreen = () => {
       return;
     }
 
+    if (timeSinceLastAttempt < 2000) {
+      Alert.alert(
+        'Please Wait',
+        'Please wait a moment before trying again.'
+      );
+      return;
+    }
+
+    // Set flags
+    saveAttemptRef.current = true;
+    lastSaveAttemptRef.current = now;
+
     // ✅ Already saved with ideaId - toggle
-    if (ideaId) {
+    if (ideaId && isSaved) {
       try {
-        setSaveInProgress(true);
-        const result = await toggleMutation.mutateAsync(ideaId);
-        const newSavedState = result.data.isSaved;
-        setIsSaved(newSavedState);
+        await toggleMutation.mutateAsync(ideaId);
         
-        Alert.alert(
-          'Success',
-          newSavedState 
-            ? '✅ Craft saved to your collection!' 
-            : '📤 Craft removed from saved items'
-        );
+        // Success is handled in useEffect
       } catch (error: any) {
-        Alert.alert('Error', error.message || 'Failed to toggle save');
-      } finally {
-        setSaveInProgress(false);
+        saveAttemptRef.current = false;
+        
+        if (!(error instanceof NetworkError)) {
+          Alert.alert(
+            'Error',
+            error.message || 'Failed to toggle save status',
+            [{ text: 'OK' }]
+          );
+        }
       }
       return;
     }
 
-    // ✅ Already marked as saved - show message
-    if (isSaved) {
+    // ✅ Already marked as saved locally (but no ideaId) - show message
+    if (isSaved && !ideaId) {
+      saveAttemptRef.current = false;
       Alert.alert(
         'Already Saved',
         'This craft has already been saved to your collection!',
@@ -165,16 +272,6 @@ export const CraftDetailsScreen = () => {
       );
       return;
     }
-
-    // ✅ Save new craft
-    console.log('💾 Saving new craft:', {
-      title: craftTitle,
-      hash: craftHash,
-      hasImage: !!generatedImageUrl
-    });
-
-    setSaveInProgress(true);
-
     try {
       const result = await saveMutation.mutateAsync({
         idea_json: {
@@ -191,48 +288,11 @@ export const CraftDetailsScreen = () => {
         base64_image: generatedImageUrl,
       });
 
-      // ✅ Check if this is a duplicate
-      if ((result.data as any).isDuplicate) {
-        console.log('⚠️ Duplicate detected by backend');
-        
-        const existingIdeaId = result.data.idea_id;
-        setIdeaId(existingIdeaId);
-        setIsSaved(true);
-        
-        if (result.data.generated_image_url) {
-          setImageUrl(result.data.generated_image_url);
-        }
-
-        Alert.alert(
-          'Already Saved',
-          'This craft has already been saved to your collection!',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      // ✅ New craft saved successfully
-      console.log('✅ Craft saved successfully:', {
-        ideaId: result.data.idea_id,
-        title: craftTitle,
-        hash: craftHash
-      });
-
-      const newIdeaId = result.data.idea_id;
-
-      setIdeaId(newIdeaId);
-      setIsSaved(true);
-      
-      // Replace base64 with S3 URL if available
-      if (result.data.generated_image_url) {
-        setImageUrl(result.data.generated_image_url);
-      }
-
-      Alert.alert('Success', '✅ Craft saved to your collection!');
+      // Success is handled in useEffect
     } catch (error: any) {
-      console.error('❌ Save error:', error.message);
+      saveAttemptRef.current = false;
       
-      // Check for duplicate errors
+      // ✅ Check for duplicate error messages
       if (error.message?.includes('already saved') || 
           error.message?.includes('duplicate') ||
           error.message?.includes('unique constraint')) {
@@ -241,15 +301,19 @@ export const CraftDetailsScreen = () => {
           'Already Saved',
           'This craft has already been saved to your collection!'
         );
-      } else {
-        Alert.alert('Error', error.message || 'Failed to save craft');
+      } else if (!(error instanceof NetworkError)) {
+        // Show error for non-network errors
+        Alert.alert(
+          'Error',
+          error.message || 'Failed to save craft',
+          [{ text: 'OK' }]
+        );
       }
-    } finally {
-      setSaveInProgress(false);
     }
   };
 
-  const isProcessing = saveMutation.isPending || toggleMutation.isPending || saveInProgress;
+  // ✅ Calculate processing state
+  const isProcessing = saveMutation.isPending || toggleMutation.isPending || saveAttemptRef.current;
 
   // ✅ Difficulty color mapping
   const getDifficultyColor = (diff?: string) => {
@@ -270,9 +334,26 @@ export const CraftDetailsScreen = () => {
 
   const difficultyColors = getDifficultyColor(difficulty);
 
-  // ✅ Show save button only if not saved
-  const showSaveButton = !isSaved;
+  // ✅ Show save button logic
+  const showSaveButton = !isSaved || (isSaved && ideaId); // Show if not saved OR if we have ideaId for toggling
   const saveButtonDisabled = isProcessing;
+
+  // ✅ Button text logic
+  const getSaveButtonText = () => {
+    if (isProcessing) return 'Saving...';
+    if (isPendingSave) return 'Queued for Save';
+    if (isSaved && ideaId) return 'Unsave';
+    if (isSaved && !ideaId) return 'Already Saved';
+    return 'Save to My Projects';
+  };
+
+  const getSaveButtonIcon = () => {
+    if (isProcessing) return null; // Show spinner instead
+    if (isPendingSave) return <WifiOff size={20} color="#FFFFFF" />;
+    if (isSaved && ideaId) return <Bookmark size={20} color="#FFFFFF" fill="#FFFFFF" />;
+    if (isSaved && !ideaId) return <CheckCircle2 size={20} color="#FFFFFF" fill="#FFFFFF" />;
+    return <Bookmark size={20} color="#FFFFFF" />;
+  };
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-[#F8FBF8]">
@@ -294,7 +375,18 @@ export const CraftDetailsScreen = () => {
             </Text>
           </View>
           
+          {/* Status Indicators */}
           <View className="flex-row items-center space-x-2 ml-2">
+            {/* Network Error Badge */}
+            {isNetworkError && (
+              <View className="flex-row items-center bg-[#FFF9E6] px-2 py-1 rounded-lg">
+                <WifiOff size={12} color="#F59E0B" />
+                <Text className="text-xs text-[#92400E] ml-1 font-nunito">
+                  Offline
+                </Text>
+              </View>
+            )}
+            
             {/* Bookmark Button */}
             <TouchableOpacity 
               onPress={handleSave}
@@ -343,7 +435,7 @@ export const CraftDetailsScreen = () => {
           )}
           
           {/* ✅ Clear saved status badge */}
-          {isSaved && (
+          {isSaved && !isPendingSave && (
             <View className="flex-row items-center bg-[#3B6E4D]/10 px-3 py-1.5 rounded-lg">
               <CheckCircle2 size={14} color="#3B6E4D" fill="#3B6E4D" />
               <Text className="text-sm text-[#3B6E4D] ml-1 font-nunito font-semibold">
@@ -374,6 +466,23 @@ export const CraftDetailsScreen = () => {
                 </Text>
               </View>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ✅ Pending Save Banner */}
+        {isPendingSave && (
+          <View className="mx-4 mt-4 p-4 bg-[#FFF9E6] rounded-2xl border border-[#FFE8A3]">
+            <View className="flex-row items-start">
+              <WifiOff size={20} color="#F59E0B" />
+              <View className="flex-1 ml-3">
+                <Text className="text-sm font-bold text-[#92400E] mb-1 font-poppinsBold">
+                  Queued for Save
+                </Text>
+                <Text className="text-sm text-[#78350F] font-nunito leading-5">
+                  Your craft will be saved automatically when you're back online
+                </Text>
+              </View>
+            </View>
           </View>
         )}
 
@@ -487,14 +596,15 @@ export const CraftDetailsScreen = () => {
           </View>
         )}
 
-        {/* ✅ Save Button - Only show if not saved */}
+        {/* ✅ Save Button - Smart Display Logic */}
         {showSaveButton && (
           <View className="mx-4 mb-8">
             <TouchableOpacity 
               onPress={handleSave}
               disabled={saveButtonDisabled}
               className={`py-4 rounded-xl flex-row items-center justify-center ${
-                saveButtonDisabled ? 'bg-[#3B6E4D]/50' : 'bg-[#3B6E4D]'
+                saveButtonDisabled ? 'bg-[#3B6E4D]/50' : 
+                (isSaved && ideaId) ? 'bg-[#E66555]' : 'bg-[#3B6E4D]'
               }`}
               activeOpacity={0.8}
             >
@@ -502,30 +612,40 @@ export const CraftDetailsScreen = () => {
                 <>
                   <ActivityIndicator size="small" color="#FFFFFF" />
                   <Text className="text-white font-bold text-base ml-2 font-poppinsBold">
-                    Saving...
+                    {getSaveButtonText()}
                   </Text>
                 </>
               ) : (
                 <>
-                  <Bookmark size={20} color="#FFFFFF" />
+                  {getSaveButtonIcon()}
                   <Text className="text-white font-bold text-base ml-2 font-poppinsBold">
-                    Save to My Projects
+                    {getSaveButtonText()}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
             
-            {/* ✅ Hash display for debugging (optional) */}
+            {/* ✅ Debug Info (Dev Mode Only) */}
             {__DEV__ && (
-              <Text className="text-xs text-center text-gray-400 mt-2">
-                Hash: {craftHash}
-              </Text>
+              <View className="mt-2">
+                <Text className="text-xs text-center text-gray-400">
+                  Hash: {craftHash}
+                </Text>
+                {ideaId && (
+                  <Text className="text-xs text-center text-gray-400">
+                    ID: #{ideaId}
+                  </Text>
+                )}
+                <Text className="text-xs text-center text-gray-400">
+                  Saved: {isSaved ? 'Yes' : 'No'} | Network Error: {isNetworkError ? 'Yes' : 'No'}
+                </Text>
+              </View>
             )}
           </View>
         )}
 
-        {/* ✅ Already Saved Message */}
-        {isSaved && (
+        {/* ✅ Already Saved Message (No ideaId) */}
+        {isSaved && !ideaId && !showSaveButton && (
           <View className="mx-4 mb-8 p-4 bg-[#3B6E4D]/10 rounded-xl border border-[#3B6E4D]/20">
             <View className="flex-row items-center justify-center">
               <CheckCircle2 size={20} color="#3B6E4D" fill="#3B6E4D" />
@@ -533,11 +653,6 @@ export const CraftDetailsScreen = () => {
                 Saved to Your Collection
               </Text>
             </View>
-            {ideaId && (
-              <Text className="text-[#5F6F64] text-xs text-center mt-2 font-nunito">
-                ID: #{ideaId}
-              </Text>
-            )}
           </View>
         )}
       </ScrollView>
@@ -550,7 +665,7 @@ export const CraftDetailsScreen = () => {
         onRequestClose={handleCloseImageModal}
         statusBarTranslucent
       >
-        <View  className="absolute inset-0 bg-black">
+        <View className="absolute inset-0 bg-black">
           
           {/* Close Button */}
           <TouchableOpacity

@@ -25,14 +25,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar: propAvatar, onChange })
   const uploading = uploadingImage || isUpdating;
   
   useEffect(() => {
-    console.log('🖼️ Avatar state:', {
-      propAvatar,
-      profileAvatar,
-      finalAvatar: avatar,
-      isEmoji,
-      hasError: imageError
-    });
-    
     // Reset error when avatar changes
     if (imageError && avatar !== safeAvatar) {
       setImageError(false);
@@ -45,7 +37,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar: propAvatar, onChange })
       : await ImagePicker.requestMediaLibraryPermissionsAsync()
 
     if (!permission.granted) {
-      console.log('⚠️ Permission denied');
       return;
     }
 
@@ -63,7 +54,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar: propAvatar, onChange })
 
     if (!result.canceled) {
       const asset = result.assets[0];
-      console.log('📸 Image selected:', asset.uri);
       
       try {
         // Upload to S3
@@ -72,8 +62,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar: propAvatar, onChange })
         if (!uploadedUrl) {
           throw new Error('Upload failed - no URL returned');
         }
-
-        console.log('✅ Uploaded successfully:', uploadedUrl);
 
         // Update profile in backend
         await updateProfilePhoto(uploadedUrl);
@@ -118,7 +106,6 @@ export const AvatarSection: React.FC<Props> = ({ avatar: propAvatar, onChange })
                     setImageError(true);
                   }}
                   onLoad={() => {
-                    console.log('✅ Image loaded successfully');
                     setImageError(false);
                   }}
                 />

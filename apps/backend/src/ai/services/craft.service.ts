@@ -29,21 +29,6 @@ export const generateCraft = async (
     ? materials.map((m) => m.trim()).filter(Boolean).join(", ")
     : materials?.trim();
 
-  console.log("🎨 ============================================");
-  console.log("🎨 CRAFT SERVICE - Image-Enhanced Generation");
-  console.log("🎨 ============================================");
-  console.log("📦 Materials:", cleanMaterials);
-  console.log("🖼️  Has referenceImageBase64:", !!referenceImageBase64);
-
-  if (referenceImageBase64) {
-    const imageSizeMB = (referenceImageBase64.length / (1024 * 1024)).toFixed(2);
-    console.log("📏 Reference Image Length:", referenceImageBase64.length);
-    console.log("📊 Reference Image Size:", imageSizeMB, "MB");
-    console.log("✅ Will send image to AI for visual material analysis");
-  } else {
-    console.log("⚠️  No reference image - generating from text materials only");
-  }
-
   // Validation
   if (!cleanMaterials) {
     throw new AppError("Materials are required", 400);
@@ -81,8 +66,6 @@ export const generateCraft = async (
   }
 
   try {
-    console.log("🤖 Generating craft ideas with visual material reference...");
-
     const hasReferenceImage = !!referenceImageBase64;
     const prompt = craftPrompt(cleanMaterials, hasReferenceImage);
 
@@ -90,7 +73,6 @@ export const generateCraft = async (
 
     // 🎯 NEW: If we have a reference image, send it to the AI
     if (referenceImageBase64) {
-      console.log("📸 Sending reference image to AI for accurate material analysis...");
 
       // Extract base64 data and MIME type
       let cleanBase64 = referenceImageBase64.trim();
@@ -133,7 +115,6 @@ export const generateCraft = async (
         ],
       });
 
-      console.log("✅ AI analyzed the reference image for material details");
     } else {
       // No image - text-only generation
       response = await ai.models.generateContent({
@@ -146,8 +127,6 @@ export const generateCraft = async (
     if (!text?.trim()) {
       throw new AppError("AI did not return a response", 500);
     }
-
-    console.log("✅ AI response received");
 
     const ideas = parseJsonFromMarkdown(text);
 
@@ -175,9 +154,6 @@ export const generateCraft = async (
       throw new AppError("AI returned invalid craft idea format", 500);
     }
 
-    console.log(`✅ Generated ${validIdeas.length} valid craft ideas`);
-    console.log("🎨 Starting image generation for each craft idea...");
-
     // Generate images for each craft
     const ideasWithImages: CraftIdea[] = [];
 
@@ -185,11 +161,6 @@ export const generateCraft = async (
       const idea = validIdeas[i];
 
       try {
-        console.log(`\n🖼️  [${i + 1}/${validIdeas.length}] Generating image for: "${idea.title}"`);
-        console.log(`📝 Difficulty: ${idea.difficulty || 'Not specified'}`);
-        console.log(`⏱️  Time: ${idea.timeNeeded}`);
-        console.log(`🔧 Steps: ${idea.steps.length} steps`);
-        console.log(`✨ Has Visual Description: ${!!idea.visualDescription}`);
 
         // Pass craft details AND reference image to image generation
         const imageUrl = await generateCraftImage(
@@ -205,8 +176,6 @@ export const generateCraft = async (
           ...idea,
           generatedImageUrl: imageUrl,
         });
-
-        console.log(`✅ [${i + 1}/${validIdeas.length}] Image generated successfully`);
       } catch (imageError: any) {
         console.error(`❌ [${i + 1}/${validIdeas.length}] Failed to generate image:`, imageError.message);
 
@@ -217,13 +186,6 @@ export const generateCraft = async (
         });
       }
     }
-
-    console.log("\n🎨 ============================================");
-    console.log(`✅ IMAGE-ENHANCED CRAFT SERVICE COMPLETE`);
-    console.log(`📊 Total Ideas: ${ideasWithImages.length}`);
-    console.log(`🖼️  Ideas with Images: ${ideasWithImages.filter(i => i.generatedImageUrl).length}`);
-    console.log(`📸 Used Reference Image: ${hasReferenceImage ? 'Yes' : 'No'}`);
-    console.log("🎨 ============================================\n");
 
     return {
       materials: Array.isArray(materials) ? materials : [materials],

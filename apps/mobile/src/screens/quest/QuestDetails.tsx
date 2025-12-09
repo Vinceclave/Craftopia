@@ -20,11 +20,6 @@ export const QuestDetailsScreen = () => {
   const { success, error } = useAlert()
   const [skipModalVisible, setSkipModalVisible] = useState(false)
 
-  // ✅ FIX: Log the received questId immediately
-  useEffect(() => {
-    console.log('📍 QuestDetailsScreen mounted with questId:', questId);
-  }, [questId]);
-
   // Get challenge details
   const { 
     data: quest, 
@@ -32,17 +27,6 @@ export const QuestDetailsScreen = () => {
     error: questError 
   } = useChallenge(questId)
 
-  // ✅ FIX: Log when quest data is loaded
-  useEffect(() => {
-    if (quest) {
-      console.log('✅ Quest data loaded:', {
-        challenge_id: quest.challenge_id,
-        title: quest.title,
-        points_reward: quest.points_reward,
-        waste_kg: quest.waste_kg
-      });
-    }
-  }, [quest]);
 
   // Get user's progress for this challenge
   const { 
@@ -50,19 +34,6 @@ export const QuestDetailsScreen = () => {
     isLoading: progressLoading,
     error: progressError 
   } = useUserChallengeProgress(questId)
-
-  // ✅ FIX: Log user progress
-  useEffect(() => {
-    if (userProgress) {
-      console.log('✅ User progress loaded:', {
-        user_challenge_id: userProgress.user_challenge_id,
-        challenge_id: userProgress.challenge_id,
-        status: userProgress.status
-      });
-    } else if (progressError && !progressError.message?.includes('not found')) {
-      console.log('⚠️ Progress error:', progressError.message);
-    }
-  }, [userProgress, progressError]);
 
   // Mutations
   const joinChallengeMutation = useJoinChallenge()
@@ -72,23 +43,11 @@ export const QuestDetailsScreen = () => {
 
   const handleJoinPress = async () => {
     if (!quest || userProgress) {
-      console.log('⚠️ Cannot join:', { hasQuest: !!quest, hasProgress: !!userProgress });
       return;
     }
 
-    // ✅ FIX: Verify we're joining the correct challenge
-    console.log('🎯 Attempting to join challenge:', {
-      challenge_id: quest.challenge_id,
-      title: quest.title,
-      questId: questId
-    });
-
     // ✅ FIX: Double-check IDs match
     if (quest.challenge_id !== questId) {
-      console.error('❌ MISMATCH: quest.challenge_id !== questId', {
-        quest_challenge_id: quest.challenge_id,
-        questId: questId
-      });
       error('Error', 'Challenge ID mismatch. Please try again.');
       return;
     }
@@ -97,7 +56,6 @@ export const QuestDetailsScreen = () => {
       await joinChallengeMutation.mutateAsync(quest.challenge_id)
       success('Success!', `You have successfully joined "${quest.title}"!`)
       
-      console.log('✅ Successfully joined challenge:', quest.challenge_id);
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to join challenge'
       
@@ -118,12 +76,6 @@ export const QuestDetailsScreen = () => {
       return
     }
 
-    console.log('🔄 Skipping challenge:', {
-      user_challenge_id: userProgress.user_challenge_id,
-      challenge_id: userProgress.challenge_id,
-      reason
-    });
-
     try {
       await skipChallengeMutation.mutateAsync({
         userChallengeId: userProgress.user_challenge_id,
@@ -132,8 +84,6 @@ export const QuestDetailsScreen = () => {
       
       setSkipModalVisible(false)
       success('Challenge Skipped', 'No worries! Try another challenge that fits your schedule.')
-      
-      console.log('✅ Challenge skipped successfully');
       
       // Navigate back to challenges list
       setTimeout(() => {

@@ -13,8 +13,6 @@ const extra = expoConfig.extra ?? {};
 
 export const API_BASE_URL = __DEV__ ? extra.devUrl : extra.prodUrl;
 
-console.log('API_BASE_URL:', API_BASE_URL);
-
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/v1/auth/login',

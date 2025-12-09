@@ -48,8 +48,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     try {
       const response = await authService.forgotPassword(email.trim());
-      console.log('✅ Password reset email sent:', response);
-      
+
       // Move to success step
       setStep('success');
     } catch (err: any) {

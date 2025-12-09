@@ -70,8 +70,6 @@ export const generateChallenge = async (
     const selectedMaterials = getRecyclableMaterials(frequency);
     const materialTypesString = selectedMaterials.join(", ");
 
-    console.log(`🤖 Generating ${frequency} challenges for: ${materialTypesString}`);
-
     const prompt = challengePrompt(materialTypesString, frequency);
 
     const response = await ai.models.generateContent({
@@ -150,12 +148,6 @@ export const generateChallenge = async (
       throw new Error('No valid recyclable material challenges generated');
     }
 
-    console.log(`✅ Generated ${challenges.length} ${frequency} challenges:`);
-    challenges.forEach(c => {
-      console.log(`   📦 ${c.title}`);
-      console.log(`      └─ ${c.material_type} | ${c.waste_kg}kg | ${c.points_reward}pts`);
-    });
-    
     return challenges;
 
   } catch (error: any) {
@@ -186,7 +178,6 @@ export const createChallenges = async (challenges: AIChallenge[]) => {
       skipDuplicates: true,
     });
 
-    console.log(`✅ Saved ${savedChallenges.count} challenges to database`);
     return savedChallenges;
   } catch (error) {
     console.error('❌ Failed to save challenges:', error);

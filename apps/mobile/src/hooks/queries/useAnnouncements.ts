@@ -38,15 +38,12 @@ export const useActiveAnnouncements = () => {
     queryKey: announcementKeys.active(),
     queryFn: async (): Promise<Announcement[]> => {
       try {
-        console.log('📢 [useActiveAnnouncements] Fetching active announcements...');
-        
         const response: any = await apiService.request(
           `${API_ENDPOINTS.ANNOUNCEMENTS.ACTIVE}?limit=10`,
           { method: 'GET' }
         );
 
         const announcements = response.data || response || [];
-        console.log(`✅ [useActiveAnnouncements] Found ${announcements.length} active announcements`);
         
         return Array.isArray(announcements) ? announcements : [];
       } catch (error: any) {
@@ -63,17 +60,14 @@ export const useActiveAnnouncements = () => {
     if (!isConnected) return;
 
     const handleAnnouncementCreated = (data: any) => {
-      console.log('📢 [WS] New announcement created:', data);
       queryClient.invalidateQueries({ queryKey: announcementKeys.active() });
     };
 
     const handleAnnouncementUpdated = (data: any) => {
-      console.log('📢 [WS] Announcement updated:', data);
       queryClient.invalidateQueries({ queryKey: announcementKeys.active() });
     };
 
     const handleAnnouncementDeleted = (announcementId: number) => {
-      console.log('📢 [WS] Announcement deleted:', announcementId);
       
       // Remove from cache immediately
       queryClient.setQueryData<Announcement[]>(

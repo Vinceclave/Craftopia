@@ -53,9 +53,6 @@ const LoginScreen: React.FC = () => {
         email: form.email.trim(),
         password: form.password,
       });
-
-      // Success! Navigation will happen automatically via AppNavigator
-      console.log('Login successful!');
     } catch (err: any) {
       // Handle different error types
       if (err.message?.toLowerCase().includes('verify') || 

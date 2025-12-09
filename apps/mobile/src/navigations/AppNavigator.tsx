@@ -24,7 +24,7 @@ export const AppNavigator = () => {
         const hasSeenOnboarding = await AsyncStorage.getItem('hasSeenOnboarding');
         if (!hasSeenOnboarding) setShowOnboarding(true);
       } catch (err) {
-        console.log('Error reading onboarding status:', err);
+        throw err        
       } finally {
         setCheckingOnboarding(false);
       }
@@ -37,7 +37,7 @@ export const AppNavigator = () => {
       await AsyncStorage.setItem('hasSeenOnboarding', 'true');
       setShowOnboarding(false);
     } catch (err) {
-      console.log('Error saving onboarding status:', err);
+      throw err;
     }
   };
 

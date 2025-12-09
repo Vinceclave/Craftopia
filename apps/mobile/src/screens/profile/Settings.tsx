@@ -81,13 +81,9 @@ export function SettingsScreen() {
     setIsCheckingUpdates(true);
 
     try {
-      console.log('🔍 Manually checking for updates...');
-      
       const update = await Updates.checkForUpdateAsync();
 
       if (update.isAvailable) {
-        console.log('📦 Update available! Downloading...');
-        
         // Show downloading alert
         Alert.alert(
           'Update Available',
@@ -97,7 +93,6 @@ export function SettingsScreen() {
 
         await Updates.fetchUpdateAsync();
 
-        console.log('✅ Update downloaded successfully');
 
         // Show restart prompt
         Alert.alert(
@@ -112,14 +107,12 @@ export function SettingsScreen() {
             {
               text: 'Restart Now',
               onPress: async () => {
-                console.log('🔄 Restarting app to apply update...');
                 await Updates.reloadAsync();
               }
             }
           ]
         );
       } else {
-        console.log('✅ App is up to date');
         
         Alert.alert(
           'Up to Date ✅',

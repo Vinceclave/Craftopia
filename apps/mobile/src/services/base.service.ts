@@ -68,7 +68,6 @@ class ApiService {
 
             if (!response.ok) {
               const errorData = await response.json();
-              console.log('❌ Refresh failed:', errorData);
               
               // More specific error handling
               if (errorData.error?.includes('Invalid or expired')) {
@@ -91,8 +90,6 @@ class ApiService {
               ['refresh_token', newRefreshToken],
             ]);
 
-            console.log('✅ Tokens refreshed successfully');
-            
             originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
             // Process all queued requests
@@ -101,8 +98,6 @@ class ApiService {
 
             return this.axios(originalRequest);
           } catch (refreshError: any) {
-            console.log('❌ Auth refresh error:', refreshError.message);
-            
             // Reject all queued requests
             this.failedQueue.forEach((promise) => promise.reject(refreshError));
             this.failedQueue = [];
@@ -110,7 +105,6 @@ class ApiService {
             // Only clear tokens on specific errors
             if (refreshError.message === 'SESSION_EXPIRED' || refreshError.message === 'REFRESH_FAILED') {
               await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user']);
-              console.log('🔒 Tokens cleared - session expired');
             }
             
             return Promise.reject(refreshError);
@@ -181,11 +175,6 @@ class ApiService {
   // ✅ NEW: Special method for AI requests with extended timeout
   async postAI<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     try {
-      console.log('🤖 AI Request:', {
-        url,
-        hasData: !!data,
-        dataSize: data ? JSON.stringify(data).length : 0,
-      });
 
       const response = await this.axios({
         url,
@@ -195,7 +184,6 @@ class ApiService {
         timeout: 120000, // 120 seconds for AI requests (image generation takes time)
       });
 
-      console.log('✅ AI Response:', { url, success: true });
       return response.data;
     } catch (error: any) {
       console.error('❌ AI Request Error:', { url, error: error.message });

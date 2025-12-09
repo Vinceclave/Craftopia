@@ -47,11 +47,8 @@ export const CraftScanScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       setIsProcessing(false);
-      console.log('🔄 CraftScan screen focused - reset processing state');
-      
       return () => {
         // Cleanup if needed
-        console.log('👋 CraftScan screen unfocused');
       };
     }, [])
   );
@@ -60,7 +57,6 @@ export const CraftScanScreen = () => {
 
   const pickImageFromCamera = async () => {
     if (isProcessing) {
-      console.log('⚠️ Already processing, ignoring camera request');
       return;
     }
 

@@ -21,7 +21,6 @@ export const useDeepLink = () => {
       try {
         const initialUrl = await Linking.getInitialURL();
         if (initialUrl) {
-          console.log('📱 [DeepLink] Initial URL:', initialUrl);
           handleDeepLink(initialUrl);
         }
       } catch (error) {
@@ -31,7 +30,6 @@ export const useDeepLink = () => {
 
     // Handle URL when app is already open
     const subscription = Linking.addEventListener('url', ({ url }) => {
-      console.log('📱 [DeepLink] Received URL:', url);
       handleDeepLink(url);
     });
 
@@ -44,19 +42,15 @@ export const useDeepLink = () => {
 
   const handleDeepLink = (url: string) => {
     try {
-      console.log('🔗 [DeepLink] Processing URL:', url);
       
       const { screen, params } = parseDeepLink(url);
       
       if (screen) {
-        console.log('✅ [DeepLink] Navigating to:', screen, params);
         // Use type assertion to bypass TypeScript navigation type checking
         (navigation as any).navigate(screen, params);
-      } else {
-        console.warn('⚠️ [DeepLink] Unknown deep link format:', url);
-      }
+      } 
     } catch (error) {
-      console.error('❌ [DeepLink] Error handling deep link:', error);
+      throw error
     }
   };
 
@@ -69,8 +63,6 @@ export const useDeepLink = () => {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
     const searchParams = urlObj.searchParams;
-
-    console.log('🔍 [DeepLink] Parsed:', { path, params: Object.fromEntries(searchParams) });
 
     // Email Verification
     if (path.includes('/auth/verify-email') || path.includes('/verify-email')) {

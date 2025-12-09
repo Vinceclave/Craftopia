@@ -122,7 +122,6 @@ const ChangePasswordScreen = () => {
     setIsLoading(true);
     try {
       await authService.changePassword(currentPassword, newPassword);
-      console.log('✅ [ChangePassword] Password changed successfully');
       
       setIsSuccess(true);
       

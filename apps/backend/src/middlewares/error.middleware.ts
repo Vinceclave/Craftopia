@@ -50,8 +50,6 @@ const formatErrorResponse = (err: AppError, includeStack: boolean = false) => {
 
 // Handle Prisma errors
 const handlePrismaError = (error: any): AppError => {
-  console.log('🔍 Handling Prisma error:', error.code);
-
   switch (error.code) {
     case 'P2002': {
       // Unique constraint violation
@@ -114,7 +112,6 @@ const handlePrismaError = (error: any): AppError => {
 
 // Handle JWT errors
 const handleJWTError = (error: any): AppError => {
-  console.log('🔍 Handling JWT error:', error.name);
 
   if (error.name === 'TokenExpiredError') {
     return new UnauthorizedError('Token expired');
@@ -130,8 +127,6 @@ const handleJWTError = (error: any): AppError => {
 
 // Handle Multer errors
 const handleMulterError = (error: any): AppError => {
-  console.log('🔍 Handling Multer error:', error.code);
-
   if (error.code === 'LIMIT_FILE_SIZE') {
     return new ValidationError('File too large (max 10MB)', { 
       maxSize: '10MB',
@@ -152,8 +147,6 @@ const handleMulterError = (error: any): AppError => {
 
 // Handle Joi validation errors
 const handleJoiError = (error: any): AppError => {
-  console.log('🔍 Handling Joi validation error');
-
   const details = error.details?.map((detail: any) => ({
     field: detail.path.join('.'),
     message: detail.message,
@@ -293,8 +286,6 @@ export const errorHandler = (
 
 // 404 Not Found handler
 export const notFoundHandler = (req: Request, res: Response) => {
-  console.log(`⚠️ 404 Not Found: ${req.method} ${req.originalUrl}`);
-  
   res.status(404).json({
     success: false,
     error: 'Route not found',

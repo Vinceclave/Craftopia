@@ -85,7 +85,6 @@ export const PostContainer: React.FC<PostContainerProps> = ({
     if (commentsError) {
       const errorMessage = (commentsError as any)?.message || '';
       if (errorMessage.includes('Post not found') || errorMessage.includes('not found')) {
-        console.log('Post was deleted, ignoring fetch error');
         setIsDeleted(true);
       }
     }

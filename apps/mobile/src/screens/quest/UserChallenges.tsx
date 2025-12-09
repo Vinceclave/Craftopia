@@ -22,13 +22,9 @@ export const UserChallengesScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<EcoQuestStackParamList>>();
   const { user } = useAuth();
 
-  console.log(user)
   const [activeTab, setActiveTab] = useState<QuestType>('in_progress');
   const [refreshing, setRefreshing] = useState(false);
 
-  console.log('🎬 [UserChallengesScreen] Rendering...');
-  console.log('👤 [UserChallengesScreen] User:', { id: user?.id, username: user?.username });
-  console.log('📑 [UserChallengesScreen] Active tab:', activeTab);
 
   // Get user challenges for the selected status
   const { 
@@ -40,31 +36,6 @@ export const UserChallengesScreen = () => {
     isRefetching,
   } = useUserChallenges(statusMap[activeTab]);
 
-  console.log('📊 [UserChallengesScreen] Query state:', {
-    isLoading,
-    isFetching,
-    isRefetching,
-    challengesCount: userChallenges.length,
-    hasError: !!error,
-    errorMessage: error?.message,
-  });
-
-  // Log data changes
-  useEffect(() => {
-    console.log('🔄 [UserChallengesScreen] Data updated:', {
-      count: userChallenges.length,
-      status: statusMap[activeTab],
-    });
-    
-    if (userChallenges.length > 0) {
-      console.log('📋 [UserChallengesScreen] First challenge:', {
-        user_challenge_id: userChallenges[0].user_challenge_id,
-        challenge_id: userChallenges[0].challenge_id,
-        title: userChallenges[0].challenge?.title,
-        status: userChallenges[0].status,
-      });
-    }
-  }, [userChallenges, activeTab]);
 
   // Transform challenges for the list component
   const transformedChallenges = userChallenges.map((userChallenge) => {
@@ -84,26 +55,14 @@ export const UserChallengesScreen = () => {
     return transformed;
   });
 
-  console.log('🔄 [UserChallengesScreen] Transformed challenges:', {
-    count: transformedChallenges.length,
-    first: transformedChallenges[0] ? {
-      id: transformedChallenges[0].id,
-      challenge_id: transformedChallenges[0].challenge_id,
-      title: transformedChallenges[0].title,
-    } : 'none',
-  });
-
   const handleTabChange = (tab: QuestType) => {
-    console.log('📑 [UserChallengesScreen] Tab changed:', { from: activeTab, to: tab });
     setActiveTab(tab);
   };
 
   const handleRefresh = async () => {
-    console.log('🔄 [UserChallengesScreen] Manual refresh triggered');
     setRefreshing(true);
     try {
       await refetch();
-      console.log('✅ [UserChallengesScreen] Refresh complete');
     } catch (err) {
       console.error('❌ [UserChallengesScreen] Refresh error:', err);
     } finally {
@@ -112,7 +71,6 @@ export const UserChallengesScreen = () => {
   };
 
   const handleRetry = () => {
-    console.log('🔄 [UserChallengesScreen] Retry triggered');
     refetch();
   };
 
