@@ -1,5 +1,5 @@
 // apps/mobile/src/utils/errorHandler.ts
-import { Alert } from 'react-native';
+import { ModalService, useModal } from '../context/modalContext';
 
 export interface ApiError {
   message: string;
@@ -10,18 +10,16 @@ export interface ApiError {
 
 export class ErrorHandler {
   /**
-   * Handle and display API errors
+   * Parse and extract error details
    */
-  static handle(error: any, customMessage?: string): void {
-    console.error('Error:', error);
-
+  static parse(error: any, customMessage?: string): { title: string; message: string } {
     let message = customMessage || 'An error occurred';
     let title = 'Error';
 
-    if (error.isNetworkError) {
+    if (error?.isNetworkError) {
       title = 'Network Error';
       message = 'Please check your internet connection and try again.';
-    } else if (error.status) {
+    } else if (error?.status) {
       switch (error.status) {
         case 400:
           title = 'Invalid Request';
@@ -54,51 +52,55 @@ export class ErrorHandler {
         default:
           message = error.message || `An error occurred (${error.status})`;
       }
-    } else if (error.message) {
+    } else if (error?.message) {
       message = error.message;
     }
 
-    Alert.alert(title, message, [{ text: 'OK' }]);
+    return { title, message };
   }
 
   /**
-   * Handle errors silently (log only)
+   * Handle and display API errors (Static/Legacy fallback)
+   */
+  static handle(error: any, customMessage?: string): void {
+    const { title, message } = this.parse(error, customMessage);
+    // Use ModalService for static context
+    ModalService.show({
+      title,
+      message,
+      type: 'error',
+    });
+  }
+
+  /**
+   * Handle errors silently (log only if needed, currently no-op)
    */
   static silent(error: any, context?: string): void {
-    const prefix = context ? `[${context}]` : '';
-    console.error(`${prefix} Error:`, error);
+    // Intentionally empty to remove console logs
   }
 
   /**
    * Get user-friendly error message
    */
   static getMessage(error: any): string {
-    if (error.isNetworkError) {
+    if (error?.isNetworkError) {
       return 'Network error. Please check your connection.';
     }
-    
-    if (error.message) {
+
+    if (error?.message) {
       return error.message;
     }
 
-    if (error.status) {
+    if (error?.status) {
       switch (error.status) {
-        case 400:
-          return 'Invalid request';
-        case 401:
-          return 'Authentication required';
-        case 403:
-          return 'Access denied';
-        case 404:
-          return 'Not found';
-        case 409:
-          return 'Conflict detected';
-        case 422:
-          return 'Validation error';
-        case 500:
-          return 'Server error';
-        default:
-          return `Error (${error.status})`;
+        case 400: return 'Invalid request';
+        case 401: return 'Authentication required';
+        case 403: return 'Access denied';
+        case 404: return 'Not found';
+        case 409: return 'Conflict detected';
+        case 422: return 'Validation error';
+        case 500: return 'Server error';
+        default: return `Error (${error.status})`;
       }
     }
 
@@ -109,28 +111,52 @@ export class ErrorHandler {
    * Check if error is a specific type
    */
   static isNetworkError(error: any): boolean {
-    return error.isNetworkError === true;
+    return error?.isNetworkError === true;
   }
 
   static isAuthError(error: any): boolean {
-    return error.status === 401 || error.message?.includes('SESSION_EXPIRED');
+    return error?.status === 401 || error?.message?.includes('SESSION_EXPIRED');
   }
 
   static isValidationError(error: any): boolean {
-    return error.status === 422 || error.status === 400;
+    return error?.status === 422 || error?.status === 400;
   }
 
   static isServerError(error: any): boolean {
-    return error.status >= 500;
+    return error?.status >= 500;
   }
 }
 
 /**
- * Hook for error handling in components
+ * Hook for unified error and message handling
  */
 export const useErrorHandler = () => {
+  const { showModal } = useModal();
+
   const handleError = (error: any, customMessage?: string) => {
-    ErrorHandler.handle(error, customMessage);
+    const { title, message } = ErrorHandler.parse(error, customMessage);
+
+    showModal({
+      title,
+      message,
+      type: 'error',
+    });
+  };
+
+  const showSuccess = (message: string, title: string = 'Success') => {
+    showModal({
+      title,
+      message,
+      type: 'success',
+    });
+  };
+
+  const showInfo = (message: string, title: string = 'Info') => {
+    showModal({
+      title,
+      message,
+      type: 'info',
+    });
   };
 
   const getMessage = (error: any): string => {
@@ -139,6 +165,8 @@ export const useErrorHandler = () => {
 
   return {
     handleError,
+    showSuccess,
+    showInfo,
     getMessage,
     isNetworkError: ErrorHandler.isNetworkError,
     isAuthError: ErrorHandler.isAuthError,

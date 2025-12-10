@@ -8,7 +8,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Modal,
   Dimensions
@@ -34,6 +33,7 @@ import {
 import { useSaveCraftFromBase64, useToggleSaveCraft } from '~/hooks/queries/useCraft';
 import { NetworkError } from '~/services/craft.service';
 import crypto from 'crypto-js';
+import { ModalService } from '~/context/modalContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -128,11 +128,11 @@ export const CraftDetailsScreen = () => {
         setIsPendingSave(false);
         saveAttemptRef.current = false;
 
-        Alert.alert(
-          'Already Saved',
-          'This craft has already been saved to your collection!',
-          [{ text: 'OK' }]
-        );
+        ModalService.show({
+          title: 'Already Saved',
+          message: 'This craft has already been saved to your collection!',
+          type: 'info'
+        });
       } else {
         // New save success
         setIsSaved(true);
@@ -144,7 +144,11 @@ export const CraftDetailsScreen = () => {
         setIsPendingSave(false);
         saveAttemptRef.current = false;
 
-        Alert.alert('Success', '✅ Craft saved to your collection!');
+        ModalService.show({
+          title: 'Success',
+          message: '✅ Craft saved to your collection!',
+          type: 'success'
+        });
       }
     }
   }, [saveMutation.isSuccess, saveMutation.data]);
@@ -152,7 +156,6 @@ export const CraftDetailsScreen = () => {
   // ✅ Monitor SAVE mutation errors
   useEffect(() => {
     if (saveMutation.isError && saveMutation.error) {
-      console.error('❌ Save mutation error:', saveMutation.error);
 
       if (saveMutation.error instanceof NetworkError) {
         setIsNetworkError(true);
@@ -173,28 +176,28 @@ export const CraftDetailsScreen = () => {
       setIsSaved(newSavedState);
       setIsNetworkError(false);
 
-      Alert.alert(
-        'Success',
-        newSavedState
+      ModalService.show({
+        title: 'Success',
+        message: newSavedState
           ? '✅ Craft saved to your collection!'
-          : '📤 Craft removed from saved items'
-      );
+          : '📤 Craft removed from saved items',
+        type: 'success'
+      });
     }
   }, [toggleMutation.isSuccess, toggleMutation.data]);
 
   // ✅ Monitor TOGGLE mutation errors
   useEffect(() => {
     if (toggleMutation.isError && toggleMutation.error) {
-      console.error('❌ Toggle mutation error:', toggleMutation.error);
 
       if (toggleMutation.error instanceof NetworkError) {
         setIsNetworkError(true);
 
-        Alert.alert(
-          '📡 Network Error',
-          'Please check your internet connection and try again.',
-          [{ text: 'OK' }]
-        );
+        ModalService.show({
+          title: '📡 Network Error',
+          message: 'Please check your internet connection and try again.',
+          type: 'error'
+        });
       }
     }
   }, [toggleMutation.isError, toggleMutation.error]);
@@ -239,18 +242,20 @@ export const CraftDetailsScreen = () => {
     const timeSinceLastAttempt = now - lastSaveAttemptRef.current;
 
     if (saveAttemptRef.current) {
-      Alert.alert(
-        'Please Wait',
-        'Your craft is being saved. Please wait...'
-      );
+      ModalService.show({
+        title: 'Please Wait',
+        message: 'Your craft is being saved. Please wait...',
+        type: 'info'
+      });
       return;
     }
 
     if (timeSinceLastAttempt < 2000) {
-      Alert.alert(
-        'Please Wait',
-        'Please wait a moment before trying again.'
-      );
+      ModalService.show({
+        title: 'Please Wait',
+        message: 'Please wait a moment before trying again.',
+        type: 'info'
+      });
       return;
     }
 
@@ -268,11 +273,11 @@ export const CraftDetailsScreen = () => {
         saveAttemptRef.current = false;
 
         if (!(error instanceof NetworkError)) {
-          Alert.alert(
-            'Error',
-            error.message || 'Failed to toggle save status',
-            [{ text: 'OK' }]
-          );
+          ModalService.show({
+            title: 'Error',
+            message: error.message || 'Failed to toggle save status',
+            type: 'error'
+          });
         }
       }
       return;
@@ -281,11 +286,11 @@ export const CraftDetailsScreen = () => {
     // ✅ Already marked as saved locally (but no ideaId) - show message
     if (isSaved && !ideaId) {
       saveAttemptRef.current = false;
-      Alert.alert(
-        'Already Saved',
-        'This craft has already been saved to your collection!',
-        [{ text: 'OK' }]
-      );
+      ModalService.show({
+        title: 'Already Saved',
+        message: 'This craft has already been saved to your collection!',
+        type: 'info'
+      });
       return;
     }
     try {
@@ -313,17 +318,18 @@ export const CraftDetailsScreen = () => {
         error.message?.includes('duplicate') ||
         error.message?.includes('unique constraint')) {
         setIsSaved(true);
-        Alert.alert(
-          'Already Saved',
-          'This craft has already been saved to your collection!'
-        );
+        ModalService.show({
+          title: 'Already Saved',
+          message: 'This craft has already been saved to your collection!',
+          type: 'info'
+        });
       } else if (!(error instanceof NetworkError)) {
         // Show error for non-network errors
-        Alert.alert(
-          'Error',
-          error.message || 'Failed to save craft',
-          [{ text: 'OK' }]
-        );
+        ModalService.show({
+          title: 'Error',
+          message: error.message || 'Failed to save craft',
+          type: 'error'
+        });
       }
     }
   };
@@ -618,7 +624,7 @@ export const CraftDetailsScreen = () => {
               onPress={handleSave}
               disabled={saveButtonDisabled}
               className={`py-4 rounded-xl flex-row items-center justify-center ${saveButtonDisabled ? 'bg-[#3B6E4D]/50' :
-                  (isSaved && ideaId) ? 'bg-[#E66555]' : 'bg-[#3B6E4D]'
+                (isSaved && ideaId) ? 'bg-[#E66555]' : 'bg-[#3B6E4D]'
                 }`}
               activeOpacity={0.8}
             >

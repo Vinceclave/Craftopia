@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { View, Text, Switch, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  LogOut, 
-  User, 
-  Lock, 
-  Bell, 
-  HelpCircle, 
-  Mail, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  User,
+  Lock,
+  Bell,
+  HelpCircle,
+  Mail,
   Info,
   FileText,
   Shield,
@@ -22,6 +22,7 @@ import Button from "~/components/common/Button";
 import { useAuth } from "~/context/AuthContext";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ProfileStackParamList } from "~/navigations/types";
+import { ModalService } from "~/context/modalContext";
 
 type SettingsItemProps = {
   title: string;
@@ -40,12 +41,12 @@ export function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
 
-  const SettingsItem: React.FC<SettingsItemProps> = ({ 
-    title, 
-    icon: Icon, 
-    onPress, 
+  const SettingsItem: React.FC<SettingsItemProps> = ({
+    title,
+    icon: Icon,
+    onPress,
     showArrow = true,
-    rightElement 
+    rightElement
   }) => (
     <TouchableOpacity
       onPress={onPress}
@@ -62,7 +63,7 @@ export function SettingsScreen() {
           {title}
         </Text>
       </View>
-      
+
       {rightElement || (showArrow && <ChevronRight size={16} color="#5F6F64" />)}
     </TouchableOpacity>
   );
@@ -71,10 +72,11 @@ export function SettingsScreen() {
   const checkForUpdates = async () => {
     // Skip in development
     if (__DEV__) {
-      Alert.alert(
-        'Development Mode',
-        'Update checks are disabled in development mode. Build a production APK to test OTA updates.'
-      );
+      ModalService.show({
+        title: 'Development Mode',
+        message: 'Update checks are disabled in development mode. Build a production APK to test OTA updates.',
+        type: 'info'
+      });
       return;
     }
 
@@ -84,48 +86,43 @@ export function SettingsScreen() {
       const update = await Updates.checkForUpdateAsync();
 
       if (update.isAvailable) {
-        // Show downloading alert
-        Alert.alert(
-          'Update Available',
-          'Downloading the latest version...',
-          [{ text: 'OK' }]
-        );
+        // Show downloading modal
+        ModalService.show({
+          title: 'Update Available',
+          message: 'Downloading the latest version...',
+          type: 'info'
+        });
 
         await Updates.fetchUpdateAsync();
 
 
         // Show restart prompt
-        Alert.alert(
-          '🎉 Update Ready',
-          'The update has been downloaded. Restart the app to apply the latest improvements.',
-          [
-            { 
-              text: 'Later', 
-              style: 'cancel',
-              onPress: () => console.log('User postponed update')
-            },
-            {
-              text: 'Restart Now',
-              onPress: async () => {
-                await Updates.reloadAsync();
-              }
-            }
-          ]
-        );
+        ModalService.show({
+          title: '🎉 Update Ready',
+          message: 'The update has been downloaded. Restart the app to apply the latest improvements.',
+          type: 'success',
+          confirmText: 'Restart Now',
+          cancelText: 'Later',
+          onConfirm: async () => {
+            await Updates.reloadAsync();
+          },
+          onCancel: () => {
+            // User postponed
+          }
+        });
       } else {
-        
-        Alert.alert(
-          'Up to Date ✅',
-          'You are using the latest version of Craftopia!'
-        );
+        ModalService.show({
+          title: 'Up to Date ✅',
+          message: 'You are using the latest version of Craftopia!',
+          type: 'success'
+        });
       }
     } catch (error: any) {
-      console.error('❌ Update check failed:', error);
-      
-      Alert.alert(
-        'Update Check Failed',
-        'Could not check for updates. Please check your internet connection and try again.'
-      );
+      ModalService.show({
+        title: 'Update Check Failed',
+        message: 'Could not check for updates. Please check your internet connection and try again.',
+        type: 'error'
+      });
     } finally {
       setIsCheckingUpdates(false);
     }
@@ -139,11 +136,11 @@ export function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView edges={['left','right']} className="flex-1 bg-craftopia-background">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
       {/* Header */}
       <View className="bg-craftopia-surface px-4 py-3 border-b border-craftopia-light">
         <View className="flex-row items-center">
-          <Button 
+          <Button
             title=""
             iconOnly
             leftIcon={<ChevronLeft size={16} color="#3B6E4D" />}
@@ -158,7 +155,7 @@ export function SettingsScreen() {
       </View>
 
       {/* Settings Options */}
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
@@ -171,13 +168,13 @@ export function SettingsScreen() {
             </Text>
 
             <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
-              <SettingsItem 
+              <SettingsItem
                 title="Edit Profile"
                 icon={User}
-                onPress={() => navigation.navigate('EditProfile')}  
+                onPress={() => navigation.navigate('EditProfile')}
               />
-              
-              <SettingsItem 
+
+              <SettingsItem
                 title="Change Password"
                 icon={Lock}
                 onPress={() => navigation.navigate('ChangePassword')}
@@ -190,7 +187,7 @@ export function SettingsScreen() {
             <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               Preferences
             </Text>
-            
+
             <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
               <View className="flex-row items-center justify-between py-3 px-4 border-b border-craftopia-light">
                 <View className="flex-row items-center flex-1">
@@ -217,7 +214,7 @@ export function SettingsScreen() {
             <Text className="text-xs font-poppinsBold text-craftopia-textSecondary mb-3 uppercase tracking-wider">
               App Updates
             </Text>
-            
+
             <View className="bg-craftopia-surface rounded-xl border border-craftopia-light p-4">
               {/* Header */}
               <View className="flex-row items-center mb-3">
@@ -243,11 +240,11 @@ export function SettingsScreen() {
                       Current Version
                     </Text>
                   </View>
-                  
+
                   <Text className="text-xs text-craftopia-textSecondary font-nunito mb-1">
                     Update: {updateInfo.updateId.substring(0, 8)}...
                   </Text>
-                  
+
                   {updateInfo.channel && (
                     <Text className="text-xs text-craftopia-textSecondary font-nunito">
                       Channel: {updateInfo.channel}
@@ -269,9 +266,8 @@ export function SettingsScreen() {
               <TouchableOpacity
                 onPress={checkForUpdates}
                 disabled={isCheckingUpdates}
-                className={`flex-row items-center justify-center py-3 rounded-xl ${
-                  isCheckingUpdates ? 'bg-craftopia-primary/50' : 'bg-craftopia-primary'
-                }`}
+                className={`flex-row items-center justify-center py-3 rounded-xl ${isCheckingUpdates ? 'bg-craftopia-primary/50' : 'bg-craftopia-primary'
+                  }`}
                 activeOpacity={0.7}
               >
                 {isCheckingUpdates ? (
@@ -300,19 +296,19 @@ export function SettingsScreen() {
             </Text>
 
             <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
-              <SettingsItem 
+              <SettingsItem
                 title="Help Center"
                 icon={HelpCircle}
                 onPress={() => navigation.navigate('HelpCenter')}
               />
-              
-              <SettingsItem 
+
+              <SettingsItem
                 title="Contact Us"
                 icon={Mail}
                 onPress={() => navigation.navigate('ContactUs')}
               />
-              
-              <SettingsItem 
+
+              <SettingsItem
                 title="About"
                 icon={Info}
                 onPress={() => navigation.navigate('AboutUs')}
@@ -327,13 +323,13 @@ export function SettingsScreen() {
             </Text>
 
             <View className="bg-craftopia-surface rounded-xl border border-craftopia-light overflow-hidden">
-              <SettingsItem 
+              <SettingsItem
                 title="Privacy Policy"
                 icon={FileText}
                 onPress={() => navigation.navigate('PrivacyPolicy')}
               />
-              
-              <SettingsItem 
+
+              <SettingsItem
                 title="Terms of Service"
                 icon={Shield}
                 onPress={() => navigation.navigate('TermsOfService')}
@@ -349,7 +345,7 @@ export function SettingsScreen() {
             <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
               Craftopia v1.0.0
             </Text>
-            
+
             {/* ✅ Show runtime version in production */}
             {!__DEV__ && updateInfo.runtimeVersion && (
               <Text className="text-xs font-nunito text-craftopia-textSecondary mt-1">
@@ -359,7 +355,7 @@ export function SettingsScreen() {
           </View>
 
           {/* Logout Button */}
-          <Button 
+          <Button
             onPress={() => logout()}
             title="Log Out"
             leftIcon={<LogOut size={16} color="#FFFFFF" />}

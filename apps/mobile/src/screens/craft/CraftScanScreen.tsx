@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Animated,
   Dimensions,
@@ -13,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import { ModalService } from '~/context/modalContext';
 import { Camera, Image as ImageIcon, Sparkles, ArrowLeft, Zap, CircleDot } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,7 +62,11 @@ export const CraftScanScreen = () => {
 
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission Required', 'Camera permission is required to scan items.');
+      ModalService.show({
+        title: 'Permission Required',
+        message: 'Camera permission is required to scan items.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -78,13 +82,16 @@ export const CraftScanScreen = () => {
 
   const pickImageFromGallery = async () => {
     if (isProcessing) {
-      console.log('⚠️ Already processing, ignoring gallery request');
       return;
     }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission Required', 'Gallery permission is required to upload photos.');
+      ModalService.show({
+        title: 'Permission Required',
+        message: 'Gallery permission is required to upload photos.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -102,7 +109,7 @@ export const CraftScanScreen = () => {
   const handleImageSelected = (uri: string) => {
     console.log('📸 Image selected:', uri);
     setIsProcessing(true);
-    
+
     // Small delay to show processing state
     setTimeout(() => {
       navigation.navigate('CraftProcessing', { imageUri: uri });
@@ -152,40 +159,40 @@ export const CraftScanScreen = () => {
       </View>
 
       {/* Scrollable Content - Centered */}
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ 
-          flexGrow: 1, 
-          justifyContent: 'center' 
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center'
         }}
         className="flex-1 px-4"
       >
         <View className="flex-1 justify-center gap-8">
           {/* Hero Scan Area */}
-          <Animated.View 
+          <Animated.View
             style={{ transform: [{ scale: pulseAnim }] }}
             className="items-center gap-6"
           >
             {/* Gradient Circle Background */}
             <View className="relative items-center justify-center">
               {/* Outer Glow Ring */}
-              <View 
+              <View
                 className="absolute rounded-full bg-craftopia-primary/10"
                 style={{
                   width: circleSize * 1.4,
                   height: circleSize * 1.4,
                 }}
               />
-              <View 
+              <View
                 className="absolute rounded-full bg-craftopia-primary/20"
                 style={{
                   width: circleSize * 1.2,
                   height: circleSize * 1.2,
                 }}
               />
-              
+
               {/* Main Circle */}
-              <View 
+              <View
                 className="rounded-full bg-gradient-to-br from-craftopia-primary to-craftopia-secondary items-center justify-center"
                 style={{
                   width: circleSize,
@@ -196,12 +203,12 @@ export const CraftScanScreen = () => {
                   shadowRadius: 24,
                 }}
               >
-                <Camera 
-                  size={iconSize} 
-                  color="#FFFFFF" 
-                  strokeWidth={2} 
+                <Camera
+                  size={iconSize}
+                  color="#FFFFFF"
+                  strokeWidth={2}
                 />
-                
+
                 {/* Decorative dots */}
                 <View className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-craftopia-accent items-center justify-center">
                   <Sparkles size={14} color="#FFFFFF" />

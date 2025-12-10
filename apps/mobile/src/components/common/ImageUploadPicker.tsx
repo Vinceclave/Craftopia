@@ -1,16 +1,16 @@
 // Enhanced ImageUploadPicker - ONLY UPLOADS ON SUBMIT
 import React, { useState } from 'react'
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
   Modal,
-  Alert,
-  Platform 
+  Platform
 } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { ModalService } from '~/context/modalContext'
 import { X, Camera, Image as ImageIcon, CheckCircle } from 'lucide-react-native'
 
 export interface ImageUploadPickerProps {
@@ -47,14 +47,22 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
     if (asset.fileSize && asset.fileSize > maxSizeMB * 1024 * 1024) {
       const error = `Image size must be less than ${maxSizeMB}MB`
       onError?.(error)
-      Alert.alert('File Too Large', error)
+      ModalService.show({
+        title: 'File Too Large',
+        message: error,
+        type: 'warning'
+      });
       return false
     }
 
     if (asset.mimeType && !allowedFormats.includes(asset.mimeType)) {
       const error = `Please select a valid image format (${allowedFormats.join(', ')})`
       onError?.(error)
-      Alert.alert('Invalid Format', error)
+      ModalService.show({
+        title: 'Invalid Format',
+        message: error,
+        type: 'warning'
+      });
       return false
     }
 
@@ -72,23 +80,27 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
       if (!permission.granted) {
         const error = 'Permission required to access photos'
         onError?.(error)
-        Alert.alert('Permission Required', error)
+        ModalService.show({
+          title: 'Permission Required',
+          message: error,
+          type: 'warning'
+        });
         return
       }
 
       const result = await (fromCamera
         ? ImagePicker.launchCameraAsync({
-            quality: 0.8,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            aspect: aspectRatio,
-            allowsEditing: !!aspectRatio,
-          })
+          quality: 0.8,
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          aspect: aspectRatio,
+          allowsEditing: !!aspectRatio,
+        })
         : ImagePicker.launchImageLibraryAsync({
-            quality: 0.8,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            aspect: aspectRatio,
-            allowsEditing: !!aspectRatio,
-          }))
+          quality: 0.8,
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          aspect: aspectRatio,
+          allowsEditing: !!aspectRatio,
+        }))
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0]
@@ -106,18 +118,14 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
   const handleRemove = () => {
     if (required && value) {
-      Alert.alert(
-        'Remove Image',
-        'This image is required. Are you sure you want to remove it?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Remove', 
-            style: 'destructive',
-            onPress: () => onChange?.(undefined)
-          },
-        ]
-      )
+      ModalService.show({
+        title: 'Remove Image',
+        message: 'This image is required. Are you sure you want to remove it?',
+        type: 'warning',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        onConfirm: () => onChange?.(undefined)
+      });
     } else {
       onChange?.(undefined)
     }
@@ -129,7 +137,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
 
   return (
     <View className="mb-4">
-      
+
       {label && (
         <View className="flex-row items-center mb-2">
           <Text className="text-sm font-semibold" style={{ color: '#1A1A1A' }}>
@@ -185,7 +193,7 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
             height: 200,
             opacity: disabled ? 0.6 : 1,
           }}>
-          
+
           <View className="flex-1 items-center justify-center p-4">
             <View className="w-16 h-16 rounded-full items-center justify-center mb-3"
               style={{ backgroundColor: 'rgba(55,74,54,0.1)' }}>
@@ -213,10 +221,10 @@ export const ImageUploadPicker: React.FC<ImageUploadPickerProps> = ({
         animationType="slide"
         onRequestClose={() => setShowPicker(false)}
         statusBarTranslucent>
-        
+
         <View className="flex-1 justify-end"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)', paddingTop: Platform.OS === 'ios' ? 44 : 0 }}>
-          
+
           <View className="bg-white rounded-t-3xl p-6">
             <View className="w-12 h-1 rounded-full self-center mb-6"
               style={{ backgroundColor: '#D1D5DB' }} />

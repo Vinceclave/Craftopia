@@ -1,9 +1,9 @@
-// apps/mobile/src/context/ModalContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// apps/mobile/src/context/modalContext.tsx
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';
 import { CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react-native';
 
-interface ModalConfig {
+export interface ModalConfig {
   title: string;
   message: string;
   onConfirm?: () => void;
@@ -19,6 +19,31 @@ interface ModalContextType {
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
+
+// Singleton service to access modal outside of React components
+export class ModalService {
+  private static showModalFn: ((config: ModalConfig) => void) | null = null;
+  private static hideModalFn: (() => void) | null = null;
+
+  static setMethods(show: (config: ModalConfig) => void, hide: () => void) {
+    this.showModalFn = show;
+    this.hideModalFn = hide;
+  }
+
+  static show(config: ModalConfig) {
+    if (this.showModalFn) {
+      this.showModalFn(config);
+    } else {
+      console.warn('ModalService not initialized yet');
+    }
+  }
+
+  static hide() {
+    if (this.hideModalFn) {
+      this.hideModalFn();
+    }
+  }
+}
 
 const CustomModal: React.FC<{ config: ModalConfig; onClose: () => void }> = ({ config, onClose }) => {
   const getIcon = () => {
@@ -129,6 +154,11 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const hideModal = () => {
     setModal(null);
   };
+
+  // Register methods in ModalService for static access
+  useEffect(() => {
+    ModalService.setMethods(showModal, hideModal);
+  }, []);
 
   return (
     <ModalContext.Provider value={{ showModal, hideModal }}>

@@ -7,8 +7,6 @@ import {
   Image,
   ActivityIndicator,
   Animated,
-  Alert,
-  Modal,
   TouchableOpacity,
   BackHandler,
 } from 'react-native';
@@ -19,6 +17,7 @@ import { Sparkles, CheckCircle, Zap, Scan, ImageIcon, AlertCircle, X } from 'luc
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { ModalService } from '~/context/modalContext';
 import { useDetectMaterials, useGenerateCraft } from '~/hooks/queries/useCraft';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftProcessing'>;
@@ -53,7 +52,14 @@ export const CraftProcessingScreen = () => {
     useCallback(() => {
       const onBackPress = () => {
         if (isProcessing) {
-          setShowExitModal(true);
+          ModalService.show({
+            title: 'Cancel Processing?',
+            message: 'Your scan is being processed. Are you sure you want to cancel and go back?',
+            type: 'warning',
+            confirmText: 'Yes, Cancel',
+            cancelText: 'Continue',
+            onConfirm: () => navigation.goBack(),
+          });
           return true;
         }
         return false;
@@ -66,7 +72,7 @@ export const CraftProcessingScreen = () => {
   );
 
   useEffect(() => {
- 
+
     // Initial animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -104,10 +110,10 @@ export const CraftProcessingScreen = () => {
 
       // Step 2: Compress and convert image to base64
       setProcessingStep(1);
-      
+
       // ✅ Use ImageManipulator with base64 output (most reliable method)
       let base64Image: string;
-      
+
       try {
         // Compress image and get base64
         const compressedImage = await ImageManipulator.manipulateAsync(
@@ -124,22 +130,22 @@ export const CraftProcessingScreen = () => {
         if (!compressedImage.base64 || typeof compressedImage.base64 !== 'string') {
           throw new Error('ImageManipulator returned invalid base64');
         }
-        
+
         const base64Data = compressedImage.base64;
-        
+
         // ✅ Validate minimum length
         if (base64Data.length < 100) {
           throw new Error(`Base64 too short: ${base64Data.length} characters`);
         }
-        
+
         // ✅ Validate base64 characters
         if (!/^[A-Za-z0-9+/=]+$/.test(base64Data)) {
           throw new Error('Invalid base64 characters detected');
         }
-        
+
         // ✅ Add proper data URI prefix
         base64Image = `data:image/jpeg;base64,${base64Data}`;
-        
+
       } catch (conversionError: any) {
         console.error("❌ Image conversion failed:", conversionError);
         throw new Error(`Failed to convert image: ${conversionError.message}`);
@@ -149,35 +155,35 @@ export const CraftProcessingScreen = () => {
       if (typeof base64Image !== 'string') {
         throw new Error(`Invalid type: ${typeof base64Image}, expected string`);
       }
-      
+
       // Check 2: Must have data URI prefix
       if (!base64Image.startsWith('data:image/')) {
         throw new Error('Missing data URI prefix');
       }
-      
+
       // Check 3: Must have comma separator
       if (!base64Image.includes(',')) {
         throw new Error('Invalid data URI format - missing comma');
       }
-      
+
       // Check 4: Extract and validate base64 part
       const parts = base64Image.split(',');
       if (parts.length !== 2) {
         throw new Error(`Invalid data URI - expected 2 parts, got ${parts.length}`);
       }
-      
+
       const actualBase64 = parts[1];
-      
+
       // Check 5: Validate base64 characters (already done above, but double-check)
       if (!/^[A-Za-z0-9+/=]+$/.test(actualBase64)) {
         throw new Error('Invalid base64 characters detected in final validation');
       }
-      
+
       // Check 6: Minimum length
       if (actualBase64.length < 100) {
         throw new Error(`Base64 too short: ${actualBase64.length} characters`);
       }
-      
+
       // Calculate and log size
       const sizeInBytes = base64Image.length;
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
@@ -185,18 +191,18 @@ export const CraftProcessingScreen = () => {
       if (parseFloat(sizeInMB) > 10) {
         console.warn("⚠️  WARNING: Image is large:", sizeInMB, "MB");
       }
-      
+
       if (parseFloat(sizeInMB) > 50) {
         throw new Error(`Image too large: ${sizeInMB} MB. Please use a smaller image.`);
       }
-      
+
       setImageBase64(base64Image);
 
       // Step 3: Detect materials
       setProcessingStep(2);
-      
+
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
-      
+
       if (!detectResponse.success || !detectResponse.data?.materials) {
         throw new Error('Failed to detect materials from image');
       }
@@ -207,7 +213,7 @@ export const CraftProcessingScreen = () => {
 
       // Step 5: Generate craft ideas WITH validated reference image
       setProcessingStep(4);
-      
+
       const craftResponse = await generateCraftMutation.mutateAsync({
         materials: detectResponse.data.materials,
         referenceImageBase64: base64Image, // ✅ Validated base64
@@ -229,39 +235,24 @@ export const CraftProcessingScreen = () => {
       });
 
     } catch (error: any) {
-      
+
       setIsProcessing(false);
       setProcessingError(error.message || 'Processing failed');
-      
-      Alert.alert(
-        'Processing Failed',
-        error.message || 'Unable to process the image. Please try again.',
-        [
-          {
-            text: 'Go Back',
-            style: 'cancel',
-            onPress: () => navigation.goBack(),
-          },
-          {
-            text: 'Retry',
-            onPress: () => {
-              setProcessingStep(0);
-              setProcessingError(null);
-              processImage();
-            },
-          },
-        ]
-      );
+
+      ModalService.show({
+        title: 'Processing Failed',
+        message: error.message || 'Unable to process the image. Please try again.',
+        type: 'error',
+        confirmText: 'Retry',
+        cancelText: 'Go Back',
+        onConfirm: () => {
+          setProcessingStep(0);
+          setProcessingError(null);
+          processImage();
+        },
+        onCancel: () => navigation.goBack()
+      });
     }
-  };
-
-  const handleExitConfirm = () => {
-    setShowExitModal(false);
-    navigation.goBack();
-  };
-
-  const handleExitCancel = () => {
-    setShowExitModal(false);
   };
 
   const progressWidth = progressAnim.interpolate({
@@ -283,7 +274,7 @@ export const CraftProcessingScreen = () => {
           <View className="relative">
             {/* Glow Effect */}
             <View className="absolute -inset-4 rounded-3xl bg-craftopia-primary/20 blur-2xl" />
-            
+
             {/* Image Container */}
             <View className="relative rounded-3xl overflow-hidden border-2 border-craftopia-secondary/20">
               <Image
@@ -291,18 +282,18 @@ export const CraftProcessingScreen = () => {
                 className="w-64 h-64"
                 resizeMode="cover"
               />
-              
+
               {/* Gradient Overlay */}
               <LinearGradient
                 colors={['transparent', 'rgba(31,42,31,0.6)']}
                 className="absolute inset-0"
               />
-              
+
               {/* Scanning Effect */}
               {isProcessing && (
                 <View className="absolute inset-0 border-2 border-craftopia-primary/50">
                   <View className="absolute top-0 left-0 right-0 h-1 bg-craftopia-primary" />
-                  <Animated.View 
+                  <Animated.View
                     style={{
                       transform: [{
                         translateY: progressAnim.interpolate({
@@ -365,7 +356,7 @@ export const CraftProcessingScreen = () => {
           {/* Modern Progress Bar */}
           {isProcessing && (
             <View className="w-full h-1.5 rounded-full bg-craftopia-light/50 mb-6 overflow-hidden">
-              <Animated.View 
+              <Animated.View
                 style={{ width: progressWidth }}
                 className="h-full rounded-full"
               >
@@ -385,17 +376,16 @@ export const CraftProcessingScreen = () => {
               const StepIcon = step.icon;
               const isComplete = index < processingStep;
               const isCurrent = index === processingStep;
-              
+
               return (
                 <View key={index} className={`flex-row items-center ${index < processingSteps.length - 1 ? 'mb-4' : ''}`}>
-                  <View 
-                    className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${
-                      isComplete 
-                        ? 'bg-craftopia-success/20' 
-                        : isCurrent 
-                        ? 'bg-craftopia-primary/10' 
+                  <View
+                    className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${isComplete
+                      ? 'bg-craftopia-success/20'
+                      : isCurrent
+                        ? 'bg-craftopia-primary/10'
                         : 'bg-craftopia-light/50'
-                    }`}
+                      }`}
                   >
                     {isComplete ? (
                       <CheckCircle size={20} color="#5BA776" />
@@ -407,12 +397,11 @@ export const CraftProcessingScreen = () => {
                   </View>
 
                   <View className="flex-1">
-                    <Text 
-                      className={`text-sm font-nunito ${
-                        isComplete || isCurrent
-                          ? 'text-craftopia-textPrimary font-semibold'
-                          : 'text-craftopia-textSecondary'
-                      }`}
+                    <Text
+                      className={`text-sm font-nunito ${isComplete || isCurrent
+                        ? 'text-craftopia-textPrimary font-semibold'
+                        : 'text-craftopia-textSecondary'
+                        }`}
                     >
                       {step.label}
                     </Text>
@@ -446,60 +435,6 @@ export const CraftProcessingScreen = () => {
           </View>
         )}
       </View>
-
-      {/* Exit Confirmation Modal */}
-      <Modal
-        visible={showExitModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleExitCancel}
-      >
-        <View className="flex-1 bg-black/60 items-center justify-center px-4">
-          <View className="bg-craftopia-surface rounded-3xl p-6 w-full max-w-sm border-2 border-craftopia-secondary/20"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.3,
-              shadowRadius: 16,
-            }}
-          >
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 rounded-full bg-craftopia-warning/20 items-center justify-center mb-3">
-                <AlertCircle size={32} color="#E6B655" />
-              </View>
-              <Text className="text-xl font-poppinsBold text-craftopia-textPrimary text-center">
-                Cancel Processing?
-              </Text>
-            </View>
-
-            <Text className="text-base font-nunito text-craftopia-textSecondary text-center mb-6">
-              Your scan is being processed. Are you sure you want to cancel and go back?
-            </Text>
-
-            <View className="gap-3">
-              <TouchableOpacity
-                onPress={handleExitConfirm}
-                className="bg-craftopia-error rounded-2xl py-4 items-center"
-                activeOpacity={0.8}
-              >
-                <Text className="text-base font-poppinsBold text-white">
-                  Yes, Cancel Processing
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleExitCancel}
-                className="bg-craftopia-light rounded-2xl py-4 items-center"
-                activeOpacity={0.8}
-              >
-                <Text className="text-base font-poppinsBold text-craftopia-textPrimary">
-                  Continue Processing
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Alert,
 } from 'react-native';
-import { 
-  ChevronLeft, 
-  Mail, 
-  Phone, 
-  MessageCircle, 
+import { ModalService } from '~/context/modalContext';
+import {
+  ChevronLeft,
+  Mail,
+  Phone,
+  MessageCircle,
   Send,
   Facebook,
   Instagram,
@@ -60,7 +60,11 @@ export const ContactUsScreen = () => {
       description: 'Chat with our AI assistant 24/7',
       action: () => {
         // Navigate to chat screen or open chat modal
-        Alert.alert('Live Chat', 'Opening chat with our AI assistant...');
+        ModalService.show({
+          title: 'Live Chat',
+          message: 'Opening chat with our AI assistant...',
+          type: 'info'
+        });
       },
       color: '#E6B655'
     }
@@ -98,13 +102,21 @@ export const ContactUsScreen = () => {
       // Implement message sending logic
       Linking.openURL(`mailto:support@craftopia.com?subject=Feedback from Craftopia App&body=${message}`);
       setMessage('');
-      Alert.alert('Message Sent', 'Thank you for your feedback! We\'ll get back to you soon.');
+      ModalService.show({
+        title: 'Message Sent',
+        message: 'Thank you for your feedback! We\'ll get back to you soon.',
+        type: 'success'
+      });
     }
   };
 
   const handleSocialMediaPress = (url: string) => {
     Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Could not open the link. Please check if the app is installed.');
+      ModalService.show({
+        title: 'Error',
+        message: 'Could not open the link. Please check if the app is installed.',
+        type: 'error'
+      });
     });
   };
 
@@ -112,7 +124,7 @@ export const ContactUsScreen = () => {
     <SafeAreaView className="flex-1 bg-craftopia-surface">
       {/* Header */}
       <View className="flex-row items-center px-6 py-4 border-b border-gray-200">
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleBack}
           className="p-2 -ml-2"
           activeOpacity={0.7}
@@ -125,14 +137,14 @@ export const ContactUsScreen = () => {
       </View>
 
       {/* Content */}
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
       >
         {/* Intro */}
         <View className="px-6 py-4">
           <Text className="text-base font-nunito text-craftopia-textSecondary leading-7 mb-2">
-            We'd love to hear from you! Whether you have questions, feedback, or need assistance, 
+            We'd love to hear from you! Whether you have questions, feedback, or need assistance,
             our team is committed to responding promptly and helping you get the most out of Craftopia.
           </Text>
           <View className="flex-row items-center bg-craftopia-light rounded-xl p-3 mt-2">
@@ -158,7 +170,7 @@ export const ContactUsScreen = () => {
                   onPress={method.action}
                   activeOpacity={0.7}
                 >
-                  <View 
+                  <View
                     className="w-12 h-12 rounded-full items-center justify-center mr-4"
                     style={{ backgroundColor: `${method.color}15` }}
                   >
@@ -193,7 +205,7 @@ export const ContactUsScreen = () => {
                 {message || 'Type your message here...'}
               </Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               className="bg-craftopia-primary rounded-lg py-3 flex-row items-center justify-center"
               onPress={handleSendMessage}
               disabled={!message.trim()}
@@ -225,7 +237,7 @@ export const ContactUsScreen = () => {
                   onPress={() => handleSocialMediaPress(social.url)}
                   activeOpacity={0.7}
                 >
-                  <View 
+                  <View
                     className="w-14 h-14 rounded-2xl items-center justify-center mb-2"
                     style={{ backgroundColor: `${social.color}15` }}
                   >
@@ -242,7 +254,7 @@ export const ContactUsScreen = () => {
 
         {/* FAQ Quick Link */}
         <View className="px-6 mb-6">
-          <TouchableOpacity 
+          <TouchableOpacity
             className="bg-craftopia-light rounded-xl p-4 flex-row items-center justify-between"
             onPress={() => navigation.navigate('HelpCenter' as never)}
             activeOpacity={0.7}

@@ -6,7 +6,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { postKeys } from '~/hooks/queries/usePosts';
 import { challengeKeys } from '~/hooks/queries/useChallenges';
 import { userChallengeKeys } from '~/hooks/queries/useUserChallenges';
-import { Alert, AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus } from 'react-native';
+import { ModalService } from './modalContext';
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -43,15 +44,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     const handleConnectionChange = (status: boolean) => {
       setIsConnected(status);
-      
+
       if (status) {
         connectionAttemptRef.current = 0;
       } else if (isAuthenticated && user && appState.current === 'active') {
         clearReconnectTimeout();
-        
+
         const delay = Math.min(RECONNECT_DELAY * Math.pow(1.5, connectionAttemptRef.current), 30000);
         connectionAttemptRef.current++;
-        
+
         reconnectTimeoutRef.current = setTimeout(() => {
           wsManager.connect().catch(() => {
             // Error handled by wsManager
@@ -105,14 +106,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (isAuthenticated && user) {
       connectionAttemptRef.current = 0;
-      
+
       wsManager.connect()
         .then(() => {
           setIsConnected(true);
         })
         .catch(() => {
           setIsConnected(false);
-          
+
           clearReconnectTimeout();
           reconnectTimeoutRef.current = setTimeout(() => {
             wsManager.connect().catch(() => {
@@ -147,7 +148,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const handlePostLiked = (data: any) => {
       // ✅ FIX: Check data.userId instead of data.user_id
       const likerUserId = data.userId || data.user_id;
-      
+
       const updatePost = (post: any) => {
         if (post.post_id !== data.postId) return post;
         return {
@@ -163,11 +164,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
+
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
           }
-          
+
           if (oldData.pages) {
             return {
               ...oldData,
@@ -177,7 +178,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               })),
             };
           }
-          
+
           return oldData;
         }
       );
@@ -208,11 +209,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
+
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
           }
-          
+
           if (oldData.pages) {
             return {
               ...oldData,
@@ -222,7 +223,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               })),
             };
           }
-          
+
           return oldData;
         }
       );
@@ -240,7 +241,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
 
       // Invalidate comments
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: postKeys.comments(data.postId),
         refetchType: 'active'
       });
@@ -252,11 +253,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
+
           if (Array.isArray(oldData)) {
             return oldData.filter((post: any) => post.post_id !== data.postId);
           }
-          
+
           if (oldData.pages) {
             return {
               ...oldData,
@@ -266,7 +267,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               })),
             };
           }
-          
+
           return oldData;
         }
       );
@@ -298,11 +299,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         { queryKey: ['posts'] },
         (oldData: any) => {
           if (!oldData) return oldData;
-          
+
           if (Array.isArray(oldData)) {
             return oldData.map(updatePost);
           }
-          
+
           if (oldData.pages) {
             return {
               ...oldData,
@@ -312,7 +313,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               })),
             };
           }
-          
+
           return oldData;
         }
       );
@@ -321,12 +322,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Challenge event handlers
     const handleChallengeCreated = (data: any) => {
       queryClient.invalidateQueries({ queryKey: challengeKeys.all, refetchType: 'all' });
-      
-      Alert.alert(
-        'New Challenge!',
-        `${data.title} - Save ${data.waste_kg}kg of waste!`,
-        [{ text: 'OK' }]
-      );
+
+      ModalService.show({
+        title: 'New Challenge!',
+        message: `${data.title} - Save ${data.waste_kg}kg of waste!`,
+        type: 'info'
+      });
     };
 
     const handleChallengeJoined = (data: any) => {
@@ -343,12 +344,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       queryClient.invalidateQueries({
         queryKey: userChallengeKeys.wasteStats(user.id)
       });
-      
-      Alert.alert(
-        'Challenge Completed!',
-        `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
-        [{ text: 'Awesome!' }]
-      );
+
+      ModalService.show({
+        title: 'Challenge Completed!',
+        message: `You earned ${data.points_awarded} points and saved ${data.waste_kg_saved}kg of waste!`,
+        type: 'success',
+        confirmText: 'Awesome!'
+      });
     };
 
     const handlePointsAwarded = (data: any) => {
@@ -390,14 +392,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     registerListener('post:commented', handlePostCommented);
     registerListener('post:deleted', handlePostDeleted);
     registerListener('post:updated', handlePostUpdated);
-    
+
     // Challenge events
     registerListener('challenge:created', handleChallengeCreated);
     registerListener('challenge:joined', handleChallengeJoined);
     registerListener('challenge:verified', handleChallengeVerified);
     registerListener('points:awarded', handlePointsAwarded);
     registerListener('leaderboard:updated', handleLeaderboardUpdated);
-    
+
     // Connection events
     registerListener('connected', handleConnected);
     registerListener('disconnect', handleDisconnect);
@@ -406,7 +408,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Cleanup
     return () => {
       listenersRegistered.current = false;
-      
+
       const unregisterListener = (event: string, handler: Function) => {
         wsManager.off(event, handler);
       };
@@ -417,14 +419,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unregisterListener('post:commented', handlePostCommented);
       unregisterListener('post:deleted', handlePostDeleted);
       unregisterListener('post:updated', handlePostUpdated);
-      
+
       // Challenge events
       unregisterListener('challenge:created', handleChallengeCreated);
       unregisterListener('challenge:joined', handleChallengeJoined);
       unregisterListener('challenge:verified', handleChallengeVerified);
       unregisterListener('points:awarded', handlePointsAwarded);
       unregisterListener('leaderboard:updated', handleLeaderboardUpdated);
-      
+
       // Connection events
       unregisterListener('connected', handleConnected);
       unregisterListener('disconnect', handleDisconnect);
