@@ -80,7 +80,7 @@ class PostService {
    */
   private normalizePost(post: any): Post {
     let user = post.user;
-    
+
     if (!user) {
       user = {
         user_id: post.user_id,
@@ -88,7 +88,7 @@ class PostService {
         profile_picture_url: undefined,
       };
     }
-    
+
     if (user && (!user.username || user.username === '')) {
       user.username = `User ${user.user_id || post.user_id}`;
     }
@@ -153,13 +153,18 @@ class PostService {
     limit: number = 10
   ): Promise<PaginatedResponse<Post>> {
     try {
-      
+
       const response = await apiService.get<PaginatedResponse<Post>>(
         `${API_ENDPOINTS.POSTS.LIST}?feedType=${feedType}&page=${page}&limit=${limit}`
       );
 
       if (response.data && Array.isArray(response.data)) {
         response.data = response.data.map((post) => this.normalizePost(post));
+      }
+
+      // ✅ Compatibility fix: Handle both 'meta' (old) and 'pagination' (new) keys
+      if (!response.pagination && (response as any).meta) {
+        response.pagination = (response as any).meta;
       }
 
       return response;
@@ -173,7 +178,7 @@ class PostService {
    */
   async searchPosts(params: SearchPostsParams): Promise<PaginatedResponse<Post>> {
     try {
-      
+
       const queryParams = new URLSearchParams();
       if (params.query) queryParams.append('search', params.query);
       if (params.category) queryParams.append('category', params.category);
@@ -189,6 +194,11 @@ class PostService {
         response.data = response.data.map((post) => this.normalizePost(post));
       }
 
+      // ✅ Compatibility fix
+      if (!response.pagination && (response as any).meta) {
+        response.pagination = (response as any).meta;
+      }
+
       return response;
     } catch (error) {
       console.error('❌ Failed to search posts:', error);
@@ -201,7 +211,7 @@ class PostService {
    */
   async getPostById(postId: string): Promise<ApiResponse<Post>> {
     try {
-      
+
       const response = await apiService.get<ApiResponse<Post>>(
         API_ENDPOINTS.POSTS.BY_ID(postId)
       );
@@ -240,7 +250,7 @@ class PostService {
         API_ENDPOINTS.POSTS.CREATE,
         payload
       );
-      
+
       if (response.data) {
         response.data = this.normalizePost(response.data);
       }
@@ -257,12 +267,12 @@ class PostService {
    */
   async updatePost(postId: string, payload: UpdatePostPayload): Promise<ApiResponse<Post>> {
     try {
-      
+
       const response = await apiService.put<ApiResponse<Post>>(
         API_ENDPOINTS.POSTS.BY_ID(postId),
         payload
       );
-      
+
       if (response.data) {
         response.data = this.normalizePost(response.data);
       }

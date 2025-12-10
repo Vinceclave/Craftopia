@@ -133,7 +133,11 @@ export const CreatePostScreen: React.FC<CreatePostScreenProps> = ({ navigation, 
       onPostCreated?.()
 
       success('Post Created! 🎉', 'Your post has been shared successfully.', () => {
-        navigation.goBack()
+        if (route.params?.redirectToFeed) {
+          navigation.navigate('Feed')
+        } else {
+          navigation.goBack()
+        }
       })
     } catch (err: any) {
       console.error('❌ Failed to create post:', err)

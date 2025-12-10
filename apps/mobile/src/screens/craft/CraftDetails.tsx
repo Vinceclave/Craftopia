@@ -231,6 +231,7 @@ export const CraftDetailsScreen = () => {
         initialContent: `I just created this amazing ${craftTitle} using recycled materials: ${materials.join(', ')}. ${description}`,
         initialCategory: 'Tutorial',
         initialTags: ['craft', 'diy', 'upcycling', 'recycled'],
+        redirectToFeed: true,
         // No initialImageUri - let user upload their own creation photo
       }
     });

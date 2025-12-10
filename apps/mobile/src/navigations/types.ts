@@ -24,6 +24,7 @@ export type FeedStackParamList = {
     initialImageUri?: string;
     initialTags?: string[];
     initialCategory?: string;
+    redirectToFeed?: boolean;
   };
   PostDetails?: { postId: string };
 };

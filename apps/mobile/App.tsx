@@ -11,6 +11,8 @@ import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigations/AppNavigator';
 import { ModalProvider, ModalService } from '~/context/modalContext';
 import { WebSocketProvider } from './src/context/WebSocketContext';
+import { OfflineModal } from './src/components/common/OfflineModal';
+
 
 import './global.css';
 
@@ -174,6 +176,7 @@ export default function App() {
             <NavigationContainer>
               <AppNavigator />
             </NavigationContainer>
+            <OfflineModal />
           </ModalProvider>
         </WebSocketProvider>
       </AuthProvider>

@@ -101,6 +101,7 @@ export const ChallengeList = ({
         initialCategory: 'Challenge',
         initialTags: ['challenge', 'eco-friendly', 'craftopia'],
         initialImageUri: challenge.proofUrl,
+        redirectToFeed: true,
       }
     });
   };

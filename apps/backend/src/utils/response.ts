@@ -10,9 +10,9 @@ interface PaginationMeta {
 }
 
 export const sendSuccess = (
-  res: Response, 
-  data: any, 
-  message?: string, 
+  res: Response,
+  data: any,
+  message?: string,
   statusCode = 200
 ) => {
   res.status(statusCode).json({
@@ -24,8 +24,8 @@ export const sendSuccess = (
 };
 
 export const sendError = (
-  res: Response, 
-  message: string, 
+  res: Response,
+  message: string,
   statusCode = 400,
   details?: any
 ) => {
@@ -48,20 +48,20 @@ export const sendPaginatedSuccess = (
   res.status(statusCode).json({
     success: true,
     message: message || undefined,
-    data,  // Array of items
-    meta,  // Pagination info
+    data,
+    pagination: meta,
     timestamp: new Date().toISOString()
   });
 };
 
 // Helper to create pagination meta
 export const createPaginationMeta = (
-  total: number, 
-  page: number, 
+  total: number,
+  page: number,
   limit: number
 ): PaginationMeta => {
   const lastPage = Math.max(1, Math.ceil(total / limit));
-  
+
   return {
     total,
     page: Math.max(1, page),
