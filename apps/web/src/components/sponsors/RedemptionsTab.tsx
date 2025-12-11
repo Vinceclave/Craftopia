@@ -16,7 +16,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useRedemptions } from '@/hooks/useSponsors';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import type { UserRedemption } from '@/lib/api';
 import {
   DataTable,
@@ -30,7 +30,7 @@ import {
 import { format } from 'date-fns';
 
 export function RedemptionsTab() {
-  const { error: showError } = useToast();
+  const { toast } = useToast();
   const {
     redemptions,
     fulfillRedemption,
@@ -120,7 +120,7 @@ export function RedemptionsTab() {
         cell: ({ row }) => {
           const user = row.original.user;
           const profilePicture = user?.profile?.profile_picture_url;  // 🔥 GET FROM PROFILE
-          
+
           return (
             <div className="flex items-center gap-3">
               <Avatar className="w-10 h-10 border-2 border-[#6CAC73]/20">
@@ -253,7 +253,11 @@ export function RedemptionsTab() {
       setFulfillDialogOpen(false);
       setSelectedRedemption(null);
     } catch (err: any) {
-      showError(err.message || 'Failed to fulfill redemption');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to fulfill redemption',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -268,7 +272,11 @@ export function RedemptionsTab() {
       setSelectedRedemption(null);
       setRefundPoints(false);
     } catch (err: any) {
-      showError(err.message || 'Failed to cancel redemption');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to cancel redemption',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -354,21 +362,21 @@ export function RedemptionsTab() {
   return (
     <>
       <DataTable
-      data={filteredData}
-      columns={columns}
-      searchPlaceholder="Search redemptions..."
-      onSearchChange={setGlobalFilter}
-      filters={filters}
-      title="Manage Redemptions"
-       showPagination={true}
-   defaultPageSize={10}
-   pageSizeOptions={[5, 10, 20, 50]}
-      emptyState={{
-        icon: <Package className="w-16 h-16 text-gray-400" />,
-        title: 'No redemptions yet',
-        description: 'User redemptions will appear here',
-      }}
-    />
+        data={filteredData}
+        columns={columns}
+        searchPlaceholder="Search redemptions..."
+        onSearchChange={setGlobalFilter}
+        filters={filters}
+        title="Manage Redemptions"
+        showPagination={true}
+        defaultPageSize={10}
+        pageSizeOptions={[5, 10, 20, 50]}
+        emptyState={{
+          icon: <Package className="w-16 h-16 text-gray-400" />,
+          title: 'No redemptions yet',
+          description: 'User redemptions will appear here',
+        }}
+      />
 
       {/* View Detail Modal */}
       {selectedRedemption && (

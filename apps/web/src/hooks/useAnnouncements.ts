@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { announcementsAPI } from '../lib/api';
 import { useState, useCallback, useEffect } from 'react';
 import { useWebSocket } from './useWebSocket';
-import { useToast } from './useToast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AnnouncementFilters {
   page: number;
@@ -22,7 +22,7 @@ export const useAnnouncements = () => {
 
   const queryClient = useQueryClient();
   const { subscribe } = useWebSocket();
-  const { success, info } = useToast();
+  const { toast } = useToast();
 
   // Fetch all announcements for stats (no filters)
   // 🔥 FIX: Changed limit from 1000 to 100 (backend validation limit)
@@ -84,7 +84,10 @@ export const useAnnouncements = () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-      success('Announcement created successfully!');
+      toast({
+        title: 'Success',
+        description: 'Announcement created successfully!',
+      });
     },
   });
 
@@ -109,7 +112,10 @@ export const useAnnouncements = () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-      success('Announcement updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Announcement updated successfully!',
+      });
     },
   });
 
@@ -122,7 +128,10 @@ export const useAnnouncements = () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-      success('Announcement deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Announcement deleted successfully!',
+      });
     },
   });
 
@@ -136,39 +145,51 @@ export const useAnnouncements = () => {
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
-      success('Announcement status updated!');
+      toast({
+        title: 'Success',
+        description: 'Announcement status updated!',
+      });
     },
   });
 
   // WebSocket event handlers
   const handleAnnouncementCreated = useCallback(
     (data: any) => {
-      info(data.message || 'New announcement created!');
+      toast({
+        title: 'Info',
+        description: data.message || 'New announcement created!',
+      });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
     },
-    [queryClient, info]
+    [queryClient, toast]
   );
 
   const handleAnnouncementUpdated = useCallback(
     (data: any) => {
-      info(data.message || 'Announcement updated!');
+      toast({
+        title: 'Info',
+        description: data.message || 'Announcement updated!',
+      });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
     },
-    [queryClient, info]
+    [queryClient, toast]
   );
 
   const handleAnnouncementDeleted = useCallback(
     (data: any) => {
-      info(data.message || 'Announcement deleted!');
+      toast({
+        title: 'Info',
+        description: data.message || 'Announcement deleted!',
+      });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       queryClient.invalidateQueries({ queryKey: ['announcements-all'] });
       queryClient.invalidateQueries({ queryKey: ['active-announcements'] });
     },
-    [queryClient, info]
+    [queryClient, toast]
   );
 
   // Subscribe to WebSocket events

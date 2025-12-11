@@ -15,7 +15,7 @@ import {
 import { usePosts } from '@/hooks/usePosts';
 import { useReports } from '@/hooks/useReports';
 import { useWebSocketPosts, useWebSocket, useWebSocketReports } from '@/hooks/useWebSocket';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { Post, Comment } from '@/lib/api';
 import type { ExtendedReport } from '@/hooks/useReports';
 
@@ -64,19 +64,19 @@ export default function AdminPosts() {
   } = useReports();
 
   const { isConnected } = useWebSocket();
-  const { success, info, error: showError } = useToast();
+  const { toast } = useToast();
 
   const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<string>('posts');
   const [searchValue, setSearchValue] = useState('');
-  
+
   // Dialog states
   const [viewPostModal, setViewPostModal] = useState(false);
   const [deletePostDialog, setDeletePostDialog] = useState(false);
   const [deleteCommentDialog, setDeleteCommentDialog] = useState(false);
   const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
   const [resolveReportModal, setResolveReportModal] = useState(false);
-  
+
   // Selected items
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
@@ -86,38 +86,56 @@ export default function AdminPosts() {
   // WebSocket real-time updates
   useWebSocketPosts({
     onCreated: useCallback(() => {
-      info('New post created');
+      toast({
+        title: 'Info',
+        description: 'New post created',
+      });
       refetch();
-    }, [info, refetch]),
-    
+    }, [toast, refetch]),
+
     onUpdated: useCallback(() => {
-      info('Post updated');
+      toast({
+        title: 'Info',
+        description: 'Post updated',
+      });
       refetch();
-    }, [info, refetch]),
-    
+    }, [toast, refetch]),
+
     onDeleted: useCallback(() => {
-      info('Post removed');
+      toast({
+        title: 'Info',
+        description: 'Post removed',
+      });
       refetch();
-    }, [info, refetch]),
+    }, [toast, refetch]),
   });
 
   useWebSocketReports({
     onCreated: useCallback((data: any) => {
-      success(data.message || 'New report filed');
+      toast({
+        title: 'Success',
+        description: data.message || 'New report filed',
+      });
       refetchReports();
       refetch();
-    }, [success, refetchReports, refetch]),
-    
+    }, [toast, refetchReports, refetch]),
+
     onUpdated: useCallback((data: any) => {
-      info(data.message || 'Report status updated');
+      toast({
+        title: 'Info',
+        description: data.message || 'Report status updated',
+      });
       refetchReports();
-    }, [info, refetchReports]),
-    
+    }, [toast, refetchReports]),
+
     onResolved: useCallback((data: any) => {
-      success(data.message || 'Report resolved');
+      toast({
+        title: 'Success',
+        description: data.message || 'Report resolved',
+      });
       refetchReports();
       refetch();
-    }, [success, refetchReports, refetch]),
+    }, [toast, refetchReports, refetch]),
   });
 
   // Stats
@@ -167,8 +185,8 @@ export default function AdminPosts() {
             <div className="flex items-start gap-3">
               {post.image_url && (
                 <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#6CAC73]/20 flex-shrink-0">
-                  <img 
-                    src={post.image_url} 
+                  <img
+                    src={post.image_url}
                     alt={post.title}
                     className="w-full h-full object-cover"
                   />
@@ -181,13 +199,13 @@ export default function AdminPosts() {
                   </p>
                   {post.featured && (
                     <Badge className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 text-yellow-700 border-0 font-poppins text-xs">
-                      <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" /> 
+                      <Star className="w-3 h-3 mr-1 fill-yellow-500 text-yellow-500" />
                       Featured
                     </Badge>
                   )}
                   {post._count && post._count.reports > 0 && (
                     <Badge className="bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700 border-0 font-poppins text-xs">
-                      <AlertCircle className="w-3 h-3 mr-1" /> 
+                      <AlertCircle className="w-3 h-3 mr-1" />
                       {post._count.reports}
                     </Badge>
                   )}
@@ -378,13 +396,12 @@ export default function AdminPosts() {
           const status = row.original.status;
           return (
             <Badge
-              className={`font-poppins border-0 ${
-                status === 'pending' 
-                  ? 'bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700' 
-                  : status === 'in_review' 
+              className={`font-poppins border-0 ${status === 'pending'
+                ? 'bg-gradient-to-r from-rose-500/20 to-rose-600/20 text-rose-700'
+                : status === 'in_review'
                   ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-700'
                   : 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-              }`}
+                }`}
             >
               {status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
               {status === 'in_review' && <Eye className="w-3 h-3 mr-1" />}
@@ -647,12 +664,12 @@ export default function AdminPosts() {
       ];
     }
 
-    generateGenericExcel({ 
-      sheets, 
-      filename: activeTab === 'posts' ? 'posts-report' : 
-                activeTab === 'comments' ? 'comments-report' : 
-                activeTab === 'reports' ? 'reports-summary' : 
-                'content-moderation-comprehensive' 
+    generateGenericExcel({
+      sheets,
+      filename: activeTab === 'posts' ? 'posts-report' :
+        activeTab === 'comments' ? 'comments-report' :
+          activeTab === 'reports' ? 'reports-summary' :
+            'content-moderation-comprehensive'
     });
   };
 
@@ -666,12 +683,19 @@ export default function AdminPosts() {
     if (!selectedPost) return;
     try {
       await deletePost({ postId: selectedPost.post_id, reason: 'Deleted by admin via moderation' });
-      success('Post deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Post deleted successfully!',
+      });
       setDeletePostDialog(false);
       setSelectedPost(null);
       setViewPostModal(false);
     } catch (err: any) {
-      showError(err.message || 'Error deleting post');
+      toast({
+        title: 'Error',
+        description: err.message || 'Error deleting post',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -684,26 +708,44 @@ export default function AdminPosts() {
     if (!selectedComment) return;
     try {
       await deleteComment({ commentId: selectedComment.comment_id, reason: 'Deleted by admin via moderation' });
-      success('Comment deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Comment deleted successfully!',
+      });
       setDeleteCommentDialog(false);
       setSelectedComment(null);
     } catch (err: any) {
-      showError(err.message || 'Error deleting comment');
+      toast({
+        title: 'Error',
+        description: err.message || 'Error deleting comment',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleFeaturePost = async (postId: number) => {
     try {
       await featurePost(postId);
-      success('Feature status updated!');
+      toast({
+        title: 'Success',
+        description: 'Feature status updated!',
+      });
     } catch (err: any) {
-      showError(err.message || 'Error updating feature status');
+      toast({
+        title: 'Error',
+        description: err.message || 'Error updating feature status',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleOpenBulkDelete = () => {
     if (selectedPosts.length === 0) {
-      showError('Select posts to delete');
+      toast({
+        title: 'Warning',
+        description: 'Select posts to delete',
+        variant: 'destructive',
+      });
       return;
     }
     setBulkDeleteDialog(true);
@@ -712,11 +754,18 @@ export default function AdminPosts() {
   const handleConfirmBulkDelete = async () => {
     try {
       await bulkDeletePosts({ postIds: selectedPosts, reason: 'Bulk deletion by admin' });
-      success('Posts deleted!');
+      toast({
+        title: 'Success',
+        description: 'Posts deleted!',
+      });
       setSelectedPosts([]);
       setBulkDeleteDialog(false);
     } catch (err: any) {
-      showError(err.message || 'Error deleting posts');
+      toast({
+        title: 'Error',
+        description: err.message || 'Error deleting posts',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -751,23 +800,37 @@ export default function AdminPosts() {
         status: 'resolved',
         notes: moderatorNotes
       });
-      success('Report resolved successfully');
+      toast({
+        title: 'Success',
+        description: 'Report resolved successfully',
+      });
       setResolveReportModal(false);
       setSelectedReport(null);
       setModeratorNotes('');
       refetchReports();
     } catch (err: any) {
-      showError(err.message || 'Failed to resolve report');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to resolve report',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleUpdateReportStatus = async (reportId: number, status: string) => {
     try {
       await updateReportStatus({ reportId, status });
-      success('Report status updated');
+      toast({
+        title: 'Success',
+        description: 'Report status updated',
+      });
       refetchReports();
     } catch (err: any) {
-      showError(err.message || 'Failed to update report');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update report',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -782,10 +845,10 @@ export default function AdminPosts() {
         { label: 'In Review', value: 'in_review' },
         { label: 'Resolved', value: 'resolved' },
       ],
-      onChange: (value) => setReportParams({ 
-        ...reportParams, 
-        status: value === 'all' ? undefined : value, 
-        page: 1 
+      onChange: (value) => setReportParams({
+        ...reportParams,
+        status: value === 'all' ? undefined : value,
+        page: 1
       }),
     },
   ];
@@ -845,8 +908,8 @@ export default function AdminPosts() {
   if (error) {
     return (
       <PageContainer>
-        <ErrorState 
-          error={error as Error} 
+        <ErrorState
+          error={error as Error}
           title="Error loading content"
           onRetry={refetch}
         />
@@ -874,7 +937,7 @@ export default function AdminPosts() {
         actions={
           <div className="flex gap-2">
             <ExportButtons onExportPDF={handleExportPDF} onExportExcel={handleExportExcel} />
-            
+
             {selectedPosts.length > 0 && (
               <Button
                 size="sm"
@@ -901,20 +964,20 @@ export default function AdminPosts() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <TabsList className="bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-[#6CAC73]/20 flex gap-2 w-full lg:w-auto">
-            <TabsTrigger 
-              value="posts" 
+            <TabsTrigger
+              value="posts"
               className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
             >
               <FileText className="w-4 h-4" /> Posts ({totalPosts})
             </TabsTrigger>
-            <TabsTrigger 
-              value="comments" 
+            <TabsTrigger
+              value="comments"
               className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
             >
               <MessageCircle className="w-4 h-4" /> Comments ({totalComments})
             </TabsTrigger>
-            <TabsTrigger 
-              value="reports" 
+            <TabsTrigger
+              value="reports"
               className="flex items-center gap-2 text-sm font-poppins data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white"
             >
               <Flag className="w-4 h-4" /> Reports ({reports?.length || 0})
@@ -1016,8 +1079,8 @@ export default function AdminPosts() {
 
               {selectedPost.image_url && (
                 <div className="rounded-xl overflow-hidden border border-[#6CAC73]/20">
-                  <img 
-                    src={selectedPost.image_url} 
+                  <img
+                    src={selectedPost.image_url}
                     alt={selectedPost.title}
                     className="w-full h-auto"
                   />

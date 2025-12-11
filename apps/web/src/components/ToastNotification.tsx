@@ -1,9 +1,9 @@
 // apps/web/src/components/ToastNotification.tsx
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { useWebSocketNotifications, useWebSocketAdminAlerts } from '@/hooks/useWebSocket';
 
 export const WebSocketToastProvider = () => {
-  const { success, error, info, warning } = useToast();
+  const { toast } = useToast();
 
   // Handle general notifications
   useWebSocketNotifications((data) => {
@@ -11,9 +11,16 @@ export const WebSocketToastProvider = () => {
     const priority = data.priority || 'normal';
 
     if (priority === 'high') {
-      warning(message);
+      toast({
+        title: 'Notification',
+        description: message,
+        variant: 'default', // Using default unless there's a warning variant
+      });
     } else {
-      info(message);
+      toast({
+        title: 'Notification',
+        description: message,
+      });
     }
   });
 
@@ -25,16 +32,29 @@ export const WebSocketToastProvider = () => {
     switch (severity) {
       case 'error':
       case 'critical':
-        error(message);
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        });
         break;
       case 'warning':
-        warning(message);
+        toast({
+          title: 'Warning',
+          description: message,
+        });
         break;
       case 'success':
-        success(message);
+        toast({
+          title: 'Success',
+          description: message,
+        });
         break;
       default:
-        info(message);
+        toast({
+          title: 'Info',
+          description: message,
+        });
     }
   });
 

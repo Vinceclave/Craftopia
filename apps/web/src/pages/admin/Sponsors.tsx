@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Gift, Building2, Package, Coins } from 'lucide-react';
 import { useSponsors, useRewards, useRedemptions } from '@/hooks/useSponsors';
 import { useWebSocketSponsors } from '@/hooks/useWebSocket';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { PageContainer, PageHeader, StatsGrid, ExportButtons } from '@/components/shared';
 import { generateGenericPDF, type ExportConfig } from '@/utils/exportToPDF';
 import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExcel';
@@ -14,7 +14,7 @@ import { RewardsTab } from '@/components/sponsors/RewardsTab';
 import { RedemptionsTab } from '@/components/sponsors/RedemptionsTab';
 
 export default function AdminSponsors() {
-  const { success, info } = useToast();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('sponsors');
 
   // Hooks
@@ -36,19 +36,31 @@ export default function AdminSponsors() {
   // WebSocket Integration
   useWebSocketSponsors({
     onSponsorCreated: (data: any) => {
-      info(data.message || 'New sponsor added');
+      toast({
+        title: 'Info',
+        description: data.message || 'New sponsor added',
+      });
       refetchSponsors();
     },
     onSponsorUpdated: (data: any) => {
-      info(data.message || 'Sponsor updated');
+      toast({
+        title: 'Info',
+        description: data.message || 'Sponsor updated',
+      });
       refetchSponsors();
     },
     onSponsorDeleted: () => {
-      info('Sponsor deleted');
+      toast({
+        title: 'Info',
+        description: 'Sponsor deleted',
+      });
       refetchSponsors();
     },
     onRewardCreated: (data: any) => {
-      success(data.message || 'New reward available!');
+      toast({
+        title: 'Success',
+        description: data.message || 'New reward available!',
+      });
       refetchRewards();
     },
     onRewardUpdated: () => refetchRewards(),

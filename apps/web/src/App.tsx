@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import { WebSocketToastProvider } from './components/ToastNotification';
-import { ToastContainer } from './components/ToastContainer';
+import { Toaster } from './components/ui/toaster';
 
 // Pages
 import AdminLogin from './pages/admin/Login';
@@ -33,7 +33,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         {/* Global Centralized Toast Container */}
-        <ToastContainer />
+        <Toaster />
 
         {/* WebSocket Toast Notifications */}
         <WebSocketToastProvider />

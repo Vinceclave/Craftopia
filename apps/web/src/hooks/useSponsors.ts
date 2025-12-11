@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sponsorsAPI, rewardsAPI, redemptionsAPI } from '../lib/api';
 import { useState, useMemo } from 'react';
-import { useToast } from './useToast';
+import { useToast } from '@/components/ui/use-toast';
 
 // ==========================================
 // SPONSORS HOOK
@@ -14,7 +14,7 @@ export const useSponsors = () => {
   const [activeOnly, setActiveOnly] = useState(false);
 
   const queryClient = useQueryClient();
-  const { error: errorToast, success: successToast } = useToast();
+  const { toast } = useToast();
 
   const {
     data,
@@ -28,7 +28,7 @@ export const useSponsors = () => {
       const response = await sponsorsAPI.getAll(page, limit, activeOnly);
 
       const sponsors = response?.data?.data || response?.data || [];
-      const meta = response?.data?.meta || { 
+      const meta = response?.data?.meta || {
         total: Array.isArray(sponsors) ? sponsors.length : 0,
         page: 1,
         limit: 10,
@@ -55,10 +55,17 @@ export const useSponsors = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
       queryClient.refetchQueries({ queryKey: ['sponsors'] });
-      successToast('Sponsor created successfully!');
+      toast({
+        title: 'Success',
+        description: 'Sponsor created successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to create sponsor');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to create sponsor',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -70,10 +77,17 @@ export const useSponsors = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
       queryClient.refetchQueries({ queryKey: ['sponsors'] });
-      successToast('Sponsor updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Sponsor updated successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to update sponsor');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update sponsor',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -85,10 +99,17 @@ export const useSponsors = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
       queryClient.refetchQueries({ queryKey: ['sponsors'] });
-      successToast('Sponsor deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Sponsor deleted successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to delete sponsor');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete sponsor',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -100,10 +121,17 @@ export const useSponsors = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sponsors'] });
       queryClient.refetchQueries({ queryKey: ['sponsors'] });
-      successToast('Sponsor status updated!');
+      toast({
+        title: 'Success',
+        description: 'Sponsor status updated!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -147,7 +175,7 @@ export const useRewards = (filters?: {
   const [limit, setLimit] = useState(20);
 
   const queryClient = useQueryClient();
-  const { error: errorToast, success: successToast } = useToast();
+  const { toast } = useToast();
 
   const {
     data,
@@ -160,7 +188,7 @@ export const useRewards = (filters?: {
     queryFn: async () => {
       const response = await rewardsAPI.getAll(page, limit, filters);
       const rewards = response?.data?.data || response?.data || [];
-      const meta = response?.data?.meta || { 
+      const meta = response?.data?.meta || {
         total: Array.isArray(rewards) ? rewards.length : 0,
         page: 1,
         limit: 20,
@@ -187,10 +215,17 @@ export const useRewards = (filters?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.refetchQueries({ queryKey: ['rewards'] });
-      successToast('Reward created successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward created successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to create reward');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to create reward',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -202,10 +237,17 @@ export const useRewards = (filters?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.refetchQueries({ queryKey: ['rewards'] });
-      successToast('Reward updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward updated successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to update reward');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update reward',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -217,10 +259,17 @@ export const useRewards = (filters?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.refetchQueries({ queryKey: ['rewards'] });
-      successToast('Reward deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward deleted successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to delete reward');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete reward',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -232,10 +281,17 @@ export const useRewards = (filters?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.refetchQueries({ queryKey: ['rewards'] });
-      successToast('Reward status updated!');
+      toast({
+        title: 'Success',
+        description: 'Reward status updated!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -250,10 +306,17 @@ export const useRewards = (filters?: {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
 
       const remainingPoints = result?.remaining_points ?? 'Unknown';
-      successToast(`Reward redeemed! ${remainingPoints} points remaining`);
+      toast({
+        title: 'Success',
+        description: `Reward redeemed! ${remainingPoints} points remaining`,
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to redeem reward');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to redeem reward',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -296,7 +359,7 @@ export const useRedemptions = (filters?: {
   const [limit, setLimit] = useState(20);
 
   const queryClient = useQueryClient();
-  const { error: errorToast, success: successToast } = useToast();
+  const { toast } = useToast();
 
   const {
     data,
@@ -309,7 +372,7 @@ export const useRedemptions = (filters?: {
     queryFn: async () => {
       const response = await redemptionsAPI.getAll(page, limit, filters);
       const redemptions = response?.data?.data || response?.data || [];
-      const meta = response?.data?.meta || { 
+      const meta = response?.data?.meta || {
         total: Array.isArray(redemptions) ? redemptions.length : 0,
         page: 1,
         limit: 20,
@@ -336,10 +399,17 @@ export const useRedemptions = (filters?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['redemptions'] });
       queryClient.refetchQueries({ queryKey: ['redemptions'] });
-      successToast('Redemption fulfilled successfully!');
+      toast({
+        title: 'Success',
+        description: 'Redemption fulfilled successfully!',
+      });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to fulfill redemption');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to fulfill redemption',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -355,13 +425,23 @@ export const useRedemptions = (filters?: {
 
       if (result?.refunded) {
         const refundAmount = result?.refund_amount ?? 0;
-        successToast(`Redemption cancelled. ${refundAmount} points refunded.`);
+        toast({
+          title: 'Success',
+          description: `Redemption cancelled. ${refundAmount} points refunded.`,
+        });
       } else {
-        successToast('Redemption cancelled.');
+        toast({
+          title: 'Success',
+          description: 'Redemption cancelled.',
+        });
       }
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to cancel redemption');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to cancel redemption',
+        variant: 'destructive',
+      });
     },
   });
 

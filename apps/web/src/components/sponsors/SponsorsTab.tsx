@@ -29,7 +29,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useSponsors } from '@/hooks/useSponsors';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { uploadImageToS3, validateImageFile, createImagePreview } from '@/lib/upload';
 import type { Sponsor } from '@/lib/api';
 import {
@@ -41,7 +41,7 @@ import {
 } from '@/components/shared';
 
 export function SponsorsTab() {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const {
     sponsors,
     createSponsor,
@@ -94,7 +94,11 @@ export function SponsorsTab() {
 
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      showError(validation.error || 'Invalid file');
+      toast({
+        title: 'Error',
+        description: validation.error || 'Invalid file',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -104,9 +108,16 @@ export function SponsorsTab() {
       setImagePreview(preview);
       const imageUrl = await uploadImageToS3(file);
       setFormData((prev) => ({ ...prev, logo_url: imageUrl }));
-      success('Image uploaded successfully!');
+      toast({
+        title: 'Success',
+        description: 'Image uploaded successfully!',
+      });
     } catch (error: any) {
-      showError(error?.message || 'Failed to upload image');
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to upload image',
+        variant: 'destructive',
+      });
       setImagePreview(null);
     } finally {
       setIsUploadingImage(false);
@@ -205,11 +216,10 @@ export function SponsorsTab() {
           const isActive = row.original.is_active;
           return (
             <Badge
-              className={`font-poppins border-0 ${
-                isActive
-                  ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
-                  : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
-              }`}
+              className={`font-poppins border-0 ${isActive
+                ? 'bg-gradient-to-r from-[#6CAC73]/20 to-[#2B4A2F]/10 text-[#2B4A2F]'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700'
+                }`}
             >
               {isActive ? 'Active' : 'Inactive'}
             </Badge>
@@ -275,13 +285,21 @@ export function SponsorsTab() {
     try {
       await toggleStatus(sponsor.sponsor_id);
     } catch (err: any) {
-      showError(err.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleCreate = async () => {
     if (!formData.name.trim()) {
-      showError('Please fill in the sponsor name');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in the sponsor name',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -295,13 +313,21 @@ export function SponsorsTab() {
       setCreateDialogOpen(false);
       resetForm();
     } catch (err: any) {
-      showError(err.message || 'Failed to create sponsor');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to create sponsor',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleUpdate = async () => {
     if (!selectedSponsor || !formData.name.trim()) {
-      showError('Please fill in the sponsor name');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in the sponsor name',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -319,7 +345,11 @@ export function SponsorsTab() {
       setSelectedSponsor(null);
       resetForm();
     } catch (err: any) {
-      showError(err.message || 'Failed to update sponsor');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update sponsor',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -330,7 +360,11 @@ export function SponsorsTab() {
       setDeleteDialogOpen(false);
       setSelectedSponsor(null);
     } catch (err: any) {
-      showError(err.message || 'Failed to delete sponsor');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to delete sponsor',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -343,9 +377,9 @@ export function SponsorsTab() {
         onSearchChange={setGlobalFilter}
         filters={filters}
         title="Manage Sponsors"
-          showPagination={true}
-   defaultPageSize={10}
-   pageSizeOptions={[5, 10, 20, 50]}
+        showPagination={true}
+        defaultPageSize={10}
+        pageSizeOptions={[5, 10, 20, 50]}
         action={
           sponsors.length > 0 ? (
             <Button
@@ -424,7 +458,7 @@ export function SponsorsTab() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex-1">
                   <input
                     ref={fileInputRef}

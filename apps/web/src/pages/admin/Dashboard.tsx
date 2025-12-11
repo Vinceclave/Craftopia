@@ -9,14 +9,14 @@ import {
   BarChart3, Calendar, Heart, Wifi, Bell,
   AlertCircle, CheckCircle, Clock,
 } from 'lucide-react';
-import { 
-  useDashboardStats, 
-  useActivityLogs, 
-  useTopUsers, 
-  useRecentActivity 
+import {
+  useDashboardStats,
+  useActivityLogs,
+  useTopUsers,
+  useRecentActivity
 } from '@/hooks/useDashboard';
 import { useWebSocket, useWebSocketChallenges, useWebSocketPosts, useWebSocketAdminAlerts } from '@/hooks/useWebSocket';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { DashboardStats } from '@/lib/api';
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -48,9 +48,8 @@ const StatCard: React.FC<{
           )}
           {trend !== undefined && (
             <div
-              className={`flex items-center text-sm font-poppins ${
-                trend >= 0 ? 'text-[#6CAC73]' : 'text-rose-600'
-              }`}
+              className={`flex items-center text-sm font-poppins ${trend >= 0 ? 'text-[#6CAC73]' : 'text-rose-600'
+                }`}
             >
               <TrendingUp
                 className={`w-4 h-4 mr-1 ${trend < 0 ? 'rotate-180' : ''}`}
@@ -78,9 +77,8 @@ const MetricRow: React.FC<{
     <div className="flex items-center gap-2">
       {trend !== undefined && (
         <div
-          className={`flex items-center text-xs font-poppins ${
-            trend >= 0 ? 'text-[#6CAC73]' : 'text-rose-600'
-          }`}
+          className={`flex items-center text-xs font-poppins ${trend >= 0 ? 'text-[#6CAC73]' : 'text-rose-600'
+            }`}
         >
           <TrendingUp
             className={`w-3 h-3 mr-1 ${trend < 0 ? 'rotate-180' : ''}`}
@@ -258,7 +256,7 @@ const RecentActivityCard: React.FC<{ activity: any }> = ({ activity }) => {
                 </div>
               </div>
             ))}
-            
+
             {recentChallenges.slice(0, 3).map((challenge: any) => (
               <div
                 key={`challenge-${challenge.user_challenge_id}`}
@@ -277,7 +275,7 @@ const RecentActivityCard: React.FC<{ activity: any }> = ({ activity }) => {
                 </div>
               </div>
             ))}
-            
+
             {recentReports.slice(0, 2).map((report: any) => (
               <div
                 key={`report-${report.report_id}`}
@@ -311,51 +309,60 @@ export default function AdminDashboard() {
   const { data: activityData, isLoading: activityLoading } = useActivityLogs(7);
   const { data: topUsersData, isLoading: topUsersLoading } = useTopUsers(10);
   const { data: recentActivityData, isLoading: recentActivityLoading } = useRecentActivity(20);
-  
+
   const stats: DashboardStats | undefined = statsData?.data;
   const activityLogs = activityData?.data || [];
   const topUsers = topUsersData?.data || [];
   const recentActivity = recentActivityData?.data;
-  
+
   const { isConnected } = useWebSocket();
-  const { info, warning, success } = useToast();
+  const { toast } = useToast();
 
   // WebSocket real-time event handlers
   useWebSocketChallenges({
     onCreated: useCallback(() => {
-      info('New challenge created!');
+      toast({
+        title: 'Info',
+        description: 'New challenge created!',
+      });
       refetchStats();
-    }, [info, refetchStats]),
+    }, [toast, refetchStats]),
 
     onCompleted: useCallback(() => {
-      success('A user completed a challenge!');
+      toast({
+        title: 'Success',
+        description: 'A user completed a challenge!',
+      });
       refetchStats();
-    }, [success, refetchStats]),
+    }, [toast, refetchStats]),
 
     onVerified: useCallback((data: { points_awarded?: number } | unknown) => {
       const d = data as { points_awarded?: number };
-      success(`Challenge verified! ${d.points_awarded ?? 0} points awarded`);
+      toast({
+        title: 'Success',
+        description: `Challenge verified! ${d.points_awarded ?? 0} points awarded`,
+      });
       refetchStats();
-    }, [success, refetchStats]),
+    }, [toast, refetchStats]),
   });
 
   useWebSocketPosts({
     onCreated: useCallback(() => {
-      info('New post created on the platform');
+      toast({
+        title: 'Info',
+        description: 'New post created on the platform',
+      });
       refetchStats();
-    }, [info, refetchStats]),
+    }, [toast, refetchStats]),
   });
 
   useWebSocketAdminAlerts(
     useCallback((data: { type?: string; message?: string } | unknown) => {
       const d = data as { type?: string; message?: string };
       if (d.type === 'challenge_pending') {
-        warning('New challenge pending verification');
         refetchStats();
-      } else {
-        info(d.message || 'Admin alert received');
       }
-    }, [warning, info, refetchStats])
+    }, [refetchStats])
   );
 
   const isLoading = statsLoading || activityLoading || topUsersLoading || recentActivityLoading;
@@ -385,7 +392,7 @@ export default function AdminDashboard() {
                 {(statsError as Error).message || 'Please try again.'}
               </p>
             </div>
-            <Button 
+            <Button
               onClick={() => refetchStats()}
               className="bg-gradient-to-br from-[#2B4A2F] to-[#6CAC73] hover:from-[#2B4A2F]/90 hover:to-[#6CAC73]/90 text-white border-0"
             >
@@ -437,7 +444,7 @@ export default function AdminDashboard() {
               <Bell className="w-3 h-3 mr-1" />
               Real-time
             </Badge>
-            <Button 
+            <Button
               onClick={() => refetchStats()}
               className="gap-2 border border-[#6CAC73]/20 bg-white/80 backdrop-blur-sm hover:bg-[#6CAC73]/10 text-[#2B4A2F]"
             >
@@ -449,27 +456,27 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard 
-            icon={Users} 
-            label="Total Users" 
-            value={stats?.users?.total} 
+          <StatCard
+            icon={Users}
+            label="Total Users"
+            value={stats?.users?.total}
             subtitle={`${stats?.users?.active || 0} active`}
           />
-          <StatCard 
-            icon={FileText} 
-            label="Content Posts" 
+          <StatCard
+            icon={FileText}
+            label="Content Posts"
             value={stats?.content?.totalPosts}
             subtitle={`${stats?.content?.postsToday || 0} today`}
           />
-          <StatCard 
-            icon={Trophy} 
-            label="Active Challenges" 
+          <StatCard
+            icon={Trophy}
+            label="Active Challenges"
             value={stats?.challenges?.active}
             subtitle={`${stats?.challenges?.pendingVerification || 0} pending`}
           />
-          <StatCard 
-            icon={Heart} 
-            label="Total Engagement" 
+          <StatCard
+            icon={Heart}
+            label="Total Engagement"
             value={stats?.engagement?.totalLikes}
             subtitle={`${stats?.content?.totalComments || 0} comments`}
           />
@@ -501,20 +508,20 @@ export default function AdminDashboard() {
             {/* Detailed Stats Tabs */}
             <Tabs defaultValue="users" className="flex flex-col gap-6">
               <TabsList className="grid w-full grid-cols-3 bg-white/80 border border-[#6CAC73]/20">
-                <TabsTrigger 
-                  value="users" 
+                <TabsTrigger
+                  value="users"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
                   Users
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="content" 
+                <TabsTrigger
+                  value="content"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
                   Content
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="challenges" 
+                <TabsTrigger
+                  value="challenges"
                   className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#6CAC73] data-[state=active]:to-[#2B4A2F] data-[state=active]:text-white font-poppins"
                 >
                   Challenges

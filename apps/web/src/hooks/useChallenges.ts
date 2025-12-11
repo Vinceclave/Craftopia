@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { challengesAPI } from '../lib/api';
 import { useState, useCallback, useMemo } from 'react';
-import { useToast } from './useToast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ChallengeFilters {
   category: string;
@@ -20,7 +20,7 @@ export const useChallenges = () => {
   });
 
   const queryClient = useQueryClient();
-  const { error: errorToast } = useToast();
+  const { toast } = useToast();
 
   // ✅ FIX: Fetch ALL challenges once, filter client-side
   const {
@@ -99,7 +99,11 @@ export const useChallenges = () => {
       if (ctx?.previousChallenges) {
         queryClient.setQueryData(['challenges'], ctx.previousChallenges);
       }
-      errorToast(err?.message || 'Failed to create challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to create challenge',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -121,7 +125,11 @@ export const useChallenges = () => {
       if (ctx?.previousChallenges) {
         queryClient.setQueryData(['challenges'], ctx.previousChallenges);
       }
-      errorToast(err?.message || 'Failed to generate AI challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to generate AI challenge',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -156,7 +164,11 @@ export const useChallenges = () => {
       if (ctx?.previousData) {
         queryClient.setQueryData(['challenges'], ctx.previousData);
       }
-      errorToast(err?.message || 'Failed to update challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update challenge',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -189,7 +201,11 @@ export const useChallenges = () => {
       if (ctx?.previousData) {
         queryClient.setQueryData(['challenges'], ctx.previousData);
       }
-      errorToast(err?.message || 'Failed to delete challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete challenge',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -224,7 +240,11 @@ export const useChallenges = () => {
       if (ctx?.previousData) {
         queryClient.setQueryData(['challenges'], ctx.previousData);
       }
-      errorToast(err?.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     },
   });
 

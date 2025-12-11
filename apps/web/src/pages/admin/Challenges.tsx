@@ -60,7 +60,7 @@ import { generateGenericPDF, type ExportConfig } from '@/utils/exportToPDF';
 import { generateGenericExcel, type ExcelSheetConfig } from '@/utils/exportToExcel';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useWebSocketChallenges } from '@/hooks/useWebSocket';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import { challengesAPI, type Challenge, type UserChallenge } from '@/lib/api';
 
 type ChallengeCategory = 'daily' | 'weekly' | 'monthly';
@@ -166,7 +166,7 @@ export default function AdminChallenges() {
     stats: challengeStats,
   } = useChallenges();
 
-  const { success, error: showError, info } = useToast();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'challenges' | 'submissions'>('challenges');
   // ✅ FIX: Set default filters - active challenges and pending user challenges
   const [challengeStatusFilter, setChallengeStatusFilter] = useState<ChallengeStatusFilter>('active');
@@ -241,37 +241,52 @@ export default function AdminChallenges() {
   // WebSocket handlers
   const handleChallengeCreated = useCallback(
     (data: any) => {
-      info(data?.message || 'New challenge available!');
+      toast({
+        title: 'Info',
+        description: data?.message || 'New challenge available!',
+      });
       refetch();
     },
-    [refetch, info]
+    [refetch, toast]
   );
 
   const handleChallengeUpdated = useCallback(
     (data: any) => {
-      info(data?.message || 'A challenge was updated');
+      toast({
+        title: 'Info',
+        description: data?.message || 'A challenge was updated',
+      });
       refetch();
     },
-    [refetch, info]
+    [refetch, toast]
   );
 
   const handleChallengeDeleted = useCallback(
     (data: any) => {
-      info(data?.message || 'A challenge was removed');
+      toast({
+        title: 'Info',
+        description: data?.message || 'A challenge was removed',
+      });
       refetch();
     },
-    [refetch, info]
+    [refetch, toast]
   );
 
   const handleChallengeCompleted = useCallback(() => {
-    info('New submission needs verification!');
+    toast({
+      title: 'Info',
+      description: 'New submission needs verification!',
+    });
     refetchUserChallenges();
-  }, [refetchUserChallenges, info]);
+  }, [refetchUserChallenges, toast]);
 
   const handleChallengeVerified = useCallback(() => {
-    success('A challenge has been verified!');
+    toast({
+      title: 'Success',
+      description: 'A challenge has been verified!',
+    });
     refetchUserChallenges();
-  }, [refetchUserChallenges, success]);
+  }, [refetchUserChallenges, toast]);
 
   useWebSocketChallenges({
     onCreated: handleChallengeCreated,
@@ -356,11 +371,18 @@ export default function AdminChallenges() {
         title: formData.title.trim(),
         description: formData.description.trim(),
       });
-      success('Challenge created successfully!');
+      toast({
+        title: 'Success',
+        description: 'Challenge created successfully!',
+      });
       setCreateDialogOpen(false);
       resetForm();
     } catch (err: any) {
-      showError(err?.message || 'Failed to create challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to create challenge',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -386,12 +408,19 @@ export default function AdminChallenges() {
           description: formData.description.trim(),
         },
       });
-      success('Challenge updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Challenge updated successfully!',
+      });
       setEditDialogOpen(false);
       setSelectedChallenge(null);
       resetForm();
     } catch (err: any) {
-      showError(err?.message || 'Failed to update challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update challenge',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -399,11 +428,18 @@ export default function AdminChallenges() {
     if (!selectedChallenge) return;
     try {
       await deleteChallenge(selectedChallenge.challenge_id);
-      success('Challenge deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Challenge deleted successfully!',
+      });
       setDeleteDialogOpen(false);
       setSelectedChallenge(null);
     } catch (err: any) {
-      showError(err?.message || 'Failed to delete challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete challenge',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -412,21 +448,35 @@ export default function AdminChallenges() {
     try {
       await toggleStatus(selectedChallenge.challenge_id);
       const newStatus = !selectedChallenge.is_active;
-      success(`Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      toast({
+        title: 'Success',
+        description: `Challenge ${newStatus ? 'activated' : 'deactivated'} successfully!`,
+      });
       setToggleDialogOpen(false);
       setSelectedChallenge(null);
     } catch (err: any) {
-      showError(err?.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleGenerateAI = async () => {
     try {
       await generateAIChallenge(aiCategory);
-      success(`AI challenge for ${aiCategory} category generated!`);
+      toast({
+        title: 'Success',
+        description: `AI challenge for ${aiCategory} category generated!`,
+      });
       setAiConfirmDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to generate AI challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to generate AI challenge',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -440,14 +490,21 @@ export default function AdminChallenges() {
         verificationNotes.trim() || undefined
       );
       if (response.success) {
-        success(approved ? 'Challenge approved!' : 'Challenge rejected');
+        toast({
+          title: 'Success',
+          description: approved ? 'Challenge approved!' : 'Challenge rejected',
+        });
         setVerifyDialogOpen(false);
         setSelectedUserChallenge(null);
         setVerificationNotes('');
         refetchUserChallenges();
       }
     } catch (err: any) {
-      showError(err?.message || 'Failed to verify challenge');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to verify challenge',
+        variant: 'destructive',
+      });
     } finally {
       setIsVerifying(false);
     }

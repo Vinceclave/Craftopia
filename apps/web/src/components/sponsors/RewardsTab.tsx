@@ -36,7 +36,7 @@ import {
   Package,
 } from 'lucide-react';
 import { useRewards } from '@/hooks/useSponsors';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import type { SponsorReward, Sponsor } from '@/lib/api';
 import {
   DataTable,
@@ -52,7 +52,7 @@ interface RewardsTabProps {
 }
 
 export function RewardsTab({ sponsors }: RewardsTabProps) {
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
   const {
     rewards,
     createReward,
@@ -314,27 +314,43 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
     try {
       await toggleStatus(reward.reward_id);
     } catch (err: any) {
-      showError(err.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleCreate = async () => {
     if (!formData.sponsor_id || !formData.title.trim() || !formData.points_cost || !formData.quantity) {
-      showError('Please fill in all required fields');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
     // Validate points cost
     const pointsCost = parseInt(formData.points_cost);
     if (pointsCost < 50 || pointsCost > 10000) {
-      showError('Points cost must be between 50 and 10,000');
+      toast({
+        title: 'Validation Error',
+        description: 'Points cost must be between 50 and 10,000',
+        variant: 'destructive',
+      });
       return;
     }
 
     // Validate quantity
     const quantity = parseInt(formData.quantity);
     if (quantity < 0) {
-      showError('Quantity cannot be negative');
+      toast({
+        title: 'Validation Error',
+        description: 'Quantity cannot be negative',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -349,29 +365,48 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       });
       setCreateDialogOpen(false);
       resetForm();
-      success('Reward created successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward created successfully!',
+      });
     } catch (err: any) {
-      showError(err.message || 'Failed to create reward');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to create reward',
+        variant: 'destructive',
+      });
     }
   };
 
   const handleUpdate = async () => {
     if (!selectedReward || !formData.title.trim() || !formData.points_cost || !formData.quantity) {
-      showError('Please fill in all required fields');
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
     // Validate points cost
     const pointsCost = parseInt(formData.points_cost);
     if (pointsCost < 50 || pointsCost > 10000) {
-      showError('Points cost must be between 50 and 10,000');
+      toast({
+        title: 'Validation Error',
+        description: 'Points cost must be between 50 and 10,000',
+        variant: 'destructive',
+      });
       return;
     }
 
     // Validate quantity
     const quantity = parseInt(formData.quantity);
     if (quantity < 0) {
-      showError('Quantity cannot be negative');
+      toast({
+        title: 'Validation Error',
+        description: 'Quantity cannot be negative',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -390,9 +425,16 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       setEditDialogOpen(false);
       setSelectedReward(null);
       resetForm();
-      success('Reward updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward updated successfully!',
+      });
     } catch (err: any) {
-      showError(err.message || 'Failed to update reward');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update reward',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -402,9 +444,16 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
       await deleteReward(selectedReward.reward_id);
       setDeleteDialogOpen(false);
       setSelectedReward(null);
-      success('Reward deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Reward deleted successfully!',
+      });
     } catch (err: any) {
-      showError(err.message || 'Failed to delete reward');
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to delete reward',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -434,8 +483,8 @@ export function RewardsTab({ sponsors }: RewardsTabProps) {
         emptyState={{
           icon: <Gift className="w-16 h-16 text-gray-400" />,
           title: 'No rewards yet',
-          description: sponsors.length === 0 
-            ? 'Add a sponsor first before creating rewards' 
+          description: sponsors.length === 0
+            ? 'Add a sponsor first before creating rewards'
             : 'Add your first reward to get started',
           action: sponsors.length > 0 ? (
             <Button

@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/components/ui/use-toast';
 import type { Announcement } from '@/lib/api';
 import {
   DataTable,
@@ -77,7 +77,7 @@ export default function AdminAnnouncements() {
   } = useAnnouncements();
 
   const { isConnected } = useWebSocket();
-  const { success, error: showError } = useToast();
+  const { toast } = useToast();
 
   // State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -353,11 +353,18 @@ export default function AdminAnnouncements() {
         content: formData.content,
         expires_at: formData.expires_at ? new Date(formData.expires_at) : undefined,
       });
-      success('Announcement created and published!');
+      toast({
+        title: 'Success',
+        description: 'Announcement created and published!',
+      });
       setFormData({ title: '', content: '', expires_at: '' });
       setCreateDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to create announcement');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to create announcement',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -374,12 +381,19 @@ export default function AdminAnnouncements() {
           expires_at: formData.expires_at ? new Date(formData.expires_at) : null,
         },
       });
-      success('Announcement updated successfully!');
+      toast({
+        title: 'Success',
+        description: 'Announcement updated successfully!',
+      });
       setFormData({ title: '', content: '', expires_at: '' });
       setSelectedAnnouncement(null);
       setEditDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to update announcement');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update announcement',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -388,11 +402,18 @@ export default function AdminAnnouncements() {
 
     try {
       await deleteAnnouncement(selectedAnnouncement.announcement_id);
-      success('Announcement deleted successfully!');
+      toast({
+        title: 'Success',
+        description: 'Announcement deleted successfully!',
+      });
       setSelectedAnnouncement(null);
       setDeleteDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to delete announcement');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete announcement',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -402,11 +423,18 @@ export default function AdminAnnouncements() {
     try {
       await toggleStatus(selectedAnnouncement.announcement_id);
       const newStatus = !selectedAnnouncement.is_active;
-      success(newStatus ? 'Announcement published!' : 'Announcement unpublished');
+      toast({
+        title: 'Success',
+        description: newStatus ? 'Announcement published!' : 'Announcement unpublished',
+      });
       setSelectedAnnouncement(null);
       setToggleDialogOpen(false);
     } catch (err: any) {
-      showError(err?.message || 'Failed to toggle status');
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to toggle status',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -549,8 +577,8 @@ export default function AdminAnnouncements() {
                           {announcement.title}
                         </h3>
                         {/* 🔥 UPDATED: Truncate content to 150 characters with tooltip */}
-                        <p 
-                          className="text-sm text-gray-600 font-nunito mb-2" 
+                        <p
+                          className="text-sm text-gray-600 font-nunito mb-2"
                           title={announcement.content}
                         >
                           {truncateText(announcement.content, 150)}
