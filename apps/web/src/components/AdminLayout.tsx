@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   BarChart3,
   Users,
-  FileText,
+  FileText, 
+  LayoutDashboard,
+  Handshake,
   Trophy,
   Menu,
   X,
@@ -26,11 +28,11 @@ const AdminLayout = () => {
   const { user, logout } = useAuthStore();
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin/dashboard', icon: BarChart3, badge: null },
+    { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, badge: null },
     { name: 'Users', href: '/admin/users', icon: Users, badge: null },
     { name: 'Content', href: '/admin/posts', icon: FileText, badge: null },
     { name: 'Challenges', href: '/admin/challenges', icon: Trophy, badge: null },
-    { name: 'Sponsors', href: '/admin/sponsors', icon: Trophy, badge: null },
+    { name: 'Sponsors', href: '/admin/sponsors', icon: Handshake, badge: null },
     { name: 'Reports', href: '/admin/reports', icon: BarChart3, badge: null },
     { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, badge: null },
   ];
