@@ -1,110 +1,83 @@
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Sparkles, Target, Users, Zap} from 'lucide-react';
+import { Sparkles, Target, Users, ArrowRight } from 'lucide-react';
 
 export const Features = () => {
   const features = [
     {
       icon: Sparkles,
       title: "AI Craft Generator",
-      description: "Transform any material into creative projects with our intelligent AI",
-      color: "from-[#6CAC73] to-[#2B4A2F]",
-      items: [
-        "Material scanning",
-        "Instant craft ideas", 
-        "Step-by-step guides"
-      ]
+      description: "Instantly transform your available materials into unique, step-by-step projects.",
+      color: "from-[#6CAC73] to-[#2B4A2F]"
     },
     {
       icon: Target,
       title: "Weekly Challenges",
-      description: "Join themed crafting challenges and win exclusive badges",
-      color: "from-[#FF6B6B] to-[#FF8E53]",
-      items: [
-        "Premium rewards",
-        "Skill building"
-      ]
+      description: "Participate in themed creative challenges and earn exclusive badges for your profile.",
+      color: "from-[#FF8E53] to-[#E65100]"
     },
     {
       icon: Users,
-      title: "Creative Feed",
-      description: "Discover inspiration from our global community of makers",
-      color: "from-[#4F46E5] to-[#7E22CE]",
-      items: [
-        "Trending projects",
-        "Share your creations"
-      ]
+      title: "Community Feed",
+      description: "Share your creations, discover new ideas, and connect with fellow makers worldwide.",
+      color: "from-[#7E22CE] to-[#4A148C]"
     }
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-b from-[#FFF9F0] to-white">
-      <div className="container mx-auto px-4">
-        
-        {/* Header */}
+    <section id="features" className="py-24 relative overflow-hidden bg-[#FFF9F0]">
+      {/* Subtle Background Blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] bg-[#6CAC73] rounded-full mix-blend-multiply filter blur-[128px] opacity-10" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#FF8E53] rounded-full mix-blend-multiply filter blur-[128px] opacity-10" />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-20"
         >
-          <Badge className="mb-4 bg-white/80 backdrop-blur-sm text-[#2B4A2F] border border-[#6CAC73]/20 px-4 py-2 rounded-full shadow-sm">
-            <Zap className="w-4 h-4 mr-2" />
-            Core Features
-          </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#2B4A2F] mb-4">
-            Everything You Need to <span className="bg-gradient-to-r from-[#2B4A2F] to-[#6CAC73] bg-clip-text text-transparent">Create Magic</span>
+          <span className="text-[#6CAC73] font-semibold tracking-wider text-xs uppercase mb-3 block">Features</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#2B4A2F] mb-6">
+            Magic in Every Feature
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            From AI-powered crafting to community challenges, discover tools that turn your recyclables into masterpieces
+          <p className="text-gray-600 max-w-2xl mx-auto text-base leading-relaxed">
+            Powerful tools designed to unleash your creativity, wrapped in a simple, beautiful interface that feels like magic.
           </p>
         </motion.div>
 
-        {/* Main Features Grid */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-20">
+        <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.2 }}
-              className="group"
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.15, duration: 0.5 }}
+              whileHover={{ y: -5 }}
+              className="group relative rounded-3xl p-6 transition-all duration-300"
             >
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 h-full flex flex-col">
-                
-                {/* Icon */}
-                <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
+              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6 shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                <feature.icon className="w-6 h-6 text-white" />
+              </div>
 
-                {/* Content */}
-                <h3 className="text-xl font-bold text-[#2B4A2F] mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 mb-6 flex-grow">
-                  {feature.description}
-                </p>
+              <h3 className="text-xl font-bold text-[#2B4A2F] mb-3 group-hover:text-[#6CAC73] transition-colors">
+                {feature.title}
+              </h3>
 
-                {/* Feature List */}
-                <ul className="space-y-2 mb-6">
-                  {feature.items.map((item, itemIndex) => (
-                    <li key={itemIndex} className="flex items-center text-sm text-gray-600">
-                      <div className={`w-2 h-2 bg-gradient-to-r ${feature.color} rounded-full mr-3`} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+              <p className="text-sm text-gray-600 leading-relaxed mb-6">
+                {feature.description}
+              </p>
 
-                <Button className="w-full bg-gradient-to-r from-[#2B4A2F] to-[#6CAC73] hover:from-[#6CAC73] hover:to-[#2B4A2F] text-white border-0">
-                  Explore Feature
-                </Button>
+              <div className="flex items-center text-[#2B4A2F] font-semibold text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-[-10px] group-hover:translate-x-0">
+                Learn more <ArrowRight className="w-3.5 h-3.5 ml-2" />
               </div>
             </motion.div>
           ))}
         </div>
-
-        </div>
+      </div>
     </section>
   );
 };

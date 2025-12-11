@@ -16,6 +16,10 @@ import { Landing } from './pages/Landing';
 import AdminAnnouncements from './pages/admin/Announcement';
 import AdminSponsors from './pages/admin/Sponsors';
 import AdminReports from './pages/admin/Reports';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsAndConditions } from './pages/TermsAndConditions';
+import { CookiePolicy } from './pages/CookiePolicy';
+import { AcceptableUse } from './pages/AcceptableUse';
 
 // Create QueryClient
 const queryClient = new QueryClient({
@@ -41,6 +45,10 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/acceptable-use" element={<AcceptableUse />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
           {/* Protected Admin Routes with Layout  */}

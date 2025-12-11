@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { challengesAPI } from '../lib/api';
 import { useState, useCallback, useMemo } from 'react';
-import { useToast } from './useToast';
+import { useToast } from '@/components/ui/use-toast';
 
 type StatusFilter = 'all' | 'in_progress' | 'pending_verification' | 'completed' | 'rejected';
 
@@ -21,7 +21,7 @@ export const useUserChallenges = () => {
   });
 
   const queryClient = useQueryClient();
-  const { error: errorToast, success } = useToast();
+  const { toast } = useToast();
 
   // Fetch all user challenges (Admin)
   const {
@@ -78,12 +78,19 @@ export const useUserChallenges = () => {
       return response?.data;
     },
     onSuccess: (_, variables) => {
-      success(variables.approved ? 'Challenge approved!' : 'Challenge rejected');
+       toast({
+        title: 'Success',
+        description: `${variables.approved ? 'Challenge approved!' : 'Challenge rejected'}`,
+      });
       queryClient.invalidateQueries({ queryKey: ['admin-user-challenges'] });
       queryClient.invalidateQueries({ queryKey: ['pending-verifications'] });
     },
     onError: (err: any) => {
-      errorToast(err?.message || 'Failed to verify challenge');
+       toast({
+        title: 'Error',
+        description:  err?.message || 'Failed to verify challenge',
+        variant: 'destructive',
+      });
     },
   });
 
