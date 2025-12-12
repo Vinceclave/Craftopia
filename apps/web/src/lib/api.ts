@@ -216,6 +216,23 @@ export interface DashboardStats {
     average: number;
     sessions: number;
   };
+  sponsorship: {
+    sponsors: {
+      total: number;
+      active: number;
+    };
+    rewards: {
+      total: number;
+      active: number;
+    };
+    redemptions: {
+      total: number;
+      pending: number;
+      fulfilled: number;
+      cancelled: number;
+      totalPointsRedeemed: number;
+    };
+  };
   materials: {
     name: string;
     count: number;

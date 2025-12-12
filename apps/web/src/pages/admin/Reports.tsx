@@ -18,15 +18,27 @@ import {
 } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Download, Loader2, FileText, TrendingUp, Users, AlertTriangle } from 'lucide-react';
+import { Download, Loader2, FileText, TrendingUp, Users, AlertTriangle, Gift, Award, Calendar, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
+const DATE_RANGES = [
+    { label: '7 Days', value: 7 },
+    { label: '14 Days', value: 14 },
+    { label: '30 Days', value: 30 },
+    { label: '90 Days', value: 90 },
+];
+
 const Reports = () => {
-    const [days] = useState(7);
+    const [days, setDays] = useState(7);
+
+    // Calculate date range for display
+    const startDate = format(subDays(new Date(), days), 'MMM dd, yyyy');
+    const endDate = format(new Date(), 'MMM dd, yyyy');
 
     // Fetch Data
     const { data: statsData, isLoading: statsLoading } = useQuery({
@@ -58,6 +70,7 @@ const Reports = () => {
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Generated on: ${today}`, 14, 28);
+        doc.text(`Report Period: ${startDate} — ${endDate} (${days} days)`, 14, 33);
 
         // Summary Section
         if (statsData?.data) {
@@ -74,6 +87,14 @@ const Reports = () => {
                 ['Completed Challenges', statsData.data.challenges.completed],
                 ['Total Reports', statsData.data.reports.total],
                 ['Pending Reports', statsData.data.reports.pending],
+                ['Total Sponsors', statsData.data.sponsorship?.sponsors.total || 0],
+                ['Active Sponsors', statsData.data.sponsorship?.sponsors.active || 0],
+                ['Total Rewards', statsData.data.sponsorship?.rewards.total || 0],
+                ['Active Rewards', statsData.data.sponsorship?.rewards.active || 0],
+                ['Total Redemptions', statsData.data.sponsorship?.redemptions.total || 0],
+                ['Pending Redemptions', statsData.data.sponsorship?.redemptions.pending || 0],
+                ['Fulfilled Redemptions', statsData.data.sponsorship?.redemptions.fulfilled || 0],
+                ['Total Points Redeemed', statsData.data.sponsorship?.redemptions.totalPointsRedeemed || 0],
             ];
 
             autoTable(doc, {
@@ -130,6 +151,35 @@ const Reports = () => {
             });
         }
 
+        // Sponsorship Section
+        if (statsData?.data?.sponsorship) {
+            const finalY = (doc as any).lastAutoTable.finalY || 150;
+
+            doc.setFontSize(14);
+            doc.text('Sponsorship & Rewards', 14, finalY + 15);
+
+            const sponsorshipData = [
+                ['Metric', 'Value'],
+                ['Total Sponsors', statsData.data.sponsorship.sponsors.total],
+                ['Active Sponsors', statsData.data.sponsorship.sponsors.active],
+                ['Total Rewards', statsData.data.sponsorship.rewards.total],
+                ['Active Rewards', statsData.data.sponsorship.rewards.active],
+                ['Total Redemptions', statsData.data.sponsorship.redemptions.total],
+                ['Pending Redemptions', statsData.data.sponsorship.redemptions.pending],
+                ['Fulfilled Redemptions', statsData.data.sponsorship.redemptions.fulfilled],
+                ['Cancelled Redemptions', statsData.data.sponsorship.redemptions.cancelled],
+                ['Total Points Redeemed', `${statsData.data.sponsorship.redemptions.totalPointsRedeemed} pts`],
+            ];
+
+            autoTable(doc, {
+                startY: finalY + 20,
+                head: [sponsorshipData[0]],
+                body: sponsorshipData.slice(1),
+                theme: 'striped',
+                headStyles: { fillColor: [255, 136, 66] }, // #FF8842 - orange
+            });
+        }
+
         // Activity Log Section
         if (activityData?.data) {
             const finalY = (doc as any).lastAutoTable.finalY || 150;
@@ -137,7 +187,7 @@ const Reports = () => {
             // Check if we need a new page
             if (finalY > 250) {
                 doc.addPage();
-                doc.text('Activity Logs (Last 7 Days)', 14, 20);
+                doc.text(`Activity Logs (Last ${days} Days)`, 14, 20);
                 autoTable(doc, {
                     startY: 25,
                     head: [['Date', 'New Users', 'Posts', 'Challenges']],
@@ -150,7 +200,7 @@ const Reports = () => {
                     theme: 'striped',
                 });
             } else {
-                doc.text('Activity Logs (Last 7 Days)', 14, finalY + 15);
+                doc.text(`Activity Logs (Last ${days} Days)`, 14, finalY + 15);
                 autoTable(doc, {
                     startY: finalY + 20,
                     head: [['Date', 'New Users', 'Posts', 'Challenges']],
@@ -189,21 +239,73 @@ const Reports = () => {
         { name: 'Resolved', value: statsData.data.reports.resolved },
     ] : [];
 
+    const redemptionStatusData = statsData?.data?.sponsorship ? [
+        { name: 'Pending', value: statsData.data.sponsorship.redemptions.pending },
+        { name: 'Fulfilled', value: statsData.data.sponsorship.redemptions.fulfilled },
+        { name: 'Cancelled', value: statsData.data.sponsorship.redemptions.cancelled },
+    ] : [];
+
     return (
         <div className="p-6 flex flex-col gap-6 max-w-[1600px] mx-auto">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#2B4A2F] font-poppins">Reports & Analytics</h1>
-                    <p className="text-gray-600 font-nunito">Comprehensive insights into platform performance</p>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-[#2B4A2F] font-poppins">Reports & Analytics</h1>
+                        <p className="text-gray-600 font-nunito">Historical insights and trend analysis</p>
+                    </div>
+                    <Button
+                        onClick={handleDownloadPDF}
+                        className="bg-[#6CAC73] hover:bg-[#5a9160] text-white gap-2"
+                    >
+                        <Download className="w-4 h-4" />
+                        Download Report
+                    </Button>
                 </div>
-                <Button
-                    onClick={handleDownloadPDF}
-                    className="bg-[#6CAC73] hover:bg-[#5a9160] text-white gap-2"
-                >
-                    <Download className="w-4 h-4" />
-                    Download Report
-                </Button>
+
+                {/* Date Range Filter */}
+                <Card className="border-[#6CAC73]/20 shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-[#6CAC73] to-[#2B4A2F] rounded-lg flex items-center justify-center">
+                                    <Filter className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-[#2B4A2F] font-poppins">Date Range</p>
+                                    <p className="text-xs text-gray-500 font-nunito flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {startDate} — {endDate}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {DATE_RANGES.map((range) => (
+                                    <Button
+                                        key={range.value}
+                                        variant={days === range.value ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setDays(range.value)}
+                                        className={days === range.value
+                                            ? "bg-[#6CAC73] hover:bg-[#5a9160] text-white"
+                                            : "border-[#6CAC73]/30 text-[#2B4A2F] hover:bg-[#6CAC73]/10"
+                                        }
+                                    >
+                                        {range.label}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                            <Badge variant="outline" className="border-blue-200 text-blue-700 bg-blue-50">
+                                📊 Analyzing {days} days of data
+                            </Badge>
+                            <Badge variant="outline" className="border-green-200 text-green-700 bg-green-50">
+                                {activityData?.data?.length || 0} data points
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Key Metrics Grid */}
@@ -258,13 +360,65 @@ const Reports = () => {
                 </Card>
             </div>
 
+            {/* Sponsorship Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-orange-200 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-orange-50 to-white">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">Active Rewards</CardTitle>
+                        <Gift className="h-4 w-4 text-orange-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-[#2B4A2F]">{statsData?.data?.sponsorship?.rewards.active || 0}</div>
+                        <p className="text-xs text-gray-500">
+                            {statsData?.data?.sponsorship?.rewards.total || 0} total rewards
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card className="border-purple-200 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-purple-50 to-white">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">Total Redemptions</CardTitle>
+                        <Award className="h-4 w-4 text-purple-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-[#2B4A2F]">{statsData?.data?.sponsorship?.redemptions.total || 0}</div>
+                        <p className="text-xs text-gray-500">
+                            {statsData?.data?.sponsorship?.redemptions.pending || 0} pending
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card className="border-green-200 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-green-50 to-white">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">Fulfilled Redemptions</CardTitle>
+                        <Award className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-[#2B4A2F]">{statsData?.data?.sponsorship?.redemptions.fulfilled || 0}</div>
+                        <p className="text-xs text-gray-500">
+                            Successfully claimed
+                        </p>
+                    </CardContent>
+                </Card>
+                <Card className="border-blue-200 shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-blue-50 to-white">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600">Points Redeemed</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-[#2B4A2F]">{(statsData?.data?.sponsorship?.redemptions.totalPointsRedeemed || 0).toLocaleString()}</div>
+                        <p className="text-xs text-gray-500">
+                            Total points spent
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Activity Trend */}
                 <Card className="col-span-1 lg:col-span-2 border-[#6CAC73]/20 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="text-[#2B4A2F]">Platform Activity (Last 7 Days)</CardTitle>
-                        <CardDescription>User registrations, posts, and challenge participation</CardDescription>
+                        <CardTitle className="text-[#2B4A2F]">Platform Activity (Last {days} Days)</CardTitle>
+                        <CardDescription>User registrations, posts, and challenge participation over the selected period</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -352,6 +506,37 @@ const Reports = () => {
                     </CardContent>
                 </Card>
 
+                {/* Redemption Status */}
+                <Card className="border-orange-200 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-[#2B4A2F]">Redemption Status Distribution</CardTitle>
+                        <CardDescription>Sponsor reward redemption breakdown</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={redemptionStatusData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    fill="#FF8042"
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                    label
+                                >
+                                    {redemptionStatusData.map((_, index) => (
+                                        <Cell key={`redemption-cell-${index}`} fill={['#FFBB28', '#00C49F', '#FF8042'][index % 3]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
                 {/* Top Users */}
                 <Card className="col-span-1 lg:col-span-2 border-[#6CAC73]/20 shadow-sm">
                     <CardHeader>
@@ -392,7 +577,7 @@ const Reports = () => {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 };
 

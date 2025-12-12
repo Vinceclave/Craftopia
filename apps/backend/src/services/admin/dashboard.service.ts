@@ -39,6 +39,23 @@ export interface DashboardStats {
     average: number;
     sessions: number;
   };
+  sponsorship: {
+    sponsors: {
+      total: number;
+      active: number;
+    };
+    rewards: {
+      total: number;
+      active: number;
+    };
+    redemptions: {
+      total: number;
+      pending: number;
+      fulfilled: number;
+      cancelled: number;
+      totalPointsRedeemed: number;
+    };
+  };
   materials: {
     name: string;
     count: number;
@@ -103,6 +120,37 @@ class DashboardService extends BaseService {
         prisma.report.count({ where: { status: 'in_review', deleted_at: null } }),
         prisma.report.count({ where: { status: 'resolved', deleted_at: null } })
       ]);
+
+      // Sponsorship stats
+      const [
+        totalSponsors,
+        activeSponsors,
+        totalRewards,
+        activeRewards,
+        totalRedemptions,
+        pendingRedemptions,
+        fulfilledRedemptions,
+        cancelledRedemptions
+      ] = await Promise.all([
+        prisma.sponsor.count({ where: { deleted_at: null } }),
+        prisma.sponsor.count({ where: { deleted_at: null, is_active: true } }),
+        prisma.sponsorReward.count({ where: { deleted_at: null } }),
+        prisma.sponsorReward.count({ where: { deleted_at: null, is_active: true } }),
+        prisma.userRedemption.count({ where: { deleted_at: null } }),
+        prisma.userRedemption.count({ where: { deleted_at: null, status: 'pending' } }),
+        prisma.userRedemption.count({ where: { deleted_at: null, status: 'fulfilled' } }),
+        prisma.userRedemption.count({ where: { deleted_at: null, status: 'cancelled' } })
+      ]);
+
+      // Calculate total points redeemed from fulfilled redemptions
+      const redeemedRewards = await prisma.userRedemption.findMany({
+        where: { deleted_at: null, status: 'fulfilled' },
+        select: { reward: { select: { points_cost: true } } }
+      });
+      const totalPointsRedeemed = redeemedRewards.reduce(
+        (sum, r) => sum + (r.reward?.points_cost || 0),
+        0
+      );
 
       // Engagement stats
       const totalLikes = await prisma.like.count({ where: { deleted_at: null } });
@@ -189,6 +237,23 @@ class DashboardService extends BaseService {
           avgChallengesPerUser: Number(avgChallengesPerUser.toFixed(2)),
           average: Number(avgEngagement.toFixed(2)),
           sessions: activeSessions
+        },
+        sponsorship: {
+          sponsors: {
+            total: totalSponsors,
+            active: activeSponsors
+          },
+          rewards: {
+            total: totalRewards,
+            active: activeRewards
+          },
+          redemptions: {
+            total: totalRedemptions,
+            pending: pendingRedemptions,
+            fulfilled: fulfilledRedemptions,
+            cancelled: cancelledRedemptions,
+            totalPointsRedeemed
+          }
         },
         materials: topMaterials
       };
