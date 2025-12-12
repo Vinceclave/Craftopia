@@ -4,6 +4,8 @@ import { Bell, Sparkles } from 'lucide-react-native';
 import { useCurrentUser } from '~/hooks/useAuth';
 import { useUnreadAnnouncementCount } from '~/hooks/queries/useAnnouncements';
 import { NotificationModal } from './NotificationModal';
+import { NotificationService } from '~/services/notification.service';
+import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -31,6 +33,12 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({ testID = 'home-header' }
   const { data: user } = useCurrentUser();
   const unreadCount = useUnreadAnnouncementCount();
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Register notification service handler
+  useEffect(() => {
+    NotificationService.setOpenHandler(() => setShowNotifications(true));
+    return () => NotificationService.setOpenHandler(() => { });
+  }, []);
 
   const greeting = useMemo(() => getGreeting(), []);
 

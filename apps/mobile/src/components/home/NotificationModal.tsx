@@ -9,12 +9,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X, Bell, Megaphone, Clock, CheckCircle } from 'lucide-react-native';
-import { 
-  useActiveAnnouncements, 
+import {
+  useActiveAnnouncements,
   useMarkAnnouncementRead,
   useMarkAllAnnouncementsRead,
-  Announcement 
+  Announcement
 } from '~/hooks/queries/useAnnouncements';
+import { NotificationService } from '~/services/notification.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface NotificationModalProps {
@@ -26,10 +27,24 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   visible,
   onClose,
 }) => {
-  const { data: announcements = [], isLoading } = useActiveAnnouncements();
+  const { data: serverAnnouncements = [], isLoading } = useActiveAnnouncements();
   const markAsRead = useMarkAnnouncementRead();
   const markAllAsRead = useMarkAllAnnouncementsRead();
   const [readIds, setReadIds] = React.useState<Set<number>>(new Set());
+  const [localAnnouncements, setLocalAnnouncements] = React.useState<Announcement[]>([]);
+
+  // Subscribe to local notifications
+  useEffect(() => {
+    return NotificationService.subscribe(setLocalAnnouncements);
+  }, []);
+
+  // Merge and sort announcements
+  const announcements = React.useMemo(() => {
+    const combined = [...localAnnouncements, ...serverAnnouncements];
+    return combined.sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [localAnnouncements, serverAnnouncements]);
 
   // Load read announcements
   useEffect(() => {
@@ -43,7 +58,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
         console.error('Failed to load read announcements:', error);
       }
     };
-    
+
     if (visible) {
       loadReadIds();
     }
@@ -91,7 +106,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           activeOpacity={1}
           onPress={onClose}
         />
-        
+
         {/* Content card - positioned at bottom */}
         <View className="absolute bottom-0 left-0 right-0 bg-craftopia-surface rounded-t-3xl max-h-[85%] border-t-2 border-craftopia-primary/20">
           {/* Header */}
@@ -123,7 +138,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                   </Text>
                 </TouchableOpacity>
               )}
-              
+
               <TouchableOpacity
                 onPress={onClose}
                 className="w-8 h-8 rounded-lg bg-craftopia-light items-center justify-center active:opacity-70"
@@ -162,7 +177,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
               <View className="px-4 pt-3">
                 {announcements.map((announcement, index) => {
                   const isRead = readIds.has(announcement.announcement_id);
-                  const isExpiring = announcement.expires_at && 
+                  const isExpiring = announcement.expires_at &&
                     new Date(announcement.expires_at).getTime() - Date.now() < 24 * 60 * 60 * 1000;
 
                   return (
@@ -180,40 +195,40 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         {/* Header */}
                         <View className="flex-row items-start justify-between mb-2">
                           <View className="flex-row items-center flex-1">
-                            <View 
+                            <View
                               className="w-10 h-10 rounded-xl items-center justify-center mr-3"
                               style={{
-                                backgroundColor: isRead 
-                                  ? 'rgba(156, 163, 175, 0.1)' 
+                                backgroundColor: isRead
+                                  ? 'rgba(156, 163, 175, 0.1)'
                                   : 'rgba(59, 110, 77, 0.1)',
                                 borderWidth: 1,
-                                borderColor: isRead 
-                                  ? 'rgba(156, 163, 175, 0.2)' 
+                                borderColor: isRead
+                                  ? 'rgba(156, 163, 175, 0.2)'
                                   : 'rgba(59, 110, 77, 0.2)',
                               }}
                             >
-                              <Megaphone 
-                                size={18} 
-                                color={isRead ? '#9CA3AF' : '#3B6E4D'} 
+                              <Megaphone
+                                size={18}
+                                color={isRead ? '#9CA3AF' : '#3B6E4D'}
                               />
                             </View>
-                            
+
                             <View className="flex-1">
-                              <Text 
+                              <Text
                                 className="text-base font-poppinsBold mb-1"
-                                style={{ 
-                                  color: isRead ? '#9CA3AF' : '#374A36' 
+                                style={{
+                                  color: isRead ? '#9CA3AF' : '#374A36'
                                 }}
                               >
                                 {announcement.title}
                               </Text>
-                              
+
                               <View className="flex-row items-center">
                                 <Clock size={12} color="#9CA3AF" />
                                 <Text className="text-xs font-nunito text-craftopia-textSecondary ml-1">
                                   {formatDate(announcement.created_at)}
                                 </Text>
-                                
+
                                 {announcement.admin && (
                                   <>
                                     <Text className="text-xs text-craftopia-textSecondary mx-1.5">•</Text>
@@ -232,7 +247,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                         </View>
 
                         {/* Content */}
-                        <Text 
+                        <Text
                           className="text-sm font-nunito leading-5 mb-2"
                           style={{ color: isRead ? '#9CA3AF' : '#5F6F64' }}
                         >

@@ -8,6 +8,7 @@ import { challengeKeys } from '~/hooks/queries/useChallenges';
 import { userChallengeKeys } from '~/hooks/queries/useUserChallenges';
 import { AppState, AppStateStatus } from 'react-native';
 import { ModalService } from './modalContext';
+import { NotificationService } from '~/services/notification.service';
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -365,6 +366,29 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
     };
 
+    const handleRewardRedeemed = (data: any) => {
+      // Refresh user stats to update points
+      queryClient.invalidateQueries({ queryKey: ['userStats', user.id] });
+
+      // Show simple success modal for immediate feedback
+      ModalService.show({
+        title: 'Redemption Submitted! 🎫',
+        message: `${data.message}\n\nPlease check your email for instructions on how to claim your reward at the sponsor's location.`,
+        type: 'success',
+        confirmText: 'OK'
+      });
+    };
+
+    const handleRedemptionFulfilled = (data: any) => {
+      // Add local notification which will auto-open the Notification Modal when fulfilled
+      NotificationService.addLocalNotification({
+        title: 'Reward Claimed! �',
+        content: data.message || 'Your reward has been successfully fulfilled.',
+        is_active: true,
+        expires_at: null,
+      });
+    };
+
     // Connection event handlers
     const handleConnected = () => {
       setIsConnected(true);
@@ -399,6 +423,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     registerListener('challenge:verified', handleChallengeVerified);
     registerListener('points:awarded', handlePointsAwarded);
     registerListener('leaderboard:updated', handleLeaderboardUpdated);
+    registerListener('reward:redeemed', handleRewardRedeemed);
+    registerListener('redemption:fulfilled', handleRedemptionFulfilled);
 
     // Connection events
     registerListener('connected', handleConnected);
@@ -426,6 +452,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unregisterListener('challenge:verified', handleChallengeVerified);
       unregisterListener('points:awarded', handlePointsAwarded);
       unregisterListener('leaderboard:updated', handleLeaderboardUpdated);
+      unregisterListener('reward:redeemed', handleRewardRedeemed);
+      unregisterListener('redemption:fulfilled', handleRedemptionFulfilled);
 
       // Connection events
       unregisterListener('connected', handleConnected);

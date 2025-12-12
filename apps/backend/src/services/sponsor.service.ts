@@ -4,6 +4,7 @@ import { ValidationError, NotFoundError, ConflictError } from '../utils/error';
 import { logger } from "../utils/logger";
 import prisma from "../config/prisma";
 import { WebSocketEmitter } from "../websocket/events";
+import { sendEmail } from "../utils/mailer";
 
 class SponsorService extends BaseService {
   // ==========================================
@@ -626,6 +627,9 @@ class SponsorService extends BaseService {
       message: `New redemption for ${reward.title}`
     });
 
+    // Note: Email is sent only when the redemption is fulfilled (not on initial redemption)
+    // This avoids redundant emails - user gets one email when they can actually claim their reward
+
     return result;
   }
 
@@ -652,33 +656,33 @@ class SponsorService extends BaseService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-  prisma.userRedemption.findMany({
-    where,
-    orderBy: { claimed_at: 'desc' },
-    skip,
-    take: limit,
-    include: {
-      user: {
-        select: {
-          user_id: true,
-          username: true,
-          email: true,
-          profile: {                    // 🔥 ADD THIS
+      prisma.userRedemption.findMany({
+        where,
+        orderBy: { claimed_at: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: {
             select: {
-              profile_picture_url: true
+              user_id: true,
+              username: true,
+              email: true,
+              profile: {                    // 🔥 ADD THIS
+                select: {
+                  profile_picture_url: true
+                }
+              }
+            }
+          },
+          reward: {
+            include: {
+              sponsor: true
             }
           }
         }
-      },
-      reward: {
-        include: {
-          sponsor: true
-        }
-      }
-    }
-  }),
-  prisma.userRedemption.count({ where })
-]);
+      }),
+      prisma.userRedemption.count({ where })
+    ]);
 
     const lastPage = Math.ceil(total / limit) || 1;
 
@@ -696,6 +700,7 @@ class SponsorService extends BaseService {
   }
 
   async fulfillRedemption(redemptionId: number) {
+    console.log('🔔 fulfillRedemption called with ID:', redemptionId);
     this.validateId(redemptionId, 'Redemption ID');
 
     const redemption = await prisma.userRedemption.findFirst({
@@ -707,7 +712,8 @@ class SponsorService extends BaseService {
         user: {
           select: {
             user_id: true,
-            username: true
+            username: true,
+            email: true
           }
         },
         reward: {
@@ -730,6 +736,7 @@ class SponsorService extends BaseService {
       throw new ValidationError('Cannot fulfill cancelled redemption');
     }
 
+    console.log('📧 User email:', redemption.user.email);
     logger.info('Fulfilling redemption', { redemptionId });
 
     const updated = await prisma.userRedemption.update({
@@ -742,7 +749,8 @@ class SponsorService extends BaseService {
         user: {
           select: {
             user_id: true,
-            username: true
+            username: true,
+            email: true
           }
         },
         reward: {
@@ -760,6 +768,107 @@ class SponsorService extends BaseService {
       redemption: updated,
       message: `Your ${redemption.reward.title} has been fulfilled!`
     });
+
+    // 📧 EMAIL: Send fulfillment confirmation
+    console.log('📧 FULFILLMENT EMAIL - Starting email process');
+    console.log('📧 User email:', updated.user.email);
+    console.log('📧 Reward title:', updated.reward.title);
+
+    if (updated.user.email) {
+      logger.info('Sending fulfillment email', {
+        email: updated.user.email,
+        rewardTitle: updated.reward.title
+      });
+      console.log('📧 Calling sendEmail function...');
+
+      try {
+        const emailResult = await sendEmail(
+          updated.user.email,
+          `🎉 Your Reward is Ready: ${updated.reward.title}`,
+          `
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #3B6E4D 0%, #2d5a3d 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+              <h1 style="color: #fff; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+              <p style="color: #e0e0e0; margin: 10px 0 0; font-size: 16px;">Your reward has been fulfilled</p>
+            </div>
+            
+            <div style="background-color: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none;">
+              <p style="font-size: 18px; margin: 0 0 20px;">Hi <strong>${updated.user.username}</strong>,</p>
+              
+              <p style="line-height: 1.6;">Great news! Your redemption for <strong>${updated.reward.title}</strong> from <strong>${updated.reward.sponsor.name}</strong> has been successfully fulfilled.</p>
+              
+              <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #3B6E4D;">
+                <h3 style="margin: 0 0 15px; color: #3B6E4D;">📦 Reward Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Reward:</td>
+                    <td style="padding: 8px 0; font-weight: bold; text-align: right;">${updated.reward.title}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Sponsor:</td>
+                    <td style="padding: 8px 0; text-align: right;">${updated.reward.sponsor.name}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Points Spent:</td>
+                    <td style="padding: 8px 0; text-align: right;">${updated.reward.points_cost} pts</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Redemption ID:</td>
+                    <td style="padding: 8px 0; font-weight: bold; text-align: right;">#${updated.redemption_id}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Status:</td>
+                    <td style="padding: 8px 0; text-align: right;"><span style="background-color: #28a745; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 12px;">✓ Fulfilled</span></td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                  <strong>📍 How to Claim:</strong><br>
+                  Visit the sponsor's location and show your Redemption ID (<strong>#${updated.redemption_id}</strong>) or this email to collect your reward.
+                </p>
+              </div>
+              
+              <p style="line-height: 1.6; color: #666;">Thank you for contributing to a greener planet! Keep crafting and earning rewards. 🌱</p>
+            </div>
+            
+            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
+              <p style="margin: 0; font-size: 12px; color: #888;">If you didn't redeem this reward, please contact support immediately.</p>
+              <p style="margin: 10px 0 0; font-size: 12px; color: #888;">© ${new Date().getFullYear()} Craftopia. All rights reserved.</p>
+            </div>
+          </div>
+          `
+        );
+
+        console.log('📧 sendEmail returned:', emailResult);
+
+        if (emailResult.success) {
+          console.log('📧 ✅ Fulfillment email sent successfully!');
+          logger.info('Fulfillment email sent successfully', {
+            email: updated.user.email,
+            messageId: emailResult.messageId
+          });
+        } else {
+          console.log('📧 ❌ Fulfillment email FAILED:', emailResult.error);
+          logger.error('Failed to send fulfillment email', {
+            userId: redemption.user_id,
+            email: updated.user.email,
+            error: emailResult.error
+          });
+        }
+      } catch (emailError: any) {
+        console.error('📧 ❌ Exception in sendEmail:', emailError.message);
+        logger.error('Exception sending fulfillment email', {
+          userId: redemption.user_id,
+          email: updated.user.email,
+          error: emailError.message
+        });
+      }
+    } else {
+      console.log('📧 ⚠️ No email found for user, skipping fulfillment email');
+      logger.warn('No email found for user, skipping fulfillment email', { userId: updated.user.user_id });
+    }
 
     return updated;
   }

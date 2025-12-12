@@ -1,13 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
+// import {
+//   Card,
+//   CardContent,
+//   CardHeader,
+//   CardTitle,
+//   CardDescription,
+// } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -63,7 +63,7 @@ import { useWebSocketChallenges } from '@/hooks/useWebSocket';
 import { useToast } from '@/components/ui/use-toast';
 import { challengesAPI, type Challenge, type UserChallenge } from '@/lib/api';
 
-type ChallengeCategory = 'daily' | 'weekly' | 'monthly';
+// type ChallengeCategory = 'daily' | 'weekly' | 'monthly';
 type ChallengeStatusFilter = 'all' | 'active' | 'inactive';
 type UserChallengeStatusFilter = 'all' | 'in_progress' | 'pending_verification' | 'completed' | 'rejected';
 
@@ -157,12 +157,12 @@ export default function AdminChallenges() {
     setIncludeExpired,
     deleteChallenge,
     toggleStatus,
-    generateAIChallenge,
+    // generateAIChallenge,
     isCreating,
     isUpdating,
     isDeleting,
     isToggling,
-    isGenerating,
+    // isGenerating,
     stats: challengeStats,
   } = useChallenges();
 
@@ -198,7 +198,7 @@ export default function AdminChallenges() {
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [toggleDialogOpen, setToggleDialogOpen] = useState(false);
-  const [aiConfirmDialogOpen, setAiConfirmDialogOpen] = useState(false);
+  // const [aiConfirmDialogOpen, setAiConfirmDialogOpen] = useState(false);
 
   // Selected items
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
@@ -216,7 +216,7 @@ export default function AdminChallenges() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [verificationNotes, setVerificationNotes] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
+  // const [aiCategory, setAiCategory] = useState<ChallengeCategory>('daily');
 
   // ✅ FIX: Fetch ALL user challenges once, filter client-side
   const {
@@ -463,22 +463,22 @@ export default function AdminChallenges() {
     }
   };
 
-  const handleGenerateAI = async () => {
-    try {
-      await generateAIChallenge(aiCategory);
-      toast({
-        title: 'Success',
-        description: `AI challenge for ${aiCategory} category generated!`,
-      });
-      setAiConfirmDialogOpen(false);
-    } catch (err: any) {
-      toast({
-        title: 'Error',
-        description: err?.message || 'Failed to generate AI challenge',
-        variant: 'destructive',
-      });
-    }
-  };
+  // const handleGenerateAI = async () => {
+  //   try {
+  //     await generateAIChallenge(aiCategory);
+  //     toast({
+  //       title: 'Success',
+  //       description: `AI challenge for ${aiCategory} category generated!`,
+  //     });
+  //     // setAiConfirmDialogOpen(false);
+  //   } catch (err: any) {
+  //     toast({
+  //       title: 'Error',
+  //       description: err?.message || 'Failed to generate AI challenge',
+  //       variant: 'destructive',
+  //     });
+  //   }
+  // };
 
   const handleManualVerify = async (approved: boolean) => {
     if (!selectedUserChallenge) return;
@@ -1169,7 +1169,7 @@ export default function AdminChallenges() {
       />
 
       {/* AI Generator Card */}
-      <Card className="border border-purple-200 bg-gradient-to-br from-purple-50/80 to-white/80 backdrop-blur-sm shadow-lg">
+      {/* <Card className="border border-purple-200 bg-gradient-to-br from-purple-50/80 to-white/80 backdrop-blur-sm shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-[#2B4A2F] font-poppins">
             <Sparkles className="w-5 h-5 text-purple-600" />
@@ -1210,7 +1210,7 @@ export default function AdminChallenges() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Main Tabs */}
       <Tabs defaultValue="challenges" className="w-full" onValueChange={(value) => setActiveTab(value as 'challenges' | 'submissions')}>        <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/80 border border-[#6CAC73]/20">
@@ -1478,7 +1478,7 @@ export default function AdminChallenges() {
       />
 
       {/* AI Confirm Dialog */}
-      <ConfirmDialog
+      {/* <ConfirmDialog
         open={aiConfirmDialogOpen}
         onOpenChange={setAiConfirmDialogOpen}
         onConfirm={handleGenerateAI}
@@ -1488,7 +1488,7 @@ export default function AdminChallenges() {
         loading={isGenerating}
         variant="info"
         icon={<Sparkles className="w-5 h-5" />}
-      />
+      /> */}
 
       {/* Challenge Details Modal */}
       {selectedChallenge && (
