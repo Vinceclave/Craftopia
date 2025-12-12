@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Linkedin, Heart } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 
 export const Footer = () => {
     const currentYear = new Date().getFullYear();
