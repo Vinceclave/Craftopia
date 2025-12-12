@@ -1,6 +1,5 @@
-// apps/mobile/src/screens/Craft.tsx - FIXED JSON PARSING FOR SAVED CRAFTS
-
-import React, { useEffect, useState } from 'react';
+// apps/mobile/src/screens/Craft.tsx
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +10,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,533 +18,372 @@ import {
   Scan,
   Sparkles,
   History,
-  TrendingUp,
   Award,
-  Target,
   Clock,
   Bookmark,
   Package,
+  ArrowRight,
+  Zap,
+  Lightbulb,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CraftStackParamList } from '~/navigations/types';
 import { useNavigation } from '@react-navigation/native';
 import { useSavedCrafts, useCraftStats } from '~/hooks/queries/useCraft';
 
-// ✅ Helper to safely parse idea_json
+// --- Types & Helpers ---
+
 const parseIdeaJson = (ideaJson: any) => {
   try {
-    if (typeof ideaJson === 'string') {
-      return JSON.parse(ideaJson);
-    }
+    if (typeof ideaJson === 'string') return JSON.parse(ideaJson);
     return ideaJson;
   } catch (error) {
-    console.error('Failed to parse idea_json:', error);
     return ideaJson || {};
   }
 };
 
-// ✅ Helper to safely parse recycled_materials
 const parseMaterials = (materials: any) => {
   try {
-    if (Array.isArray(materials)) {
-      return materials;
-    }
-    if (typeof materials === 'string') {
-      return JSON.parse(materials);
-    }
+    if (Array.isArray(materials)) return materials;
+    if (typeof materials === 'string') return JSON.parse(materials);
     return [];
   } catch (error) {
-    console.error('Failed to parse materials:', error);
     return [];
   }
 };
 
+// --- Sub-Components ---
+
+const Header = ({ craftsMade }: { craftsMade: number }) => (
+  <View className="px-6 pt-2 pb-6 bg-craftopia-surface border-b border-craftopia-light/50">
+    <View className="flex-row justify-between items-start">
+      <View>
+        <Text className="text-craftopia-textSecondary font-nunito text-xs uppercase tracking-widest mb-1 font-bold">
+          Craft Hub
+        </Text>
+        <Text className="text-3xl font-poppinsBold text-craftopia-textPrimary tracking-tight">
+          Create & Upcycle
+        </Text>
+        <Text className="text-craftopia-textSecondary font-nunito text-sm mt-1">
+          Turn your waste into wonder today.
+        </Text>
+      </View>
+      {craftsMade > 0 && (
+        <View className="bg-craftopia-primary/10 px-3 py-1.5 rounded-full flex-row items-center mt-1">
+          <History size={14} color="#3B6E4D" />
+          <Text className="ml-1.5 text-craftopia-primary font-bold font-nunito text-xs">
+            {craftsMade} Crafted
+          </Text>
+        </View>
+      )}
+    </View>
+  </View>
+);
+
+const StatCard = ({
+  icon: Icon,
+  value,
+  label,
+  color,
+  bgColor,
+  isLoading,
+}: {
+  icon: any;
+  value: string | number;
+  label: string;
+  color: string;
+  bgColor: string;
+  isLoading?: boolean;
+}) => (
+  <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex-row items-center justify-between">
+    <View>
+      {isLoading ? (
+        <ActivityIndicator size="small" color={color} className="self-start mb-1" />
+      ) : (
+        <Text className="text-2xl font-poppinsBold text-craftopia-textPrimary">
+          {value}
+        </Text>
+      )}
+      <Text className="text-xs text-craftopia-textSecondary font-nunito font-semibold uppercase tracking-wide">
+        {label}
+      </Text>
+    </View>
+    <View style={{ backgroundColor: bgColor }} className="w-10 h-10 rounded-full items-center justify-center">
+      <Icon size={20} color={color} />
+    </View>
+  </View>
+);
+
+const ScanActionCard = ({ onPress }: { onPress: () => void }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.9}
+    className="mx-6 mt-6 shadow-md shadow-craftopia-primary/20"
+  >
+    <LinearGradient
+      colors={['#3B6E4D', '#2A5138']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      className="rounded-3xl p-6 relative overflow-hidden"
+    >
+      {/* Abstract Shapes */}
+      <View className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white opacity-10" />
+      <View className="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-craftopia-accent opacity-10" />
+
+      <View className="flex-row items-center justify-between z-10">
+        <View className="flex-1 mr-4">
+          <View className="bg-white/20 self-start p-2 rounded-xl mb-3">
+            <Scan size={24} color="#FFF" />
+          </View>
+          <Text className="text-white font-poppinsBold text-2xl mb-1">
+            Start Scanning
+          </Text>
+          <Text className="text-white/80 font-nunito text-sm leading-5">
+            Identify recyclables and get instant AI-generated craft ideas.
+          </Text>
+        </View>
+        <View className="bg-white h-12 w-12 rounded-full items-center justify-center shadow-lg">
+          <ArrowRight size={24} color="#3B6E4D" />
+        </View>
+      </View>
+    </LinearGradient>
+  </TouchableOpacity>
+);
+
+const SavedCraftCard = ({ item, onPress, width }: { item: any; onPress: () => void; width: number }) => {
+  const ideaJson = parseIdeaJson(item.idea_json);
+
+  return (
+    <TouchableOpacity
+      style={{ width }}
+      className="mr-4 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-full flex-col"
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View className="h-32 w-full bg-slate-100 relative">
+        {item.generated_image_url ? (
+          <Image
+            source={{ uri: item.generated_image_url }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="w-full h-full items-center justify-center bg-craftopia-light/50">
+            <Sparkles size={28} color="#E6B655" />
+          </View>
+        )}
+        <View className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
+          <Bookmark size={12} color="#3B6E4D" fill="#3B6E4D" />
+        </View>
+      </View>
+
+      <View className="p-3 flex-1 justify-between">
+        <View>
+          <Text numberOfLines={2} className="font-poppinsBold text-sm text-craftopia-textPrimary leading-5 mb-1">
+            {ideaJson.title || 'Untitled Craft'}
+          </Text>
+          <View className="flex-row flex-wrap gap-1">
+            {ideaJson.difficulty && (
+              <Text className="text-[10px] bg-craftopia-accent/10 text-craftopia-accent px-1.5 py-0.5 rounded font-bold uppercase">
+                {ideaJson.difficulty}
+              </Text>
+            )}
+            {ideaJson.timeNeeded && (
+              <View className="flex-row items-center">
+                <Clock size={10} color="#94A3B8" />
+                <Text className="text-[10px] text-slate-400 font-nunito ml-1">
+                  {ideaJson.timeNeeded}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const TipItem = ({ title, description, icon: Icon, color }: any) => (
+  <View className="bg-white rounded-xl p-4 mb-3 border border-slate-100 flex-row items-start shadow-sm">
+    <View className={`p-2 rounded-full mr-3 ${color === 'blue' ? 'bg-blue-50' : color === 'amber' ? 'bg-amber-50' : 'bg-green-50'}`}>
+      <Icon size={18} color={color === 'blue' ? '#3B82F6' : color === 'amber' ? '#F59E0B' : '#10B981'} />
+    </View>
+    <View className="flex-1">
+      <Text className="font-poppinsBold text-craftopia-textPrimary text-sm mb-1">
+        {title}
+      </Text>
+      <Text className="text-craftopia-textSecondary font-nunito text-xs leading-5">
+        {description}
+      </Text>
+    </View>
+  </View>
+);
+
+// --- Main Screen ---
+
 export const CraftScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
-  const { width: screenWidth } = useWindowDimensions();
+  const { width } = useWindowDimensions();
 
-  // ✅ Fetch saved crafts and stats from database
+  // Queries
   const { data: savedCraftsData, isLoading: isLoadingCrafts, refetch: refetchCrafts } = useSavedCrafts(1, 10);
   const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useCraftStats();
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // Responsive breakpoints
-  const isSmallScreen = screenWidth < 375;
-  const isLargeScreen = screenWidth > 414;
-
-  // ✅ Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([refetchCrafts(), refetchStats()]);
     setRefreshing(false);
   };
 
-  const handleStartScan = () => {
-    navigation.navigate('CraftScan');
-  };
+  const handleStartScan = () => navigation.navigate('CraftScan');
 
   const handleCraftPress = (craft: any) => {
-    // ✅ Parse idea_json properly
     const ideaJson = parseIdeaJson(craft.idea_json);
     const materials = parseMaterials(craft.recycled_materials);
-
     navigation.navigate('CraftDetails', {
       craftTitle: ideaJson.title || 'Craft Idea',
-      materials: materials,
+      materials,
       steps: ideaJson.steps || [],
       generatedImageUrl: craft.generated_image_url,
       timeNeeded: ideaJson.timeNeeded,
       quickTip: ideaJson.quickTip,
       description: ideaJson.description,
-      difficulty: ideaJson.difficulty,           // ✅ NOW PARSED
-      toolsNeeded: ideaJson.toolsNeeded,         // ✅ NOW PARSED
-      uniqueFeature: ideaJson.uniqueFeature,     // ✅ NOW PARSED
+      difficulty: ideaJson.difficulty,
+      toolsNeeded: ideaJson.toolsNeeded,
+      uniqueFeature: ideaJson.uniqueFeature,
       ideaId: craft.idea_id,
       isSaved: craft.is_saved,
     });
   };
 
-  const renderSavedCraft = ({ item }: { item: any }) => {
-    // ✅ Parse idea_json properly
-    const ideaJson = parseIdeaJson(item.idea_json);
-
-    return (
-      <TouchableOpacity
-        className={`mr-3 rounded-xl overflow-hidden bg-craftopia-surface border border-craftopia-light relative ${isSmallScreen ? 'w-40' : isLargeScreen ? 'w-48' : 'w-44'
-          }`}
-        onPress={() => handleCraftPress(item)}
-        activeOpacity={0.7}
-      >
-        {item.generated_image_url ? (
-          <Image
-            source={{ uri: item.generated_image_url }}
-            className={`w-full ${isSmallScreen ? 'h-28' : isLargeScreen ? 'h-36' : 'h-32'
-              }`}
-            resizeMode="cover"
-          />
-        ) : (
-          <View className={`w-full ${isSmallScreen ? 'h-28' : isLargeScreen ? 'h-36' : 'h-32'
-            } bg-craftopia-light items-center justify-center`}>
-            <Sparkles
-              size={isSmallScreen ? 24 : isLargeScreen ? 32 : 28}
-              color="#E6B655"
-            />
-          </View>
-        )}
-
-        {/* Saved Badge */}
-        <View className="absolute top-2 right-2 bg-craftopia-success/90 px-2 py-1 rounded-lg flex-row items-center">
-          <Bookmark size={10} color="#FFFFFF" fill="#FFFFFF" />
-          <Text className="text-xs text-white ml-1 font-nunito font-semibold">
-            Saved
-          </Text>
-        </View>
-
-        <View className="p-3">
-          <Text
-            className={`text-craftopia-textPrimary font-semibold font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-              }`}
-            numberOfLines={2}
-          >
-            {ideaJson.title || 'Craft Idea'}
-          </Text>
-
-          {ideaJson.timeNeeded && (
-            <View className="flex-row items-center mt-1">
-              <Clock size={10} color="#5F6F64" />
-              <Text
-                className={`text-craftopia-textSecondary ml-1 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-xs' : 'text-xs'
-                  }`}
-              >
-                {ideaJson.timeNeeded}
-              </Text>
-            </View>
-          )}
-
-          {/* ✅ Show difficulty if available */}
-          {ideaJson.difficulty && (
-            <View className="flex-row items-center mt-1">
-              <Text
-                className={`text-craftopia-accent font-nunito font-semibold ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-xs' : 'text-xs'
-                  }`}
-              >
-                {ideaJson.difficulty}
-              </Text>
-            </View>
-          )}
-
-          <Text
-            className={`text-craftopia-textSecondary mt-1 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-              }`}
-          >
-            {new Date(item.created_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-            })}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  // ✅ Extract stats
+  // Data
   const savedCrafts = savedCraftsData?.data || [];
-  const stats = statsData?.data ?? {
-    totalCrafts: 0,
-    savedCrafts: 0,
-    totalMaterials: 0,
-  };
-  const totalCrafts = stats.totalCrafts;
-  const craftsMade = stats.savedCrafts;
-  const totalMaterials = stats.totalMaterials;
+  const stats = statsData?.data ?? { totalCrafts: 0, savedCrafts: 0, totalMaterials: 0 };
+
+  // Responsive calculations
+  const isTablet = width > 768;
+  const cardWidth = isTablet ? 220 : 160;
+
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-craftopia-background">
-      {/* Header */}
-      <View className={`bg-craftopia-surface border-b border-craftopia-light ${isSmallScreen ? 'px-3 pt-3 pb-3' : isLargeScreen ? 'px-5 pt-5 pb-5' : 'px-4 pt-4 pb-4'
-        }`}>
-        <View className="flex-row justify-between items-center mb-3">
-          <View className="flex-1">
-            <Text
-              className={`text-craftopia-textSecondary uppercase tracking-wider mb-1 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                }`}
-            >
-              Craft Hub
-            </Text>
-            <Text
-              className={`font-bold text-craftopia-textPrimary font-poppinsBold ${isSmallScreen ? 'text-lg' : isLargeScreen ? 'text-2xl' : 'text-xl'
-                }`}
-            >
-              Create & Upcycle
-            </Text>
-          </View>
-
-          {/* History Button */}
-          {craftsMade > 0 && (
-            <TouchableOpacity
-              className="flex-row items-center bg-craftopia-light rounded-full px-3 py-2"
-              activeOpacity={0.7}
-            >
-              <History
-                size={isSmallScreen ? 14 : isLargeScreen ? 16 : 14}
-                color="#3B6E4D"
-              />
-              <Text
-                className={`font-semibold text-craftopia-primary ml-1 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                {craftsMade}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Info Card */}
-        <View className="bg-craftopia-light rounded-xl p-3 border border-craftopia-accent/20">
-          <View className="flex-row items-center">
-            <View
-              className={`rounded-full bg-craftopia-accent/20 items-center justify-center mr-2 ${isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
-                }`}
-            >
-              <Sparkles
-                size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16}
-                color="#E6B655"
-              />
-            </View>
-            <View className="flex-1">
-              <Text
-                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                  }`}
-              >
-                AI-Powered Craft Ideas
-              </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Scan recyclables to discover creative projects
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAF7" />
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B6E4D']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B6E4D']} tintColor="#3B6E4D" />
         }
-        contentContainerStyle={{
-          paddingBottom: isSmallScreen ? 16 : isLargeScreen ? 24 : 20
-        }}
       >
-        {/* Main Scan CTA */}
-        <View className={`${isSmallScreen ? 'mx-3 mt-4' : isLargeScreen ? 'mx-5 mt-6' : 'mx-4 mt-5'
-          }`}>
-          <View className="bg-craftopia-primary rounded-2xl p-4 overflow-hidden">
-            {/* Background Pattern */}
-            <View className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-craftopia-primaryLight opacity-20" />
-            <View className="absolute -left-3 -bottom-3 w-20 h-20 rounded-full bg-craftopia-primaryLight opacity-20" />
+        <SafeAreaView edges={['top']} className="bg-craftopia-surface" />
 
-            {/* Content */}
-            <View className="relative z-10">
-              <View className="flex-row items-center mb-3">
-                <View
-                  className={`rounded-full bg-white/20 items-center justify-center mr-3 ${isSmallScreen ? 'w-10 h-10' : isLargeScreen ? 'w-12 h-12' : 'w-10 h-10'
-                    }`}
-                >
-                  <Scan
-                    size={isSmallScreen ? 20 : isLargeScreen ? 24 : 20}
-                    color="#FFFFFF"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text
-                    className={`font-bold text-white font-poppinsBold ${isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
-                      }`}
-                  >
-                    Start Scanning
-                  </Text>
-                  <Text
-                    className={`text-white/90 font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                      }`}
-                  >
-                    Turn waste into wonderful creations
-                  </Text>
-                </View>
-              </View>
+        {/* Header Section */}
+        <Header craftsMade={stats.savedCrafts} />
 
-              <TouchableOpacity
-                onPress={handleStartScan}
-                className="bg-white rounded-full px-4 py-3 flex-row items-center justify-center"
-                activeOpacity={0.8}
-              >
-                <Scan
-                  size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16}
-                  color="#3B6E4D"
-                />
-                <Text
-                  className={`font-semibold text-craftopia-primary ml-2 font-nunito ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                    }`}
-                >
-                  Scan Items
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* Hero Action */}
+        <ScanActionCard onPress={handleStartScan} />
+
+        {/* Stats Grid */}
+        <View className="px-6 mt-6 flex-row gap-4">
+          <StatCard
+            icon={Package}
+            value={stats.totalCrafts}
+            label="Total Ideas"
+            color="#3B6E4D"
+            bgColor="#E8F5E9"
+            isLoading={isLoadingStats}
+          />
+          <StatCard
+            icon={Award}
+            value={stats.savedCrafts}
+            label="Saved"
+            color="#E6B655"
+            bgColor="#FFF8E1"
+            isLoading={isLoadingStats}
+          />
         </View>
 
-        {/* ✅ Stats Cards with Real Data */}
-        <View className={`${isSmallScreen ? 'mx-3 mt-4' : isLargeScreen ? 'mx-5 mt-6' : 'mx-4 mt-5'
-          }`}>
-          <View className="flex-row gap-3">
-            {/* Total Materials Used */}
-            <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
-              <View className="flex-row items-center justify-between mb-2">
-                <View
-                  className={`rounded-full bg-craftopia-primary/10 items-center justify-center ${isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
-                    }`}
-                >
-                  <Package
-                    size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16}
-                    color="#3B6E4D"
-                  />
-                </View>
-                {isLoadingStats && <ActivityIndicator size="small" color="#5BA776" />}
-              </View>
-              <Text
-                className={`font-bold text-craftopia-textPrimary font-poppinsBold ${isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
-                  }`}
-              >
-                {totalCrafts}
+        {/* Saved Crafts Section */}
+        <View className="mt-8">
+          <View className="px-6 flex-row justify-between items-end mb-4">
+            <View>
+              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
+                Your Collection
               </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Total Crafts
+              <Text className="text-xs text-craftopia-textSecondary font-nunito">
+                Ideas you've saved for later
               </Text>
             </View>
-
-            {/* Crafts Made */}
-            <View className="flex-1 bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
-              <View className="flex-row items-center justify-between mb-2">
-                <View
-                  className={`rounded-full bg-craftopia-accent/10 items-center justify-center ${isSmallScreen ? 'w-8 h-8' : isLargeScreen ? 'w-10 h-10' : 'w-8 h-8'
-                    }`}
-                >
-                  <Award
-                    size={isSmallScreen ? 16 : isLargeScreen ? 20 : 16}
-                    color="#E6B655"
-                  />
-                </View>
-                {isLoadingStats && <ActivityIndicator size="small" color="#5BA776" />}
-              </View>
-              <Text
-                className={`font-bold text-craftopia-textPrimary font-poppinsBold ${isSmallScreen ? 'text-xl' : isLargeScreen ? 'text-2xl' : 'text-xl'
-                  }`}
-              >
-                {craftsMade}
+            <TouchableOpacity onPress={() => { /* Navigate to full list if implemented */ }}>
+              <Text className="text-craftopia-primary font-bold text-xs bg-craftopia-primary/5 px-3 py-1.5 rounded-full">
+                View All
               </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Crafts Saved
-              </Text>
-            </View>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* ✅ Saved Crafts from Database */}
-        {isLoadingCrafts ? (
-          <View className="items-center justify-center py-12">
-            <ActivityIndicator size="large" color="#3B6E4D" />
-            <Text className="text-craftopia-textSecondary mt-3 font-nunito">
-              Loading your crafts...
-            </Text>
-          </View>
-        ) : savedCrafts.length > 0 ? (
-          <View className={`${isSmallScreen ? 'mt-4' : isLargeScreen ? 'mt-6' : 'mt-5'}`}>
-            <View className={`${isSmallScreen ? 'px-3 mb-2' : isLargeScreen ? 'px-5 mb-3' : 'px-4 mb-3'
-              }`}>
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text
-                    className={`font-bold text-craftopia-textPrimary font-poppinsBold ${isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
-                      }`}
-                  >
-                    Saved Crafts
-                  </Text>
-                  <Text
-                    className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                      }`}
-                  >
-                    Your creative collection
-                  </Text>
-                </View>
-
-                <View className="bg-craftopia-success/10 px-3 py-1.5 rounded-lg">
-                  <Text className="text-craftopia-success font-nunito font-semibold text-xs">
-                    {savedCrafts.length} {savedCrafts.length === 1 ? 'craft' : 'crafts'}
-                  </Text>
-                </View>
-              </View>
+          {isLoadingCrafts ? (
+            <View className="h-48 items-center justify-center bg-white mx-6 rounded-2xl border border-dashed border-gray-200">
+              <ActivityIndicator color="#3B6E4D" />
             </View>
-
+          ) : savedCrafts.length > 0 ? (
             <FlatList
               data={savedCrafts}
-              keyExtractor={(item, index) => item.idea_id?.toString() || index.toString()}
               horizontal
               showsHorizontalScrollIndicator={false}
-              renderItem={renderSavedCraft}
-              contentContainerStyle={{
-                paddingHorizontal: isSmallScreen ? 12 : isLargeScreen ? 20 : 16
-              }}
-            />
-          </View>
-        ) : (
-          // Empty State
-          <View className={`${isSmallScreen ? 'mx-3 mt-6' : isLargeScreen ? 'mx-5 mt-8' : 'mx-4 mt-6'
-            }`}>
-            <View className="bg-craftopia-surface rounded-xl p-6 items-center border border-craftopia-light">
-              <View
-                className={`rounded-full bg-craftopia-light items-center justify-center mb-4 ${isSmallScreen ? 'w-16 h-16' : isLargeScreen ? 'w-20 h-20' : 'w-16 h-16'
-                  }`}
-              >
-                <Bookmark
-                  size={isSmallScreen ? 24 : isLargeScreen ? 32 : 24}
-                  color="#5F6F64"
+              keyExtractor={(item, i) => item.idea_id?.toString() || i.toString()}
+              contentContainerStyle={{ paddingHorizontal: 24 }}
+              renderItem={({ item }) => (
+                <SavedCraftCard
+                  item={item}
+                  onPress={() => handleCraftPress(item)}
+                  width={cardWidth}
                 />
+              )}
+            />
+          ) : (
+            <View className="mx-6 bg-white rounded-2xl p-8 items-center border border-slate-100 shadow-sm">
+              <View className="bg-gray-50 p-4 rounded-full mb-3">
+                <Bookmark size={24} color="#94A3B8" />
               </View>
-              <Text
-                className={`font-semibold text-craftopia-textPrimary mb-2 font-poppinsBold text-center ${isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
-                  }`}
-              >
-                No Saved Crafts Yet
+              <Text className="text-craftopia-textPrimary font-semibold mb-1 text-center">
+                No saved crafts yet
               </Text>
-              <Text
-                className={`text-craftopia-textSecondary text-center mb-4 font-nunito ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                  }`}
-              >
-                Start by scanning your recyclable items to discover and save amazing craft ideas
+              <Text className="text-craftopia-textSecondary text-center text-xs px-4">
+                Scan items to generate and save your favorite ideas here.
               </Text>
-              <TouchableOpacity
-                onPress={handleStartScan}
-                className="bg-craftopia-primary rounded-full px-4 py-3"
-                activeOpacity={0.7}
-              >
-                <Text
-                  className={`font-semibold text-white font-nunito ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                    }`}
-                >
-                  Get Started
-                </Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         {/* Tips Section */}
-        <View className={`${isSmallScreen ? 'mx-3 mt-4 mb-4' : isLargeScreen ? 'mx-5 mt-6 mb-6' : 'mx-4 mt-5 mb-5'
-          }`}>
-          <Text
-            className={`font-bold text-craftopia-textPrimary mb-3 font-poppinsBold ${isSmallScreen ? 'text-base' : isLargeScreen ? 'text-xl' : 'text-lg'
-              }`}
-          >
-            Crafting Tips
+        <View className="mx-6 mt-8">
+          <Text className="text-lg font-poppinsBold text-craftopia-textPrimary mb-4">
+            Pro Tips
           </Text>
-
-          <View className="space-y-2">
-            {/* Tip 1 */}
-            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
-              <Text
-                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                  }`}
-              >
-                Clean Before Crafting
-              </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Wash and dry recyclables thoroughly before starting your project
-              </Text>
-            </View>
-
-            {/* Tip 2 */}
-            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
-              <Text
-                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                  }`}
-              >
-                Safety First
-              </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Use proper tools and supervision when cutting or working with sharp materials
-              </Text>
-            </View>
-
-            {/* Tip 3 */}
-            <View className="bg-craftopia-surface rounded-xl p-3 border border-craftopia-light">
-              <Text
-                className={`font-semibold text-craftopia-textPrimary mb-1 font-poppinsBold ${isSmallScreen ? 'text-sm' : isLargeScreen ? 'text-base' : 'text-sm'
-                  }`}
-              >
-                Get Creative
-              </Text>
-              <Text
-                className={`text-craftopia-textSecondary font-nunito ${isSmallScreen ? 'text-xs' : isLargeScreen ? 'text-sm' : 'text-xs'
-                  }`}
-              >
-                Don't be afraid to modify designs and add your personal touch
-              </Text>
-            </View>
-          </View>
+          <TipItem
+            title="Clean It Up"
+            description="Always wash and dry your recyclables thoroughly before starting any project to ensure longevity."
+            icon={Sparkles}
+            color="blue"
+          />
+          <TipItem
+            title="Safety First"
+            description="Use proper tools like safety scissors or gloves when handling sharp edges of cans or plastic."
+            icon={Zap}
+            color="amber"
+          />
+          <TipItem
+            title="Mix Materials"
+            description="Combine different recyclables like paper and plastic to create unique textures and structures."
+            icon={Lightbulb}
+            color="green"
+          />
         </View>
+
+        {/* Bottom Spacing */}
+        <View className="h-10" />
       </ScrollView>
     </SafeAreaView>
   );

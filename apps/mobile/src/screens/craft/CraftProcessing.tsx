@@ -1,19 +1,21 @@
-// apps/mobile/src/screens/craft/CraftProcessing.tsx - FIXED FileSystem API
-
-import React, { useState, useEffect, useCallback } from 'react';
+// apps/mobile/src/screens/craft/CraftProcessing.tsx
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   Image,
   ActivityIndicator,
   Animated,
-  TouchableOpacity,
   BackHandler,
+  StatusBar,
+  useWindowDimensions,
+  StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Sparkles, CheckCircle, Zap, Scan, ImageIcon, AlertCircle, X } from 'lucide-react-native';
+import { Sparkles, CheckCircle, Zap, Scan, ImageIcon, AlertCircle, BrainCircuit, X } from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -22,62 +24,68 @@ import { useDetectMaterials, useGenerateCraft } from '~/hooks/queries/useCraft';
 
 type RouteParams = RouteProp<CraftStackParamList, 'CraftProcessing'>;
 
+const STEPS = [
+  { icon: Scan, label: 'Analyzing Image Structure', color: '#3B6E4D' },
+  { icon: Zap, label: 'Detecting Materials', color: '#E6B655' },
+  { icon: Sparkles, label: 'Identifying Recyclables', color: '#5C89B5' },
+  { icon: ImageIcon, label: 'Generating Visualizations', color: '#E6B655' },
+  { icon: BrainCircuit, label: 'Finalizing Craft Ideas', color: '#5BA776' },
+];
+
 export const CraftProcessingScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
   const route = useRoute<RouteParams>();
   const { imageUri } = route.params;
+  const { width } = useWindowDimensions();
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  // State
   const [processingStep, setProcessingStep] = useState(0);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.9));
-  const [progressAnim] = useState(new Animated.Value(0));
-  const [imageBase64, setImageBase64] = useState<string>('');
-  const [showExitModal, setShowExitModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(true);
   const [processingError, setProcessingError] = useState<string | null>(null);
 
+  // Queries
   const detectMaterialsMutation = useDetectMaterials();
   const generateCraftMutation = useGenerateCraft();
-
-  const processingSteps = [
-    { icon: Scan, label: 'Analyzing image', color: '#3B6E4D' },
-    { icon: Zap, label: 'Detecting materials', color: '#E6B655' },
-    { icon: Sparkles, label: 'Identifying recyclables', color: '#5C89B5' },
-    { icon: ImageIcon, label: 'Generating visualizations', color: '#E6B655' },
-    { icon: CheckCircle, label: 'Creating craft ideas', color: '#5BA776' },
-  ];
 
   // Handle hardware back button
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         if (isProcessing) {
-          ModalService.show({
-            title: 'Cancel Processing?',
-            message: 'Your scan is being processed. Are you sure you want to cancel and go back?',
-            type: 'warning',
-            confirmText: 'Yes, Cancel',
-            cancelText: 'Continue',
-            onConfirm: () => navigation.goBack(),
-          });
+          handleCancel();
           return true;
         }
         return false;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
       return () => subscription.remove();
-    }, [isProcessing])
+    }, [isProcessing, navigation])
   );
 
-  useEffect(() => {
+  const handleCancel = () => {
+    ModalService.show({
+      title: 'Stop Processing?',
+      message: 'We are analyzing your item. Going back now will cancel the scan.',
+      type: 'warning',
+      confirmText: 'Yes, Stop',
+      cancelText: 'Continue',
+      onConfirm: () => navigation.goBack(),
+    });
+  };
 
-    // Initial animations
+  useEffect(() => {
+    // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
@@ -88,15 +96,32 @@ export const CraftProcessingScreen = () => {
       }),
     ]).start();
 
-    // Progress bar animation
+    // Loop shimmer animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Start processing
+    processImage();
+
+    // Mimic progress for UX (the actual steps control the discrete progress, this is a smooth filler)
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 8000,
+      duration: 12000,
       useNativeDriver: false,
     }).start();
 
-    // Start processing the image
-    processImage();
   }, []);
 
   const processImage = async () => {
@@ -104,130 +129,57 @@ export const CraftProcessingScreen = () => {
       setIsProcessing(true);
       setProcessingError(null);
 
-      // Step 1: Analyzing image
+      // --- Step 1: Analyze ---
       setProcessingStep(0);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
-      // Step 2: Compress and convert image to base64
+      // --- Step 2: Compress & Convert ---
       setProcessingStep(1);
 
-      // ✅ Use ImageManipulator with base64 output (most reliable method)
-      let base64Image: string;
-
-      try {
-        // Compress image and get base64
-        const compressedImage = await ImageManipulator.manipulateAsync(
-          imageUri,
-          [{ resize: { width: 1024 } }], // Resize to max width of 1024px
-          {
-            compress: 0.7, // 70% quality
-            format: ImageManipulator.SaveFormat.JPEG,
-            base64: true // ✅ Get base64 output directly
-          }
-        );
-
-        // ✅ Validate base64 output
-        if (!compressedImage.base64 || typeof compressedImage.base64 !== 'string') {
-          throw new Error('ImageManipulator returned invalid base64');
+      const compressedImage = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: 1024 } }],
+        {
+          compress: 0.7,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true
         }
+      );
 
-        const base64Data = compressedImage.base64;
-
-        // ✅ Validate minimum length
-        if (base64Data.length < 100) {
-          throw new Error(`Base64 too short: ${base64Data.length} characters`);
-        }
-
-        // ✅ Validate base64 characters
-        if (!/^[A-Za-z0-9+/=]+$/.test(base64Data)) {
-          throw new Error('Invalid base64 characters detected');
-        }
-
-        // ✅ Add proper data URI prefix
-        base64Image = `data:image/jpeg;base64,${base64Data}`;
-
-      } catch (conversionError: any) {
-        console.error("❌ Image conversion failed:", conversionError);
-        throw new Error(`Failed to convert image: ${conversionError.message}`);
+      const base64Data = compressedImage.base64;
+      if (!base64Data || base64Data.length < 100) {
+        throw new Error('Image processing failed: Invalid data');
       }
 
-      // Check 1: Must be a string
-      if (typeof base64Image !== 'string') {
-        throw new Error(`Invalid type: ${typeof base64Image}, expected string`);
-      }
+      const base64Image = `data:image/jpeg;base64,${base64Data}`;
 
-      // Check 2: Must have data URI prefix
-      if (!base64Image.startsWith('data:image/')) {
-        throw new Error('Missing data URI prefix');
-      }
-
-      // Check 3: Must have comma separator
-      if (!base64Image.includes(',')) {
-        throw new Error('Invalid data URI format - missing comma');
-      }
-
-      // Check 4: Extract and validate base64 part
-      const parts = base64Image.split(',');
-      if (parts.length !== 2) {
-        throw new Error(`Invalid data URI - expected 2 parts, got ${parts.length}`);
-      }
-
-      const actualBase64 = parts[1];
-
-      // Check 5: Validate base64 characters (already done above, but double-check)
-      if (!/^[A-Za-z0-9+/=]+$/.test(actualBase64)) {
-        throw new Error('Invalid base64 characters detected in final validation');
-      }
-
-      // Check 6: Minimum length
-      if (actualBase64.length < 100) {
-        throw new Error(`Base64 too short: ${actualBase64.length} characters`);
-      }
-
-      // Calculate and log size
-      const sizeInBytes = base64Image.length;
-      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
-
-      if (parseFloat(sizeInMB) > 10) {
-        console.warn("⚠️  WARNING: Image is large:", sizeInMB, "MB");
-      }
-
-      if (parseFloat(sizeInMB) > 50) {
-        throw new Error(`Image too large: ${sizeInMB} MB. Please use a smaller image.`);
-      }
-
-      setImageBase64(base64Image);
-
-      // Step 3: Detect materials
+      // --- Step 3: Detect Materials ---
       setProcessingStep(2);
-
       const detectResponse = await detectMaterialsMutation.mutateAsync(base64Image);
 
       if (!detectResponse.success || !detectResponse.data?.materials) {
-        throw new Error('Failed to detect materials from image');
+        throw new Error('Could not identify any materials. Please try a clearer photo.');
       }
 
-      // Step 4: Identifying recyclables
+      // --- Step 4: Generating Visuals (Simulated delay for UX if quick) ---
       setProcessingStep(3);
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // Step 5: Generate craft ideas WITH validated reference image
+      // --- Step 5: Finalizing Ideas ---
       setProcessingStep(4);
 
       const craftResponse = await generateCraftMutation.mutateAsync({
         materials: detectResponse.data.materials,
-        referenceImageBase64: base64Image, // ✅ Validated base64
+        referenceImageBase64: base64Image,
       });
 
       if (!craftResponse.success || !craftResponse.data?.ideas) {
-        throw new Error('Failed to generate craft ideas');
+        throw new Error('Failed to generate craft ideas.');
       }
-
-      const ideasWithImages = craftResponse.data.ideas.filter(idea => idea.generatedImageUrl).length;
 
       setIsProcessing(false);
 
-      // Navigate to results
+      // Navigate
       navigation.replace('CraftResults', {
         imageUri,
         detectedMaterials: detectResponse.data.materials,
@@ -235,19 +187,26 @@ export const CraftProcessingScreen = () => {
       });
 
     } catch (error: any) {
-
+      console.error("Processing Error:", error);
       setIsProcessing(false);
-      setProcessingError(error.message || 'Processing failed');
+      setProcessingError(error.message || 'Something went wrong while processing.');
 
       ModalService.show({
-        title: 'Processing Failed',
-        message: error.message || 'Unable to process the image. Please try again.',
+        title: 'Analysis Failed',
+        message: error.message || 'We ran into an issue processing your image. Please try again.',
         type: 'error',
-        confirmText: 'Retry',
-        cancelText: 'Go Back',
+        confirmText: 'Try Again',
+        cancelText: 'Cancel',
         onConfirm: () => {
           setProcessingStep(0);
           setProcessingError(null);
+          // Restart simulations and processing
+          progressAnim.setValue(0);
+          Animated.timing(progressAnim, {
+            toValue: 1,
+            duration: 12000,
+            useNativeDriver: false,
+          }).start();
           processImage();
         },
         onCancel: () => navigation.goBack()
@@ -260,181 +219,173 @@ export const CraftProcessingScreen = () => {
     outputRange: ['0%', '100%'],
   });
 
+  const shimmerTranslate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-300, 300],
+  });
+
   return (
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
-      <View className="flex-1 px-4 justify-center items-center">
-        {/* Image with Modern Frame */}
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAF7" />
+
+      {/* Header with Cancel Button */}
+      <View className="absolute top-12 right-6 z-50">
+        <TouchableOpacity
+          onPress={handleCancel}
+          className="w-10 h-10 bg-white/50 backdrop-blur-md rounded-full items-center justify-center border border-craftopia-secondary/20"
+        >
+          <X size={20} color="#5F6F64" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Content Container */}
+      <View className="flex-1 px-6 justify-center items-center pb-12">
+
+        {/* -- Header Text -- */}
+        <Animated.View style={{ opacity: fadeAnim }} className="mb-8 items-center">
+          <Text className="text-2xl font-poppinsBold text-craftopia-textPrimary mb-1 text-center">
+            {processingError ? 'Analysis Paused' : 'Crafting Magic'}
+          </Text>
+          <Text className="text-sm font-nunito text-craftopia-textSecondary text-center max-w-xs">
+            {processingError
+              ? 'We encountered an issue with your scan.'
+              : 'Our AI is analyzing your item to generate unique upcycling ideas.'}
+          </Text>
+        </Animated.View>
+
+        {/* -- Image Preview with Scanning Effect -- */}
         <Animated.View
           style={{
             opacity: fadeAnim,
             transform: [{ scale: scaleAnim }],
           }}
-          className="mb-8"
+          className="mb-10 relative"
         >
-          <View className="relative">
-            {/* Glow Effect */}
-            <View className="absolute -inset-4 rounded-3xl bg-craftopia-primary/20 blur-2xl" />
+          {/* Background Glow */}
+          <View className="absolute -inset-6 bg-craftopia-primary/10 rounded-full blur-2xl" />
 
-            {/* Image Container */}
-            <View className="relative rounded-3xl overflow-hidden border-2 border-craftopia-secondary/20">
-              <Image
-                source={{ uri: imageUri }}
-                className="w-64 h-64"
-                resizeMode="cover"
-              />
+          <View
+            className="w-64 h-64 rounded-3xl overflow-hidden bg-white shadow-xl shadow-craftopia-primary/20 border-4 border-white"
+            style={{ elevation: 10 }}
+          >
+            <Image
+              source={{ uri: imageUri }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
 
-              {/* Gradient Overlay */}
-              <LinearGradient
-                colors={['transparent', 'rgba(31,42,31,0.6)']}
-                className="absolute inset-0"
-              />
+            {/* Gradient Overlay */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.3)']}
+              className="absolute inset-0"
+            />
 
-              {/* Scanning Effect */}
-              {isProcessing && (
-                <View className="absolute inset-0 border-2 border-craftopia-primary/50">
-                  <View className="absolute top-0 left-0 right-0 h-1 bg-craftopia-primary" />
-                  <Animated.View
-                    style={{
-                      transform: [{
-                        translateY: progressAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 256],
-                        })
-                      }]
-                    }}
-                    className="absolute left-0 right-0 h-0.5 bg-craftopia-primary/80 shadow-lg shadow-craftopia-primary/50"
-                  />
-                </View>
-              )}
-
-              {/* Sparkle Badge */}
-              <View className="absolute -top-3 -right-3">
-                <View className="w-12 h-12 rounded-full bg-gradient-to-br from-craftopia-accent to-craftopia-warning items-center justify-center"
+            {/* Scanning Laser Line */}
+            {isProcessing && (
+              <View className="absolute inset-0 overflow-hidden">
+                <Animated.View
                   style={{
-                    shadowColor: '#E6B655',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.6,
-                    shadowRadius: 12,
+                    transform: [{
+                      translateY: shimmerTranslate
+                    }]
                   }}
-                >
-                  <Sparkles size={20} color="#FFFFFF" fill="#FFFFFF" />
-                </View>
+                  className="w-full h-12 bg-craftopia-primary/30 blur-md transform -rotate-12 scale-150"
+                />
+                <Animated.View
+                  style={{
+                    transform: [{
+                      translateY: shimmerTranslate
+                    }]
+                  }}
+                  className="absolute top-6 w-full h-0.5 bg-white shadow-lg shadow-white"
+                />
               </View>
+            )}
+
+            {/* AI Badge */}
+            <View className="absolute top-4 right-4 bg-white/90 backdrop-blur-md rounded-full p-2 shadow-sm">
+              <Sparkles size={16} color="#E6B655" />
             </View>
           </View>
         </Animated.View>
 
-        {/* Status Section */}
-        <View className="items-center w-full max-w-sm mb-8">
-          {/* Current Status */}
-          <View className="items-center mb-6">
-            <Text className="text-2xl font-poppinsBold text-craftopia-textPrimary mb-2">
-              {processingError ? 'Processing Failed' : 'AI Processing'}
-            </Text>
-            <View className="flex-row items-center">
-              {processingError ? (
-                <>
-                  <AlertCircle size={20} color="#E66555" />
-                  <Text className="text-base font-nunito text-craftopia-error ml-2">
-                    {processingError}
-                  </Text>
-                </>
-              ) : (
-                <>
-                  {React.createElement(processingSteps[processingStep].icon, {
-                    size: 20,
-                    color: processingSteps[processingStep].color,
-                  })}
-                  <Text className="text-base font-nunito text-craftopia-textSecondary ml-2">
-                    {processingSteps[processingStep].label}
-                  </Text>
-                </>
-              )}
+        {/* -- Progress Section -- */}
+        <View className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+
+          {/* Progress Bar */}
+          <View className="mb-6">
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-xs font-poppinsBold text-craftopia-textPrimary uppercase tracking-wider">
+                Progress
+              </Text>
+              <Text className="text-xs font-nunito font-bold text-craftopia-primary">
+                {Math.min(Math.round((processingStep + 1) / STEPS.length * 100), 100)}%
+              </Text>
+            </View>
+            <View className="h-2 bg-slate-100 rounded-full overflow-hidden w-full">
+              <Animated.View
+                style={{ width: progressWidth }}
+                className="h-full bg-craftopia-primary rounded-full relative"
+              >
+                <View className="absolute right-0 top-0 bottom-0 w-20 bg-white/30" />
+              </Animated.View>
             </View>
           </View>
 
-          {/* Modern Progress Bar */}
-          {isProcessing && (
-            <View className="w-full h-1.5 rounded-full bg-craftopia-light/50 mb-6 overflow-hidden">
-              <Animated.View
-                style={{ width: progressWidth }}
-                className="h-full rounded-full"
-              >
-                <LinearGradient
-                  colors={['#3B6E4D', '#5BA776']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="h-full"
-                />
-              </Animated.View>
-            </View>
-          )}
-
-          {/* Modern Steps */}
-          <View className="w-full bg-craftopia-surface/80 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20">
-            {processingSteps.map((step, index) => {
+          {/* Steps List */}
+          <View>
+            {STEPS.map((step, index) => {
               const StepIcon = step.icon;
-              const isComplete = index < processingStep;
+              const isCompleted = index < processingStep;
               const isCurrent = index === processingStep;
+              const isActive = isCompleted || isCurrent;
 
               return (
-                <View key={index} className={`flex-row items-center ${index < processingSteps.length - 1 ? 'mb-4' : ''}`}>
-                  <View
-                    className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${isComplete
-                      ? 'bg-craftopia-success/20'
-                      : isCurrent
-                        ? 'bg-craftopia-primary/10'
-                        : 'bg-craftopia-light/50'
-                      }`}
-                  >
-                    {isComplete ? (
-                      <CheckCircle size={20} color="#5BA776" />
+                <View key={index} className={`flex-row items-center ${index !== STEPS.length - 1 ? 'mb-4' : ''}`}>
+                  <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 border ${isActive
+                    ? 'bg-craftopia-primary/10 border-craftopia-primary/20'
+                    : 'bg-slate-50 border-slate-100'
+                    }`}>
+                    {isCompleted ? (
+                      <CheckCircle size={14} color="#3B6E4D" strokeWidth={3} />
                     ) : isCurrent && isProcessing ? (
                       <ActivityIndicator size="small" color={step.color} />
                     ) : (
-                      <StepIcon size={20} color="#5F6F64" />
+                      <StepIcon size={14} color={isActive ? step.color : '#CBD5E1'} />
                     )}
                   </View>
 
-                  <View className="flex-1">
-                    <Text
-                      className={`text-sm font-nunito ${isComplete || isCurrent
-                        ? 'text-craftopia-textPrimary font-semibold'
-                        : 'text-craftopia-textSecondary'
-                        }`}
-                    >
-                      {step.label}
-                    </Text>
-                  </View>
-
-                  {isComplete && (
-                    <View className="w-2 h-2 rounded-full bg-craftopia-success" />
-                  )}
+                  <Text className={`font-nunito text-sm flex-1 ${isCurrent
+                    ? 'text-craftopia-textPrimary font-bold'
+                    : isActive
+                      ? 'text-craftopia-textPrimary font-medium'
+                      : 'text-slate-400'
+                    }`}>
+                    {step.label}
+                  </Text>
                 </View>
               );
             })}
           </View>
+
         </View>
 
-        {/* Bottom Info */}
-        {isProcessing && (
-          <View className="bg-gradient-to-r from-craftopia-info/10 to-craftopia-primary/10 backdrop-blur-xl rounded-2xl p-4 border border-craftopia-secondary/20 w-full max-w-sm">
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 rounded-2xl bg-gradient-to-br from-craftopia-info/20 to-craftopia-primary/20 items-center justify-center mr-3">
-                <Zap size={18} color="#5C89B5" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-poppinsBold text-craftopia-textPrimary">
-                  Vision AI at Work
-                </Text>
-                <Text className="text-xs font-nunito text-craftopia-textSecondary">
-                  Analyzing materials & generating visuals
-                </Text>
-              </View>
+        {/* Error State Action */}
+        {processingError && (
+          <Animated.View
+            style={{ opacity: fadeAnim }}
+            className="absolute bottom-10 w-full px-6"
+          >
+            <View className="bg-red-50 border border-red-100 p-4 rounded-xl flex-row items-center mb-4">
+              <AlertCircle size={20} color="#EF4444" />
+              <Text className="ml-3 flex-1 text-red-700 font-nunito text-sm">
+                {processingError}
+              </Text>
             </View>
-          </View>
+          </Animated.View>
         )}
+
       </View>
     </SafeAreaView>
   );
-};
+};  

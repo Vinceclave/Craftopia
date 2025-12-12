@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// apps/mobile/src/screens/craft/CraftScanScreen.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,66 +8,183 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  StatusBar,
+  StyleSheet
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { ModalService } from '~/context/modalContext';
-import { Camera, Image as ImageIcon, Sparkles, ArrowLeft, Zap, CircleDot } from 'lucide-react-native';
+import {
+  Camera,
+  Image as ImageIcon,
+  Sparkles,
+  ArrowLeft,
+  Zap,
+  ScanLine,
+  Upload
+} from 'lucide-react-native';
 import { CraftStackParamList } from '~/navigations/types';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const isSmallScreen = screenWidth < 375;
-const isLargeScreen = screenWidth > 414;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// --- Components ---
+
+const ScannerVisual = ({ pulseAnim }: { pulseAnim: any }) => {
+  return (
+    <View className="items-center justify-center my-10 relative">
+      <View className="relative items-center justify-center">
+        {/* Outer Animated Ring 1 */}
+        <Animated.View
+          className="absolute rounded-full border border-craftopia-primary/20"
+          style={{
+            width: 280,
+            height: 280,
+            transform: [{ scale: pulseAnim }],
+            opacity: 0.5
+          }}
+        />
+        {/* Outer Animated Ring 2 */}
+        <Animated.View
+          className="absolute rounded-full bg-craftopia-primary/5"
+          style={{
+            width: 220,
+            height: 220,
+            transform: [{ scale: pulseAnim }],
+          }}
+        />
+
+        {/* Main Gradient Circle */}
+        <LinearGradient
+          colors={['#3B6E4D', '#2A5138']}
+          className="w-40 h-40 rounded-full items-center justify-center shadow-lg shadow-craftopia-primary/40 elevation-10"
+        >
+          <Camera size={64} color="#FFF" />
+
+          {/* Floating badge */}
+          <View className="absolute -top-2 -right-2 bg-craftopia-accent w-8 h-8 rounded-full items-center justify-center border-2 border-white">
+            <Sparkles size={16} color="#FFF" fill="#FFF" />
+          </View>
+        </LinearGradient>
+
+        {/* Scanning Line Animation Effect overlay (conceptual) */}
+        <View className="absolute top-0 bottom-0 w-1 bg-craftopia-accent/30 h-full opacity-50" />
+      </View>
+    </View>
+  );
+};
+
+const ActionButton = ({
+  title,
+  subtitle,
+  icon: Icon,
+  onPress,
+  variant = 'primary',
+  disabled
+}: any) => {
+  const isPrimary = variant === 'primary';
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+      className={`relative overflow-hidden rounded-2xl mb-4 shadow-sm elevation-4 ${disabled ? 'opacity-50' : 'opacity-100'
+        }`}
+    >
+      {isPrimary ? (
+        <LinearGradient
+          colors={['#3B6E4D', '#2C533C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-6 py-5 flex-row items-center"
+        >
+          <View className="w-12 h-12 rounded-full bg-white/20 items-center justify-center mr-4">
+            <Icon size={24} color="#FFF" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-white font-poppinsBold text-lg">{title}</Text>
+            <Text className="text-white/80 font-nunito text-xs">{subtitle}</Text>
+          </View>
+          <Zap size={20} color="#FCD34D" fill="#FCD34D" />
+        </LinearGradient>
+      ) : (
+        <View className="bg-white px-6 py-5 flex-row items-center border border-slate-100 rounded-2xl">
+          <View className="w-12 h-12 rounded-full bg-slate-100 items-center justify-center mr-4">
+            <Icon size={24} color="#3B6E4D" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-craftopia-textPrimary font-poppinsBold text-lg">{title}</Text>
+            <Text className="text-craftopia-textSecondary font-nunito text-xs">{subtitle}</Text>
+          </View>
+          <ArrowLeft size={20} color="#CBD5E1" style={{ transform: [{ rotate: '180deg' }] }} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const TipItem = ({ text }: { text: string }) => (
+  <View className="flex-row items-center gap-3 mb-2">
+    <View className="w-1.5 h-1.5 rounded-full bg-craftopia-success" />
+    <Text className="flex-1 text-sm font-nunito text-craftopia-textSecondary leading-5">
+      {text}
+    </Text>
+  </View>
+);
+
+// --- Main Screen ---
 
 export const CraftScanScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<CraftStackParamList>>();
   const [isProcessing, setIsProcessing] = useState(false);
-  const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
-    Animated.loop(
+  // Pulse Animation Loop
+  useEffect(() => {
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 2000,
+          toValue: 1.1,
+          duration: 1500,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 2000,
+          duration: 1500,
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    animation.start();
+    return () => animation.stop();
   }, []);
 
-  // Reset processing state when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       setIsProcessing(false);
-      return () => {
-        // Cleanup if needed
-      };
     }, [])
   );
 
   const handleBack = () => navigation.goBack();
 
-  const pickImageFromCamera = async () => {
-    if (isProcessing) {
-      return;
-    }
+  const handleImageSelected = (uri: string) => {
+    console.log('📸 Image selected:', uri);
+    setIsProcessing(true);
+    // Simulate processing delay for smoothness
+    setTimeout(() => {
+      navigation.navigate('CraftProcessing', { imageUri: uri });
+    }, 500);
+  };
 
+  const pickImageFromCamera = async () => {
+    if (isProcessing) return;
     const permission = await ImagePicker.requestCameraPermissionsAsync();
+
     if (!permission.granted) {
-      ModalService.show({
-        title: 'Permission Required',
-        message: 'Camera permission is required to scan items.',
-        type: 'warning'
-      });
+      ModalService.show({ title: 'Permission Required', message: 'Camera access is needed to scan items.', type: 'warning' });
       return;
     }
 
@@ -81,17 +199,11 @@ export const CraftScanScreen = () => {
   };
 
   const pickImageFromGallery = async () => {
-    if (isProcessing) {
-      return;
-    }
-
+    if (isProcessing) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (!permission.granted) {
-      ModalService.show({
-        title: 'Permission Required',
-        message: 'Gallery permission is required to upload photos.',
-        type: 'warning'
-      });
+      ModalService.show({ title: 'Permission Required', message: 'Gallery access is needed to upload photos.', type: 'warning' });
       return;
     }
 
@@ -106,216 +218,100 @@ export const CraftScanScreen = () => {
     }
   };
 
-  const handleImageSelected = (uri: string) => {
-    console.log('📸 Image selected:', uri);
-    setIsProcessing(true);
-
-    // Small delay to show processing state
-    setTimeout(() => {
-      navigation.navigate('CraftProcessing', { imageUri: uri });
-    }, 300);
-  };
-
-  // Responsive size calculations
-  const getResponsiveSize = (base: number, small: number, large: number) => {
-    if (isSmallScreen) return small;
-    if (isLargeScreen) return large;
-    return base;
-  };
-
-  const circleSize = getResponsiveSize(144, 120, 160);
-  const iconSize = getResponsiveSize(56, 48, 64);
-
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-craftopia-background">
-      {/* Header */}
-      <View className="px-4 pt-4 pb-3">
-        <View className="flex-row items-center gap-3">
+    <View className="flex-1 bg-craftopia-background">
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAF7" />
+      <SafeAreaView edges={['top', 'left', 'right']} className="flex-1">
+
+        {/* Header */}
+        <View className="px-6 py-4 flex-row items-center justify-between">
           <TouchableOpacity
             onPress={handleBack}
-            className="w-10 h-10 rounded-2xl bg-white/10 items-center justify-center"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-            }}
+            className="w-10 h-10 rounded-full bg-white border border-slate-100 items-center justify-center shadow-sm"
           >
-            <ArrowLeft size={20} color="#3B6E4D" strokeWidth={2.5} />
+            <ArrowLeft size={20} color="#3B6E4D" />
           </TouchableOpacity>
-
-          <View className="flex-1 gap-1">
-            <Text className="text-2xl font-poppinsBold text-craftopia-textPrimary">
-              AI Craft Scanner
-            </Text>
-            <View className="flex-row items-center gap-2">
-              <View className="w-2 h-2 rounded-full bg-craftopia-success" />
-              <Text className="text-sm font-nunito text-craftopia-textSecondary">
-                Powered by Vision AI
-              </Text>
+          <View className="items-end">
+            <Text className="font-poppinsBold text-lg text-craftopia-textPrimary">AI Scanner</Text>
+            <View className="flex-row items-center">
+              <View className="w-2 h-2 rounded-full bg-green-500 mr-1" />
+              <Text className="text-xs font-nunito text-craftopia-textSecondary">Active</Text>
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Scrollable Content - Centered */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'center'
-        }}
-        className="flex-1 px-4"
-      >
-        <View className="flex-1 justify-center gap-8">
-          {/* Hero Scan Area */}
-          <Animated.View
-            style={{ transform: [{ scale: pulseAnim }] }}
-            className="items-center gap-6"
-          >
-            {/* Gradient Circle Background */}
-            <View className="relative items-center justify-center">
-              {/* Outer Glow Ring */}
-              <View
-                className="absolute rounded-full bg-craftopia-primary/10"
-                style={{
-                  width: circleSize * 1.4,
-                  height: circleSize * 1.4,
-                }}
-              />
-              <View
-                className="absolute rounded-full bg-craftopia-primary/20"
-                style={{
-                  width: circleSize * 1.2,
-                  height: circleSize * 1.2,
-                }}
-              />
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          className="px-6"
+        >
+          {/* Hero Section */}
+          <View className="items-center mt-4 mb-8">
+            <Text className="text-3xl font-poppinsBold text-craftopia-textPrimary text-center mb-2">
+              Scan & Create
+            </Text>
+            <Text className="text-craftopia-textSecondary text-center font-nunito text-sm px-8 leading-6">
+              Take a photo of your recyclable items and let our AI suggest amazing craft ideas.
+            </Text>
 
-              {/* Main Circle */}
-              <View
-                className="rounded-full bg-gradient-to-br from-craftopia-primary to-craftopia-secondary items-center justify-center"
-                style={{
-                  width: circleSize,
-                  height: circleSize,
-                  shadowColor: '#3B6E4D',
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 24,
-                }}
-              >
-                <Camera
-                  size={iconSize}
-                  color="#FFFFFF"
-                  strokeWidth={2}
-                />
+            {/* Dynamic Visual */}
+            <ScannerVisual pulseAnim={pulseAnim} />
+          </View>
 
-                {/* Decorative dots */}
-                <View className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-craftopia-accent items-center justify-center">
-                  <Sparkles size={14} color="#FFFFFF" />
-                </View>
-              </View>
-            </View>
-
-            <View className="items-center gap-3">
-              <Text className="text-3xl font-poppinsBold text-craftopia-textPrimary text-center">
-                Scan & Create
-              </Text>
-              <Text className="text-base font-nunito text-craftopia-textSecondary text-center px-4 leading-6">
-                Transform recyclables into stunning crafts with AI-powered suggestions
-              </Text>
-            </View>
-          </Animated.View>
-
-          {/* Action Buttons - Centered */}
-          <View className="gap-3">
-            {/* Primary Camera Button */}
-            <TouchableOpacity
+          {/* Action Buttons */}
+          <View className="mb-8">
+            <ActionButton
+              title="Capture Photo"
+              subtitle="Use your camera to scan items instantly"
+              icon={Camera}
               onPress={pickImageFromCamera}
               disabled={isProcessing}
-              activeOpacity={0.8}
-              className="relative overflow-hidden rounded-2xl"
-              style={{
-                shadowColor: '#3B6E4D',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.4,
-                shadowRadius: 16,
-                opacity: isProcessing ? 0.5 : 1,
-              }}
-            >
-              <LinearGradient
-                colors={['#3B6E4D', '#2C533C']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                className="px-6 py-5"
-              >
-                <View className="flex-row items-center gap-3">
-                  <View className="w-10 h-10 rounded-full bg-white/20 items-center justify-center">
-                    <Camera size={20} color="#FFFFFF" strokeWidth={2.5} />
-                  </View>
-                  <View className="flex-1 gap-1">
-                    <Text className="text-lg font-poppinsBold text-white">
-                      Capture Photo
-                    </Text>
-                    <Text className="text-xs font-nunito text-white/80">
-                      Use your camera to scan items
-                    </Text>
-                  </View>
-                  <Zap size={20} color="#FCD34D" fill="#FCD34D" />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
+              variant="primary"
+            />
+
+            <ActionButton
+              title="Upload from Gallery"
+              subtitle="Choose an existing photo from your device"
+              icon={ImageIcon}
+              onPress={pickImageFromGallery}
+              disabled={isProcessing}
+              variant="secondary"
+            />
           </View>
 
-          {/* Tips Card - Centered */}
-          <View className="bg-white/80 rounded-2xl p-4 border border-craftopia-secondary/20">
-            <View className="flex-row items-center gap-2 mb-3">
-              <View className="w-8 h-8 rounded-full bg-craftopia-accent/20 items-center justify-center">
-                <Sparkles size={16} color="#E3A84F" />
+          {/* Tips Section */}
+          <View className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <View className="flex-row items-center mb-4">
+              <View className="bg-amber-100 p-2 rounded-full mr-3">
+                <Sparkles size={16} color="#D97706" />
               </View>
-              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
-                Pro Tips
+              <Text className="font-poppinsBold text-craftopia-textPrimary text-base">
+                For Best Results
               </Text>
             </View>
-            <View className="gap-2">
-              <View className="flex-row items-start gap-3">
-                <View className="w-1.5 h-1.5 rounded-full bg-craftopia-success mt-1.5" />
-                <Text className="flex-1 text-sm font-nunito text-craftopia-textSecondary">
-                  Use good lighting for better detection
-                </Text>
-              </View>
-              <View className="flex-row items-start gap-3">
-                <View className="w-1.5 h-1.5 rounded-full bg-craftopia-success mt-1.5" />
-                <Text className="flex-1 text-sm font-nunito text-craftopia-textSecondary">
-                  Clean items show clearer in photos
-                </Text>
-              </View>
-              <View className="flex-row items-start gap-3">
-                <View className="w-1.5 h-1.5 rounded-full bg-craftopia-success mt-1.5" />
-                <Text className="flex-1 text-sm font-nunito text-craftopia-textSecondary">
-                  Multiple items? Spread them out
-                </Text>
-              </View>
-            </View>
+            <TipItem text="Ensure there is good lighting on the object." />
+            <TipItem text="Place the item on a plain, uncluttered background." />
+            <TipItem text="Spread out multiple items if scanning a group." />
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
 
       {/* Loading Overlay */}
       {isProcessing && (
-        <View className="absolute inset-0 bg-black/80 items-center justify-center">
-          <View className="bg-white/90 rounded-3xl p-8 items-center border border-craftopia-secondary/20 mx-4 gap-4">
-            <ActivityIndicator size="large" color="#3B6E4D" />
-            <View className="items-center gap-1">
-              <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
-                Processing...
-              </Text>
-              <Text className="text-sm font-nunito text-craftopia-textSecondary">
-                Preparing your scan
-              </Text>
-            </View>
+        <View className="absolute inset-0 bg-black/60 items-center justify-center z-50 backdrop-blur-sm">
+          <View className="bg-white rounded-3xl p-8 items-center w-64 shadow-2xl">
+            <ActivityIndicator size="large" color="#3B6E4D" className="mb-4" />
+            <Text className="font-poppinsBold text-lg text-craftopia-textPrimary mb-1">
+              Analyzing...
+            </Text>
+            <Text className="text-center text-sm text-craftopia-textSecondary font-nunito">
+              Identifying materials and generating ideas
+            </Text>
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
+
+export default CraftScanScreen;

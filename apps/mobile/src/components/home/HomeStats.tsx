@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, Animated, Easing, Dimensions } from 'react-native';
-import { Leaf, Award, Sparkles, Palette, Trophy, Zap, Target, Recycle, TrendingUp } from 'lucide-react-native';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { Text, View, Animated, Easing, Platform, Pressable } from 'react-native';
+import { Sparkles, Palette, Zap, Target, Recycle, TrendingUp } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStats } from '~/hooks/useUserStats';
 import { useWebSocket } from '~/context/WebSocketContext';
 import { WebSocketEvent } from '~/config/websocket';
@@ -9,16 +10,16 @@ import { useUserWasteStats } from '~/hooks/queries/useUserChallenges';
 export const HomeStats = () => {
   const { data: userStats, refetch } = useUserStats();
   const { on, off, isConnected } = useWebSocket();
+  const { data: wasteStats } = useUserWasteStats();
+
   const [animatePoints, setAnimatePoints] = useState(false);
   const [animateWaste, setAnimateWaste] = useState(false);
-  
-  // Animation values
-  const wasteScale = new Animated.Value(1);
-  const wastePulse = new Animated.Value(1);
-  const glowValue = new Animated.Value(0);
-  const pointsScale = new Animated.Value(1);
-  
-  const { data: wasteStats } = useUserWasteStats();
+
+  // Animation values - Fixed: Using useRef to persist values across renders
+  const wasteScale = useRef(new Animated.Value(1)).current;
+  const wastePulse = useRef(new Animated.Value(1)).current;
+  const glowValue = useRef(new Animated.Value(0)).current;
+  const pointsScale = useRef(new Animated.Value(1)).current;
 
   // Format numbers for display
   const formatNumber = (num: number): string => {
@@ -31,28 +32,29 @@ export const HomeStats = () => {
     return num.toString();
   };
 
-  const stats = {
+  const stats = useMemo(() => ({
     wasteSaved: wasteStats?.total_waste_kg?.toFixed(1) || '0.0',
     points: userStats?.points || 0,
     formattedPoints: formatNumber(userStats?.points || 0),
     crafts: userStats?.crafts_created || 0,
     challenges: userStats?.challenges_completed || 0,
-  };
+    wasteGoal: 25 // Configurable goal
+  }), [wasteStats, userStats]);
 
   // Enhanced waste animation with pulse
   const triggerWasteAnimation = () => {
     // Scale up animation
     Animated.sequence([
       Animated.timing(wasteScale, {
-        toValue: 1.08,
+        toValue: 1.05,
         duration: 150,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.spring(wasteScale, {
         toValue: 1,
-        friction: 4,
-        tension: 60,
+        friction: 5,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -60,16 +62,16 @@ export const HomeStats = () => {
     // Pulse animation for background
     Animated.sequence([
       Animated.timing(wastePulse, {
-        toValue: 1.2,
+        toValue: 1.1,
         duration: 200,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
+        useNativeDriver: true, // Native driver supported for transform/opacity
       }),
       Animated.timing(wastePulse, {
         toValue: 1,
         duration: 400,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
   };
@@ -78,15 +80,15 @@ export const HomeStats = () => {
   const triggerPointsAnimation = () => {
     Animated.sequence([
       Animated.timing(pointsScale, {
-        toValue: 1.15,
+        toValue: 1.1,
         duration: 150,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.spring(pointsScale, {
         toValue: 1,
-        friction: 4,
-        tension: 50,
+        friction: 5,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -94,17 +96,18 @@ export const HomeStats = () => {
 
   // Glow effect for highlights
   const triggerGlow = () => {
+    glowValue.setValue(0);
     Animated.sequence([
       Animated.timing(glowValue, {
         toValue: 1,
-        duration: 200,
-        easing: Easing.out(Easing.cubic),
+        duration: 300,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.timing(glowValue, {
         toValue: 0,
-        duration: 400,
-        easing: Easing.out(Easing.cubic),
+        duration: 500,
+        easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }),
     ]).start();
@@ -153,205 +156,164 @@ export const HomeStats = () => {
     };
   }, [isConnected, on, off, refetch]);
 
+  // Calculate progress percentage, capped at 100%
+  const progressPercent = Math.min((parseFloat(stats.wasteSaved) / stats.wasteGoal) * 100, 100);
+
   return (
-    <View className="px-4 pt-2 pb-3">
-      {/* Compact Header */}
-      <View className="mb-3">
-        <Text className="text-lg font-poppinsBold text-craftopia-textPrimary">
-          Your Impact
-        </Text>
-        <Text className="text-xs font-nunito text-craftopia-textSecondary mt-0.5">
-          Making a difference every day
-        </Text>
+    <View className="px-5 mb-2">
+      {/* Section Header */}
+      <View className="mb-4 flex-row items-end justify-between">
+        <View>
+          <Text className="text-lg font-poppinsBold text-craftopia-textPrimary leading-tight">
+            Your Impact
+          </Text>
+          <Text className="text-xs font-nunito text-craftopia-textSecondary mt-0.5">
+            Consistency is key
+          </Text>
+        </View>
+        <Pressable hitSlop={8}>
+          <Text className="text-xs font-nunitoBold text-craftopia-primary">View History</Text>
+        </Pressable>
       </View>
 
-      {/* 1/3 Layout: Highlighted Waste Card takes 1 row, others in 2/3 */}
-      
-      {/* Highlighted Waste Card - Takes full width */}
-      <Animated.View 
-        className="rounded-2xl p-4 mb-3"
+      {/* Main Stats Card - Waste Saved */}
+      <Animated.View
         style={{
-          backgroundColor: animateWaste ? '#4F8A63' : '#3B6E4D', // primaryLight : primary
           transform: [{ scale: wasteScale }],
           shadowColor: '#3B6E4D',
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.15,
           shadowRadius: 12,
-          elevation: 6,
+          elevation: 8,
         }}
+        className="mb-4"
       >
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center mr-3">
-              <Recycle size={20} color="#FFFFFF" />
+        <LinearGradient
+          colors={['#3B6E4D', '#2d543b']} // Deep elegant green gradient
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="rounded-3xl p-5 overflow-hidden relative"
+        >
+          {/* Decorative background elements */}
+          <View className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10" />
+          <View className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-8 -mb-8" />
+
+          <View className="flex-row items-start justify-between mb-4">
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 rounded-xl bg-white/15 items-center justify-center mr-3 border border-white/10">
+                <Recycle size={20} color="#FFFFFF" />
+              </View>
+              <View>
+                <Text className="text-sm font-poppinsMedium text-white/95">
+                  Waste Diverted
+                </Text>
+                <Text className="text-[10px] font-nunito text-white/70 uppercase tracking-wider">
+                  Total Impact
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text className="text-sm font-nunito text-white/90">
-                Total Waste Saved
-              </Text>
-              <Text className="text-xs font-nunito text-white/70">
-                Environmental Impact
-              </Text>
-            </View>
-          </View>
-          
-          <Animated.View
-            style={{
-              opacity: glowValue.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0.8],
-              }),
-              transform: [
-                {
+
+            <Animated.View
+              style={{
+                opacity: glowValue,
+                transform: [{
                   rotate: glowValue.interpolate({
                     inputRange: [0, 1],
-                    outputRange: ['0deg', '15deg'],
-                  }),
-                },
-              ],
-            }}
-          >
-            <Sparkles size={16} color="#F1C977" />
-          </Animated.View>
-        </View>
-        
-        {/* Highlighted Waste Number */}
-        <View className="flex-row items-end">
-          <Text className="text-3xl font-poppinsBold text-white">
-            {stats.wasteSaved}
-          </Text>
-          <Text className="text-lg font-nunito text-white/90 ml-2 mb-1">
-            kilograms
-          </Text>
-        </View>
-        
-        {/* Waste Progress Indicator */}
-        <View className="mt-3">
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-xs font-nunito text-white/80">
-              This month's goal: 25 kg
-            </Text>
-            <Text className="text-xs font-nunitoBold text-white">
-              {((parseFloat(stats.wasteSaved) / 25) * 100).toFixed(0)}%
-            </Text>
-          </View>
-          <View className="h-2 rounded-full bg-white/20 overflow-hidden">
-            <Animated.View 
-              className="h-full rounded-full bg-craftopia-accentLight"
-              style={{
-                width: `${Math.min((parseFloat(stats.wasteSaved) / 25) * 100, 100)}%`,
+                    outputRange: ['0deg', '45deg']
+                  })
+                }]
               }}
-            />
+            >
+              <Sparkles size={20} color="#F1C977" fill="#F1C977" />
+            </Animated.View>
           </View>
-        </View>
+
+          <View className="flex-row items-baseline mb-4">
+            <Text className="text-4xl font-poppinsBold text-white shadow-sm">
+              {stats.wasteSaved}
+            </Text>
+            <Text className="text-base font-nunitoMedium text-white/80 ml-1.5 mb-1">
+              kg
+            </Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View>
+            <View className="flex-row justify-between mb-2">
+              <Text className="text-xs font-nunitoMedium text-white/80">
+                Monthly Goal: {stats.wasteGoal}kg
+              </Text>
+              <Text className="text-xs font-poppinsBold text-white">
+                {progressPercent.toFixed(0)}%
+              </Text>
+            </View>
+            <View className="h-2.5 rounded-full bg-black/20 overflow-hidden backdrop-blur-sm border border-white/5">
+              <Animated.View
+                className="h-full rounded-full bg-craftopia-accentLight"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </View>
+          </View>
+        </LinearGradient>
       </Animated.View>
 
-      {/* Secondary Stats - 3 cards in a row */}
-      <View className="flex-row gap-2">
+      {/* Secondary Stats Grid - Symmetrical Layout */}
+      <View className="flex-row gap-3">
         {/* Points Card */}
-        <Animated.View 
-          className="flex-1 rounded-2xl p-3"
+        <Animated.View
+          className="flex-1 rounded-2xl bg-white p-3.5 border border-craftopia-light/60 shadow-sm"
           style={{
-            backgroundColor: '#FFFFFF',
             transform: [{ scale: pointsScale }],
             shadowColor: '#E6B655',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: animatePoints ? 0.25 : 0.15,
-            shadowRadius: 8,
-            elevation: 4,
-            borderWidth: 1,
-            borderColor: animatePoints ? '#F1C977' : '#F5F7F2',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: animatePoints ? 0.2 : 0.05,
+            shadowRadius: 4,
+            elevation: 2,
+            borderColor: animatePoints ? '#F1C977' : '#e5e7eb',
           }}
         >
-          <View className="flex-row items-center mb-2">
-            <View className="w-8 h-8 rounded-lg bg-craftopia-accent/15 items-center justify-center mr-2">
-              <Zap size={16} color="#E6B655" />
-            </View>
-            <Text className="text-xs font-nunito text-craftopia-textSecondary">
-              Points
-            </Text>
+          <View className="w-8 h-8 rounded-full bg-craftopia-accent/10 items-center justify-center mb-2.5">
+            <Zap size={16} color="#D4A017" fill={animatePoints ? "#D4A017" : "transparent"} />
           </View>
-          
+          <Text className="text-xs font-nunito font-bold text-craftopia-textSecondary uppercase tracking-wide mb-1">
+            Points
+          </Text>
           <Text className="text-xl font-poppinsBold text-craftopia-textPrimary">
             {stats.formattedPoints}
           </Text>
-          
           <View className="flex-row items-center mt-1">
-            <TrendingUp size={10} color="#5BA776" />
-            <Text className="text-xs font-nunito text-craftopia-success ml-1">
-              +{Math.floor((userStats?.points || 0) * 0.1)} today
+            <TrendingUp size={10} color="#3B6E4D" />
+            <Text className="text-[10px] font-nunitoBold text-craftopia-primary ml-1">
+              On track
             </Text>
           </View>
         </Animated.View>
 
         {/* Crafts Card */}
-        <View className="flex-1 rounded-2xl p-3 bg-white"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 3,
-            borderWidth: 1,
-            borderColor: '#F5F7F2',
-          }}
-        >
-          <View className="flex-row items-center mb-2">
-            <View className="w-8 h-8 rounded-lg bg-craftopia-secondary/15 items-center justify-center mr-2">
-              <Palette size={16} color="#89A67E" />
-            </View>
-            <Text className="text-xs font-nunito text-craftopia-textSecondary">
-              Crafts
-            </Text>
+        <View className="flex-1 rounded-2xl bg-white p-3.5 border border-craftopia-light/60 shadow-sm shadow-black/5 elevation-2">
+          <View className="w-8 h-8 rounded-full bg-craftopia-secondary/10 items-center justify-center mb-2.5">
+            <Palette size={16} color="#89A67E" />
           </View>
-          
+          <Text className="text-xs font-nunito font-bold text-craftopia-textSecondary uppercase tracking-wide mb-1">
+            Crafts
+          </Text>
           <Text className="text-xl font-poppinsBold text-craftopia-textPrimary">
             {stats.crafts}
           </Text>
-          
-          <Text className="text-xs font-nunito text-craftopia-textSecondary mt-1">
-            Saved
-          </Text>
         </View>
 
-        {/* Challenges Card */}
-        <View className="flex-1 rounded-2xl p-3 bg-white"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 3,
-            borderWidth: 1,
-            borderColor: '#F5F7F2',
-          }}
-        >
-          <View className="flex-row items-center mb-2">
-            <View className="w-8 h-8 rounded-lg bg-craftopia-primary/15 items-center justify-center mr-2">
-              <Target size={16} color="#3B6E4D" />
-            </View>
-            <Text className="text-xs font-nunito text-craftopia-textSecondary">
-              Quests
-            </Text>
+        {/* Quests Card */}
+        <View className="flex-1 rounded-2xl bg-white p-3.5 border border-craftopia-light/60 shadow-sm shadow-black/5 elevation-2">
+          <View className="w-8 h-8 rounded-full bg-craftopia-primary/10 items-center justify-center mb-2.5">
+            <Target size={16} color="#3B6E4D" />
           </View>
-          
+          <Text className="text-xs font-nunito font-bold text-craftopia-textSecondary uppercase tracking-wide mb-1">
+            Quests
+          </Text>
           <Text className="text-xl font-poppinsBold text-craftopia-textPrimary">
             {stats.challenges}
           </Text>
-          
-          <Text className="text-xs font-nunito text-craftopia-textSecondary mt-1">
-            Completed
-          </Text>
         </View>
-      </View>
-
-      {/* Colorful decorative elements using all brand colors */}
-      <View className="flex-row justify-center mt-3 gap-2">
-        <View className="w-2 h-2 rounded-full bg-craftopia-primary" />
-        <View className="w-2 h-2 rounded-full bg-craftopia-accent" />
-        <View className="w-2 h-2 rounded-full bg-craftopia-secondary" />
-        <View className="w-2 h-2 rounded-full bg-craftopia-success" />
-        <View className="w-2 h-2 rounded-full bg-craftopia-info" />
       </View>
     </View>
   );
